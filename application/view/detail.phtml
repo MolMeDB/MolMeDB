@@ -1,0 +1,235 @@
+    <input hidden id="nameStructure" value="<?= $substance->uploadName ?>">
+    <textarea hidden id="2dInput" class="textin" onload="update()"><?= $substance->SMILES ?>;<?= $substance->name ?></textarea>
+    <input hidden id="idSubstance" value="<?= $substance->id ?>">
+    <div class="row content">
+        <div>
+            <p class="compoundTitle"><?= $substance->name ?></p>
+            <?php if (isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>
+                <p style="text-align: right; font-size: 20px;"><a href="/edit/Compound/<?= $substance->id ?>/<?= $substance->name ?>"><span class="glyphicon glyphicon-edit"></span> Edit</a></p>
+            <?php endif ?>
+        </div>
+
+        <button class="accordion"><i class="fa fa-list-alt" style="font-size:24px;"></i> General info, 2D/3D Structure</button>
+        <div class="panelDetail">
+            <div class="flex-row space-around">
+                <div class="general-info outer" style="width: 47%">
+                    <div class="heading">
+                        <b>2D/3D Structure</b>
+                    </div>
+                    <div class="structure">
+                        <div id="2dStructure" class="structure2D"></div>
+                        <div id="loader"></div>
+                    </div>
+                    <div class="structure">
+                        <div id="litemol" class="structure3D"></div>
+                        <script src="js/litemol.js"></script>
+                    </div>
+                </div>
+                <div class="flex-column space-between" style="width: 47%">
+                    <div class="general-info">
+                        <table class="table table-hover" style="font-size: 15px;">
+                            <thead>
+                                <td>
+                                    <b style="color: #4a82da">General</b>
+                                </td>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><b>Identifier</b></td>
+                                    <td><?= $substance->identifier ?>
+                                </tr>
+                                <tr>
+                                    <td><b>SMILES</b></td>
+                                    <td><?= $substance->SMILES ?>
+                                </tr>
+                                <tr>
+                                    <td><b>MW [Da]</b></td>
+                                    <td>
+                                        <?php if ($substance->MW == 0) : ?>
+                                            N/A
+                                        <?php else : ?>
+                                            <?= $substance->MW ?>
+                                        <?php endif ?>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><b>LogP</b></td>
+                                    <td>
+                                        <?php if ($substance->LogP == 0) : ?>
+                                            N/A
+                                        <?php else : ?>
+                                            <?= $substance->LogP ?>
+                                        <?php endif ?>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="general-info">
+                        <table class="table table-hover">
+                            <thead>
+                                <td>
+                                    <b style="color: #4a82da">Links</b>
+                                </td>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <p><b>PubChem</b></p>
+                                    </td>
+                                    <td><a href="https://pubchem.ncbi.nlm.nih.gov/compound/<?= $substance->pubchem ?>" target="_blank"><?= $substance->pubchem ?></a></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <p><b>DrugBank</b></p>
+                                    </td>
+                                    <td><a href="https://www.drugbank.ca/drugs/<?= $substance->drugbank ?>" target="_blank"><?= $substance->drugbank ?></a></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <p><b>ChEBI</b></p>
+                                    </td>
+                                    <td><a href="http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:<?= $substance->chEBI ?>" target="_blank"><?= $substance->chEBI ?></a></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <p><b>PDB</b></p>
+                                    </td>
+                                    <td><a href="https://www.rcsb.org/ligand/<?= $substance->pdb ?>" target="_blank"><?= $substance->pdb ?></a></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <p><b>ChEMBL</b></p>
+                                    </td>
+                                    <td><a href="https://www.ebi.ac.uk/chembl/compound/inspect/<?= $substance->chEMBL ?>" target="_blank"><?= $substance->chEMBL ?></a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="accordion"><i class="glyphicon glyphicon-stats" style="font-size:24px;"></i> Interactions</button>
+        <div class="panelDetail" id="accordionInteraction" style="position: relative;">
+            <div id="interaction_loader"></div>
+            <div class="no-data" id="no-data-panel">
+                <p><i class="fa fa-line-chart"></i> No data</p>
+            </div>
+
+            <div id="interaction-panel">
+                <div class="interaction-section">
+                    <div class="detail-methods" style="padding-left: 5px; padding-right: 5px; border-top: 0px; margin-top: 0;">
+                        <?php foreach ($methods as $m) : ?>
+                            <button style="display:none;" class="btn-methods" id="but<?= $m->id ?>" value="-1" onclick=""><?= $m->name ?></button>
+                        <?php endforeach ?>
+                    </div>
+                    <div id="interaction-hide-columns">
+                        <input id="hide-empty-interaction-columns" type="checkbox" checked /> Hide empty columns
+                    </div>
+                </div>
+                <div class="table-detail " style="overflow-x: auto;">
+                    <div class="detail-content" id="detailTab">
+                        <div hidden></div>
+                    </div>
+                </div>
+                <button type="button" class="btn pull-right btn-warning" onclick="export_detail_data('<?= $substance->uploadName ?>')">Export data [.csv]</button>
+                <button type="button" class="btn pull-right btn-info" onclick="add_to_comparator('<?= $substance->id ?>', '<?= $substance->name ?>')" style="margin-right: 10px;">Add to comparator</button>
+
+            </div>
+        </div>
+
+        <!--       <button class="accordion"><i class="glyphicon glyphicon-transfer" style="font-size: 24px;"></i>  Transporters</button>
+       <div class="panelDetail" id="accordionInteraction">
+           <div class="no-data" id="no-data-panel">
+                   <p><i class="fa fa-line-chart"></i>   No data</p>
+           </div>
+           
+           <div id="transporter-panel">
+               <div class="table-detail " style="overflow-x: auto;">
+                   <div class="detail-content" id="transporterTab">
+                       <table>
+                            <thead class="thead-detail">
+                                <td><b>Transporter</b></td>
+                                <td>Activity</td>
+                                <td>Km</td>
+                                <td>EC<sub>50</sub></td>
+                                <td>K<sub>i</sub></td>
+                                <td>IC<sub>50</sub></td>
+                                <td>Reference</td>
+                            </thead>
+                       </table>
+                   </div>
+               </div>
+           </div>
+       </div>-->
+
+        <button class="accordion"><i class="fa fa-line-chart" style="font-size:24px;"></i> Free energy graph </button>
+        <div class="panelDetail">
+            <div class="no-data" id="no-data-panel2">
+                <p><i class="fa fa-line-chart"></i> No data</p>
+            </div>
+            <div class="flex-row free-energy-container">
+                <div id="chart-panel">
+                    <table class="chart-adv">
+
+                        <thead>
+                            <tr>
+                                <td>
+                                    Methods
+                                </td>
+                                <td>
+                                    Membranes
+                                </td>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <?php foreach ($methods as $met) : ?>
+                                <?php if (!$availableEnergy[$met->id]) : ?>
+                                    <?php continue ?>
+                                <?php endif ?>
+                                <tr>
+                                    <td class="method">
+                                        <?= $met->name ?>
+                                    </td>
+                                    <td>
+                                        <div class="tabBlock">
+                                            <?php foreach ($membranes as $mem) : ?>
+
+                                                <div class="membraneTab">
+                                                    <input hidden value="<?= $met->id ?>;<?= $mem->id ?>">
+                                                    <?= $mem->name ?>
+                                                </div>
+
+                                            <?php endforeach ?>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach ?>
+                        </tbody>
+                    </table>
+                    <button type="button" id="export_chart_data" style="margin-top: 25px;" class="btn btn-warning pull-right">Export displayed data [.csv]</button>
+                </div>
+                <div style="min-height: 800px;">
+
+                    <canvas id="myChart" width="100%" height="100%"></canvas>
+                    <script>
+                        loadChartTable('<?= $substance->id ?>');
+                    </script>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="js/detailStyle.js?ver=<?= JS_VERSION ?>">
+    </script>
+
+    <script src="js/lineChart.js?ver=<?= JS_VERSION ?>">
+    </script>
+
+    <script>
+        window.onload = update();
+        window.onload = checkMethods('<?= $substance->id ?>');
+    </script>

@@ -1,0 +1,213 @@
+<div  style='text-align: center'>
+    <h1>Comparator</h1>
+</div>
+<div class="flex-row space-between">
+    <div class="comparator-filter">
+            <button type="button" class="accordion"><i class="fa fa-cog" style="font-size:24px;"></i> Advanced</button>
+            <div class="panelDetail">
+                    <div id="substanceList"></div>
+                    <div>
+                        <div>
+                        <table class="comparator-advance">
+                            <thead class="advance-head">
+                                    <td>
+                                        Methods
+                                    </td>
+                            </thead> 
+                            <tbody style="padding: 5px;">     
+                                <tr id="methods">
+                                </tr>
+                            </tbody>
+                        </table>
+                        </div>
+
+                        <div>
+                            <table class="comparator-advance">
+                                <tbody>
+                                    <thead class="advance-head">
+                                        <td>
+                                            Membranes
+                                        </td>
+                                    </thead>
+                                    <tr id="membranes">
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div>
+                            <table class="comparator-advance">
+                                <tbody>
+                                    <thead class="advance-head">
+                                        <td colspan="2">
+                                            Charges
+                                        </td>
+                                    </thead>
+                                    <tr id="charges-row">
+                                        
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div style="margin-top: 20px; max-height: 250px; overflow-y: auto;">
+                        <label>Click on compound to remove from list: </label>
+                        <ul id="substanceListMod"></ul>
+                    </div>
+            </div>
+            <div class="flex-row flex-end">
+                <button type="button" onclick="setOverLay()" style="width: 60px;" class="btn btn-success btn-sm pull-right">Load</button>
+            </div>
+        <div >
+            <table class="comparator-info">
+                <tbody>
+                    <tr>
+                        <td><b>Total number of interactions:</b></td>
+                        <td><h4 class="pull-right" id="total_interaction"></h4></td>
+                    </tr>
+                    <tr>
+                        <td><b>Export dataset: </b></td>
+                        <td>    <button type="button" class="btn pull-right btn-warning" onclick="setOverLay(true)" style="margin: 10px 0 10px 0;">Export data [.csv]</button>    </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <div class="comparator-tips">
+        <h3 class="titleH3">Tips:</h3>
+        <ul>
+            <li>
+                Click on <b style="color: #0CCA5D">Load</b> to generate the table
+            </li>
+            <li>
+                <b>Click</b> on the name of column (e.g. <b>LogK</b>) to sort the table
+            </li>
+            <li>
+                For visualising free energy graph check checkbox at last column and then <b>Click on</b> icon of graph <i class="fa fa-line-chart" style="font-size:20px; color: #269abc;"></i> in the header of table 
+            </li>
+            <li>
+                In <i class="fa fa-cog" style="font-size:15px; color: #269abc;"></i> <b style="color: #269abc">Advanced</b> are available selections of <b>compounds</b>, <b>membranes</b> and <b>methods</b>
+            </li>
+            <li style='color:  #ac0000'>
+                The comparator can display up to <b style="color:red;">200</b> interactions (another rows will be ignored)! Whole datasets can be downloaded using our <b style="color:orange;">export</b>.
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class=" table-comparator">
+    <div class="detail-content" id="tableDiv"> 
+        <table></table>
+    </div>
+</div>
+
+<div id="superpositionWindow">
+    <button class="btn btn-sm btn-danger" id="btn-chart-close"> <span class="glyphicon glyphicon-remove"></span> </button>
+    <div id="lineChartComparator" style="margin-top: 30px;">
+                <canvas id="myChart" width="auto" height="100%"></canvas>
+    </div>
+    <buttton style="margin-top: 25px;" id="export_energy_dataChart" type="button" class="btn btn-sm btn-warning pull-right">Export data [.csv]</buttton>
+</div>
+
+<div class="comp-columns" id="comp-columns">
+    <button type="button" id="comp-col-button">Compare data</button>
+</div>
+
+<div id="m-comp" class="modal-comp">
+  <!-- Modal content -->
+  <div class="modal-content-comp">
+    <div class="modal-header">
+      <span class="close" id="m-close">&times;</span>
+      <h2>Compare data</h2>
+    </div>
+      
+    <div class="m-comp-body">
+        <div class="modal-body-part">
+            <div>
+                <div class="chart-filter">
+                    <div id="filter_1">
+                        <h3 style="color: #056ee1; text-align: center; margin-top: -10px;">Dataset #1</h3>
+                        <label>Membrane:</label>
+                        <select id="membrane_0">
+                        <?php foreach ($membranes as $m) : ?>            
+                            <option value="<?=$m->id ?>"><?=$m->name ?></option>
+                        <?php endforeach ?>
+                        </select>
+                        <br/>
+
+                        <label>Method:</label>
+                        <select id="method_0">
+                        <?php foreach ($methods as $m) : ?>            
+                            <option value="<?=$m->id ?>"><?=$m->name ?></option>
+                        <?php endforeach ?>
+                        </select>
+                        <br/>
+                        
+                        <label>Charge:</label>
+                        <select id="charge_0">
+                            <option value="all">All</option>
+                        </select>
+                        <br/>
+
+                    </div>
+                    <div id="filter_2" hidden>
+                        <h3 style="color: #ff3333; text-align: center; margin-top: -10px;">Dataset #2</h3>
+                        <label>Membrane:</label>
+                        <select id="membrane_1">
+                        <?php foreach ($membranes as $m) : ?>            
+                            <option value="<?=$m->id ?>"><?=$m->name ?></option>
+                        <?php endforeach ?>
+                        </select>
+                        <br/>
+
+                        <label>Method:</label>
+                        <select id="method_1">
+                        <?php foreach ($methods as $m) : ?>            
+                            <option value="<?=$m->id ?>"><?=$m->name ?></option>
+                        <?php endforeach ?>
+                        </select>
+                        <br/>
+                        
+                        <label>Charge:</label>
+                        <select id="charge_1">
+                            <option value="all">All</option>
+                        </select>
+                        <br/>
+                    </div>
+                    
+                    <div id="dataCompSet">
+                        <div id="checkbox-container" hidden><label style="color: #1E88E5">Display data separately: </label> <input type="checkbox" checked id="separate"></div>
+                        <label style="margin-top: 15px;" >Choose column:</label>
+                            <select id="column_0">            
+                                <option value="0" id="units_0_0">LogP</option>
+                                <option value="1" id="units_0_1">X_min</option>
+                                <option value="2" id="units_0_2">G_pen</option>
+                                <option value="3" id="units_0_3">G_wat</option>
+                                <option value="4" id="units_0_4">LogK</option>
+                                <option value="5" id="units_0_5">LogPerm</option>
+                            </select><br/>                        
+                        <h4><b style="color: red">Warning:</b></h4>
+                        <ul class="comparator-tips">
+                            <li>You must <b style="color: #0CCA5D">Load</b> data table before visualising them in chart.</li>
+                        </ul>
+                    </div>
+                    
+                    <button type="button" class="btn btn-danger pull-left" id="btn-add">Add dataset (1)</button>
+                    <button type="button" class="btn btn-success pull-right" id="generate-chart">Generate chart</button>
+                </div>  
+            </div>
+            <div >
+                <div class="modal-content-chart" id="content-chart-0">
+                    <canvas id="myChart0" width="auto" height="auto" style="margin-top: 20px;"></canvas>
+                </div>
+                <button type="button" id="export_dataChart" class="btn btn-sm pull-right btn-warning">Export data [.csv]</button>
+            </div>
+        </div>
+    </div>    
+  </div>
+</div>
+
+<script src="js/comparator.js?ver=<?=JS_VERSION?>"></script>
+<script src="js/table-sorting.js?ver=<?=JS_VERSION?>"></script>

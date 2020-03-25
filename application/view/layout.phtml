@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="cs-cz">
+	<head>
+		<base href="<?= PROTOCOL . URL ?>/<?=MEDIA_ROOT?>" />
+		<meta charset="UTF-8" />
+		<title><?= $title ?></title>
+                <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+				<meta name="description" content="<?= $description ?>">
+                <meta name="URL" id="URL" content="<?= URL ?>"/>
+                <link rel="stylesheet" href="css/bootstrap.min.css"/>
+                <link rel="stylesheet" href="css/LiteMol-plugin.min.css">
+                <script src="js/jquery-3.2.1.js"></script>
+                <script src="js/LiteMol-plugin.min.js"></script>
+                <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+                <script src="//cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
+                <script src="js/bootstrap.min.js"></script>
+                <script src="js/MolMeDb.php"></script>
+                <script src="js/Chart.js?ver=<?=JS_VERSION?>"></script>
+                <script src="js/materialize.js"></script>
+                <script src="js/Chart.Bundle.js?ver=<?=JS_VERSION?>"></script>
+                <script src="js/depict.js" type="text/javascript"></script>
+                <script src="https://cdn.ckeditor.com/4.8.0/full/ckeditor.js"></script>
+                <script src="js/lineChart.js?ver=<?=JS_VERSION?>"></script>
+                <script src="js/interpolation.js"></script>
+                <script src="js/papaparse.js"></script>
+                <link rel="stylesheet" href="css/style.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+                <link rel="stylesheet" href="css/layout.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+                <link rel="stylesheet" href="css/flexbox.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+                <link rel="stylesheet" href="css/depict.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+                <link rel="stylesheet" href="css/searchEngine.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	</head>
+        
+	<body>
+		<header>
+                    <div class="menu-additional">
+                            <?php if(isset($_SESSION['user'])) : ?>
+                            <div onclick="redirect('administration/logout')"><img src="files/icons/user-circle.svg" class="svg-white"> Log out</div>
+                            <?php else : ?>
+                            <div onclick="redirect('login')"><img src="files/icons/user-circle.svg" class="svg-white"> Log in</div>
+                            <?php endif ?>
+                            <?php if(isset($_SESSION['user'])) : ?>
+                            <div onclick="redirect('administration')"><img src="files/icons/user-md.svg" class="svg-white"> Administration</div>
+                            <?php endif ?>
+                    </div>
+                    <div class="menu">
+                        <div class="logo">
+                            <img src="files/icons/logo_new.png" onclick="redirect('detail/intro')" style="background: transparent;" alt="MolMeDB">
+                        </div>
+                        <div class="menu-items">
+                            <div class="menu-dropdown">
+                                <div><img src="files/icons/list.svg" class="svg-white">Browse <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
+                                <div class="menu-dropdown-list">
+                                    <div class="menu-dropdown-item" onclick="redirect('browse/membranes')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Membranes</div>
+                                    <div class="menu-dropdown-item" onclick="redirect('browse/methods')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Methods</div>
+                                    <div class="menu-dropdown-item" onclick="redirect('browse/sets')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Sets</div>
+                                </div>
+                            </div>
+                            <div><div onclick="redirect('search')"><img src="files/icons/search.svg" class="svg-white">Search</div></div>
+                            <div><div onclick="redirect('stats/show_all')"><img src="files/icons/chart-bar.svg" class="svg-white">Statistics</div></div>
+                            <div><div onclick="redirect('detail/documentation')"><img src="files/icons/folder-open.svg" class="svg-white">Documentation</div></div>
+                            <div><div onclick="redirect('detail/contact')"><img src="files/icons/info-circle.svg" class="svg-white">About</div></div>
+                            <div class="menu-dropdown">
+                                <div><img src="files/icons/chart-line.svg" class="svg-white">Comparator <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
+                                <div class="menu-dropdown-list">
+                                    <div class="menu-dropdown-item" onclick="redirect('compare')">Open comparator</div>
+                                    <div class="menu-dropdown-item" onclick="flush_comparator_list()">Delete all</div>
+                                    <div class="dropdown-line"></div>
+                                    <div class="dropdown-title">Compounds:</div>
+                                    <div id="comparator-ul">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+		</header>
+                
+                <div class="body">
+                    <notif id="alert-column">
+                        <?php foreach($nonsec_messages as $m) {echo($m);} ?>
+                    </notif>
+                    <div class="modal-alert" id="modal_alert_link"></div>
+                    <div class="overlay" id="fs-overlay">
+                        <div id="fs-loader"></div>
+                        <p><b id="fs-overlay-text"></b></p>
+                    </div>
+                    <div class="main-page">
+                        <?php $this->controller->showView(); ?>
+                    </div>
+                </div>
+                
+                <script>make_comparator_list();</script>
+                	
+		<footer id="footer">
+                    <div>
+                        <div class="footer-logo">
+                            <img src="files/icons/UP2.png" class="upol_logo">
+                        </div>
+                        <div>
+                            <ul class="ul-footer">
+                                <li>Palacký University Olomouc</li>
+                                <li>Faculty of Science</li>
+                                <li>Department of Physical Chemistry</li>
+                                <li>tř. 17. listopadu 1192/12</li>
+                                <li>771 46 Olomouc</li>
+                                <li>Czech Republic</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="max-width: 500px;">
+                            <h3 class="noah">About</h3><br/>
+                            <b>MolMeDB</b> (<b>Mol</b>ecules on <b>Me</b>mbranes <b>D</b>ata<b>b</b>ase) is a comprehensive and interactive database about interactions of (small) molecules with membranes. 
+                        </div><br/>
+                        <div>
+                            <h4><b>How to cite:</b></h4>
+                            <div style="font-size: 13px;">Juračka J., Šrejber M., Melíková M., Bazgier V., Berka K.: MolMeDB: Molecules on Membranes Database. Database, Volume 2019, 2019, baz078, https://doi.org/10.1093/database/baz078</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="footer-finance">
+                            <div>
+                                <h3 class="noah">Financial Support</h3><br/>
+                            <ul class="footer-ul">
+                                <li>
+                                    GAČR 17-2112S (Principal investigator: doc. RNDr. Karel Berka, Ph.D.)
+                                </li>
+                                <li>
+                                    Palacky University Olomouc (projects IGA_PrF_2018_032 and IGA_2019_031).
+                                </li>
+                                
+                            </ul>
+                            </div>
+                            
+                            <div class="finance-imgs">
+                                <img src="files/icons/gacr.svg" class="gacr-white">
+                                <img src="files/icons/UP_logo.png" style="width: 100px;">
+                            </div>
+                        </div>
+                    </div>
+		</footer>
+	</body>
+</html>

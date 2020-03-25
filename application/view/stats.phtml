@@ -1,0 +1,64 @@
+<h2 style="text-align: center; font-weight: bold;">Statistics</h2>
+
+<div class="stats-summary-grid">
+    <div class="stat-panel">
+        <div class='stat-panel-info'>
+            <div class='stat-panel-title'>
+                <?= $total_interactions ?>
+            </div>
+            <div class="stat-panel-description">
+                Total interactions
+            </div>
+        </div>
+        <div class='stat-panel-img'>
+            <img src="files/icons/interaction.png">
+        </div>
+    </div>
+    <div class="stat-panel">
+        <div class='stat-panel-info'>
+            <div class='stat-panel-title'>
+                <?= $total_substances ?>
+            </div>
+            <div class="stat-panel-description">
+                Total compounds
+            </div>
+        </div>
+        <div class='stat-panel-img'>
+            <img src="files/icons/molecule.png">
+        </div>
+    </div>
+    <div onclick="redirect('stats/membranes')" class="stat-panel enabled <?= !empty($active_membrane) ? 'stat-panel-active' : '' ?>">
+        <div class='stat-panel-info'>
+            <div class='stat-panel-title'>
+                <?= $total_membranes ?>
+            </div>
+            <div class="stat-panel-description">
+                Total membranes
+            </div>
+        </div>
+        <div class='stat-panel-img'>
+            <img style="margin-right: 10px;" src="files/icons/lipid.png">
+        </div>
+    </div>
+    <div onclick="redirect('stats/methods')" class="stat-panel enabled <?= !empty($active_method) ? 'stat-panel-active' : '' ?>">
+        <div class='stat-panel-info'>
+            <div class='stat-panel-title'>
+                <?= $total_methods ?>
+            </div>
+            <div class="stat-panel-description">
+                Total methods
+            </div>
+        </div>
+        <div class='stat-panel-img'>
+            <img style="margin-right: 10px" src="files/icons/microscope.png">
+        </div>
+    </div>
+</div>
+
+<div class="stats-detail">
+    <?= $nonsec_detail ?>
+</div>
+
+<script src="js/stats.js">
+
+</script>

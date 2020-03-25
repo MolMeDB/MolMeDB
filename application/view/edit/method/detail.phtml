@@ -1,0 +1,75 @@
+<button class="btn btn-success disabled btn-block"><span class="glyphicon glyphicon-pencil"></span> Method editor </button>
+<div><?= $nonsec_navigator ?></div>
+
+<div class="col-md-12 content">
+    <ul class="editorUl" id="method">
+        <?php foreach ($methods as $m) : ?>
+            <li class="m_type" data-spec='{"id": "<?= $m->id ?>", "type": "method"}'><?= $m->name ?></li>
+        <?php endforeach ?>
+    </ul>
+    <h3 id="methName" style="text-align: center;"><span class="glyphicon glyphicon-arrow-up"></span> Choose method <span class="glyphicon glyphicon-arrow-up"></span></h3>
+    <form method="post" id="form_editor" action="/edit/method/detail/">
+        <div class="col-md-4">
+            <b>Name:</b>
+            <input type="text" id="name" class="form-control" name="name" required />
+        </div>
+        <div class="col-md-4">
+            <b>Keywords:</b>
+            <input type="text" id="keywords" class="form-control" name="keywords" />
+        </div>
+        <div class="col-md-4">
+            <b>CAM:</b>
+            <input type="text" id="CAM" class="form-control" name="CAM" />
+        </div>
+        <div class="input-field">
+            <b>Description:</b>
+            <div id="description-par">
+                <div class="textfield">
+                    <textarea name="description" hidden></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="input-field">
+            <b>References:</b>
+            <div id="reference-par">
+                <div class="textfield">
+                    <textarea name="reference" hidden></textarea>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success pull-right">Save</button>
+    </form>
+</div>
+
+
+<div class="col-md-12 content">
+    <div class="col-md-12">
+        <h2 style="text-align: center;"><b>Pictures</b></h2>
+        <div class="picrow">
+            <?php foreach ($pictures as $pic) : ?>
+                <div class="pictd">
+                    <div class="piccont">
+                        <p>files/pictures/<?= $pic ?></p>
+                        <img src="files/pictures/<?= $pic ?>" style="width:100%">
+                    </div>
+                </div>
+            <?php endforeach ?>
+        </div>
+    </div>
+</div>
+
+<script src="js/editor.js?ver=<?= JS_VERSION ?>"></script>
+<script>
+    var monkeyList = new List('test-list', {
+        valueNames: ['name'],
+        page: 5,
+        pagination: true
+    });
+
+    function deleteMethod() {
+        var id = document.getElementById("idMethod").value;
+
+        return alert_window("Are you sure you want to delete method (ID = " + id + ")?",
+            "edit/method/delete/" + id);
+    }
+</script>

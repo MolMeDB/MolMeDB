@@ -1,0 +1,66 @@
+<h2 style="text-align: center; margin-bottom: 25px;"><b>Browse compounds</b></h2>
+
+<form method="post" style="box-shadow: 0 5px 7px rgba(0,0,0,.2);">
+     <button type="button" class="accordion" style="margin: 0"><i class="fa fa-cog" style="font-size:24px;"></i> Advanced</button>
+        <div class="panelDetail">
+            <div style="padding: 20px; margin-bottom: 30px;">
+                <div>
+                    <div class="browse-advance">
+                        <div class="browse-advance-title">
+                            <div>Membranes</div>
+                        </div>
+                        <div class="browse-advance-list">
+                            <div class="browse-advance-list-item <?= empty($active_membranes) ? 'item-active' : '' ?>">
+                                <div><input hidden type="checkbox" <?= empty($active_membranes) ? 'checked' : '' ?> id="sel-all-mem"><b> Select all</b></div>
+                            </div>
+                            <?php foreach($membranes as $m) : ?>
+                            <div class="browse-advance-list-item <?= isset($active_membranes) && in_array($m->id, $active_membranes) ? 'item-active' : '' ?>">
+                                <div><input hidden name="membranes[]" <?= isset($active_membranes) && in_array($m->id, $active_membranes) ? 'checked' : '' ?> value="<?=$m->id ?>" class="checkbox-browse-mem" type="checkbox"><?=$m['name'] ?></div>
+                            </div>
+                            <?php endforeach ?>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="browse-advance">
+                        <div class="browse-advance-title">
+                            <div>Methods</div>
+                        </div>
+                        <div class="browse-advance-list">
+                            <div class="browse-advance-list-item <?= empty($active_methods) ? 'item-active' : '' ?>">
+                                <div><input hidden type="checkbox" <?= empty($active_methods) ? 'checked' : '' ?> id="sel-all-met"><b> Select all</b></div>
+                            </div>
+                            <?php foreach($methods as $m) : ?>
+                            <div class="browse-advance-list-item <?= isset($active_methods) && in_array($m->id, $active_methods) ? 'item-active' : '' ?>">
+                                <div><input hidden name="methods[]" <?= isset($active_methods) && in_array($m->id, $active_methods) ? 'checked' : '' ?> value="<?=$m->id ?>" class="checkbox-browse-met" type="checkbox"><?=$m['name'] ?></div>
+                            </div>
+                            <?php endforeach ?>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-info pull-right" type="submit">Load</button>
+            </div>
+        </div>
+</form>
+
+
+<div id="RefList">
+    <input type="text" class="search" placeholder="Search compound..." id="publSearch" />
+    <ul class="list" id="publList">
+      <?php foreach($compounds as $c) : ?>
+        <a href="/mol/<?=$c['identifier']?>"><li><p class="name"><?=$c['name']?></p></li></a>
+      <?php endforeach ?>
+    </ul>
+    <ul class="pagination"></ul>
+</div>
+
+<script src="js/browseCompounds.js?ver=<?=JS_VERSION?>">
+</script>
+<script>
+var monkeyList = new List('RefList', {
+  valueNames: ['name'],
+  page: 20,
+  pagination: true
+});
+
+</script>

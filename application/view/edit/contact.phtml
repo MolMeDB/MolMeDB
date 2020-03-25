@@ -1,0 +1,16 @@
+<button class="btn btn-success disabled btn-block"><span class="glyphicon glyphicon-pencil"></span>   Contact editor</button>
+<div><?=$nonsec_navigator?></div>
+
+<div class="col-md-12 content">
+    <h2 style="text-align: center;"><b>Contact editor</b></h2>
+    <form method="post" enctype="multipart/form-data">
+        <div class="textfield">
+            <textarea name="content"><?=$detail->content?></textarea>
+        </div>
+        <button type="submit" class="btn btn-success pull-right">Save</button>
+    </form>
+</div>
+
+ <script>
+    CKEDITOR.replace( 'content' );
+</script>

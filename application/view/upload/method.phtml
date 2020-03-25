@@ -1,0 +1,44 @@
+<button class="btn btn-success disabled btn-block"><b><span class="glyphicon glyphicon-upload"></span>   Method uploader</b></button>
+<div><?=$nonsec_navigator?></div>
+
+<div class="col-md-12 col-sm-12 uploadTableDiv">
+    <form method="post">
+        <div class="col-md-4">
+            <table class="uploadTable" style="margin-top: 38px;">
+                <tr>
+                    <td><b>Name</b></td>
+                    <td><input type="text" class="form-control" name="name" required/></td>
+                </tr>
+                <tr>
+                    <td><b>Tags</b></td>
+                    <td><input class="form-control" type="text" name="tags"/></td>
+                </tr>
+                <tr>
+                    <td><b>Keywords</b></td>
+                    <td><input class="form-control" type="text" name="keywords"/></td>
+                </tr>
+                <tr>
+                    <td><b>CAM (ID)</b></td>
+                    <td><input class="form-control" type="text" name="CAM" required/></td>
+                </tr> 
+            </table>
+        </div>
+
+        <div class="col-md-8">
+            <div class="textfield">
+                <h5><b>Description</b></h5>
+                <textarea name="descript"></textarea>
+            </div>
+            <div>
+                <h5><b>References</b></h5>
+                <textarea name="references"></textarea>
+            </div>
+        </div>
+        <button style="margin:20px;" class="btn btn-success pull-right">Save</button>
+    </form>
+</div>
+   
+ <script>
+    CKEDITOR.replace( 'descript' );
+    CKEDITOR.replace( 'references' );
+</script>

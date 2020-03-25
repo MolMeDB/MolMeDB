@@ -1,0 +1,53 @@
+<button class="btn btn-success disabled btn-block"><span class="glyphicon glyphicon-pencil"></span> Publication editor</button>
+<div><?= $nonsec_navigator ?></div>
+
+<div class="col-md-12 col-sm-12 uploadTableDiv">
+    <div class="col-md-12">
+        <div id="test-list">
+            <input type="text" class="search" placeholder="Search publications..." id="publSearch" />
+            <ul class="list" id="publList">
+                <?php foreach ($publications as $p) : ?>
+                    <li style="cursor: pointer;" id="<?= $p['id'] ?>" onclick="redirect('edit/publication/<?= $p['id'] ?>')">
+                        <p class="name"><?= $p['reference'] ?></p>
+                    </li>
+                <?php endforeach ?>
+            </ul>
+            <ul class="pagination"></ul>
+        </div>
+    </div>
+    <?php if (isset($detail)) : ?>
+        <form method="post">
+            <input type="hidden" name="type" value="reference">
+            <div class="col-md-12">
+                <table class="uploadTable" style="margin-top: 38px; width: 100%">
+                    <tr>
+                        <td><b>Text of reference</b></td>
+                        <td><input type="text" class="form-control" name="reference" value="<?= $detail['reference'] ?>" required></td>
+                    </tr>
+                    <tr>
+                        <td><b>DOI</b></td>
+                        <td><input class="form-control" type="text" value="<?= $detail['doi'] ?>" name="doi" /></td>
+                    </tr>
+                </table>
+                <input name="id" value="<?= $detail['id'] ?>" hidden>
+            </div>
+            <div class="col-md-12">
+                <div class="textfield">
+                    <h5><b>Description</b></h5>
+                    <textarea name="description" id="description"><?= $detail->description ?></textarea>
+                </div>
+            </div>
+            <button style="margin:20px;" type="submit" class="btn btn-success pull-right">Save</button>
+        </form>
+    <?php endif ?>
+</div>
+
+<script>
+    var monkeyList = new List('test-list', {
+        valueNames: ['name'],
+        page: 5,
+        pagination: true
+    });
+
+    CKEDITOR.replace('description');
+</script>

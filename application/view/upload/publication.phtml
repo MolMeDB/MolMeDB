@@ -1,0 +1,32 @@
+<button class="btn btn-success disabled btn-block"><b><span class="glyphicon glyphicon-upload"></span> Publication uploader</b></button>
+<div><?= $nonsec_navigator ?></div>
+
+<div class="col-md-12 col-sm-12 uploadTableDiv">
+    <h4 style="text-align: center;"><b>Add reference</b></h4>
+    <form method="post">
+        <input type="hidden" name="postType" value="reference">
+        <div class="col-md-12">
+            <table class="uploadTable" style="margin-top: 38px; width: 100%">
+                <tr>
+                    <td><b>Text of reference</b></td>
+                    <td><input type="text" class="form-control" name="reference" required /></td>
+                </tr>
+                <tr>
+                    <td><b>DOI</b></td>
+                    <td><input class="form-control" type="text" name="doi" /></td>
+                </tr>
+            </table>
+        </div>
+        <div class="col-md-12">
+            <div class="textfield">
+                <h5><b>Description</b></h5>
+                <textarea name="description" id="description"></textarea>
+            </div>
+        </div>
+        <button style="margin:20px;" class="btn btn-success pull-right">Save</button>
+    </form>
+</div>
+
+<script>
+    CKEDITOR.replace('description');
+</script>

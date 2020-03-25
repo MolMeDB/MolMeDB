@@ -1,0 +1,60 @@
+<button class="btn btn-success disabled btn-block"><b><span class="glyphicon glyphicon-upload"></span>   Data uploader</b></button>
+<div><?=$nonsec_navigator?></div>
+
+<div class="overlay" id="compOverlay">
+    <div id="loader-comparator"></div>
+    <p><b style="margin-left: -15px;" id="overlay_text"></b></p>
+</div>
+<!--Modal for parsing data and user revision-->
+    <div id="dataupload_modal" class="modal">
+
+      <div class="modal-content">
+        <span class="close" id="dataupload_close">&times;</span>
+        <div id="table" class="uploadedTable"></div> 
+      </div>
+    </div>
+
+
+    <div class="col-md-12 col-sm-12 uploadTableDiv">
+        <div class="col-md-6">
+            <form method="post" enctype="multipart/form-data">
+                <input type="hidden" name="postType" value="<?= UploadController::P_UPLOAD_FILE ?>">
+                <table class="uploadTable">
+                    <tr>
+                        <td><b>Select file to upload: [.csv]</b> </td>
+                        <td><input type="file" name="file" id="fileToUpload"></td>
+                    </tr>
+                    <tr><td><b>Example</b></td>
+                        <td><a href="files/examples/dataFile_example.csv">Download</a></td>
+                    </tr>
+                    <?php if(isset($fileName)) : ?>
+                    <tr><td class="td-fileUpload"><b>Show uploaded file</b></td>
+                        <td><button onclick="parseFile('<?=$fileName?>')" type="button" class="btn btn-sm btn-danger">Show</button></td>
+                    </tr>
+                    <?php endif ?>
+                </table>
+                <button style="margin-top:20px;" type="submit" class="btn btn-primary btn-sm pull-right">Upload</button>
+            </form>
+        </div>
+        <div class="col-md-6">
+            <h3 class="titleH3" style="color:red">Warning:</h3>
+            <ul class="comparator-tips">
+                <li>
+                    Uploading files can take up to <b>2 minutes</b>. Approximately <b>1 second  per 1 line</b>. We recommend you to upload maximum <b style="color:red;">100 lines</b> for one dataset.
+                </li>
+                <li>
+                    Please use the first column for the <b>name</b> of the molecule (see <b style="color: #00b0ff">Example</b>).
+                </li>
+                <li>
+                    <b style="color:red;">Datafile format:</b><br/>
+                    - The first row (header) is ignored.<br/>
+                    - Please see an <b style="color: #00b0ff">example</b> and make sure your datafile is in the correct format!<br/>
+                    - Only some values (Name, whatever_ID, Q and SMILES) can be in text form. Other must be in <b>numeric form</b>!<br/>
+                    - Lines with blank <b>name</b> field will be ignored.
+                </li>
+            </ul>
+        </div>
+    </div>
+
+<script src="js/parseFile.js?ver=<?=JS_VERSION?>">
+</script>

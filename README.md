@@ -12,4 +12,4 @@ and many more.
 
 MolMeDB tries to collect and display such data in order to help understand these phenomena.
 
-MolMeDB is available at http://molmedb.upol.cz/
+MolMeDB is available at https://molmedb.upol.cz/

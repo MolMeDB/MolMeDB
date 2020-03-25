@@ -1,0 +1,33 @@
+.chemdiv a {
+  display: inline-block;
+}
+
+.chemrxn {
+  max-width:  210mm;
+  max-height: 50mm;
+}
+
+.chemmol {
+  max-width:  80mm;
+  max-height: 50mm;
+}
+
+.chemdiv {
+  display:          inline-block;
+  margin:           6px;
+  text-align:       center;
+  vertical-align:   middle;
+  background:       #fff;
+/*  border:           1px solid #777;
+  box-shadow:       2px 2px 8px #888;*/
+  line-height:      0;
+  width: 100%;
+  height: auto;
+}
+
+.chemimg {
+	margin-left:    auto;
+	margin-right:   auto;
+	vertical-align: middle;  /* vertical alignment of the inline element */
+	display: inline-block;
+}

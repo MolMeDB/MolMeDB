@@ -1,0 +1,122 @@
+<div class="browse-title">Datasets</div>
+<div id="RefList">
+    <input type="text" class="search" placeholder="Search publications..." id="publSearch" />
+    <ul class="list" id="publList">
+      <?php foreach($publications as $p) : ?>
+        <a href="/browse/sets/<?=$p->id?>/1?IOP=<?=$itemsOnPage?>"><li><p class="name"><?=$p->reference?></p></li></a>
+      <?php endforeach ?>
+    </ul>
+    <ul class="pagination"></ul>
+    <input hidden value="<?=$itemsOnPage?>" id="IOP">
+    
+    <ul class="pagination pagination-sm pagination-dataset-list" >
+        <?php for ($i=5; $i<21; $i=$i+5) : ?>
+                    <?php if($i == $itemsOnPage): ?>
+                        <li class="active"id="activePag"><a href="<?=$uri . $i?>"><?=$i?></a></li>
+                    <?php else : ?>
+                        <li><a href="<?=$uri . $i ?>"><?=$i?></a></li>
+                    <?php endif ?>
+        <?php endfor ?>
+    </ul>
+</div>
+
+<div style="display:none" id="content"> 
+        <?php if(isset($list)) : ?>
+            <div class="search-info">
+                <h3><?= $reference_name ?></h3>
+            </div>
+        <div class="comp-addAll">
+            <button type="button" onclick="download_dataset_byRef('<?=$idRef?>')" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
+            <button type="button" onclick="addSetToComparator('set', '<?=$idRef?>')" class="btn btn-warning btn-sm pull-right" style="margin-bottom: 5px;">Add all compounds to the comparator </button>
+            <button class="btn btn-sm btn-primary pull-right btn-add" id="btn-addALL">Add list to the comparator </button>
+        </div>
+            <ul class="search-ul">
+                    <?php foreach ($list as $substance) : ?>
+                    <li>
+                            <div class="title">
+                                <a href="/mol/<?= $substance->identifier?>"><?= $substance->name ?></a>
+                                <button title="Add to comparator" id="<?= $substance->id ?>" type="button" class="btn btn-sm btn-primary btn-add">
+                                    <span id="<?= $substance->name ?>" class="glyphicon glyphicon-plus"></span>
+                                </button>
+                            </div>
+                            <div class="info">
+                                <div class="info-text">
+                                    <?php if(isset($substance->altername) && $substance->altername != '') : ?>
+                                    <div><label><b>Alternative name:</b></label> <?= $substance->altername ?> </div>
+                                     <?php endif ?>
+                                    <?php if($substance->MW != 0) : ?>
+                                    <div><label><b>Molecular weight:</b></label> <?= $substance->MW ?> <br/></div>
+                                    <?php else : ?>
+                                    <div><label><b>Molecular weight:</b></label> N/A <br/></div>
+                                    <?php endif ?>
+                                    <div><label><b>SMILES:</b></label> <?= $substance->SMILES ?> <br/></div>
+                                </div>
+                                <div class="search-2DStructure" id="structure<?= $substance->id ?>"><script> update('<?= $substance->SMILES ?>', 'structure<?= $substance->id ?>');</script></div>
+                            </div>
+							<div class="flex-row space-between">
+								<div class="references">
+									<?php if($substance->pdb != '') : ?>
+									<div class="ref"> <a href="https://www.rcsb.org/ligand/<?= $substance->pdb ?>" target="_blank">PDB </a></div>
+									<?php endif ?>
+									<?php if($substance->pubchem != '') : ?>
+									<div class="ref"> <a target="_blank" href="https://pubchem.ncbi.nlm.nih.gov/compound/<?= $substance->pubchem ?>">PubChem </a></div>
+									<?php endif ?>
+									<?php if($substance->chEBI != '') : ?>
+									<div class="ref"> <a target="_blank" href="http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:<?= $substance->chEBI ?>">chEBI </a></div>
+									<?php endif ?>
+									<?php if($substance->chEMBL != '') : ?>
+									<div class="ref"> <a target="_blank" href="https://www.ebi.ac.uk/chembl/compound/inspect/<?= $substance->chEMBL ?>">chEMBL </a></div>
+									<?php endif ?>
+									<?php if($substance->drugbank != '') : ?>
+									<div class="ref"> <a target="_blank" href="https://www.drugbank.ca/drugs/<?= $substance->drugbank ?>">DrugBank </a></div>
+									<?php endif ?>
+								</div>
+								<div>
+									<?php if(isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>
+										<a class="extend"  href="/edit/compound/<?=$substance->id?>/<?=$substance->name?>">Edit</a>
+									<?php endif ?>
+								</div>
+							</div>
+                    </li>
+                    <?php endforeach ?>
+                </ul>
+        <div class="text-center">   
+            <ul class="pagination pagination-lg"id="paginator" >
+              <?php for ($i=1; $i<($count/10)+1; $i++) : ?>
+                <?php if($i == $pagination): ?>
+                    <li class="active"id="activePag"><a href="/browse/sets/<?=$idRef?>/<?=$i?>?IOP=<?=$itemsOnPage?>"><?=$i?></a></li>
+                <?php else : ?>
+                    <li><a href="/browse/sets/<?=$idRef?>/<?=$i?>?IOP=<?=$itemsOnPage?>"><?=$i?></a></li>
+                <?php endif ?>
+              <?php endfor ?>
+            </ul>
+            <script>verifyPagination('<?=$count?>');</script>
+        </div>
+        <?php endif ?>
+    </div>
+
+
+
+<script>
+    var monkeyList = new List('RefList', {
+        valueNames: ['name'],
+        page: document.getElementById("IOP").value,
+        pagination: true
+    });
+
+    $(document).ready(function()
+    {
+        showContent();
+    });
+
+    async function showContent()
+    {
+        await show_overlay();
+        await sleep(500);
+        document.getElementById('content').setAttribute('style', 'display:flex;');
+        await hide_overlay();
+    }
+</script>
+
+<script src="js/searchEngine.js?<?=JS_VERSION?>" >
+</script>

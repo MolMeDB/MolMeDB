@@ -1,0 +1,281 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 12.9.2019, 9:42:36
+    Author     : Jakub Juračka
+*/
+
+@font-face {
+    font-family: 'noah_headbold';
+    src: url('../fonts/noah_head_bold-webfont.eot');
+    src: url('../fonts/noah_head_bold-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/noah_head_bold-webfont.woff2') format('woff2'),
+         url('../fonts/noah_head_bold-webfont.woff') format('woff'),
+         url('../fonts/noah_head_bold-webfont.ttf') format('truetype'),
+         url('../fonts/noah_head_bold-webfont.svg#noah_headbold') format('svg');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+notif{
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    min-width: 200px;
+    max-width: 25%;
+    z-index: 1000;
+}
+
+notif> div{
+    margin: 5px 0 7px 0 !important;
+    opacity: 0.95 !important;
+}
+
+
+body{
+    padding:0;
+    margin:0;
+}
+
+.body{
+    display: flex;
+    padding: 0 133px;
+    position: relative;
+    background-image: linear-gradient(to right bottom, #eeeeee, #e8e7e8, #e1e1e1, #dbdadb, #d5d4d4);
+}
+
+.noah{
+    font-family: "noah_headbold";
+}
+
+.main-page{
+    width: 100%;
+    min-height: 950px;
+    background-color: #fff;
+    padding: 30px 50px;
+    box-shadow: 0 10px 15px rgba(0,0,0,.3);
+    margin-top: -20px;
+    margin-bottom: -10px;
+    border-radius: 10px;
+    position: relative;
+}
+
+.menu{
+    max-height: 150px;
+    background-image: linear-gradient(to right, #4a82da, #3a68bb, #294f9c, #17377f, #002162);
+    display: flex;
+    flex-direction: row;
+    padding: 30px 30px 30px 30px;
+    color: #fff;
+}
+
+.logo{
+    height: 85px;
+    width: 30%;
+}
+
+.logo img{
+    cursor: pointer;
+    height: inherit;
+    background: transparent;
+}
+
+.menu-items{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    width: 70%;
+    padding: 0 50px 0 20px;
+    font-size: 16px;
+    align-items: center;
+    font-family: "noah_headbold";
+}
+
+.menu-items>div {
+    cursor: pointer;
+    padding: 0 10px;
+}
+
+.menu-items>div>div:first-child{
+    padding-bottom: 10px;
+    border-bottom: 2px solid transparent;
+}
+
+.menu-items>div:not(.menu-dropdown):hover>div:first-child{
+    border-bottom: 2px solid #fff;
+}
+
+.menu-dropdown {
+    display: flex;
+    flex-direction: column;
+    height: 40px;
+    overflow: hidden;
+    position: relative;
+    z-index: 350;
+}
+
+.menu-dropdown-list{
+    overflow: hidden;
+    position: absolute;
+    width: 100%;
+    top: 40px;
+    left: 0;
+    z-index: 100;
+    background-color: #f1f1f1;
+    color: #4a82da;
+    font-size: 13px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.menu-dropdown-item{
+    padding: 10px 7px 0 7px;
+}
+
+.menu-dropdown-item:last-child{
+    padding-bottom: 10px;
+}
+
+.menu-dropdown-item:hover{
+    color: #002162;
+}
+
+.menu-dropdown:hover{
+    overflow: visible;
+}
+
+.dropdown-line{
+    width: 100%;
+    border-bottom: 2px solid #bababa;
+    height: 10px;
+}
+
+
+.dropdown-title{
+    padding: 5px 0 0 5px;
+    color: #444;
+    cursor: default;
+    border-bottom: 1px solid #ddd;
+}
+
+.dropdown-text {
+    color: #999;
+    padding: 7px 0 0 5px;
+}
+
+.comp-list-remove{
+    color: #F00; 
+    padding-right: 5px;
+}
+
+.dropdown-text:hover{
+    color: #555;
+}
+
+.menu-additional{
+    position: absolute;
+    top:0;
+    right: 0;
+    display: flex;
+    flex-direction: row-reverse;
+    color: white;
+    align-items: center;
+}
+
+.menu-additional img{
+    width: 17px;
+    margin-right: 5px;
+    margin-top: -4px;
+}
+
+.menu-additional div{
+    padding: 5px 20px 0 0;
+    cursor: pointer;
+}
+
+.menu-additional div:hover{
+    color: #d5d4d4;
+}
+
+.menu-items img{
+    width: 22px;
+    margin-right: 10px;
+    margin-top: -3px;
+}
+
+.svg-white{
+    filter: invert(100%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
+}
+
+.gacr-white{
+    filter: invert(50%) saturate(2414%) hue-rotate(67deg) brightness(200%) contrast(119%);
+    width: 150px;
+}
+
+footer{
+    background-image: linear-gradient(to right, #003c99, #01358b, #012e7d, #01276f, #002162);
+    min-height: 350px;
+    padding: 30px 30px 30px 30px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    z-index: 251;
+}
+
+.footer-finance{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.finance-imgs{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+}
+
+.footer-ul{
+    padding-left: 10px;
+}
+
+footer>div{
+    padding: 0 20px;
+    display: flex;
+    max-width: 500px;
+}
+
+footer>div:last-child{
+    flex-direction: row-reverse;
+}
+
+footer>div:not(:last-child){
+    flex-direction: column;
+}
+
+.ul-footer{
+    padding: 0;
+    list-style: none;
+}
+
+.social-imgs{
+    margin-top: 20px;
+}
+
+.social-imgs img{
+    width: 25px;
+    margin-left: 5px;
+}
+
+.upol_logo{
+    max-height: 150px;
+    margin: -30px 0 0 -20px;
+}

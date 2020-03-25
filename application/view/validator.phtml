@@ -1,0 +1,101 @@
+<h2 style="font-weight: bold; text-align: center;">Data validator</h2>
+
+<?php if($num_notValidated != 0) : ?>
+<div class="col-md-12 validator-table-possib">
+    <table class="table table-striped">
+        <tr>
+            <td><b>Duplicates were not checked for <?=$num_notValidated ?> molecules.</b></td>
+            <td><button type="button" class="btn btn-sm btn-success" onclick="redirect('validator/validate')">Check all</button></td>
+        </tr>
+    </table>
+</div>
+<?php endif ?>
+
+<div class="col-md-6">
+    <div class="col-md-6 col-sm-12 validator-table" style="margin-right: -5px;">
+        <table>
+            <thead>
+                <tr>
+                    <td>Possible duplicates #1</td>
+                </tr>
+            </thead>
+            <tbody id="list_table">
+                <?php foreach($molecules as $m) : ?>
+                <tr>
+                    <td onclick="load_duplicates('<?=$m['idSubstance']?>', this)" id="<?=$m['idSubstance']?>"><?=$m['name']?> [id: <?=$m['idSubstance']?>]</td>
+                </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-md-6 col-sm-12 validator-table" style="margin-right: -5px;">
+        <table>
+            <thead>
+                <tr>
+                    <td>Matched ligands #2</td>
+                </tr>
+            </thead>
+            <tbody id="duplicates_table">
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="col-md-12 validator-table-possib">
+        <h3 style="text-align: center;">What to do?</h3>
+        <table class="table table-striped">
+            <tr>
+                <td id="labelAsValidated">Choose some molecules</td>
+                <td><form method="POST">
+                        <input hidden type="text" value="" name="ligand_1" id="ligand_1_1_id">
+                        <input hidden type="text" value="1" name="asValidated">
+                        <button type="submit" class="btn bnt-sm btn-success">Do it</button>
+                    </form>
+                </td>
+            </tr>
+            <tr>
+                <td id="joiningPairs">Choose some molecules</td>
+                <td><form method="POST"> 
+                        <input hidden type="text" value="" name="ligand_1" id="ligand_2_1_id">
+                        <input hidden type="text" value="" name="ligand_2" id="ligand_2_2_id">
+                        <input hidden type="text" value="1" name="join">
+                        
+                        <button type="submit" class="btn bnt-sm btn-success">Do it</button>
+                    </form>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+
+<div class="col-md-6 col-sm-12" style="margin-right: -20px;">
+    <div class="col-md-12 col-sm-12 validator-compare-table">
+        <table>
+            <thead>
+                <tr>
+                    <td colspan="2">#1 Properties</td>
+                </tr>
+            </thead>
+            <tbody id="properties_1">
+            
+            </tbody>
+        </table>
+    </div>
+
+    
+    <div class="col-md-12 col-sm-12 validator-compare-table">
+        <table>
+            <thead>
+                <tr>
+                    <td colspan="2">#2 Properties</td>
+                </tr>
+            </thead>
+            <tbody id="properties_2">
+            
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="js/validator.js?ver=<?=JS_VERSION?>"></script>

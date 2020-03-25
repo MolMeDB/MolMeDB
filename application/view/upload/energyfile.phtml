@@ -1,0 +1,43 @@
+<button class="btn btn-success disabled btn-block"><b><span class="glyphicon glyphicon-upload"></span>   Energy file uploader</b></button>
+<div><?=$nonsec_navigator?></div>
+
+<div class="col-md-12">
+    <div class="col-md-5 col-sm-12 uploadTableDiv">
+        
+        <form method="post" class="form-group-sm" enctype="multipart/form-data">
+            <table class="uploadTable">
+                <tr>
+                    <td><b>Method:</b></td>
+                    <td>
+                        <select name="id_method">
+                            <?php foreach($methods as $m) : ?>
+                            <option class="form-control" value="<?= $m->id?>"><?= $m->name ?></option>
+                            <?php endforeach?>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><b>Membrane:</b></td>
+                    <td>
+                        <select name="id_membrane">
+                            <?php foreach($membranes as $m) : ?>
+                            <option class="form-control" value="<?= $m->id ?>"><?= $m->name ?></option>
+                            <?php endforeach?>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><b>Select file to upload: [.csv]</b></td> 
+                    <td><input type="file" name="file" id="fileToUpload"></td>
+                </tr>
+                <tr><td><b>Example</b></td>
+                    <td><a href="files/examples/energyFile_example.csv">Download</a></td>
+                </tr>
+            </table>
+            <button style="margin-top:20px;" type="submit" class="btn btn-primary btn-sm pull-right">Upload</button>
+        </form>
+        
+    </div>
+    <div class="col-md-2"></div> 
+    
+</div>

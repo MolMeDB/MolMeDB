@@ -1,0 +1,27 @@
+<button class="btn btn-success disabled btn-block"><b><span class="glyphicon glyphicon-upload"></span>   SMILES uploader</b></button>
+<div><?=$nonsec_navigator?></div>
+
+<div class="col-md-12">
+    <div class="col-md-5 uploadTableDiv">
+        
+            <form method="post" enctype="multipart/form-data" >
+                <table class="uploadTable">
+                    <tr>
+                        <td><b>Select file to upload: [.csv]</b></td>
+                        <td><input type="file" name="file" ></td>
+                    </tr>
+                    <tr><td><b>Example</b></td>
+                    <td><a href="files/examples/smilesFile_example.csv">Download</a></td>
+                    </tr>
+                    <tr>
+                        <td><b>Update table</b> <span style="cursor: help; color: #056ee1" class="glyphicon glyphicon-question-sign" title="The SMILES table will be updated. This is useful, for example, if the details of compounds were edited."></span></td>
+                        <td><a href="/upload/smiles/updateSmiles"><button type="button" class="btn btn-sm btn-success">Update</button></a></td>
+                    </tr>
+                </table>
+                <button type="submit" style="margin-top:20px;" class="btn btn-primary btn-sm pull-right">Upload</button>
+            </form>
+        
+    </div>
+    <div class="col-md-2"></div> 
+    
+</div>

@@ -1,0 +1,60 @@
+<h3>Interaction editor [<?= $detail->id ?>] </h3>
+<ul>
+    <li>Substance: <?= $detail->substance->name ?></li>
+    <li>Membrane: <?= $detail->membrane->name ?></li>
+    <li>Method: <?= $detail->method->name ?></li>
+</ul>
+<form method="post">
+    <div class="col-md-12">
+        <div class="col-md-6">
+            <label><b>X<sub>min</sub> <label class="units">[nm]</label></b></label>
+            <input type="text" class="form-control" name="Position" value="<?= $detail->Position ?>">
+            <label><b>&Delta;G<sub>pen</sub> <label class="units">[kcal / mol]</label></b></label>
+            <input type="text" class="form-control" name="Penetration" value="<?= $detail->Penetration ?>">
+            <label><b>&Delta;G<sub>wat</sub> <label class="units">[kcal / mol]</label></b></label>
+            <input type="text" class="form-control" name="Water" value="<?= $detail->Water ?>">
+            <label><b>LogK<sub>m</sub> <label class="units">[1]</label></b></label>
+            <input type="text" class="form-control" name="LogK" value="<?= $detail->LogP ?>">
+            <label><b>LogPerm <label class="units">[cm/s]</label></b></label>
+            <input type="text" class="form-control" name="LogPerm" value="<?= $detail->LogPerm ?>">
+            <label><b>Theta <label class="units">[cm/s]</label></b></label>
+            <input type="text" class="form-control" name="theta" value="<?= $detail->theta ?>">
+            <label><b>abs_wl <label class="units">[cm/s]</label></b></label>
+            <input type="text" class="form-control" name="abs_wl" value="<?= $detail->abs_wl ?>">
+            <label><b>fluo_wl <label class="units">[cm/s]</label></b></label>
+            <input type="text" class="form-control" name="fluo_wl" value="<?= $detail->fluo_wl ?>">
+            <label><b>QY <label class="units">[cm/s]</label></b></label>
+            <input type="text" class="form-control" name="QY" value="<?= $detail->QY ?>">
+            <label><b>lt <label class="units">[cm/s]</label></b></label>
+            <input type="text" class="form-control" name="lt" value="<?= $detail->lt ?>">
+            <label><b>Temperature <label class="units">[°C]</label></b></label>
+            <input type="text" class="form-control" name="Temperature" value="<?= $detail->temperature ?>">
+        </div>
+        <div class="col-md-6">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>X<sub>min</sub></b></label>
+            <input type="text" class="form-control" name="Position_acc" value="<?= $detail->Position_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>&Delta;G<sub>pen</sub></b></label>
+            <input type="text" class="form-control" name="Penetration_acc" value="<?= $detail->Penetration_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>&Delta;G<sub>wat</sub></b></label>
+            <input type="text" class="form-control" name="Water_acc" value="<?= $detail->Water_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>LogK<sub>m</sub></b></label>
+            <input type="text" class="form-control" name="LogK_acc" value="<?= $detail->LogK_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>LogPerm</b></label>
+            <input type="text" class="form-control" name="LogPerm_acc" value="<?= $detail->LogPerm_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>Theta</b></label>
+            <input type="text" class="form-control" name="theta_acc" value="<?= $detail->theta_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>abs_wl</b></label>
+            <input type="text" class="form-control" name="abs_wl_acc" value="<?= $detail->abs_wl_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>fluo_wl</b></label>
+            <input type="text" class="form-control" name="fluo_wl_acc" value="<?= $detail->fluo_wl_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>QY</b></label>
+            <input type="text" class="form-control" name="QY_acc" value="<?= $detail->QY_acc ?>">
+            <label><b style="color:red;"><label class="units">+/-</label></b> <b>lt</b></label>
+            <input type="text" class="form-control" name="lt_acc" value="<?= $detail->lt_acc ?>">
+            <label><b>Q <label class="units">[1]</label></b></label>
+            <input type="text" class="form-control" name="Q" value="<?= $detail->charge ?>"><br/>
+        </div>
+
+    </div>
+    <button type="submit" class="btn btn-info pull-right">Save</button>
+</form>

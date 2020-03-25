@@ -1,0 +1,182 @@
+<datalist id="search-datalist"></datalist>
+<datalist id="search-datalist-smiles"></datalist>
+
+<h3><b>Search compounds by:</b></h3>
+<ul class="nav nav-tabs">
+  <li class="active"><a data-toggle="tab" href="#compound">Name</a></li>
+  <li><a data-toggle="tab" href="#membrane">Membrane</a></li>
+  <li><a data-toggle="tab" href="#method">Method</a></li>
+  <li><a data-toggle="tab" href="#smiles">SMILES</a></li>
+</ul>
+
+<div class="tab-content">
+  <div id="compound" class="tab-pane fade in active">
+    <div class="panel-group">
+      <div class="panel panel-primary">
+        <div class="panel-heading">Search by name</div>
+        <div class="panel-body">
+
+          <form method="get" action="/search/compound/1" autocomplete="off">
+            <div class="autocomplete">
+              <input class="searchEngine" type="text" name="q" placeholder="Search compounds (e.g. Caffeine)" id="compoundSearch">
+            </div>
+            <button type="submit" class="btn btn-success pull-right">Search</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="membrane" class="tab-pane fade in ">
+    <div class="panel-group">
+      <div class="panel panel-primary">
+        <div class="panel-heading">Search compounds by membrane</div>
+        <div class="panel-body">
+          <form method="get" action="/search/membrane/1" autocomplete="off">
+            <div class="autocomplete">
+              <input class="searchEngine" type="text" name="q" placeholder="Search membrane (TIP: Type at least 3 letters for fulltext search, e.g. Choline)" id="membraneSearch">
+            </div>
+            <button type="button" onclick="redirect('browse/membranes')" class="btn btn-warning btn-sm pull-left">Browse membranes</button>
+            <button type="submit" class="btn btn-success pull-right">Search</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="method" class="tab-pane fade in ">
+    <div class="panel-group">
+      <div class="panel panel-primary">
+        <div class="panel-heading">Search compounds by method</div>
+        <div class="panel-body">
+          <form method="get" action="/search/method/1" autocomplete="off">
+            <div class="autocomplete">
+              <input class="searchEngine" type="text" name="q" placeholder="Search method (TIP: Type at least 3 letters for fulltext search, e.g. Cosmo)" id="methodSearch">
+            </div>
+            <button type="button" onclick="redirect('browse/methods')" class="btn btn-warning btn-sm pull-left">Browse methods</button>
+            <button type="submit" class="btn btn-success pull-right">Search</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="smiles" class="tab-pane fade">
+    <div class="panel-group">
+      <div class="panel panel-primary">
+        <div class="panel-heading">Search compounds by SMILES</div>
+        <div class="panel-body">
+          <form method="get" action="/search/smiles/1" autocomplete="off">
+            <div class="autocomplete">
+              <input type="text" class="searchEngine" name="q" id='smilesSearch' placeholder="Search compounds by SMILES">
+            </div>
+            <button type="submit" class="btn btn-success pull-right">Search</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<?php if ($show_detail) : ?>
+  <div class="search-info">
+    <h3><?= $nonsec_info ?></h3>
+  </div>
+  <div id="loader"></div>
+
+  <div style="display:none" id="content">
+    <?php if (isset($list)) : ?>
+      <div class="comp-addAll"><button class="btn btn-sm btn-primary pull-right btn-add" id="btn-addALL">Add list to the comparator </button></div><br />
+      <ul class="search-ul">
+        <?php foreach ($list as $substance) : ?>
+          <li>
+            <div class="flex-column space-between" style="height: -webkit-fill-available;">
+              <div>
+                <div class="title">
+                  <a href="/mol/<?= $substance->identifier ?>"><?= $substance->name ?></a>
+                  <button title="Add to comparator" id="<?= $substance->id ?>" type="button" class="btn btn-sm btn-primary btn-add">
+                    <span id="<?= $substance->name ?>" class="glyphicon glyphicon-plus"></span>
+                  </button>
+                </div>
+                <div class="info">
+                  <div class="info-text">
+                    <?php if (isset($substance->altername) && $substance->altername != '') : ?>
+                      <div><label><b>Alternative name:</b></label> <?= $substance->altername ?> <br /></div>
+                    <?php endif ?>
+                    <?php if ($substance->MW != 0) : ?>
+                      <div><label><b>Molecular weight:</b></label> <?= $substance->MW ?> <br /></div>
+                    <?php else : ?>
+                      <div><label><b>Molecular weight:</b></label> N/A <br /></div>
+                    <?php endif ?>
+                    <div><label><b>SMILES:</b></label> <?= $substance->SMILES ?> <br /></div>
+                  </div>
+                  <div class="search-2DStructure" id="structure<?= $substance->id ?>">
+                    <script>
+                      update('<?= $substance->SMILES ?>', 'structure<?= $substance->id ?>');
+                    </script>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row space-between">
+                <div class="references">
+                  <?php if ($substance->pdb != '') : ?>
+                    <div class="ref"> <a href="https://www.rcsb.org/ligand/<?= $substance->pdb ?>" target="_blank">PDB </a></div>
+                  <?php endif ?>
+                  <?php if ($substance->pubchem != '') : ?>
+                    <div class="ref"> <a target="_blank" href="https://pubchem.ncbi.nlm.nih.gov/compound/<?= $substance->pubchem ?>">PubChem </a></div>
+                  <?php endif ?>
+                  <?php if ($substance->chEBI != '') : ?>
+                    <div class="ref"> <a target="_blank" href="http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:<?= $substance->chEBI ?>">chEBI </a></div>
+                  <?php endif ?>
+                  <?php if ($substance->chEMBL != '') : ?>
+                    <div class="ref"> <a target="_blank" href="https://www.ebi.ac.uk/chembl/compound/inspect/<?= $substance->chEMBL ?>">chEMBL </a></div>
+                  <?php endif ?>
+                  <?php if ($substance->drugbank != '') : ?>
+                    <div class="ref"> <a target="_blank" href="https://www.drugbank.ca/drugs/<?= $substance->drugbank ?>">DrugBank </a></div>
+                  <?php endif ?>
+                </div>
+                <div>
+                  <?php if (isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>
+                    <a class="extend" href="/edit/compound/<?= $substance->id ?>/<?= $substance->name ?>">Edit</a>
+                  <?php endif ?>
+                </div>
+              </div>
+            </div>
+          </li>
+        <?php endforeach ?>
+      </ul>
+      <div class="text-center">
+        <ul class="pagination pagination-lg" id="paginator">
+          <?php for ($i = 1; $i < ($count / 10) + 1; $i++) : ?>
+            <?php if ($i == $pagination) : ?>
+              <li class="active" id="activePag"><a href="/search/<?= $searchType ?>/<?= $i ?>?q=<?= $searchInput ?>"><?= $i ?></a></li>
+            <?php else : ?>
+              <li><a href="/search/<?= $searchType ?>/<?= $i ?>?q=<?= $searchInput ?>"><?= $i ?></a></li>
+            <?php endif ?>
+          <?php endfor ?>
+          <script>verifyPagination('<?=$count?>');</script>
+        </ul>
+      </div>
+    <?php endif ?>
+  </div>
+
+  <div class="col-md-1"></div>
+
+<?php endif ?>
+
+<script>
+  $(document).ready(function() 
+  {
+    setTimeout(showContent, 1000);
+  });
+
+  function showContent() {
+    if (<?= $show_detail ?>) {
+      document.getElementById("content").style.display = "flex";
+      document.getElementById("loader").style.display = "none";
+    }
+  }
+</script>
+
+<script src="js/searchEngine.js?<?=JS_VERSION?>" >
+</script>

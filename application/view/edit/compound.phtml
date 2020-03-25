@@ -1,0 +1,123 @@
+<h1 style="text-align: center">Editor</h1>
+<h2 style="text-align: center"><a href="/mol/<?= $detail->identifier ?>"><?= $detail->name ?></a></h2>
+
+
+<div class="col-md-5 content">
+    <form method="post">
+        <label>Substance name</label>
+        <input type="text" class="form-control" name="name" value="<?= $detail->name ?>" required>
+        <label>SMILES</label>
+        <div class="glyphicon glyphicon-refresh" onclick="loadSmiles('<?= $detail->name ?>', '<?= $detail->uploadName ?>')"></div>
+        <input type="text" class="form-control" id="SMILES" name="SMILES" value="<?= $detail->SMILES ?>">
+        <label>MW [Da]</label>
+        <input type="text" class="form-control" name="MW" id="MW" value="<?= $detail->MW ?>">
+        <label>Volume [<span>&#8491;</span><sup>3</sup>]</label>
+        <input type="text" class="form-control" name="Volume" id="Volume" value="<?= $detail->Volume ?>">
+        <label>Area [<span>&#8491;</span><sup>2</sup>]</label>
+        <input type="text" class="form-control" name="Area" id="Area" value="<?= $detail->Area ?>">
+        <label><b>LogP <label class="units">[1]</label></b></label>
+        <input type="text" class="form-control" name="LogP" id="LogP" value="<?= $detail->LogP ?>">
+
+        <label>PubChem</label>
+        <input type="text" class="form-control" name="pubchem" id="pubchem" value="<?= $detail->pubchem ?>">
+        <label>DrugBank <a href="/edit/<?= $detail->id ?>/<?= $detail->name ?>/drugbank/<?= $detail->drugbank ?>"><span class="glyphicon glyphicon-download-alt"></span></a></label>
+        <input type="text" class="form-control" name="drugbank" id="drugbank" value="<?= $detail->drugbank ?>">
+        <label>PDB</label>
+        <input type="text" class="form-control" name="pdb" id="pdb" value="<?= $detail->pdb ?>">
+        <label>ChEBI</label>
+        <input type="text" class="form-control" name="chEBI" id="chEBI" value="<?= $detail->chEBI ?>">
+        <label>ChEMBL</label>
+        <input type="text" class="form-control" name="chEMBL" id="chEMBL" value="<?= $detail->chEMBL ?>"><br />
+        <button type="button" class="btn btn-sm btn-success" onclick="loadMissingData()">Load missing data</button>
+        <button type="submit" class="btn btn-info pull-right">Save</button><br /><br />
+    </form>
+</div>
+
+<div class="col-md-2"></div>
+
+<div class="col-md-5 content">
+    <div class="col-md-12">
+        <form method="post" action="/edit/compound/<?= $detail->id ?>/<?= EditController::T_3D_STRUCTURE?> " enctype="multipart/form-data">
+            <label>3D structure</label>
+            <table class="uploadTable" style="width: 100%">
+                <tr>
+                    <td>Upload</td>
+                    <td><input type="file" name="structure" id="3DStructure" accept=".mol"></td>
+                </tr>
+                <tr>
+                    <td>Download from web-source</td>
+                    <td>
+                        <input type="text" style="overflow: auto;" class="form-control" id="fileURL" value="Choose source below" disabled>
+                        <input type="text" name="fileURL" id="post_url" hidden="true">
+                        <div class="dropdown">
+                            <button type="button" class="dropbtn">Web-source</button>
+                            <div class="dropdown-content">
+                                <?php if ($detail->pubchem != '') : ?>
+                                    <a onclick="find3DStructure('pubchem', '<?= $detail->pubchem ?>')">PubChem</a>
+                                <?php endif ?>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            <button style="margin-top:20px;" type="submit" class="btn btn-info btn-sm pull-right">Upload</button>
+        </form>
+    </div>
+</div>
+
+<div class="col-md-12 content">
+    <h3 style="text-align: center;"><b>Interactions</b></h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <td align="center"><b>Delete</b></td>
+                <td align="center"><b>Edit</b></td>
+                <td><b>ID</b></td>
+                <td><b>Dataset</b></td>
+                <td><b>Membrane</b></td>
+                <td><b>Method</b></td>
+                <td><b>T [°C]</b></td>
+                <td><b>Q</b></td>
+                <td><b>Reference</b></td>
+                <td><b>X_min</b></td>
+                <td><b>G_pen</b></td>
+                <td><b>G_wat</b></td>
+                <td><b>LogK</b></td>
+                <td><b>LogPerm</b></td>
+            </tr>
+        </thead>
+        <tbody>
+            <?php $i = 0;
+            foreach ($interactions_all as $int) : ?>
+                <tr>
+                    <td align="center"><span onclick="alert_window('Are you sure you want to delete a record (ID = <?= $int->id ?>)?', 'delete/interaction/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span></td>
+                    <td align="center"><span onclick="redirect('edit/interaction/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>')" style="text-align: center; color: green; cursor:pointer;" class="glyphicon glyphicon-edit"></span></td>
+                    <td><?= $int->id ?></td>
+                    <td style="text-align: center;"><a href="/edit/dataset/<?= $int->id_dataset ?>" target="_blank"><?= $int->id_dataset ?></a></td>
+                    <td><?= $int->membrane->name ?></td>
+                    <td><?= $int->method->name ?></td>
+                    <td><?= $int->temperature ?></td>
+                    <td><?= $int->charge ?></td>
+                    <td style="text-align: center;">
+                        <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $int->id_reference ? $int->id_reference : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $int->reference->reference ?></span></div>
+                    </td>
+                    <td><?= $int->Position ?></td>
+                    <td><?= $int->Penetration ?></td>
+                    <td><?= $int->Water ?></td>
+                    <td><?= $int->LogK ?></td>
+                    <td><?= $int->LogPerm ?></td>
+                </tr>
+            <?php endforeach ?>
+        </tbody>
+    </table>
+</div>
+
+<script src="js/links.js">
+</script>
+
+<script>
+    function show_popup(id) {
+        var popup = document.getElementById("ref_popup_" + id);
+        popup.classList.toggle("show");
+    }
+</script>

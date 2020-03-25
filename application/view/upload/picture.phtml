@@ -1,0 +1,36 @@
+<button class="btn btn-success disabled btn-block"><b><span class="glyphicon glyphicon-upload"></span>   Picture uploader</b></button>
+<div><?=$nonsec_navigator?></div>
+
+
+<div class="col-md-12 content">
+    <div class="col-md-12">
+        <div class="col-md-3"></div>
+        <div class="col-md-6">
+            <h4 style="text-align: center;"><b>Pictures uplaoder</b></h4>
+            <form method="post" enctype="multipart/form-data">
+                    <table class="uploadTable">
+                        <tr>
+                            <td><b>Select files to upload: </b> </td>
+                            <td><input type="file" name="file[]" id="fileToUpload" multiple="multiple"></td>
+                        </tr>
+                    </table>
+                    <br/>
+                    <button type="submit" class="btn btn-success btn-sm pull-right">Upload</button>
+            </form>
+        </div>
+        <div class="col-md-3"></div>
+    </div>
+    <div class="col-md-12">
+        <div class="picrow">
+        <?php foreach($pictures as $pic) : ?>
+            <div class="pictd">
+                <div class="piccont">
+                    <p>files/pictures/<?=$pic?></p>
+                    <img src="files/pictures/<?=$pic?>" style="width:100%">
+                </div>
+            </div>
+        
+        <?php endforeach ?>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,76 @@
+<button class="btn btn-success disabled btn-block"><span class="glyphicon glyphicon-pencil"></span> Membrane editor</button>
+<div><?= $nonsec_navigator ?></div>
+
+
+<div class="col-md-12 content">
+    <ul class="editorUl" id="membrane">
+        <?php foreach ($membranes as $m) : ?>
+            <li class="m_type" data-spec='{"id": "<?= $m->id ?>", "type": "membrane"}'><?= $m->name ?></li>
+        <?php endforeach ?>
+    </ul>
+    <h3 id="memName" style="text-align: center;"><span class="glyphicon glyphicon-arrow-up"></span> Choose membrane <span class="glyphicon glyphicon-arrow-up"></span></h3>
+    <form method="post" action="/edit/membrane/detail/" id="form_editor">
+        <div class="col-md-4">
+            <b>Name:</b>
+            <input type="text" id="name" class="form-control" name="name" required />
+        </div>
+        <div class="col-md-4">
+            <b>Keywords:</b>
+            <input type="text" id="keywords" class="form-control" name="keywords" />
+        </div>
+        <div class="col-md-4">
+            <b>CAM:</b>
+            <input type="text" id="CAM" class="form-control" name="CAM" />
+        </div>
+        <div class="input-field">
+            <b>Description:</b>
+            <div id="description-par">
+                <div class="textfield" id="description-el">
+                    <textarea id="description-text" name="description" hidden></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="input-field">
+            <b>References:</b>
+            <div id="reference-par">
+                <div class="textfield" id="memtxtRef">
+                    <textarea id="memReferences" name="reference" hidden></textarea>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success pull-right">Save</button>
+    </form>
+
+</div>
+
+<div class="col-md-12 content">
+    <div class="col-md-12">
+        <h2 style="text-align: center;"><b>Pictures</b></h2>
+        <div class="picrow">
+            <?php foreach ($pictures as $pic) : ?>
+                <div class="pictd">
+                    <div class="piccont">
+                        <p>files/pictures/<?= $pic ?></p>
+                        <img src="files/pictures/<?= $pic ?>" style="width:100%">
+                    </div>
+                </div>
+            <?php endforeach ?>
+        </div>
+    </div>
+</div>
+
+<script src="js/editor.js?ver=<?= JS_VERSION ?>"></script>
+<script>
+    var monkeyList = new List('test-list', {
+        valueNames: ['name'],
+        page: 5,
+        pagination: true
+    });
+
+    function deleteMembrane() {
+        var id = document.getElementById("idMembrane").value;
+
+        return alert_window("Are you sure you want to delete membrane (ID = " + id + ")?",
+            "delete/membrane" + id);
+    }
+</script>

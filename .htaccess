@@ -1,0 +1,16 @@
+Options -Indexes
+
+RewriteEngine On
+RewriteBase /
+
+# front controller
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule !\.(pdf|php|js|ico|mol|gif|jpg|png|css|rar|zip|csv|tar\.gz)$ index.php [L]
+
+AddType application/x-httpd-php .php .phtml
+
+php_value upload_max_filesize 20M
+php_value post_max_size 20M
+php_value max_input_vars 50000
+php_value max_execution_time 600

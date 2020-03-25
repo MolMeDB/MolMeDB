@@ -1,0 +1,5 @@
+
+<?php if(isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>
+    <h4><a href="/edit/article"><div style="text-align: right;"> <span class="glyphicon glyphicon-edit"></span> Edit</div></a></h4>
+<?php endif?>
+   <div><?=$nonsec_content?></div>

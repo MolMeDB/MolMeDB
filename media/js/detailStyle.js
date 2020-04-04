@@ -367,8 +367,8 @@ function export_detail_data(name)
     var id = document.getElementById("idSubstance").value; 
     var rows = [];
     var date = new Date();
-    rows[0] = ['Membrane', 'Method', 'Q', 'Temperature', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-',
-        'LogPerm', 'LogPerm_+/-', 'LogP', 'Theta', 'Theta_+/-', 'Abs_wl', 'Abs_wl_+/-, Fluo_wl', 'Fluo_wl_+/-','QY', 'QY_+/-', 'lt', 'lt_+/-', 'Publication'];
+    rows[0] = ['Membrane', 'Method', 'Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-',
+        'LogPerm', 'LogPerm_+/-', 'Theta', 'Theta_+/-', 'Abs_wl', 'Abs_wl_+/-', 'Fluo_wl', 'Fluo_wl_+/-','QY', 'QY_+/-', 'lt', 'lt_+/-', 'Publication'];
     
     detail = ajax_request("detail/getInteractions", {id: id, idMethods: 0, idMembranes: 0}, "POST");
     
@@ -393,6 +393,7 @@ function export_detail_data(name)
                 record.method_name,
                 record.charge ? record.charge : "",
                 record.temperature ? record.temperature : "",
+                record.substance.LogP ? record.substance.LogP : "",
                 record.Position ? record.Position : "",
                 record.Position_acc ? record.Position_acc : "",
                 record.Penetration ? record.Penetration : "",
@@ -403,7 +404,6 @@ function export_detail_data(name)
                 record.LogK_acc ? record.LogK_acc : "",
                 record.LogPerm ? record.LogPerm : "",
                 record.LogPerm_acc ? record.LogPerm_acc : "",
-                record.LogP ? record.LogP : "",
                 record.theta ? record.theta : "",
                 record.theta_acc ? record.theta_acc : "",
                 record.abs_wl ? record.abs_wl : "",

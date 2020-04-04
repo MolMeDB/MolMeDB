@@ -42,7 +42,12 @@ class ApiStats extends ApiController
             $this->answer(NULL, self::CODE_BAD_REQUEST);
         }
 
-        $data = $interaction_model->where('id_membrane', $membrane->id)
+        $data = $interaction_model
+            ->where(array
+            (
+                'id_membrane'   => $membrane->id,
+                'visibility'    => Interactions::VISIBLE
+            ))
             ->select_list(array("id_method", "COUNT(id_method) as count"))
             ->distinct()
             ->group_by('id_method')
@@ -77,7 +82,7 @@ class ApiStats extends ApiController
      */
     public function method_subcats($id)
     {
-        $method = new methods($id);
+        $method = new Methods($id);
         $interaction_model = new Interactions();
 
         if(!$method->id)
@@ -85,7 +90,12 @@ class ApiStats extends ApiController
             $this->answer(NULL, self::CODE_BAD_REQUEST);
         }
 
-        $data = $interaction_model->where('id_method', $method->id)
+        $data = $interaction_model
+            ->where(array
+            (
+                'id_method' => $method->id,
+                'visibility'    => Interactions::VISIBLE
+            ))
             ->select_list(array("id_membrane", "COUNT(id_membrane) as count"))
             ->distinct()
             ->group_by('id_membrane')
@@ -133,7 +143,8 @@ class ApiStats extends ApiController
         $interactions = $interaction_model->where(array
             (
                 'id_membrane'   => $id_membrane,
-                'id_method'     => $id_method
+                'id_method'     => $id_method,
+                'visibility'    => Interactions::VISIBLE
             ))
             ->select_list('id')
             ->get_all();
@@ -141,7 +152,8 @@ class ApiStats extends ApiController
         $compounds = $interaction_model->where(array
             (
                 'id_membrane'   => $id_membrane,
-                'id_method'     => $id_method
+                'id_method'     => $id_method,
+                'visibility'    => Interactions::VISIBLE
             ))
             ->select_list('id_substance')
             ->group_by('id_substance')

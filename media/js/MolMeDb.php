@@ -273,8 +273,8 @@ function download_dataset_byRef(idRef)
         export_data[i+1] = 
         [
             data[i].name ? data[i].name : "",
-            data[i].membraneName ? data[i].membraneName : "",
-            data[i].methodName ? data[i].methodName : "",
+            data[i].membrane ? data[i].membrane : "",
+            data[i].method ? data[i].method : "",
             data[i].SMILES ? data[i].SMILES : "",
             data[i].LogP ? data[i].LogP : "",
             data[i].MW ? data[i].MW : "",

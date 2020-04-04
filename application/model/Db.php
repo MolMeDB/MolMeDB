@@ -22,6 +22,7 @@ class Db extends Iterable_object
     private $group_by = '';
     private $order_by = '';
     private $distinct = false;
+    private $debug = false;
 
     /**
      * MAIN CONSTRUCTOR
@@ -238,13 +239,15 @@ class Db extends Iterable_object
             $this->limit . ' '
             . $this->order_by;
 
-        if(false) // DEBUG
+        if($this->debug) // DEBUG
         {
             echo($query);
             die;
         }
 
         $data =  $this->queryAll($query, array(), False);
+
+        $this->reload();
 
         return new Iterable_object($data, get_class($this));
     }
@@ -279,7 +282,35 @@ class Db extends Iterable_object
 
         $class = get_class($this);
 
+        $this->reload();
+
         return new $class($data);
+    }
+
+    /**
+     * Sets params to default values
+     * 
+     */
+    public function reload()
+    {
+        $this->select_list = '*';
+        $this->limit = '';
+        $this->where = '';
+        $this->group_by = '';
+        $this->order_by = '';
+        $this->distinct = false;
+    }
+
+    /**
+     * Turn on debug mode
+     * 
+     * @param boolean $flag
+     */
+    public function debug($flag = TRUE)
+    {
+        $this->debug = $flag;
+
+        return $this;
     }
 
     /**
@@ -419,7 +450,7 @@ class Db extends Iterable_object
     {
         if($this->where == '')
         {
-            $this->where = 'WHERE';
+            $this->where = 'WHERE ';
         }
         else
         {
@@ -428,14 +459,14 @@ class Db extends Iterable_object
 
         if(!$val && is_string($attr))
         {
-            $this->where .= ' ' . $attr;
+            $this->where .= $attr;
 
             return $this;
         }
 
         if($val)
         {
-            $this->where = ' WHERE ';
+            $attr = trim($attr);
 
             if(count(explode(' ', $attr)) > 1)
             {
@@ -457,15 +488,13 @@ class Db extends Iterable_object
         {
             $where = $attr;
 
-            $this->where = ' WHERE 1 ';
-
             foreach($where as $attr => $val)
             {
-                $this->where .= ' AND ';
+                $attr = trim($attr);
 
                 if (count(explode(' ', $attr)) > 1) 
                 {
-                    $this->where .= $attr . ' ' . $val;
+                    $this->where .= $attr . ' "' . $val . '"';
                 } 
                 else if(strtoupper($val) === 'NULL')
                 {
@@ -475,8 +504,13 @@ class Db extends Iterable_object
                 {
                     $this->where .= $attr . ' = "' . $val . '"';
                 }
+
+                $this->where .= ' AND ';
             }
         }
+
+        $this->where = rtrim(trim($this->where), 'AND');
+        $this->where = rtrim($this->where, 'WHERE');
 
         return $this;
     }
@@ -565,11 +599,15 @@ class Db extends Iterable_object
             throw new Exception('No table name was set.');
         }
         
-        return $this->queryOne('
+        $count = $this->queryOne('
             SELECT COUNT(*) as count
             FROM ' . $this->table .
             ' ' . $this->where .
             ' ' . $this->group_by)->count;
+
+        $this->reload();
+
+        return $count;
     }
 
 

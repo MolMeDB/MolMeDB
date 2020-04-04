@@ -136,11 +136,16 @@ class ApiDetail extends ApiController
             $interactions = $interaction_model->where(array
                 (
                     'id_substance'  => $idSubstance,
-                    'id_method IN ' => '(' . implode(',', $meths) . ') ',
                     'id_membrane'   => $mem_id,
                     'visibility'    => Interactions::VISIBLE
                 ))
+                ->in('id_method', $meths)
                 ->get_all();
+
+            if(!count($interactions))
+            {
+                continue;
+            }
 
             $data = array();
             $membrane_name = '';

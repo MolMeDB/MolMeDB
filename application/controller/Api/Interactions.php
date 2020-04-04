@@ -24,7 +24,12 @@ class ApiInteractions extends ApiController
     {
         $inter = new Interactions();
 
-        $data = $inter->where('id_reference', $id)
+        $data = $inter
+            ->where(array
+            (
+                'id_reference'  => $id,
+                'visibility'    => Interactions::VISIBLE
+            ))
             ->get_all();
 
         $result = array();

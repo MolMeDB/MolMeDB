@@ -197,5 +197,10 @@ class System_config
         {
             require( APP_ROOT . "helpers/" . $class . ".php");
         }
+        // Libraries
+        else if (file_exists(APP_ROOT . "libraries/" . $class . ".php"))
+        {
+            require( APP_ROOT . "libraries/" . $class . ".php");
+        }
     }   
 }

@@ -7,7 +7,7 @@
         <label>Substance name</label>
         <input type="text" class="form-control" name="name" value="<?= $detail->name ?>" required>
         <label>SMILES</label>
-        <div class="glyphicon glyphicon-refresh" onclick="loadSmiles('<?= $detail->name ?>', '<?= $detail->uploadName ?>')"></div>
+        <a style="cursor: pointer;" title="Canonize SMILES" class="glyphicon glyphicon-link" onclick="canonize_smiles('<?= $detail->SMILES ?>', 'SMILES')"></a>
         <input type="text" class="form-control" id="SMILES" name="SMILES" value="<?= $detail->SMILES ?>">
         <label>MW [Da]</label>
         <input type="text" class="form-control" name="MW" id="MW" value="<?= $detail->MW ?>">

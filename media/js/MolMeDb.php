@@ -210,6 +210,35 @@ function addSetToComparator(type, id)
     }   
 }
 
+/** 
+* Sends request to MolMeDB server and returns canonized smiles
+*
+* @param {string} smiles
+* @param {string} taget_input_id
+*
+*/
+function canonize_smiles(smiles, target_input_id)
+{
+    if(smiles == '')
+    {
+        return;
+    }
+
+    var target_element = document.getElementById(target_input_id);
+
+    var result = ajax_request('smiles/canonize', {smi: smiles}, 'GET');
+
+    if(!target_element || result === false || !result.canonized)
+    {
+        add_message('Cannot update smiles.', 'danger');
+        return;
+    }
+
+    target_element.setAttribute('value', result.canonized);
+
+    return;
+}
+
 
 /**
  * Downloads dataset for given reference ID

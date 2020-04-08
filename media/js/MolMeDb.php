@@ -239,6 +239,81 @@ function canonize_smiles(smiles, target_input_id)
     return;
 }
 
+/** 
+* Sends request to MolMeDB server and 
+* returns publication info from remote servers
+*
+* @param {string} input_id - ID of input with given DOI
+*
+*/
+function get_reference_by_doi(input_id)
+{
+    var doi = document.getElementById(input_id).value;
+
+    if(!doi || doi == '')
+    {
+        add_message("Not valid DOI.", "danger");
+        return;
+    }
+
+    var result = ajax_request('publications/get_by_doi', {doi: doi});
+
+    if(result === false)
+    {
+        add_message('Cannot download publication info.', 'danger');
+        return;
+    }
+
+    if(!result)
+    {
+        add_message('Publication for given DOI was not found.', 'warning');
+        return;
+    }
+
+    $('#authors').val(result.authors);
+    $('#pmid').val(result.pmid);
+    $('#title').val(result.title);
+    $('#journal').val(result.journal);
+    $('#volume').val(result.volume);
+    $('#issue').val(result.issue);
+    $('#page').val(result.pages);
+    $('#year').val(result.year);
+    $('#publicated_date').val(result.publicatedDate);
+
+    // Generate citation
+    var citation = result.authors + ": " + result.title.trim() + " ";
+
+    if(result.journal)
+    {
+        citation = citation + result.journal + ", ";
+
+        if(result.volume)
+        {
+            citation = citation + "Volume " + result.volume;
+
+            if(result.issue)
+            {
+                citation = citation + " (" + result.issue + ")";
+            }
+
+            citation = citation + ", ";
+        }
+
+        if(result.pages)
+        {
+            citation = citation + result.pages + ", ";
+        }
+    }
+
+    citation = citation + result.year;
+
+    citation = citation.trim();
+
+    $('#citation').val(citation);
+
+    return;
+}
+
 
 /**
  * Downloads dataset for given reference ID

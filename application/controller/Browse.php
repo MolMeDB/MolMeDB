@@ -138,7 +138,7 @@ class BrowseController extends Controller
                     $this->redirect('error');
                 }
 
-                $this->data['reference_name'] = $publication->reference;
+                $this->data['reference_name'] = $publication->citation;
                 $this->data['list'] = $substanceModel->get_by_reference_id($reference_id, $pagination);
                 $this->data['count'] = $substanceModel->count_by_reference_id($reference_id);
                 $this->data['info'] = " <b> Results for: </b>" . $publication->reference;

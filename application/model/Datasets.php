@@ -84,40 +84,7 @@ class Datasets extends Db
 		}
 
 		return '';
-	}
-    
-    
-    /**
-	 * DELETE
-	 * @param type $id
-	 * @return string
-	 */
-    public function get_detail($id){
-        $result = array();
-        $result = $this->queryOne('SELECT `datasets`.*, `membranes`.`name` as memname, `membranes`.`idMembrane`, `methods`.`name` as metname, `methods`.`idMethod`
-                                 FROM `datasets` 
-                                 JOIN `membranes` ON `idMembrane` = `id_membrane` 
-                                 JOIN `methods` ON `idMethod` = `id_method`
-                                 WHERE id_dataset = ?', array($id));
-        
-        if($result['id_publication'] > 0){
-            $result += $this->queryOne('SELECT reference as publication FROM publications WHERE id = ?', array($result['id_publication']));
-        }
-        else
-            $result['publication'] = '';
-        
-        $result += $this->queryOne('SELECT name as upload_user FROM users WHERE id = ?', array($result['id_user_upload']));
-        $result += $this->queryOne('SELECT name as edit_user FROM users WHERE id = ?', array($result['id_user_edit']));
-        
-        if($result['visibility'] == '2')
-            $result['visibility_w'] = 'INVISIBLE';
-        else
-            $result['visibility_w'] = 'VISIBLE';
-        
-        return $result;
-    }
-    
-    
+	}  
     
     
     /**

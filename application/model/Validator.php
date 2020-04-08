@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * DEPRECATED
+ */
 class Validator{
     public function get_duplicites_ids(){
         $ids = array();

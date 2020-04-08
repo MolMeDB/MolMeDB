@@ -335,10 +335,46 @@ class UploadController extends Controller
             {
                 $publication = new Publications();
 
-                $publication->reference = $_POST['reference'];
+                // Check if exists
+                $check_doi = $publication->where(
+                    array
+                    (
+                        'doi' => $_POST['doi']
+                    ))
+                    ->get_one();
+
+                if($check_doi->id)
+                {
+                    throw new Exception('Publication with given DOI already exists.');
+                }
+
+                $check_pmid = $publication->where(
+                    array
+                    (
+                        'pmid' => $_POST['pmid']
+                    ))
+                    ->get_one();
+
+                if($check_pmid->id)
+                {
+                    throw new Exception('Publication with given PmID already exists.');
+                }
+
+                // Save new one
                 $publication->doi = $_POST['doi'];
-                $publication->description = $_POST['description'];
+                $publication->citation = $_POST['citation'];
+                $publication->authors = $_POST['authors'];
+                $publication->pmid = $_POST['pmid'];
+                $publication->title = $_POST['title'];
+                $publication->journal = $_POST['journal'];
+                $publication->volume = $_POST['volume'];
+                $publication->issue = $_POST['issue'];
+                $publication->page = $_POST['page'];
+                $publication->year = $_POST['year'];
+                $publication->publicated_date = $_POST['publicated_date'];
                 $publication->user_id = $_SESSION['user']['id'];
+
+                $publication->set_empty_vals_to_null();
 
                 $publication->save();
 

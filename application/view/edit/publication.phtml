@@ -8,7 +8,7 @@
             <ul class="list" id="publList">
                 <?php foreach ($publications as $p) : ?>
                     <li style="cursor: pointer;" id="<?= $p['id'] ?>" onclick="redirect('edit/publication/<?= $p['id'] ?>')">
-                        <p class="name"><?= $p['reference'] ?></p>
+                        <p class="name"><?= $p['citation'] ?></p>
                     </li>
                 <?php endforeach ?>
             </ul>
@@ -17,27 +17,42 @@
     </div>
     <?php if (isset($detail)) : ?>
         <form method="post">
-            <input type="hidden" name="type" value="reference">
             <div class="col-md-12">
-                <table class="uploadTable" style="margin-top: 38px; width: 100%">
-                    <tr>
-                        <td><b>Text of reference</b></td>
-                        <td><input type="text" class="form-control" name="reference" value="<?= $detail['reference'] ?>" required></td>
-                    </tr>
-                    <tr>
-                        <td><b>DOI</b></td>
-                        <td><input class="form-control" type="text" value="<?= $detail['doi'] ?>" name="doi" /></td>
-                    </tr>
-                </table>
-                <input name="id" value="<?= $detail['id'] ?>" hidden>
+                <label><b>DOI</b></label>
+                <a style="cursor: pointer;" title="Download publication detail by DOI" class="glyphicon glyphicon-download" onclick="get_reference_by_doi('doi')"></a>
+                <input class="form-control" type="text" name="doi" id="doi" value="<?= $detail->doi ?>"/>
+            
+                <label><b>Authors</b></label>
+                <input type="text" class="form-control" name="authors" id="authors" value="<?= $detail->authors ?>" required />
+            
+                <label><b>PmID</b></label>
+                <input type="text" class="form-control" name="pmid" id="pmid" value="<?= $detail->pmid ?>" />
+            
+                <label><b>Title</b></label>
+                <input type="text" class="form-control" name="title" id="title" value="<?= $detail->title ?>" required />
+            
+                <label><b>Journal</b></label>
+                <input type="text" class="form-control" name="journal" value="<?= $detail->journal ?>" id="journal"  />
+            
+                <label><b>Volume</b></label>
+                <input type="text" class="form-control" name="volume" id="volume" value="<?= $detail->volume ?>"  />
+            
+                <label><b>Issue</b></label>
+                <input type="text" class="form-control" name="issue" id="issue" value="<?= $detail->issue ?>"  />
+            
+                <label><b>Pages</b></label>
+                <input type="text" class="form-control" name="page" id="page" value="<?= $detail->page ?>" />
+            
+                <label><b>Year</b></label>
+                <input type="text" class="form-control" name="year" id="year" value="<?= $detail->year ?>" required />
+            
+                <label><b>Date of publication [d-m-y]</b></label>
+                <input type="text" class="form-control" name="publicated_date" id="publicated_date" value="<?= $detail->publicated_date ?>" />
+                
+                <label><b>Citation</b></label>
+                <input type="text" class="form-control" name="citation" id="citation" value="<?= $detail->citation ?>" required />
             </div>
-            <div class="col-md-12">
-                <div class="textfield">
-                    <h5><b>Description</b></h5>
-                    <textarea name="description" id="description"><?= $detail->description ?></textarea>
-                </div>
-            </div>
-            <button style="margin:20px;" type="submit" class="btn btn-success pull-right">Save</button>
+            <button style="margin:20px;" class="btn btn-success pull-right">Save</button>
         </form>
     <?php endif ?>
 </div>

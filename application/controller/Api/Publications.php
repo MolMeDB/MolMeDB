@@ -28,9 +28,17 @@ class ApiPublications extends ApiController
         $result = array
         (
             'id'    => $ref->id,
-            'content'   => $ref->reference,
-            'description'  => $ref->description,
+            'citation'   => $ref->citation,
             'doi' => $ref->doi,
+            'pmid' => $ref->pmid,
+            'title' => $ref->title,
+            'authors' => $ref->authors,
+            'journal' => $ref->journal,
+            'volume' => $ref->volume,
+            'issue' => $ref->issue,
+            'page' => $ref->page,
+            'year' => $ref->page,
+            'publicated_date' => $ref->publicated_date,
             'created'   => $ref->createDateTime
         );
 
@@ -49,6 +57,28 @@ class ApiPublications extends ApiController
         $data = $publ_model->get_all();
         
         $this->answer($data->as_array(NULL, FALSE));
+    }
+
+    /**
+     * Gets publication detail by DOI from remote server
+     * 
+     * @GET
+     * @param doi 
+     * 
+     */
+    public function get_by_doi($doi)
+    {
+        $PMC = new EuropePMC();
+
+        $publ = $PMC->search($doi);
+
+        // Should contains max one result
+        if(!isset($publ[0]))
+        {
+            $this->answer(NULL, self::CODE_OK_NO_CONTENT);
+        }
+
+        $this->answer($publ[0]);
     }
     
 }

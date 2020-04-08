@@ -132,6 +132,25 @@ class Db extends Iterable_object
     }
 
 
+    /**
+     * Sets nonfilled values to null
+     * 
+     * @return Db
+     */
+    public function set_empty_vals_to_null()
+    {
+        foreach($this->data as $key => $val)
+        {
+            if(trim($val) === '')
+            {
+                $this->data[$key] = NULL;
+            }
+        }
+
+        return $this;
+    }
+
+
 
     /**
      * Execute query to DB and returns one result

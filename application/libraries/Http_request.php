@@ -135,7 +135,7 @@ class Http_request
 
 			$url = rtrim($url, '&');
 		}
-		
+
 		switch($method)
 		{
 			case self::METHOD_GET:

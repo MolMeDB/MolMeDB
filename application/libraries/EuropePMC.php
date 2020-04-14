@@ -15,7 +15,9 @@ class EuropePMC
      */
     function __construct()
     {
-        $this->client = new Http_request('https://www.ebi.ac.uk/europepmc/webservices/rest/');
+        $config = new Config();
+
+        $this->client = new Http_request($config->get(Configs::EUROPEPMC_URI));
     }
 
     /**

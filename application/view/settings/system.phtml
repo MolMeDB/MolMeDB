@@ -1,0 +1,15 @@
+<div  style='text-align: center'>
+    <h2>System settings</h2>
+</div>
+
+<div class="col-md-6">
+<h4>API</h4>
+    <form method="POST" class="content">    
+        <label>EuropePMC endpoint</label>
+        <input type="text" class="form-control" name="<?= Configs::EUROPEPMC_URI?>" value="<?= $europePMC ?>">
+        <label>RDKIT endpoint</label>
+        <input type="text" class="form-control" name="<?= Configs::RDKIT_URI?>" value="<?= $rdkit ?>">
+
+        <button style="margin-top: 10px;" type="submit" class="btn btn-sm btn-success pull-right">Save</button>
+    </form>
+</div>

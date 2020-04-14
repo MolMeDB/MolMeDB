@@ -20,12 +20,13 @@ class Rdkit
     {
         try
         {
+            $config = new Config();
+
             // Add to the system setting in next update
-            $this->client = new Http_request('http://molmedb.upol.cz:9696/');
+            $this->client = new Http_request($config->get(Configs::RDKIT_URI));
 
             // Try to connect
             $this->STATUS =  $this->client->test_connection('test');
-
         }
         catch(Exception $e)
         {

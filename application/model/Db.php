@@ -22,6 +22,7 @@ class Db extends Iterable_object
     private $group_by = '';
     private $order_by = '';
     private $distinct = false;
+
     private $debug = false;
 
     /**
@@ -350,10 +351,9 @@ class Db extends Iterable_object
 
         try
         {
-            $this->beginTransaction();
             // Delete record
             $this->query("
-                DELETE FROM  $this->table
+                DELETE FROM $this->table
                 WHERE id = $this->id
             ");
 
@@ -362,11 +362,9 @@ class Db extends Iterable_object
             $this->old_data = [];
             $this->keys = [];
 
-            $this->commitTransaction();
         }
         catch(Exception $e)
         {
-            $this->rollbackTransaction();
             throw new Exception($e->getMessage());
         }
     }
@@ -830,6 +828,9 @@ class Db extends Iterable_object
      */
     public static function beginTransaction()
     {
+        // First commit old transaction if exists
+        // self::$connection->commit(); 
+
         self::$connection->beginTransaction();
     }
     

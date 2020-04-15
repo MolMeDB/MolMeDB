@@ -6,6 +6,7 @@
 
 require_once('config.php');
 require_once('version.php');
+require_once('system/exceptions.php');
 
 class System_config
 {

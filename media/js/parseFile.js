@@ -47,16 +47,14 @@ function parseFile(name)
     var count = file[0].length;
     var tr = document.createElement("tr");
     tr.setAttribute("class", "types");
-    var types = ["Choose one: ", "Don't use", "Name", "Q", "X_min", "X_min_acc", "G_pen", "G_pen_acc", "G_wat", "G_wat_acc", "LogK", "LogK_acc", "LogP", "LogPerm", "LogPerm_acc"
+    var types = ["Don't use", "Name", "Primary_reference", "Q", "X_min", "X_min_acc", "G_pen", "G_pen_acc", "G_wat", "G_wat_acc", "LogK", "LogK_acc", "LogP", "LogPerm", "LogPerm_acc"
         ,"theta", "theta_acc", "abs_wl", "abs_wl_acc", "fluo_wl", "fluo_wl_acc", "QY", "QY_acc", "lt", "lt_acc", "MW", "SMILES", "DrugBank_ID", "PubChem_ID", "PDB_ID", "Area", "Volume"];
     
     for(var i=0; i<count; i++){
         var td = document.createElement("td");
         var select = document.createElement("select");
-        select.setAttribute("class", "form-control");
+        select.setAttribute("class", "form-control attr-chooser");
         select.setAttribute("required", "true");
-        select.setAttribute("onchange", "setName('" + i + "', '" + size + "')");
-        select.setAttribute("id", "attrName_" + i);
         
         for(var j=0; j<types.length; j++){
             var option = document.createElement("option");
@@ -84,23 +82,15 @@ function parseFile(name)
             var td = document.createElement("td");
             var input = document.createElement("input");
             input.setAttribute("class", "form-control");
-            input.setAttribute("name", file[0][j] + i);
-            input.setAttribute("id", i+"/"+j);
+            input.setAttribute("name", "row_" + i + "[]");
             if(i == 0 || j != 0){
                 input.setAttribute("readonly", "true");
                 if (i==0)
                     input.setAttribute("style", "cursor: pointer;");
             }
             
-            if(file[i][j] == '')
-                input.value = null;
-            
-            else{
-                if(isNaN(file[i][j]))
-                    input.value = file[i][j];
-                else
-                    input.value = Number(file[i][j]);
-            }
+            input.value = file[i][j];
+
             td.appendChild(input);
             tr.appendChild(td);
         }
@@ -124,9 +114,10 @@ function parseFile(name)
     input.setAttribute("required", "true");
     
     var button = document.createElement("button");
-    button.setAttribute("type", "submit");
+    button.setAttribute("type", "button");
     button.setAttribute("class", "btn btn-sm btn-success pull-right");
     button.setAttribute("style", "margin: 5px 0px;");
+    button.setAttribute("onclick", "submit_datafile()");
     button.innerHTML = "Save";
    
     var rowCount = document.createElement("input"); rowCount.setAttribute("hidden", "true"); rowCount.value = size; rowCount.setAttribute("name", "rowCount");
@@ -146,31 +137,25 @@ function parseFile(name)
 }
 
 /**
- * Sets name of form input for given column
- * @param {integer} j 
- * @param {integer} count 
+ * Submits form
  */
-function setName(j, count)
+function submit_datafile()
 {
-    var value = document.getElementById("attrName_" + j).value;
-    var indicator = false;
-    
-    if(value == "Name"){
-        uploadName.innerHTML = '';
-        indicator = true;
-    }
-    
-    for(var i=1; i<count; i++){
-        var obj = document.getElementById(i + "/" + j);
-        obj.setAttribute("name", value.toString() + i);
-        if(indicator){
-            var input = document.createElement("input");
-            input.setAttribute("name", "uploadName" + i);
-            input.setAttribute("value", file[i][j]);
-            uploadName.appendChild(input);
-        }
-    }
-   
+    // Delete old inputs
+    $('.attr-input').each(function(key, input){
+        $(input).remove();
+    });
+
+    $('.attr-chooser').each(function(k, element){
+        var input = document.createElement('input');
+        input.setAttribute('name', 'attr[]');
+        input.classList.add('attr-input');
+        input.value = $(element).val();
+
+        form.appendChild(input);
+    });
+
+    $(form).submit();
 }
 
 /**
@@ -240,13 +225,13 @@ function returnRefs()
     
     var option = document.createElement("option");
     option.value = 0;
-    option.innerHTML = "References";
+    option.innerHTML = "Choose secondary reference";
     select.appendChild(option);
     
     for(var i = 0; i<size; i++){
         var option = document.createElement("option");
         option.value = result[i].id;
-        option.innerHTML = result[i].reference;
+        option.innerHTML = result[i].citation;
         select.appendChild(option);    
     }
     return select;

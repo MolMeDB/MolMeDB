@@ -13,12 +13,14 @@ class Configs extends Db
     /** CONFIG ATTRIBUTES */
     const EUROPEPMC_URI = 'europepmc_uri';
     const RDKIT_URI = 'rdkit_uri';
+    const LAST_SMILES_UPDATE = 'smiles_updated_date';
 
     /** Defines valid config attributes */
     private $valid_attributes = array
     (
         self::EUROPEPMC_URI,
-        self::RDKIT_URI
+        self::RDKIT_URI,
+        self::LAST_SMILES_UPDATE
     );
     
     /**

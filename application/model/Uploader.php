@@ -57,7 +57,7 @@ class Uploader extends Db
 	 * @param float $QY_acc
 	 * @param float $lt
 	 * @param float $lt_acc
-	 * @param float $Q
+	 * @param string $Q
 	 * @param string $SMILES
 	 * @param string $DrugBank
 	 * @param string $PubChem
@@ -81,6 +81,7 @@ class Uploader extends Db
         $interactionModel = new Interactions();
         $smilesModel = new Smiles();
 		$user_id = $_SESSION['user']['id'];
+		$rdkit = new Rdkit();
 		
 		try
 		{
@@ -131,7 +132,14 @@ class Uploader extends Db
 				$substance->save();
 			}
 
-			if($Q === '')
+			// Insert new 3D structure
+			if($rdkit->is_connected())
+			{
+				// Generate 3D structure and save
+			}
+
+
+			if($Q === '' || !$Q)
 			{
 				$Q = NULL;
 
@@ -142,12 +150,13 @@ class Uploader extends Db
 						'id_method'		=> $method->id,
 						'id_substance'	=> $idSubstance,
 						'temperature'	=> $temperature,
-						'charge IS'		=> NULL,
+						'charge'		=> "NULL",
 						'id_reference'	=> $reference
 					))
 					->select_list('id')
 					->get_one()
 					->id;
+
 				if($interaction_id) // Exists ? Then update
 				{
 					$interaction = new Interactions($interaction_id);

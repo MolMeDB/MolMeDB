@@ -222,7 +222,7 @@ function edit_basic_info(edit_btn)
                         }
                         
                         option.value = publications[k].id; //ID publication
-                        option.innerHTML = publications[k].reference; //Name publication
+                        option.innerHTML = publications[k].citation; //Name publication
                         select.appendChild(option);
                     }
                     td.appendChild(select);

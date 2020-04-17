@@ -292,13 +292,20 @@ class Db extends Iterable_object
             $this->select_list = '*';
         }
 
-        $data =  $this->queryOne('
+        $query = '
             SELECT ' . $this->select_list . ' 
             FROM ' . $this->table .
             ' ' . $this->where .
             ' ' . $this->group_by
-            . ' LIMIT 1'
-            , array(), False);
+            . ' LIMIT 1';
+
+        if($this->debug)
+        {
+            echo($query);
+            die;
+        }
+
+        $data =  $this->queryOne($query, array(), False);
 
         $class = get_class($this);
 

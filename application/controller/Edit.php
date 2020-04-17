@@ -325,7 +325,7 @@ class EditController extends Controller
      */
     private function upload_3d_structure($file, $substance, $fileURL = False)
     {
-        $target_file = MEDIA_ROOT . "files/3DStructures/" . $substance->uploadName . ".mol";
+        $target_file = MEDIA_ROOT . "files/3DStructures/" . $substance->identifier . ".mol";
        
         if (file_exists($target_file)) 
         {
@@ -777,6 +777,42 @@ class EditController extends Controller
         $this->data["methods"] = $method->get_all();
         $this->data['navigator'] = $this->createNavigator(self::M_METHOD);
         $this->header['title'] = 'Edit method';
+    }
+
+    /**
+     * Checks name of 3d structure files and generates new ones if missing
+     * 
+     */
+    public function check_3d_structures()
+    {
+        // Check if exists and rename if wrong
+        $substance_model = new Substances();
+
+        $substances = $substance_model
+            ->select_list(array
+            (
+                'uploadName',
+                'identifier'
+            ))
+            ->get_all();
+
+        $target_folder = MEDIA_ROOT . 'files/3Dstructures/';
+
+        foreach($substances as $row)
+        {
+            try
+            {
+                $file = new File($target_folder . $row->uploadName . '.mol');
+
+                $file->rename($row->identifier);
+            }
+            catch(Exception $e)
+            {
+                continue;
+            }
+        }
+
+        die;
     }
 
     /**

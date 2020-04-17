@@ -149,6 +149,7 @@ function submit_datafile()
     $('.attr-chooser').each(function(k, element){
         var input = document.createElement('input');
         input.setAttribute('name', 'attr[]');
+        input.setAttribute('hidden', 'true');
         input.classList.add('attr-input');
         input.value = $(element).val();
 

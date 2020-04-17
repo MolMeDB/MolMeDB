@@ -651,7 +651,7 @@ class UploadController extends Controller
 
                     if(!in_array($a, $types))
                     {
-                        throw new Exception("Attribute '$a' is not valid. Please, contact your administrator.");
+                        throw new Exception("Invalid attribute '$a'. Please, contact your administrator.");
                     }
 
                     $attrs[$order] = $a;
@@ -664,21 +664,19 @@ class UploadController extends Controller
 
                     foreach($attrs as $key => $attr)
                     {
-                        $new[$attr] = trim($row[$key]) != '' ? $row[$key] : NULL;
+                        $new[$attr] = trim($row[$key]) != '' ? trim($row[$key]) : NULL;
                     }
 
                     $values[] = $new;
                 }
-
-                print_r($values);
-                die;
-                
 
                 // Save data
                 try 
                 {
                     // Transaction for whole dataset 
                     Db::beginTransaction();
+
+                    $rdkit = new Rdkit();
                     
                     // Add new dataset
                     $dataset->id_membrane = $membrane->id;
@@ -696,48 +694,53 @@ class UploadController extends Controller
                     // Add dataset rows
                     foreach($values as $detail) 
                     {
-                        if ($detail["Name"] == '') 
+                        if (self::get_param($detail, 'Name') == '') 
                         {
                             $detail['Name'] = NULL;
                         }
 
                         // Canonize SMILES
+                        $smiles = isset($detail['SMILES']) && trim($detail['SMILES']) != '' ? $detail['SMILES'] : NULL;
 
+                        if($smiles && $rdkit->is_connected())
+                        {
+                            $smiles = $rdkit->canonize_smiles($smiles);
+                        }
 
                         $uploader->insert_interaction(
                             $dataset->id,
                             $publication->id,
                             $detail["Name"],
                             $detail["Name"],
-                            $detail["MW"],
-                            $detail["X_min"],
-                            $detail["X_min_acc"],
-                            $detail["G_pen"],
-                            $detail["G_pen_acc"],
-                            $detail["G_wat"],
-                            $detail["G_wat_acc"],
-                            $detail["LogK"],
-                            $detail["LogK_acc"],
-                            $detail["Area"],
-                            $detail["Volume"],
-                            $detail["LogP"],
-                            $detail["LogPerm"],
-                            $detail["LogPerm_acc"],
-                            $detail["theta"],
-                            $detail["theta_acc"],
-                            $detail["abs_wl"],
-                            $detail["abs_wl_acc"],
-                            $detail["fluo_wl"],
-                            $detail["fluo_wl_acc"],
-                            $detail["QY"],
-                            $detail["QY_acc"],
-                            $detail["lt"],
-                            $detail["lt_acc"],
-                            $detail["Q"],
-                            $detail["SMILES"],
-                            $detail["DrugBank_ID"],
-                            $detail["PubChem_ID"],
-                            $detail["PDB_ID"],
+                            floatval(self::get_param($detail, 'MW')),
+                            floatval(self::get_param($detail, 'X_min')),
+                            floatval(self::get_param($detail, 'X_min_acc')),
+                            floatval(self::get_param($detail, 'G_pen')),
+                            floatval(self::get_param($detail, 'G_pen_acc')),
+                            floatval(self::get_param($detail, 'G_wat')),
+                            floatval(self::get_param($detail, 'G_wat_acc')),
+                            floatval(self::get_param($detail, 'LogK')),
+                            floatval(self::get_param($detail, 'LogK_acc')),
+                            floatval(self::get_param($detail, 'Area')),
+                            floatval(self::get_param($detail, 'Volume')),
+                            floatval(self::get_param($detail, 'LogP')),
+                            floatval(self::get_param($detail, 'LogPerm')),
+                            floatval(self::get_param($detail, 'LogPerm_acc')),
+                            floatval(self::get_param($detail, 'theta')),
+                            floatval(self::get_param($detail, 'theta_acc')),
+                            floatval(self::get_param($detail, 'abs_wl')),
+                            floatval(self::get_param($detail, 'abs_wl_acc')),
+                            floatval(self::get_param($detail, 'fluo_wl')),
+                            floatval(self::get_param($detail, 'fluo_wl_acc')),
+                            floatval(self::get_param($detail, 'QY')),
+                            floatval(self::get_param($detail, 'QY_acc')),
+                            floatval(self::get_param($detail, 'lt')),
+                            floatval(self::get_param($detail, 'lt_acc')),
+                            strval(self::get_param($detail, 'Q')),
+                            $smiles,
+                            self::get_param($detail, 'DrugBank_ID'),
+                            self::get_param($detail, 'PubChem_ID'),
+                            self::get_param($detail, 'PDB_ID'),
                             $membrane,
                             $method,
                             $temperature
@@ -789,7 +792,7 @@ class UploadController extends Controller
     }
 
     /**
-     * Helper for checkign if attr exists in arr
+     * Helper for checking if attr exists in arr
      * 
      * @param array $arr
      * @param string $attr
@@ -803,7 +806,16 @@ class UploadController extends Controller
             return NULL;
         }
 
-        return $arr[$attr];
+        return $arr[$attr] != '' ? $arr[$attr] : NULL;
+    }
+
+    /**
+     * Automatically fill missing 3D structures using RDKIT
+     */
+    public function fill3dStructures()
+    {
+        $this->addMessageWarning('Sorry, service is temporarily unavailable.');
+        $this->redirect('upload/dataset');
     }
 
     /**
@@ -869,39 +881,39 @@ class UploadController extends Controller
     public function uploadFile($file, $format, $file_type = NULL)
     {
         $target_dir = MEDIA_ROOT . "files/upload/";
-        $i = 0;
-        $target_file = $target_dir . basename($file["name"]);
-        $format = pathinfo($target_file,PATHINFO_EXTENSION);
+        $newFile = new File($file);
+        $newFile->name = basename($file['name']);
+
+        $target_file = $target_dir . $newFile->name;
+
         $temp = $target_file;
        
+        $i = 0;
         while(file_exists($temp))
         {
             $i++;
-            $temp = substr($target_file, 0, -4) . "_" . $i; 
+            $temp = substr($target_file, 0, -4) . "_" . $i;
+            $newFile->name =  basename($file['name']) . '_' . $i;
         }
         
         $uploader  = new Uploader();
         $smilesModel = new Smiles();
         $publicationModel = new Publications();
 
-        if(intval($file["size"]) > 5000000) // 5mb max size
+        if(intval($newFile->size) > 5000000) // 5mb max size
         {
             $this->addMessageError('Sorry, your file is too large.');
             $this->redirect('upload/dataset');
         }
-        if($format !== 'csv') // Only CSV files allowed
+
+        if($newFile->extension !== 'csv') // Only CSV files allowed
         {
             $this->addMessageWarning('Wrong file format. Upload only ".csv" files.');
             $this->redirect('upload/dataset');
         }
-        if(move_uploaded_file($file['tmp_name'], $target_file)) // Finally, move file to target directory
+        if($newFile->save_to_dir($target_dir)) // Finally, move file to target directory
         {
-            $this->addMessageSuccess ('The file "' . basename($file["name"]) . '" has been uploaded!');
-        }
-        else 
-        {
-            $this->addMessageError ('File hasn\'t been uploaded!');
-            $this->redirect('upload/dataset');
+            $this->addMessageSuccess ('The file "' . $newFile->name . '" has been uploaded!');
         }
 
         if($file_type === self::FILE_SMILES)

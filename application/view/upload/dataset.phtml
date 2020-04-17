@@ -22,10 +22,21 @@
                 <table class="uploadTable">
                     <tr>
                         <td><b>Select file to upload: [.csv]</b> </td>
-                        <td><input type="file" name="file" id="fileToUpload"></td>
+                        <td><input type="file" name="file" required id="fileToUpload"></td>
+                    </tr>
+                    <tr><td><b>File type</b></td>
+                        <td style="text-align: left;">
+                            <input type="radio" id="type_1" name="fileType" value="1" checked>
+                            <label for="type_1">Interaction dataset</label><br/>
+                            <input type="radio" id="type_2" name="fileType" value="2">
+                            <label for="type_2">Transporter dataset</label>
+                        </td>
                     </tr>
                     <tr><td><b>Example</b></td>
                         <td><a href="files/examples/dataFile_example.csv">Download</a></td>
+                    </tr>
+                    <tr><td><b>Fill missing 3D structures</b></td>
+                        <td><a href="/upload/fill3dStructures"><button type="button" class="btn btn-sm btn-success">Process</button></a></td>
                     </tr>
                     <?php if(isset($fileName)) : ?>
                     <tr><td class="td-fileUpload"><b>Show uploaded file</b></td>

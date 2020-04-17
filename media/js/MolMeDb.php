@@ -239,7 +239,7 @@ function canonize_smiles(smiles, target_input_id)
     return;
 }
 
-/** 
+/** w
 * Sends request to MolMeDB server and 
 * returns publication info from remote servers
 *
@@ -252,7 +252,7 @@ function get_reference_by_doi(input_id)
 
     if(!doi || doi == '')
     {
-        add_message("Not valid DOI.", "danger");
+        add_message("Invalid DOI.", "danger");
         return;
     }
 

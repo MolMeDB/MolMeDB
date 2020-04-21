@@ -1,6 +1,9 @@
 var form = document.createElement("form");
 var uploadName = document.createElement("div");
 uploadName.hidden = true;
+var div = document.getElementById("table");
+var modal = document.getElementById('dataupload_modal');
+var span = document.getElementById("dataupload_close");
 var file;
 
 /**
@@ -8,12 +11,10 @@ var file;
  * and parsing to the form
  * 
  * @param {string} name - Filename 
+ * @param {string} type - Filetype - interactions/transporters 
  */
-function parseFile(name)
+function parseFile(name, type)
 {
-    var div = document.getElementById("table");
-    var modal = document.getElementById('dataupload_modal');
-    var span = document.getElementById("dataupload_close");
     form.innerHTML = '';
     form.appendChild(uploadName);
     
@@ -25,6 +26,142 @@ function parseFile(name)
         return;
     }
     
+    if(type === 'save_dataset')
+    {
+        parse_interaction_file(file);
+        return;
+    }
+    else if(type === 'save_transporters')
+    {
+        parse_transporters_file(file);
+        return;
+    }
+    else
+    {
+        add_message("Wrong file type. Please, contact server administrator.", 'danger');
+        return;
+    }
+}
+
+/**
+ * Parse file with transporters and makes form
+ * 
+ * 
+ */
+function parse_transporters_file(file)
+{
+    modal.style.display = "block";
+    span.onclick = function() {
+        modal.style.display = "none";
+        div.children[0].remove();
+    }; 
+   
+    var refs = returnRefs();
+    
+    var size = (file.length);    
+    
+    var table = document.createElement("table");
+
+    form.setAttribute("method", "post"); 
+    form.setAttribute("enctype","multipart/form-data");
+    
+    table.setAttribute("class", "dataParser");
+    table.setAttribute("style", "margin-bottom: 20px;");
+    
+    var count = file[0].length;
+    var tr = document.createElement("tr");
+    tr.setAttribute("class", "types");
+    var types = ["Don't use", "Name", "Target", "Primary_reference", 
+                "Uniprot_id", "Type", "Km", "Ki", "IC50", "EC50", 'SMILES', "DrugBank_ID", "PubChem_ID", "PDB_ID",
+                "MW", 'LogP'];
+    
+    for(var i=0; i<count; i++){
+        var td = document.createElement("td");
+        var select = document.createElement("select");
+        select.setAttribute("class", "form-control attr-chooser");
+        select.setAttribute("required", "true");
+        
+        for(var j=0; j<types.length; j++){
+            var option = document.createElement("option");
+            if(j == 0)
+                option.value = "";
+            else
+                option.value = types[j];
+            
+            option.innerHTML = types[j];
+            select.appendChild(option);
+        }
+        td.appendChild(select);
+        tr.appendChild(td);
+    }
+    table.appendChild(tr);
+    
+    
+    for(i=0; i<size; i++){
+        tr = document.createElement("tr");
+
+        if(i > 50)
+        {
+            tr.setAttribute('style', 'display:none;');
+        }
+
+        if(i==0)
+            tr.setAttribute("class", "head");
+        for(j=0; j<count; j++){
+            var td = document.createElement("td");
+            var input = document.createElement("input");
+            input.setAttribute("class", "form-control");
+            input.setAttribute("name", "row_" + i + "[]");
+
+            
+            if(i == 0 || j != 0){
+                input.setAttribute("readonly", "true");
+                if (i==0)
+                    input.setAttribute("style", "cursor: pointer;");
+            }
+            
+            input.value = file[i][j];
+
+            td.appendChild(input);
+            tr.appendChild(td);
+        }
+        table.appendChild(tr);
+    }
+    
+    var input = document.createElement("input");
+    input.setAttribute("value", "save_transporters");
+    input.setAttribute("name", "postType");
+    input.setAttribute("hidden", "true");
+    form.appendChild(input);
+    form.appendChild(table);
+    
+    var button = document.createElement("button");
+    button.setAttribute("type", "button");
+    button.setAttribute("class", "btn btn-sm btn-success pull-right");
+    button.setAttribute("style", "margin: 5px 0px;");
+    button.setAttribute("onclick", "submit_datafile()");
+    button.innerHTML = "Save";
+   
+    var rowCount = document.createElement("input"); rowCount.setAttribute("hidden", "true"); rowCount.value = size; rowCount.setAttribute("name", "rowCount");
+    rowCount.setAttribute("id", "rowCount");
+    var colCount = document.createElement("input"); colCount.setAttribute("hidden", "true"); colCount.value = count; colCount.setAttribute("name", "colCount");
+    
+    form.appendChild(rowCount);
+    form.appendChild(colCount);
+    
+    form.appendChild(input);
+    form.appendChild(refs);
+    form.appendChild(button);
+    div.appendChild(form);
+}
+
+/**
+ * Parse file with transporters and makes form
+ * 
+ * 
+ */
+function parse_interaction_file(file)
+{
     modal.style.display = "block";
     span.onclick = function() {
         modal.style.display = "none";
@@ -135,6 +272,7 @@ function parseFile(name)
     form.appendChild(button);
     div.appendChild(form);
 }
+
 
 /**
  * Submits form

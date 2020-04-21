@@ -9,7 +9,7 @@ class LoginController extends Controller
     {
         if($_POST)
         {
-            $userManager = new UserManager();
+            $userManager = new Users();
             try
             {
                 $userManager->login($_POST['name'], $_POST['password']);

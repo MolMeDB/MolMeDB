@@ -75,71 +75,77 @@ class Uploader extends Db
                             $QY, $QY_acc, $lt, $lt_acc,
                             $Q, $SMILES, $DrugBank, $PubChem, $PDB, $membrane, $method, $temperature)
     {
-        $pattern = '/\s*/m';
-        $replace = '';
         $substanceModel = new Substances();
         $interactionModel = new Interactions();
         $smilesModel = new Smiles();
 		$user_id = $_SESSION['user']['id'];
-		$rdkit = new Rdkit();
 		
 		try
 		{
-			if($SMILES == '')
+			if($SMILES == '' || !$SMILES)
 			{        
 				// try to find SMILES in DB
 				$SMILES = $smilesModel->where('name', $ligand)
 					->select_list('SMILES')
 					->get_one()
-					->name;
+					->SMILES;
 				$SMILES = $SMILES && $uploadName != '' ? $SMILES : 
-						$smilesModel->where('name', $uploadName)
-							->select_list('SMILES')
-							->get_one()
-							->name;
+					$smilesModel->where('name', $uploadName)
+						->select_list('SMILES')
+						->get_one()
+						->SMILES;
 			}
-			if($uploadName == "")
+			if($uploadName == "" || !$uploadName)
 			{
 				$uploadName = $ligand;
 			}
 
-			// Protect SMILES
-			$SMILES = preg_replace($pattern, $replace, $SMILES);
-
 			// Checks if substance already exists
-			$idSubstance = $substanceModel->test_duplicates($ligand, $uploadName);
+			$substance = $substanceModel->exists($ligand, $SMILES, $PDB, $DrugBank, $PubChem);
 
 			// Protected insert 
-			if(!$idSubstance)
+			if(!$substance->id)
 			{
 				// Add new one - protected db:ON_DUPLICATE_KEY
-				$idSubstance = $substanceModel->insert_substance($ligand, $uploadName, $MW, $SMILES, $user_id, $Area, $Volume, $LogP, $PDB, $DrugBank, $PubChem);
+				// $idSubstance = $substanceModel->insert_substance($ligand, $uploadName, $MW, $SMILES, $user_id, $Area, $Volume, $LogP, $PDB, $DrugBank, $PubChem);
+				$substance->name = $ligand;
+				$substance->uploadName = $ligand;
+				$substance->SMILES = $SMILES;
+				$substance->MW = $MW;
+				$substance->Area = $Area;
+				$substance->Volume = $Volume;
+				$substance->LogP = $LogP;
+				$substance->pdb = $PDB;
+				$substance->pubchem = $PubChem;
+				$substance->drugbank = $DrugBank;
+				$substance->user_id = $user_id;
+				$substance->validated = 0;
+				
+				$substance->save();
+
+				// Save identifier and check names
+				$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
+				$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
+				$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
+
+				$substance->save();
 			}
 			else
 			{
 				// Update record
-				$substance = new Substances($idSubstance);
-				
 				$substance->MW = $MW ? $MW : $substance->MW;
-				$substance->SMILES = $SMILES != '' ? $SMILES : $substance->SMILES;
+				$substance->SMILES = $SMILES ? $SMILES : $substance->SMILES;
 				$substance->LogP = $LogP ? $LogP : $substance->LogP;
 				$substance->Area = $Area ? $Area : $substance->Area;
 				$substance->Volume = $Volume ? $Volume : $substance->Volume;
-				$substance->pdb = strlen($PDB) ? $PDB : $substance->pdb;
-				$substance->pubchem = strlen($PubChem) ? $PubChem : $substance->pubchem;
-				$substance->drugbank = strlen($DrugBank) ? $DrugBank : $substance->drugbank;
+				$substance->pdb = $PDB ? $PDB : $substance->pdb;
+				$substance->pubchem = $PubChem ? $PubChem : $substance->pubchem;
+				$substance->drugbank = $DrugBank ? $DrugBank : $substance->drugbank;
 
 				$substance->save();
 			}
 
-			// Insert new 3D structure
-			if($rdkit->is_connected())
-			{
-				// Generate 3D structure and save
-			}
-
-
-			if($Q === '' || !$Q)
+			if($Q === '' || $Q === NULL)
 			{
 				$Q = NULL;
 
@@ -148,7 +154,7 @@ class Uploader extends Db
 					(
 						'id_membrane'	=> $membrane->id,
 						'id_method'		=> $method->id,
-						'id_substance'	=> $idSubstance,
+						'id_substance'	=> $substance->id,
 						'temperature'	=> $temperature,
 						'charge'		=> "NULL",
 						'id_reference'	=> $reference
@@ -189,7 +195,7 @@ class Uploader extends Db
 			}
 
 			// Insert new interaction - protected db:ON_DUPLICATE_KEY
-			return $interactionModel->insert_interaction($dataset_id, $reference, $temperature, $Q, $membrane->id, $idSubstance, $method->id, $position,$position_acc, $penetration, $penetration_acc, $water, $water_acc, 
+			return $interactionModel->insert_interaction($dataset_id, $reference, $temperature, $Q, $membrane->id, $substance->id, $method->id, $position,$position_acc, $penetration, $penetration_acc, $water, $water_acc, 
 								$LogK, $LogK_acc, $user_id, "", $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc, $fluo_wl, $fluo_wl_acc, 
 								$QY, $QY_acc, $lt, $lt_acc);
 
@@ -198,5 +204,136 @@ class Uploader extends Db
 		{
 			throw new Exception($ligand . ' / ' . $ex->getMessage());
 		}
-    }
+	}
+	
+
+	/**
+	 * Insert new transporter record
+	 * 
+	 * @param integer $id_dataset
+	 * @param string $ligand
+	 * @param string $SMILES
+	 * @param float $MW
+	 * @param float $log_p
+	 * @param string $pdb
+	 * @param string $pubchem
+	 * @param string $drugbank
+	 * @param string $uniprot
+	 * @param integer $id_reference - Primary reference
+	 * @param integer $type
+	 * @param string $target
+	 * @param float $IC50
+	 * @param float $EC50
+	 * @param float $KI
+	 * @param float $KM
+	 * 
+	 */
+	public function insert_transporter($id_dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
+		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM)
+	{
+		$substanceModel = new Substances();
+		$smilesModel = new Smiles();
+		$user_id = $_SESSION['user']['id'];
+
+		try
+		{
+			if($SMILES == '' || !$SMILES)
+			{        
+				// try to find SMILES in DB
+				$SMILES = $smilesModel->where('name', $ligand)
+					->select_list('SMILES')
+					->get_one()
+					->SMILES;
+			}
+			
+			// Checks if substance already exists
+			$substance = $substanceModel->exists($ligand, $SMILES, $pdb, $drugbank, $pubchem);
+
+			// Protected insert 
+			if(!$substance->id)
+			{
+				// Add new one
+				$substance->name = $ligand;
+				$substance->uploadName = $ligand;
+				$substance->SMILES = $SMILES;
+				$substance->MW = $MW;
+				$substance->LogP = $log_p;
+				$substance->pdb = $pdb;
+				$substance->pubchem = $pubchem;
+				$substance->drugbank = $drugbank;
+				$substance->user_id = $user_id;
+				
+				$substance->save();
+
+				// Save identifier and check names
+				$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
+				$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
+				$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
+
+				$substance->save();
+			}
+			else
+			{
+				// Update record
+				$substance->MW = $MW ? $MW : $substance->MW;
+				$substance->SMILES = $SMILES ? $SMILES : $substance->SMILES;
+				$substance->LogP = $log_p ? $log_p : $substance->LogP;
+				$substance->Area = $substance->Area;
+				$substance->Volume = $substance->Volume;
+				$substance->pdb = $pdb ? $pdb : $substance->pdb;
+				$substance->pubchem = $pubchem ? $pubchem : $substance->pubchem;
+				$substance->drugbank = $drugbank ? $drugbank : $substance->drugbank;
+
+				// If missing identifier, then update
+				if(!$substance->identifier)
+				{
+					$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
+					$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
+					$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
+				}
+
+				$substance->save();
+			}
+
+			// Check if target already exists
+			$transp_target_model = new Transporter_targets();
+
+			$target_obj = $transp_target_model->find($target, $uniprot);
+
+			// Not exists? Make new one
+			if(!$target_obj->id)
+			{
+				$target_obj->name = $target;
+				$target_obj->uniprot_id = $uniprot;
+				$target_obj->id_user = $user_id;
+
+				$target_obj->save();
+			}
+
+			// save new transporter
+			$transporter = new Transporters();
+
+			// Check, if already exists
+			$transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $type);
+
+			// Create/rewrite record
+			$transporter->id_dataset = $id_dataset;
+			$transporter->id_substance = $substance->id;
+			$transporter->id_target = $target_obj->id;
+			$transporter->type = $type;
+			$transporter->Km = $KM;
+			$transporter->Ki = $KI;
+			$transporter->EC50 = $EC50;
+			$transporter->IC50 = $IC50;
+			$transporter->id_reference = $id_reference;
+			$transporter->id_user = $user_id;
+			
+			$transporter->save();
+		} 
+		catch (Exception $ex) 
+		{
+			throw new Exception($ligand . ' / ' . $ex->getMessage());
+		}
+
+	}
 }

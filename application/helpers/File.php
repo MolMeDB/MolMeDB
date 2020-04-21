@@ -21,9 +21,9 @@ class File
         if($path && is_array($path)) // Uploaded file
         {
             $this->origin_path = $path['tmp_name'];
-            $this->name = $path['name'];
             $this->size = $path['size'];
             $this->extension = pathinfo($path['name'], PATHINFO_EXTENSION);
+            $this->name = rtrim($path['name'], '.'. $this->extension);
         }
         else if($path)
         {
@@ -70,7 +70,7 @@ class File
         //Check if path exists
         $this->make_path($dir_path);
 
-        $target = $dir_path . '/' . $this->name;
+        $target = $dir_path . '/' . $this->name . '.' . $this->extension;
 
         if(file_exists($target))
         {

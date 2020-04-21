@@ -26,9 +26,9 @@
                     </tr>
                     <tr><td><b>File type</b></td>
                         <td style="text-align: left;">
-                            <input type="radio" id="type_1" name="fileType" value="1" checked>
+                            <input type="radio" id="type_1" name="fileType" value="<?= UploadController::P_SAVE_DATASET?>" <?= $fileType == UploadController::P_SAVE_DATASET || !$fileType ? 'checked' : ''?> <?= $fileType ? 'disabled' : ''?>>
                             <label for="type_1">Interaction dataset</label><br/>
-                            <input type="radio" id="type_2" name="fileType" value="2">
+                            <input type="radio" id="type_2" name="fileType" value="<?= UploadController::P_SAVE_TRANSPORTERS?>" <?= $fileType == UploadController::P_SAVE_TRANSPORTERS ? 'checked' : ''?> <?= $fileType ? 'disabled' : ''?>>
                             <label for="type_2">Transporter dataset</label>
                         </td>
                     </tr>
@@ -38,9 +38,9 @@
                     <tr><td><b>Fill missing 3D structures</b></td>
                         <td><a href="/upload/fill3dStructures"><button type="button" class="btn btn-sm btn-success">Process</button></a></td>
                     </tr>
-                    <?php if(isset($fileName)) : ?>
+                    <?php if(isset($fileName) && $fileName) : ?>
                     <tr><td class="td-fileUpload"><b>Show uploaded file</b></td>
-                        <td><button onclick="parseFile('<?=$fileName?>')" type="button" class="btn btn-sm btn-danger">Show</button></td>
+                        <td><button onclick="parseFile('<?=$fileName?>', '<?= $fileType ?>')" type="button" class="btn btn-sm btn-danger">Show</button></td>
                     </tr>
                     <?php endif ?>
                 </table>
@@ -63,6 +63,12 @@
                     - Only some values (Name, whatever_ID, Q and SMILES) can be in text form. Other must be in <b>numeric form</b>!<br/>
                     - Lines with blank <b>name</b> field will be ignored.
                 </li>
+            </ul>
+            <h4 class="titleH3" style="color:red">Valid transporters types:</h4>
+            <ul class="comparator-tips">
+                <?php $arr = Transporters::get_all_shortcuts(); foreach($arr as $type => $shortcut): ?>
+                <li><b><?= $shortcut ?></b>: <?= Transporters::get_enum_type($type) ?></li>
+                <?php endforeach ?>
             </ul>
         </div>
     </div>

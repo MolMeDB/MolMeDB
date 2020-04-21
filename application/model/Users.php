@@ -11,7 +11,7 @@
  * @property datetime $createDateTime
  * 
  */
-class UserManager extends Db
+class Users extends Db
 {
     /**
      * Constructor
@@ -110,7 +110,7 @@ class UserManager extends Db
             throw new ErrorUser('Password doesn\'t match');
         }
 
-        $user = new UserManager();
+        $user = new Users();
 
         try
         {
@@ -140,7 +140,7 @@ class UserManager extends Db
     /**
      * Gets user's detail
      * 
-     * @return UserManager
+     * @return Users
      */
     public function returnUser()
     {

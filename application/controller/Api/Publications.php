@@ -54,7 +54,7 @@ class ApiPublications extends ApiController
     {
         $publ_model = new Publications();
         
-        $data = $publ_model->get_all();
+        $data = $publ_model->order_by("citation")->get_all();
         
         $this->answer($data->as_array(NULL, FALSE));
     }

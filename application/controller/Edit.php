@@ -16,18 +16,21 @@ class EditController extends Controller
     const T_3D_STRUCTURE = '3d_structure';
 
     /** MENU SECTIONS */
-    const M_DATASET = 1;
+    const M_DATASET_INTER = 1;
     const M_ENERGY = 2;
     const M_MEMBRANE = 3;
     const M_METHOD = 4;
     const M_ARTICLE = 5;
     const M_PUBLICATION = 6;
     const M_USERS = 7;
+    const M_DATASET_TRANS = 8;
+
 
     /** MENU ENDPOINTS */
     private $menu_endpoints = array
     (
-        self::M_DATASET => 'dataset',
+        self::M_DATASET_INTER => 'dsInteractions',
+        self::M_DATASET_TRANS => 'dsTransporters',
         self::M_ENERGY  => 'energy',
         self::M_MEMBRANE => 'membrane',
         self::M_METHOD => 'method',
@@ -361,7 +364,7 @@ class EditController extends Controller
      * 
      * @author Jakub Juračka
      */
-    public function dataset($id = NULL)
+    public function dsInteractions($id = NULL)
     {
         $dataset = new Datasets($id);
 
@@ -509,12 +512,12 @@ class EditController extends Controller
                         break;
                 }
 
-                $this->redirect('edit/dataset/' . intval($id));
+                $this->redirect('edit/dsInteractions/' . intval($id));
             }
             catch(Exception $e)
             {
                 $this->addMessageError($e->getMessage());
-                $this->redirect('edit/dataset/' . intval($id));
+                $this->redirect('edit/v/' . intval($id));
             }
         }
 
@@ -540,8 +543,196 @@ class EditController extends Controller
             ->get_all();
 
         $this->header['title'] = 'Dataset editor';
-        $this->data['navigator'] = $this->createNavigator(self::M_DATASET);
-        $this->view = 'edit/dataset';
+        $this->data['navigator'] = $this->createNavigator(self::M_DATASET_INTER);
+        $this->view = 'edit/interaction_dataset';
+    }
+    /**
+     * Edits transporters datasets
+     * 
+     * @param integer $id ID of dataset
+     * 
+     * @author Jakub Juračka
+     */
+    public function dsTransporters($id = NULL)
+    {
+        $dataset = new Transporter_datasets($id);
+
+        if($id && !$dataset->id)
+        {
+            $this->addMessageError('Dataset not found');
+            $this->redirect('edit/dataset');
+        }
+
+        // Is loaded dataset ? Then show detail
+        $show_detail = $dataset->id ? True : False;
+
+        if ($_POST) 
+        {
+            try
+            {
+                switch ($_POST['spec_type']) 
+                {
+                    case 'edit_rights':
+                        // try 
+                        // {
+                        //     //Check access rights
+                        //     $this->verifyUser(true, 'edit_dataset', array('id_dataset' => $id, "url" => "edit/dataset/$id"));
+
+                        //     Db::beginTransaction();
+
+                        //     $id_entity = $_POST['id_entity'];
+                        //     $group = $_POST['group'];
+
+                        //     $dataset->change_rights($id_entity, $group);
+                            
+                        //     Db::commitTransaction();
+                        //     $this->addMessageSuccess("Access rights was successfully changed!");
+                        // } 
+                        // catch (Exception $ex) 
+                        // {
+                        //     Db::rollbackTransaction();
+                        //     $this->addMessageError($ex->getMessage());
+                        // }
+                        $this->addMessageWarning('Sorry, service is temporary unavailable.');
+                        break;
+
+                    case 'edit_basic':
+                        try
+                        {
+                            // Access rights check
+                            // $this->verifyUser(true, 'edit_dataset', array('id_dataset' => $id, "url" => "edit/dataset/$id"));
+
+                            Db::beginTransaction();
+
+                            if(intval($_POST['id_dataset']) !== $dataset->id)
+                            {
+                                throw new Exception('Wrong dataset instance.');
+                            }
+
+                            // Update data
+                            $dataset->name = $_POST['dataset_name'];
+                            $dataset->id_publication = $_POST['dataset_publication'];
+                            $dataset->visibility = $_POST['visibility'];
+                            
+                            $dataset->save();
+                            
+                            Db::commitTransaction();
+
+                            $this->addMessageSuccess("Successfully updated!");
+                        } 
+                        catch (Exception $ex) 
+                        {
+                            Db::rollbackTransaction();
+                            $this->addMessageError($ex->getMessage());
+                        }
+                        break;
+
+                    case 'edit_interaction':
+                        // Check access rights
+                        $this->verifyUser(true, 'edit_dataset', array('id_dataset' => $id, "url" => "edit/dataset/$id"));
+                        
+                        try 
+                        {
+                            $interaction = new Interactions($_POST['id_interaction']);
+                            $substance = new Substances($interaction->id_substance);
+
+                            if(!$interaction->id)
+                            {
+                                throw new Exception('Interaction was not found.');
+                            }
+
+                            if(!$substance->id)
+                            {
+                                throw new Exception('Substance was not found.');
+                            }
+
+                            Db::beginTransaction();
+
+                            // Edit substance
+                            $substance->name = $_POST['substance_name'];
+                            $substance->SMILES = $_POST['SMILES'];
+                            $substance->LogP = $_POST['LogP'];
+                            $substance->pubchem = $_POST['pubchem'];
+                            $substance->pdb = $_POST['pdb'];
+                            $substance->chEBI = $_POST['chEBI'];
+                            $substance->chEMBL = $_POST['chEMBL'];
+                            $substance->drugbank = $_POST['drugbank'];
+
+                            $substance->save();
+
+                            // Edit interaction
+                            $interaction->Position = $_POST['Position'];
+                            $interaction->Position_acc = $_POST['Position_acc'];
+                            $interaction->Penetration = $_POST['Penetration'];
+                            $interaction->Penetration_acc = $_POST['Penetration_acc'];
+                            $interaction->Water = $_POST['Water'];
+                            $interaction->Water_acc = $_POST['Water_acc'];
+                            $interaction->LogK = $_POST['LogK'];
+                            $interaction->LogK_acc = $_POST['LogK_acc'];
+                            $interaction->LogPerm = $_POST['LogPerm'];
+                            $interaction->LogPerm_acc = $_POST['LogPerm_acc'];
+                            $interaction->theta = $_POST['theta'];
+                            $interaction->theta_acc = $_POST['theta_acc'];
+                            $interaction->abs_wl = $_POST['abs_wl'];
+                            $interaction->abs_wl_acc = $_POST['abs_wl_acc'];
+                            $interaction->fluo_wl = $_POST['fluo_wl'];
+                            $interaction->fluo_wl_acc = $_POST['fluo_wl_acc'];
+                            $interaction->QY = $_POST['QY'];
+                            $interaction->QY_acc = $_POST['QY_acc'];
+                            $interaction->lt = $_POST['lt'];
+                            $interaction->lt_acc = $_POST['lt_acc'];
+                            $interaction->temperature = $_POST['temperature'];
+                            $interaction->charge = $_POST['charge'];
+
+                            $interaction->save();
+
+                            Db::commitTransaction();
+                            $this->addMessageSuccess($substance->name . " was successfully updated!");
+                        } catch (Exception $ex) 
+                        {
+                            Db::rollbackTransaction();
+                            $this->addMessageError($ex->getMessage());
+                        }
+                        break;
+
+                    default:
+                        throw new Exception('Wrong request type.');
+                        break;
+                }
+
+                $this->redirect('edit/dsTransporters/' . intval($id));
+            }
+            catch(Exception $e)
+            {
+                $this->addMessageError($e->getMessage());
+                $this->redirect('edit/dsTransporters/' . intval($id));
+            }
+        }
+
+        // If dataset exists, show detail
+        if($dataset->id)
+        {
+            $transporters_model = new Transporters();
+
+            $dataset_transporters = $transporters_model
+                ->where('id_dataset', $dataset->id)
+                ->get_all();
+
+            $this->data['info'] = $dataset;
+            $this->data['transporters_table'] = self::createTransportersTable($dataset_transporters, $dataset->id);
+            // $this->data['rights_users'] = $dataset->get_rights();
+            // $this->data['rights_groups'] = $dataset->get_rights(true);
+        }
+
+        $this->data['show_detail'] = $show_detail;
+        // Get all datasets
+        $this->data['datasets'] = $dataset
+            ->order_by('create_datetime', 'DESC')
+            ->get_all();
+
+        $this->header['title'] = 'Dataset editor';
+        $this->data['navigator'] = $this->createNavigator(self::M_DATASET_TRANS);
+        $this->view = 'edit/transporter_dataset';
     }
 
 
@@ -554,7 +745,7 @@ class EditController extends Controller
      */
     public function user($group_id = NULL, $user_id = NULL)
     {
-        $userModel = new UserManager($user_id);
+        $userModel = new Users($user_id);
         $groups = $userModel->get_all_groups();
 
         $this->data['users_table'] = '';
@@ -1067,6 +1258,92 @@ class EditController extends Controller
         return $table;
     }
 
+    /**
+     * Makes dataset transporters table
+     * 
+     * @param array $tranporters
+     * @param integer $id_dataset
+     * 
+     * @return string HTML
+     */
+    private function createTransportersTable($tranporters, $id_dataset)
+    {
+        $thead = array
+        (
+            // 'edit' => 'Edit', 'delete' => 'Delete',
+            'id' => 'ID', 'name' => 'Molecule', 'target' => 'Target', 'LogP' => 'LogP',
+            'type' => "Type", "Km" => "Km", "Ki" => "Ki", 'EC50' => 'EC50', 'IC50' => "IC50", 'id_reference' => "Reference_id"
+        );
+        $hidden = array();
+
+        foreach ($tranporters as $i) 
+        {
+            $i->name = $i->substance->name;
+
+            foreach ($thead as $key => $v) 
+            {
+                if (in_array($key, array('edit','delete')))
+                {
+                    continue;
+                }
+
+                if (($i->$key === NULL || $i->$key == "NULL" || $i->$key == '') && (!isset($hidden[$key]) || $hidden[$key] == 0))
+                {
+                    $hidden[$key] = 0;
+                }
+                else
+                {
+                    $hidden[$key] = 1;
+                }
+            }
+        }
+
+
+        $table = '<table class="dataset-table"><thead><tr>';
+
+        foreach ($thead as $key => $h) 
+        {
+            if (isset($hidden[$key]) && $hidden[$key] == 0)
+                continue;
+            $table .= '<td>' . $h . '</td>';
+        }
+
+        $table .= '</tr></thead><tbody>';
+
+        foreach ($tranporters as $i) 
+        {
+            $table .= '<tr id="' . $i->id . '">';
+            foreach ($thead as $key => $v) 
+            {
+                if (($key !== 'edit' && $key !== 'delete'))
+                    if ($hidden[$key] == 0)
+                        continue;
+                if ($v == 'Edit')
+                    $table .= '<td onclick="modal_editor(\'' . $i->id . '\')"><span class="glyphicon glyphicon-pencil"></span></td>';
+
+                else if ($v == 'Delete')
+                    $table .= '<td onclick="delete_transporter(\'' . $id_dataset . '\',\'' . $i->id . '\')"><span style="color:red;" class="glyphicon glyphicon-remove"></span></td>';
+
+                else if($v == 'Target')
+                {
+                    $table .= '<td>' . ($i->target ? $i->target->name : '') . '</td>';
+                }
+                else if($v == 'Type')
+                {
+                    $table .= '<td>' . $i->get_enum_type() . '</td>';
+                }
+                else
+                    $table .= '<td>' . $i->$key . '</td>';
+            }
+
+            $table .= '</tr>';
+        }
+
+        $table .= '</tbody></table>';
+
+        return $table;
+    }
+
 
     /**
      * Creates navigator for editor
@@ -1090,10 +1367,10 @@ class EditController extends Controller
             ),
             array
             (
-                'type'  => self::M_DATASET,
-                'name' => 'Dataset',
+                'type'  => self::M_DATASET_INTER,
+                'name' => 'Interactions',
                 'glyphicon' => 'folder-open',
-                'ref' => $this->menu_endpoints[self::M_DATASET]
+                'ref' => $this->menu_endpoints[self::M_DATASET_INTER]
             ),
             array
             (
@@ -1115,6 +1392,13 @@ class EditController extends Controller
                 'name' => 'Publication',
                 'glyphicon' => 'link',
                 'ref' => $this->menu_endpoints[self::M_PUBLICATION]
+            ),
+            array
+            (
+                'type'  => self::M_DATASET_TRANS,
+                'name' => 'Transporters',
+                'glyphicon' => 'folder-open',
+                'ref' => $this->menu_endpoints[self::M_DATASET_TRANS]
             ),
             array
             (

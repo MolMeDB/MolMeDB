@@ -237,7 +237,7 @@ class Uploader extends Db
 
 		try
 		{
-			if($SMILES == '' || !$SMILES)
+			if($SMILES === '' || !$SMILES)
 			{        
 				// try to find SMILES in DB
 				$SMILES = $smilesModel->where('name', $ligand)
@@ -245,7 +245,7 @@ class Uploader extends Db
 					->get_one()
 					->SMILES;
 			}
-			
+
 			// Checks if substance already exists
 			$substance = $substanceModel->exists($ligand, $SMILES, $pdb, $drugbank, $pubchem);
 

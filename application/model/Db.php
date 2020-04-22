@@ -702,11 +702,14 @@ class Db extends Iterable_object
                 SET ' . $attr_str . ' 
                 WHERE id = ?
             ', $values);
+
+            self::__construct($this->id);
         } 
         else 
         {
             $last_id = $this->insert($this->table, $new_data);
             $this->id = $last_id;
+            self::__construct($this->id);
         }
     }
 

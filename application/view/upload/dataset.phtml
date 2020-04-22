@@ -66,8 +66,8 @@
             </ul>
             <h4 class="titleH3" style="color:red">Valid transporters types:</h4>
             <ul class="comparator-tips">
-                <?php $arr = Transporters::get_all_shortcuts(); foreach($arr as $type => $shortcut): ?>
-                <li><b><?= $shortcut ?></b>: <?= Transporters::get_enum_type($type) ?></li>
+                <?php $t = new Transporters(); $arr = $t->get_all_shortcuts(); foreach($arr as $type => $shortcut): ?>
+                <li><b><?= $shortcut ?></b>: <?= $t->get_enum_type($type) ?></li>
                 <?php endforeach ?>
             </ul>
         </div>

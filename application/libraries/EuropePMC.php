@@ -20,12 +20,12 @@ class EuropePMC
         $uri = $config->get(Configs::EUROPEPMC_URI);
         if(!$uri || $uri === '')
         {
-            $connected = false;
+            $$this->connected = false;
         }
         else
         {
             $this->client = new Http_request($uri);
-            $connected = true;
+            $this->connected = true;
         }
     }
 

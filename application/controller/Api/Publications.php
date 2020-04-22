@@ -70,6 +70,11 @@ class ApiPublications extends ApiController
     {
         $PMC = new EuropePMC();
 
+        if(!$PMC->is_connected())
+        {
+            $this->answer(NULL, self::CODE_FORBIDDEN);
+        }
+
         $publ = $PMC->search($doi);
 
         // Should contains max one result

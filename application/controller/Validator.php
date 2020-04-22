@@ -4,32 +4,99 @@
 /**
  * Data validator
  * 
- * TEMPORARY UNAVAILABLE!
  */
 class ValidatorController extends Controller 
 {
+
+    /**
+     * Constructor
+     */
     function __construct()
     {
         $this->verifyUser(True);
 
-        $this->addMessageWarning('Sorry, page is temporary unavailable.');
-        $this->redirect('administration');
+        // $this->addMessageWarning('Sorry, page is temporarily unavailable.');
+        // $this->join();
     }
 
-
-    public function parse($parameters) 
+    /**
+     * Joins 2 given molecules to one record
+     * 
+     * @param integer $substance_1
+     * @param integer $substance_2
+     * 
+     * @author Jakub Juračka
+     */
+    public function join($substance_1 = NULL, $substance_2 = NULL)
     {
+        if($_POST)
+        {
+            $substance_1 = isset($_POST['substance_1']) ? $_POST['substance_1'] : $substance_1;
+            $substance_2 = isset($_POST['substance_2']) ? $_POST['substance_2'] : $substance_2;
+        }
+
+        $old = new Substances($substance_1);
+        $new = new Substances($substance_2);
+
+        // Check if exists
+        if($substance_1 && !$old->id)
+        {
+            $this->addMessageWarning('Substance not found.');
+            return;
+        }
+
+        // Check if exists
+        if($substance_2 && !$new->id)
+        {
+            $this->addMessageWarning('Substance not found.');
+            return;
+        }
+
+        $validatorModel = new Validator();
+
+        // Join
+        if($old->id && $new->id)
+        {
+            die;
+            try
+            {
+                // Start transaction
+                $new->beginTransaction();
+
+                // Join alternames
+                $validatorModel->join_alternames($old->id, $new->id);
+
+                // Join energy data
+                $validatorModel->join_energy_values($old->id, $new->id);
+
+                // Join interactions
+                $validatorModel->join_interactions($old->id, $new->id);
+
+                // Join transporters
+                $validatorModel->join_transporters($old->id, $new->id);
+
+                // Commit
+                $new->commitTransaction();
+            }
+            catch(Exception $e)
+            {
+                $new->rollbackTransaction();
+                $this->addMessageError($e->getMessage());
+            }
+        }
+
+        $this->header['title'] = 'Join molecules';
+        $this->view = 'validator/joiner';
+    }
+
+    public function parse() 
+    {
+        $this->redirect('validator/join');
         $validatorModel = new Validator();
         $substanceModel = new Substances();
-        $this->verifyUser(true);
         
-        if(isset($parameters[0]) && $parameters[0] == 'validate'){
-            $validatorModel->validate();
-            $this->addMessageSuccess('All molecules checked.');
-            $this->redirect('validator');
-        }
-        
-        if($_POST){
+        if($_POST)
+        {
             if(isset($_POST['asValidated'])){
                 $id = $_POST['ligand_1'];
                 try{
@@ -67,8 +134,8 @@ class ValidatorController extends Controller
             }
         }
         
-        $this->data['molecules'] = $validatorModel->get_duplicites_ids();
-        $this->data['num_notValidated'] = $validatorModel->num_notValidated();
+        // $this->data['molecules'] = $validatorModel->get_duplicites_ids();
+        // $this->data['num_notValidated'] = $validatorModel->num_notValidated();
         $this->header['title'] = 'Validator';
         $this->view = 'validator';
     }

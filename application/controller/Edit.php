@@ -999,6 +999,7 @@ class EditController extends Controller
             }
             catch(Exception $e)
             {
+                echo($e  . ' <br/>');
                 continue;
             }
         }

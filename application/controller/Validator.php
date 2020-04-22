@@ -57,7 +57,6 @@ class ValidatorController extends Controller
         // Join
         if($old->id && $new->id)
         {
-            die;
             try
             {
                 // Start transaction
@@ -75,8 +74,25 @@ class ValidatorController extends Controller
                 // Join transporters
                 $validatorModel->join_transporters($old->id, $new->id);
 
+                // Join substance details
+                $new->SMILES = !$new->SMILES || $new->SMILES == '' ? $old->SMILES : $new->SMILES;
+                $new->MW = $new->MW === NULL || $new->MW == '' ? $old->MW : $new->MW;
+                $new->Area = $new->Area === NULL || $new->Area == '' ? $old->Area : $new->Area;
+                $new->Volume = $new->Volume === NULL || $new->Volume == '' ? $old->Volume : $new->Volume;
+                $new->LogP = $new->LogP === NULL || $new->LogP == '' ? $old->LogP : $new->LogP;
+                $new->pubchem = !$new->pubchem || $new->pubchem == '' ? $old->pubchem : $new->pubchem;
+                $new->drugbank = !$new->drugbank || $new->drugbank == '' ? $old->drugbank : $new->drugbank;
+                $new->chEBI = !$new->chEBI || $new->chEBI == '' ? $old->chEBI : $new->chEBI;
+                $new->chEMBL = !$new->chEMBL || $new->chEMBL == '' ? $old->chEMBL : $new->chEMBL;
+                $new->pdb = !$new->pdb || $new->pdb == '' ? $old->pdb : $new->pdb;
+
+                // Delete old substance
+                $old->delete();
+
                 // Commit
                 $new->commitTransaction();
+
+                $this->addMessageSuccess('Molecules was successfully joined.');
             }
             catch(Exception $e)
             {

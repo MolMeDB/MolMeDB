@@ -43,7 +43,7 @@ class File
     /**
      * Creates new file instance
      */
-    public function new($filePath, $type = 'w')
+    public function create($filePath, $type = 'w')
     {
         // Get path
         $last_slash = strrpos($filePath, '/');

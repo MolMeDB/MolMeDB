@@ -93,7 +93,7 @@ class Upload_report
 
         $file = new File();
         $filePath = $this->folder . $file->generateName() . '.' . $this->extension;
-        $file->new($filePath);
+        $file->create($filePath);
 
         // Add header
         array_unshift($this->errors, array(self::COL_ROW, self::COL_REPORT));

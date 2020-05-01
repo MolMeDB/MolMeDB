@@ -611,7 +611,7 @@ class EditController extends Controller
 
                             // Update data
                             $dataset->name = $_POST['dataset_name'];
-                            $dataset->id_publication = $_POST['dataset_publication'];
+                            $dataset->id_reference = $_POST['dataset_publication'];
                             $dataset->visibility = $_POST['visibility'];
                             
                             $dataset->save();
@@ -627,73 +627,73 @@ class EditController extends Controller
                         }
                         break;
 
-                    case 'edit_interaction':
-                        // Check access rights
-                        $this->verifyUser(true, 'edit_dataset', array('id_dataset' => $id, "url" => "edit/dataset/$id"));
+                    // case 'edit_interaction':
+                    //     // Check access rights
+                    //     $this->verifyUser(true, 'edit_dataset', array('id_dataset' => $id, "url" => "edit/dataset/$id"));
                         
-                        try 
-                        {
-                            $interaction = new Interactions($_POST['id_interaction']);
-                            $substance = new Substances($interaction->id_substance);
+                    //     try 
+                    //     {
+                    //         $interaction = new Interactions($_POST['id_interaction']);
+                    //         $substance = new Substances($interaction->id_substance);
 
-                            if(!$interaction->id)
-                            {
-                                throw new Exception('Interaction was not found.');
-                            }
+                    //         if(!$interaction->id)
+                    //         {
+                    //             throw new Exception('Interaction was not found.');
+                    //         }
 
-                            if(!$substance->id)
-                            {
-                                throw new Exception('Substance was not found.');
-                            }
+                    //         if(!$substance->id)
+                    //         {
+                    //             throw new Exception('Substance was not found.');
+                    //         }
 
-                            Db::beginTransaction();
+                    //         Db::beginTransaction();
 
-                            // Edit substance
-                            $substance->name = $_POST['substance_name'];
-                            $substance->SMILES = $_POST['SMILES'];
-                            $substance->LogP = $_POST['LogP'];
-                            $substance->pubchem = $_POST['pubchem'];
-                            $substance->pdb = $_POST['pdb'];
-                            $substance->chEBI = $_POST['chEBI'];
-                            $substance->chEMBL = $_POST['chEMBL'];
-                            $substance->drugbank = $_POST['drugbank'];
+                    //         // Edit substance
+                    //         $substance->name = $_POST['substance_name'];
+                    //         $substance->SMILES = $_POST['SMILES'];
+                    //         $substance->LogP = $_POST['LogP'];
+                    //         $substance->pubchem = $_POST['pubchem'];
+                    //         $substance->pdb = $_POST['pdb'];
+                    //         $substance->chEBI = $_POST['chEBI'];
+                    //         $substance->chEMBL = $_POST['chEMBL'];
+                    //         $substance->drugbank = $_POST['drugbank'];
 
-                            $substance->save();
+                    //         $substance->save();
 
-                            // Edit interaction
-                            $interaction->Position = $_POST['Position'];
-                            $interaction->Position_acc = $_POST['Position_acc'];
-                            $interaction->Penetration = $_POST['Penetration'];
-                            $interaction->Penetration_acc = $_POST['Penetration_acc'];
-                            $interaction->Water = $_POST['Water'];
-                            $interaction->Water_acc = $_POST['Water_acc'];
-                            $interaction->LogK = $_POST['LogK'];
-                            $interaction->LogK_acc = $_POST['LogK_acc'];
-                            $interaction->LogPerm = $_POST['LogPerm'];
-                            $interaction->LogPerm_acc = $_POST['LogPerm_acc'];
-                            $interaction->theta = $_POST['theta'];
-                            $interaction->theta_acc = $_POST['theta_acc'];
-                            $interaction->abs_wl = $_POST['abs_wl'];
-                            $interaction->abs_wl_acc = $_POST['abs_wl_acc'];
-                            $interaction->fluo_wl = $_POST['fluo_wl'];
-                            $interaction->fluo_wl_acc = $_POST['fluo_wl_acc'];
-                            $interaction->QY = $_POST['QY'];
-                            $interaction->QY_acc = $_POST['QY_acc'];
-                            $interaction->lt = $_POST['lt'];
-                            $interaction->lt_acc = $_POST['lt_acc'];
-                            $interaction->temperature = $_POST['temperature'];
-                            $interaction->charge = $_POST['charge'];
+                    //         // Edit interaction
+                    //         $interaction->Position = $_POST['Position'];
+                    //         $interaction->Position_acc = $_POST['Position_acc'];
+                    //         $interaction->Penetration = $_POST['Penetration'];
+                    //         $interaction->Penetration_acc = $_POST['Penetration_acc'];
+                    //         $interaction->Water = $_POST['Water'];
+                    //         $interaction->Water_acc = $_POST['Water_acc'];
+                    //         $interaction->LogK = $_POST['LogK'];
+                    //         $interaction->LogK_acc = $_POST['LogK_acc'];
+                    //         $interaction->LogPerm = $_POST['LogPerm'];
+                    //         $interaction->LogPerm_acc = $_POST['LogPerm_acc'];
+                    //         $interaction->theta = $_POST['theta'];
+                    //         $interaction->theta_acc = $_POST['theta_acc'];
+                    //         $interaction->abs_wl = $_POST['abs_wl'];
+                    //         $interaction->abs_wl_acc = $_POST['abs_wl_acc'];
+                    //         $interaction->fluo_wl = $_POST['fluo_wl'];
+                    //         $interaction->fluo_wl_acc = $_POST['fluo_wl_acc'];
+                    //         $interaction->QY = $_POST['QY'];
+                    //         $interaction->QY_acc = $_POST['QY_acc'];
+                    //         $interaction->lt = $_POST['lt'];
+                    //         $interaction->lt_acc = $_POST['lt_acc'];
+                    //         $interaction->temperature = $_POST['temperature'];
+                    //         $interaction->charge = $_POST['charge'];
 
-                            $interaction->save();
+                    //         $interaction->save();
 
-                            Db::commitTransaction();
-                            $this->addMessageSuccess($substance->name . " was successfully updated!");
-                        } catch (Exception $ex) 
-                        {
-                            Db::rollbackTransaction();
-                            $this->addMessageError($ex->getMessage());
-                        }
-                        break;
+                    //         Db::commitTransaction();
+                    //         $this->addMessageSuccess($substance->name . " was successfully updated!");
+                    //     } catch (Exception $ex) 
+                    //     {
+                    //         Db::rollbackTransaction();
+                    //         $this->addMessageError($ex->getMessage());
+                    //     }
+                    //     break;
 
                     default:
                         throw new Exception('Wrong request type.');

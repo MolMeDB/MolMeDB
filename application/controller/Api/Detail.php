@@ -161,7 +161,9 @@ class ApiDetail extends ApiController
                 $i->method_name = $i->method->name;
                 $i->method_idTag = $i->method->idTag;
                 $i->method_CAM = $i->membrane->CAM;
-                $i->reference = $i->reference ? $i->reference->citation : NULL;
+                $i->primary_reference = $i->reference ? $i->reference->citation : NULL;
+                $i->secondary_reference = $i->dataset && $i->dataset->publication ? $i->dataset->publication->citation : NULL;
+                $i->secondary_reference_id = $i->dataset && $i->dataset->publication ? $i->dataset->publication->id : NULL;
 
                 $data[] = $i->as_array(NULL, True);
             }

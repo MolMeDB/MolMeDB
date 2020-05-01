@@ -14,7 +14,7 @@ class Db extends Iterable_object
         PDO::ATTR_EMULATE_PREPARES => false,
     );
 
-    /** MYSQL BUILDER ATTRIBUTES */
+    /** MYSQL QUERY BUILDER ATTRIBUTES */
     protected $table;
     private $select_list = '*';
     private $limit = '';
@@ -231,10 +231,6 @@ class Db extends Iterable_object
     /**
      * Get all rows from given table
      * 
-     * @param array $select - SELECT LIST
-     * @param integer $pagination
-     * @param integer $limit
-     * 
      * @return Iterable_object
      */
     public function get_all()
@@ -273,11 +269,7 @@ class Db extends Iterable_object
     }
 
     /**
-     * Get all rows from given table
-     * 
-     * @param array $select - SELECT LIST
-     * @param integer $pagination
-     * @param integer $limit
+     * Get one row from given table
      * 
      * @return Iterable_object
      */
@@ -694,7 +686,7 @@ class Db extends Iterable_object
         {
             $values[] = $this->id;
 
-            if(FALSE)
+            if($this->debug)
             {
                 echo '
                     UPDATE ' . $this->table .  '
@@ -705,16 +697,19 @@ class Db extends Iterable_object
                 die;
             }
 
-            return $this->query('
+            $this->query('
                 UPDATE ' . $this->table .  '
                 SET ' . $attr_str . ' 
                 WHERE id = ?
             ', $values);
+
+            self::__construct($this->id);
         } 
         else 
         {
             $last_id = $this->insert($this->table, $new_data);
             $this->id = $last_id;
+            self::__construct($this->id);
         }
     }
 
@@ -895,7 +890,7 @@ class Db extends Iterable_object
         }
     }
 
-    // /**
+    // /** DEPRECATED
     //  * Returns current object
     //  */
     // protected function as_object($params, $class_params = False)

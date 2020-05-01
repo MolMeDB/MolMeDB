@@ -7,7 +7,7 @@ class EuropePMC
 {
     /** HOLDS info about connection */
     private $client;
-
+    private $connected;
 
 
     /**
@@ -17,7 +17,24 @@ class EuropePMC
     {
         $config = new Config();
 
-        $this->client = new Http_request($config->get(Configs::EUROPEPMC_URI));
+        $uri = $config->get(Configs::EUROPEPMC_URI);
+        if(!$uri || $uri === '')
+        {
+            $$this->connected = false;
+        }
+        else
+        {
+            $this->client = new Http_request($uri);
+            $this->connected = true;
+        }
+    }
+
+    /**
+     * 
+     */
+    public function is_connected()
+    {
+        return $this->connected;
     }
 
     /**
@@ -25,6 +42,11 @@ class EuropePMC
      */
     public function search($query)
     {
+        if(!$this->is_connected())
+        {
+            return false;
+        }
+
         $uri = 'search';
         $method = Http_request::METHOD_GET;
         $params = array
@@ -38,11 +60,37 @@ class EuropePMC
         {
             $response = $this->client->request($uri, $method, $params);
 
+            if(count($response->resultList->result) > 1) // Get best result on the top
+            {
+                // Try to find best result
+                $best = $response->resultList->result[0];
+                $rows = array();
+
+                foreach($response->resultList->result as $row)
+                {
+                    $pmid = property_exists($row, 'pmid') ? $row->pmid : NULL;
+                    $doi = property_exists($row, 'doi') ? $row->doi : NULL;
+
+                    if($pmid === trim($query) || $doi === trim($query))
+                    {
+                        $best = $row;
+                    }
+                    else
+                    {
+                        $rows[] = $row;
+                    }
+                }
+
+                array_unshift($rows, $best);
+
+                $response->resultList->result = $rows;
+            }
+
             return self::get_data($response);
         }  
         catch(Exception $e)
         {
-            throw new Exception('Server error.');
+            throw new Exception('Europe PMC server error.');
         }
     }
 

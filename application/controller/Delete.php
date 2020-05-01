@@ -8,6 +8,10 @@
 class DeleteController extends Controller 
 {
 
+    /** ENDPOINT TYPES */
+    CONST T_DETAIL = 1;
+    CONST T_DATASET = 2;
+
     /**
      * Constructor
      * Checks access rights
@@ -113,58 +117,133 @@ class DeleteController extends Controller
         $this->redirect('detail/intro');
     }
 
+    // /**
+    //  * Deletes interadataset
+    //  */
+    // public function dataset($type, $id)
+    // {
+        
+    // }
+
     /**
-     * Deletes dataset
+     * Deletes interaction 
+     * 
+     * @param integer $type
+     * @param integer $id - interaction ID
      */
-    public function dataset($id)
+    public function interaction($type, $id)
     {
-        $dataset = new Datasets($id);
         $redirect = isset($_GET['redirection']) ? $_GET['redirection'] : 'edit/dataset';
 
-        if(!$dataset->id)
+        $type = intval($type);
+
+        if($type === self::T_DATASET)
         {
-            $this->addMessageError('Dataset not found.');
+            $dataset = new Datasets($id);
+
+            if(!$dataset->id)
+            {
+                $this->addMessageError('Dataset not found.');
+            }
+            try
+            {
+                $dataset->delete();    
+                $this->addMessageSuccess('Dataset was deleted.');    
+            }
+            catch(Exception $e)
+            {
+                $this->addMessageError($e->getMessage());
+            }
+
+            
         }
-        try
+        else if($type === self::T_DETAIL)
         {
-            $dataset->delete();    
-            $this->addMessageSuccess('Dataset was deleted.');    
+            $interaction = new Interactions($id);
+
+            $redirect_path = isset($_GET['redirection']) ? $_GET['redirection'] : 'detail/intro';
+
+            if(!$interaction->id)
+            {
+                $this->addMessageError('Record');
+                $this->redirect($redirect_path);
+            }
+            try
+            {
+                $interaction->delete();
+                $this->addMessageSuccess('Interaction [ID: ' . $id . '] was deleted.');
+            }
+            catch(Exception $e)
+            {
+                $this->addMessageError($e->getMessage());
+            }
         }
-        catch(Exception $e)
+        else
         {
-            $this->addMessageError($e->getMessage());
+            $this->addMessageError('Invalid parameter type.');
         }
 
         $this->redirect($redirect);
     }
 
     /**
-     * Deletes interaction 
+     * Deletes transporters 
      * 
+     * @param integer $type
      * @param integer $id - interaction ID
      */
-    public function interaction($id)
+    public function transporter($type, $id)
     {
-        $interaction = new Interactions($id);
+        $redirect = isset($_GET['redirection']) ? $_GET['redirection'] : 'edit/dataset';
 
-        $redirect_path = isset($_GET['redirection']) ? $_GET['redirection'] : 'detail/intro';
+        $type = intval($type);
 
-        if(!$interaction->id)
+        if($type === self::T_DATASET)
         {
-            $this->addMessageError('Record');
-            $this->redirect($redirect_path);
+            $dataset = new Transporter_datasets($id);
+
+            if(!$dataset->id)
+            {
+                $this->addMessageError('Dataset not found.');
+            }
+            try
+            {
+                $dataset->delete();    
+                $this->addMessageSuccess('Dataset was deleted.');    
+            }
+            catch(Exception $e)
+            {
+                $this->addMessageError($e->getMessage());
+            }
+
+            
         }
-        try
+        else if($type === self::T_DETAIL)
         {
-            $interaction->delete();
-            $this->addMessageSuccess('Interaction [ID: ' . $id . '] was deleted.');
+            $interaction = new Transporters($id);
+
+            $redirect_path = isset($_GET['redirection']) ? $_GET['redirection'] : 'detail/intro';
+
+            if(!$interaction->id)
+            {
+                $this->addMessageError('Record');
+                $this->redirect($redirect_path);
+            }
+            try
+            {
+                $interaction->delete();
+                $this->addMessageSuccess('Transporter detail [ID: ' . $id . '] was deleted.');
+            }
+            catch(Exception $e)
+            {
+                $this->addMessageError($e->getMessage());
+            }
         }
-        catch(Exception $e)
+        else
         {
-            $this->addMessageError($e->getMessage());
-            $this->redirect($redirect_path);
+            $this->addMessageError('Invalid parameter type.');
         }
 
-        $this->redirect($redirect_path);
+        $this->redirect($redirect);
     }
 }

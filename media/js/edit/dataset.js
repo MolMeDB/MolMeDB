@@ -211,7 +211,156 @@ function edit_basic_info(edit_btn)
 
                             var option_del = document.createElement("option");
                             option.value = id;
-                            option.innerHTML = current.content;
+                            option.innerHTML = current.citation;
+                            option_del.value = '';
+                            option_del.disabled = true;
+                            option_del.innerHTML = "----------------------------------------------";
+                            
+                            select.appendChild(option);
+                            select.appendChild(option_del);
+                            continue;
+                        }
+                        
+                        option.value = publications[k].id; //ID publication
+                        option.innerHTML = publications[k].citation; //Name publication
+                        select.appendChild(option);
+                    }
+                    td.appendChild(select);
+                    tr.appendChild(td);
+                } 
+                    
+            }
+        }
+        
+        else{
+            var child = c[i].children;
+            for(var j = 0; j < child.length; j++){
+                var td = document.createElement("td");
+                
+                if(j == 0){
+                    td.innerHTML = (child[j].innerHTML).trim();
+                    tr.appendChild(td);
+                    continue;
+                }
+                
+                var select = document.createElement("select");
+                select.className="form-control";
+                select.name = "visibility"
+                
+                var visibility = document.getElementById("visibility_num").value;
+                var values = [visibility, "", 1, 2];
+                var text = [visibility === '1' ? "VISIBLE" : "INVISIBLE", "--------", "VISIBLE", "INVISIBLE"];
+                
+                for(var k=0; k < 4; k++){
+                    var option = document.createElement("option");
+                    
+                    option.value = values[k];
+                    option.innerHTML = text[k];
+                    if(k == 1)
+                        option.disabled = "true";
+                    
+                    select.appendChild(option);
+                }
+                td.appendChild(select);
+                tr.appendChild(td);
+            }
+        }
+        
+        tbody.appendChild(tr);
+    }
+    
+    submit_button.className = "btn btn-sm btn-success pull-right";
+    submit_button.innerHTML = "Save";
+    submit_button.type = "submit";
+    
+    new_table.appendChild(tbody);
+    new_table.className = 'table';
+    form.appendChild(new_table);
+    form.appendChild(submit_button);
+    
+    div.appendChild(form);
+}
+
+function edit_basic_transporter_info(edit_btn)
+{
+    edit_btn.style.visibility = 'hidden';
+    var old_table = document.getElementById("basic_info");
+    old_table.style.display = 'none';
+    var new_table = document.createElement("table");
+    var tbody = document.createElement("tbody");
+    var div = document.getElementById("table-basic-info-div");
+    var c = old_table.rows;
+    var count = c.length - 1;
+    var publications = get_all_publications();
+    var submit_button = document.createElement("button");
+    
+    var form = document.createElement("form");
+    form.setAttribute("method", "post");
+    var input = document.createElement("input");
+    input.name="spec_type"; input.setAttribute("value","edit_basic"); input.hidden = true;
+    form.appendChild(input);
+    form.appendChild(document.getElementById("id_dataset"));
+    
+    for(var i = 0; i < count; i++)
+    {
+        var tr = document.createElement("tr");
+        var child = c[i].children;
+        
+        if(i == 0)
+        {
+            for(var j = 0; j < child.length; j++){
+                var td = document.createElement("td");
+                if(j == 1){
+                    var input = document.createElement("input");
+                    input.name = "dataset_name";
+                    input.value = (child[j].innerHTML).trim();
+                    input.className = "form-control";
+                    td.appendChild(input);
+                }
+                else
+                    td.innerHTML = (child[j].innerHTML).trim();
+                tr.appendChild(td);
+            }
+        }
+        
+        else if (i < 5){
+            for(var j = 0; j < child.length; j++){
+                var td = document.createElement("td");
+                td.innerHTML = (child[j].innerHTML).trim();
+                tr.appendChild(td);
+            }
+        }
+        
+        
+        else if (i == 5) {
+            var child = c[i].children;
+            for(var j = 0; j < child.length; j++){
+                var td = document.createElement("td");
+                if(j == 0){
+                    td.innerHTML = (child[j].innerHTML).trim();
+                    tr.appendChild(td);
+                }
+                else{
+                    var select = document.createElement("select");
+                    select.className="form-control";
+                    select.name = "dataset_publication"
+                    
+                    for(var k=-1; k < publications.length; k++){
+                        var option = document.createElement("option");
+                        
+                        if(k === -1)
+                        { //First option with actual value
+                            var id = document.getElementById("idPublication").value;
+                            var current = ajax_request('publications/get', {id: id});
+
+                            if(!current)
+                            {
+                                continue;
+                            }
+
+                            var option_del = document.createElement("option");
+                            option.value = id;
+                            option.innerHTML = current.citation;
                             option_del.value = '';
                             option_del.disabled = true;
                             option_del.innerHTML = "----------------------------------------------";
@@ -336,10 +485,20 @@ function modal_editor(id_row)
 
 function delete_dataset(id)
 {
-    return alert_window("Are you sure you want to delete the dataset (ID = " + id + ")? <h5 style='color: red;'>This option removes any interactions associated with the dataset.<h5>", "delete/dataset/" + id); 
+    return alert_window("Are you sure you want to delete the dataset (ID = " + id + ")? <h5 style='color: red;'>This option removes any interactions associated with the dataset.<h5>", "delete/interaction/2/" + id + "?redirection=edit/dsInteractions"); 
+}
+
+function delete_transporter_dataset(id)
+{
+    return alert_window("Are you sure you want to delete the dataset (ID = " + id + ")? <h5 style='color: red;'>This option removes any transporters associated with the dataset.<h5>", "delete/transporter/2/" + id + "?redirection=edit/dsTransporters"); 
 }
 
 function delete_interaction(idDataset, id)
 {
-    return alert_window("Are you sure you want to delete the interaction (ID = " + id + ")? <h5 style='color: orange;'>This option will not remove compound detail from the database.<h5>", "delete/interaction/" + id + "?redirection=edit/dataset/" + idDataset); 
+    return alert_window("Are you sure you want to delete the interaction (ID = " + id + ")? <h5 style='color: orange;'>This option will not remove compound detail from the database.<h5>", "delete/interaction/1/" + id + "?redirection=edit/dsInteractions/" + idDataset); 
+}
+
+function delete_transporter(idDataset, id)
+{
+    return alert_window("Are you sure you want to delete the transporter detail (ID = " + id + ")? <h5 style='color: orange;'>This option will not remove compound detail from the database.<h5>", "delete/transporter/1/" + id + "?redirection=edit/dsTransporters/" + idDataset); 
 }

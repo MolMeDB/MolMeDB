@@ -170,7 +170,7 @@ abstract class Controller
      */
     public function verifyUser($admin = false, $special_rights = "", $spec_array = array(), $superadmin = false)
     {
-        $usermanager = new UserManager();
+        $usermanager = new Users();
         $user = $usermanager->returnUser();
 
         if (!$user)

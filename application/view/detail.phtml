@@ -138,7 +138,7 @@
             </div>
         </div>
 
-        <!--       <button class="accordion"><i class="glyphicon glyphicon-transfer" style="font-size: 24px;"></i>  Transporters</button>
+              <button class="accordion"><i class="glyphicon glyphicon-transfer" style="font-size: 24px;"></i>  Transporters</button>
        <div class="panelDetail" id="accordionInteraction">
            <div class="no-data" id="no-data-panel">
                    <p><i class="fa fa-line-chart"></i>   No data</p>
@@ -149,19 +149,56 @@
                    <div class="detail-content" id="transporterTab">
                        <table>
                             <thead class="thead-detail">
-                                <td><b>Transporter</b></td>
-                                <td>Activity</td>
+                                <td><b>Target</b></td>
+                                <td>Uniprot ID</td>
+                                <td>Type</td>
                                 <td>Km</td>
                                 <td>EC<sub>50</sub></td>
                                 <td>K<sub>i</sub></td>
                                 <td>IC<sub>50</sub></td>
-                                <td>Reference</td>
+                                <td>Primary<br/>reference</td>
+                                <td>Secondary<br/>reference</td>
                             </thead>
+                            <tbody>
+                                <?php foreach($transporters as $k => $t) : ?>
+                                    <tr>
+                                        <td><b><?=$t->target->name?></b></td>
+                                        <td><a target="_blank" href="https://www.uniprot.org/uniprot/<?=$t->target->uniprot_id?>"><?=$t->target->uniprot_id?></a></td>
+                                        <td><?=$t->get_enum_type()?></td>
+                                        <td><?=$t->Km?></td>
+                                        <td><?=$t->EC50?></td>
+                                        <td><?=$t->Ki?></td>
+                                        <td><?=$t->IC50?></td>
+                                        <td>
+                                            <?php if ($t->reference) : ?>
+                                                <?php if(strlen($t->reference->citation) < 15): ?>
+                                                    <?= $t->reference->citation ?>
+                                                <?php else : ?>
+                                                    <div class="popup" onclick="show_popup('0_<?=$k ?>')"><?=$t->reference->id?>
+                                                    <span class="popuptext" id="ref_popup_0_<?=$k ?>"><?=$t->reference->citation?></span>
+                                                </div>
+                                                <?php endif ?>
+                                            <?php endif ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($t->dataset && $t->dataset->reference) : ?>
+                                                <?php if(strlen($t->dataset->reference->citation) < 15): ?>
+                                                    <?= $t->dataset->reference->citation ?>
+                                                <?php else : ?>
+                                                    <div class="popup" onclick="show_popup('1_<?=$k ?>')"><?=$t->dataset->reference->id?>
+                                                    <span class="popuptext" id="ref_popup_1_<?=$k ?>"><?=$t->dataset->reference->citation?></span>
+                                                </div>
+                                                <?php endif ?>
+                                            <?php endif ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach ?>
+                            </tbody>
                        </table>
                    </div>
                </div>
            </div>
-       </div>-->
+       </div>
 
         <button class="accordion"><i class="fa fa-line-chart" style="font-size:24px;"></i> Free energy graph </button>
         <div class="panelDetail">

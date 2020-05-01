@@ -374,10 +374,12 @@ class Substances extends Db
     public function exists($name, $SMILES, $pdb = NULL, $drugbank = NULL, $pubchem = NULL, $chEBI = NULL, $chEMBL = NULL)
 	{
         $res = $this->queryAll(
-            'SELECT DISTINCT id, identifier
-            FROM substances
+            'SELECT DISTINCT s.id, s.identifier
+            FROM substances s
+            LEFT JOIN alternames a ON a.id_substance = s.id 
             WHERE SMILES LIKE ? OR pdb LIKE ? OR chEBI LIKE ? OR 
-                chEMBL LIKE ? OR drugbank LIKE ? OR pubchem LIKE ? OR name LIKE ? OR uploadName LIKE ?',
+                chEMBL LIKE ? OR drugbank LIKE ? OR pubchem LIKE ? OR 
+                s.name LIKE ? OR a.name LIKE ? OR uploadName LIKE ?',
             array
             (
                 $SMILES,
@@ -386,6 +388,7 @@ class Substances extends Db
                 $chEMBL,
                 $drugbank,
                 $pubchem,
+                $name, 
                 $name, 
                 $name,
             )

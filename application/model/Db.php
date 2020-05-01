@@ -512,7 +512,7 @@ class Db extends Iterable_object
                 {
                     $this->where .= $attr . ' "' . $val . '"';
                 } 
-                else if(strtoupper($val) === 'NULL')
+                else if(strtoupper($val) === 'NULL' || $val === NULL)
                 {
                     $this->where .= $attr . ' IS NULL';
                 }

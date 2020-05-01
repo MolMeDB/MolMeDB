@@ -975,6 +975,8 @@ class UploadController extends Controller
                 $line++;
             }
 
+            $line--;
+
             Db::commitTransaction();
 
             // Show report message if not empty

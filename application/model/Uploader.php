@@ -136,67 +136,80 @@ class Uploader extends Db
 				if(!Identifiers::is_valid($substance->identifier))
 				{
 					$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
-					$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
-					$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
+
+					$name = trim($substance->name) == '' ? 
+						($ligand && $ligand != '' ? $ligand : $substance->identifier) :
+						$substance->name;
+					
+					$substance->name = $name;
+					$substance->uploadName = $name;
 				}
 
 				$substance->save();
 			}
 
-			if($Q === '' || $Q === NULL)
+			// Add altername record if not exists
+			$alterName = new AlterNames();
+
+			$exists = $alterName->where('name LIKE', $ligand)
+				->get_one();
+
+			if(!$exists)
 			{
-				$Q = NULL;
+				$alterName->name = $ligand;
+				$alterName->id_substance = $substance->id;
 
-				// try to find interaction
-				$interaction_id = $interactionModel->where(array
-					(
-						'id_membrane'	=> $membrane->id,
-						'id_method'		=> $method->id,
-						'id_substance'	=> $substance->id,
-						'temperature'	=> $temperature,
-						'charge'		=> "NULL",
-						'id_reference'	=> $reference
-					))
-					->select_list('id')
-					->get_one()
-					->id;
+				$alterName->save();
+			}
 
-				if($interaction_id) // Exists ? Then update
-				{
-					$interaction = new Interactions($interaction_id);
+			// try to find interaction
+			$interaction_id = $interactionModel->where(array
+				(
+					'id_membrane'	=> $membrane->id,
+					'id_method'		=> $method->id,
+					'id_substance'	=> $substance->id,
+					'temperature'	=> $temperature,
+					'charge'		=> $Q,
+					'id_reference'	=> $reference
+				))
+				->select_list('id')
+				->get_one()
+				->id;
 
-					$interaction->Position = $position ? $position : $interaction->Position;
-					$interaction->Position_acc = $position_acc ? $position_acc : $interaction->Position_acc;
-					$interaction->Penetration = $penetration ? $penetration : $interaction->Penetration;
-					$interaction->Penetration_acc = $penetration_acc ? $penetration_acc : $interaction->Penetration;
-					$interaction->Water = $water ? $water : $interaction->Water;
-					$interaction->Water_acc = $water_acc ? $water_acc : $interaction->Water_acc;
-					$interaction->LogK = $LogK ? $LogK : $interaction->LogK;
-					$interaction->LogK_acc = $LogK_acc ? $LogK_acc : $interaction->LogK_acc;
-					$interaction->LogPerm = $LogPerm ? $LogPerm : $interaction->LogPerm;
-					$interaction->LogPerm_acc = $LogPerm_acc ? $LogPerm_acc : $interaction->LogPerm_acc;
-					$interaction->theta = $Theta ? $Theta : $interaction->theta;
-					$interaction->theta_acc = $Theta_acc ? $Theta_acc : $interaction->theta_acc;
-					$interaction->abs_wl = $abs_wl ? $abs_wl : $interaction->abs_wl;
-					$interaction->abs_wl_acc = $abs_wl_acc ? $abs_wl_acc : $interaction->abs_wl_acc;
-					$interaction->fluo_wl = $fluo_wl ? $fluo_wl : $interaction->fluo_wl;
-					$interaction->fluo_wl_acc = $fluo_wl_acc ? $fluo_wl_acc : $interaction->fluo_wl_acc;
-					$interaction->QY = $QY ? $QY : $interaction->QY;
-					$interaction->QY_acc = $QY_acc ? $QY_acc : $interaction->QY_acc;
-					$interaction->lt = $lt ? $lt : $interaction->lt;
-					$interaction->lt_acc = $lt_acc ? $lt_acc : $interaction->lt_acc;
+			if($interaction_id) // Exists ? Then update
+			{
+				$interaction = new Interactions($interaction_id);
 
-					$interaction->save();
+				$interaction->Position = $position ? $position : $interaction->Position;
+				$interaction->Position_acc = $position_acc ? $position_acc : $interaction->Position_acc;
+				$interaction->Penetration = $penetration ? $penetration : $interaction->Penetration;
+				$interaction->Penetration_acc = $penetration_acc ? $penetration_acc : $interaction->Penetration;
+				$interaction->Water = $water ? $water : $interaction->Water;
+				$interaction->Water_acc = $water_acc ? $water_acc : $interaction->Water_acc;
+				$interaction->LogK = $LogK ? $LogK : $interaction->LogK;
+				$interaction->LogK_acc = $LogK_acc ? $LogK_acc : $interaction->LogK_acc;
+				$interaction->LogPerm = $LogPerm ? $LogPerm : $interaction->LogPerm;
+				$interaction->LogPerm_acc = $LogPerm_acc ? $LogPerm_acc : $interaction->LogPerm_acc;
+				$interaction->theta = $Theta ? $Theta : $interaction->theta;
+				$interaction->theta_acc = $Theta_acc ? $Theta_acc : $interaction->theta_acc;
+				$interaction->abs_wl = $abs_wl ? $abs_wl : $interaction->abs_wl;
+				$interaction->abs_wl_acc = $abs_wl_acc ? $abs_wl_acc : $interaction->abs_wl_acc;
+				$interaction->fluo_wl = $fluo_wl ? $fluo_wl : $interaction->fluo_wl;
+				$interaction->fluo_wl_acc = $fluo_wl_acc ? $fluo_wl_acc : $interaction->fluo_wl_acc;
+				$interaction->QY = $QY ? $QY : $interaction->QY;
+				$interaction->QY_acc = $QY_acc ? $QY_acc : $interaction->QY_acc;
+				$interaction->lt = $lt ? $lt : $interaction->lt;
+				$interaction->lt_acc = $lt_acc ? $lt_acc : $interaction->lt_acc;
 
-					return $interaction->id;
-				}
+				$interaction->save();
+
+				return $interaction->id;
 			}
 
 			// Insert new interaction - protected db:ON_DUPLICATE_KEY
 			return $interactionModel->insert_interaction($dataset_id, $reference, $temperature, $Q, $membrane->id, $substance->id, $method->id, $position,$position_acc, $penetration, $penetration_acc, $water, $water_acc, 
 								$LogK, $LogK_acc, $user_id, "", $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc, $fluo_wl, $fluo_wl_acc, 
 								$QY, $QY_acc, $lt, $lt_acc);
-
 		} 
 		catch(UploadLineException $e)
 		{
@@ -290,11 +303,30 @@ class Uploader extends Db
 				if(!Identifiers::is_valid($substance->identifier))
 				{
 					$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
-					$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
-					$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
+
+					$name = trim($substance->name) == '' ?
+						($ligand && $ligand != '' ? $ligand : $substance->identifier) :
+						$substance->name;
+
+					$substance->name = $name;
+					$substance->uploadName = $name;
 				}
 
 				$substance->save();
+			}
+
+			// Add altername record if not exists
+			$alterName = new AlterNames();
+
+			$exists = $alterName->where('name LIKE', $ligand)
+				->get_one();
+
+			if(!$exists)
+			{
+				$alterName->name = $ligand;
+				$alterName->id_substance = $substance->id;
+
+				$alterName->save();
 			}
 
 			// Check if target already exists

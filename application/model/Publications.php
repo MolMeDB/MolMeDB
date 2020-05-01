@@ -42,10 +42,32 @@ class Publications extends Db
     public function get_nonempty_refs()
     {
         return $this->queryAll('
-            SELECT DISTINCT p.* 
-            FROM interaction as i 
-            JOIN publications as p ON i.id_reference = p.id 
-            WHERE p.id > 0 AND i.visibility = 1 
+            SELECT DISTINCT tab.* 
+            FROM 
+            (
+                (SELECT p.*
+                FROM interaction as i 
+                JOIN publications as p ON i.id_reference = p.id 
+                WHERE p.id > 0 AND i.visibility = 1 
+                )
+
+                UNION
+
+                (SELECT p.*
+                FROM datasets as d
+                JOIN publications as p ON d.id_publication = p.id 
+                WHERE p.id > 0 AND d.visibility = 1 
+                )
+
+                UNION
+
+                (SELECT p.*
+                FROM transporters as t 
+                JOIN transporter_datasets td ON td.id = t.id_dataset
+                JOIN publications as p ON (t.id_reference = p.id OR td.id_reference = p.id) 
+                WHERE p.id > 0 AND td.visibility = 1 
+                )
+            ) as tab
             ORDER BY citation');
     }
 

@@ -332,12 +332,34 @@ class Substances extends Db
     public function get_by_reference_id($idReference, $pagination)
     {
         return $this->queryAll('
-            SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
-            FROM substances as s
-            JOIN interaction as i ON s.id = i.id_substance
-            WHERE i.id_reference = ? AND visibility = 1
+            SELECT DISTINCT tab.name, tab.identifier, tab.id, tab.SMILES, tab.MW, tab.pubchem, tab.drugbank, tab.chEBI, tab.pdb, tab.chEMBL
+            FROM 
+            (
+                (SELECT DISTINCT s.*
+                FROM substances as s
+                JOIN interaction as i ON s.id = i.id_substance
+                JOIN datasets d ON d.id = i.id_dataset
+                WHERE (i.id_reference = ? OR d.id_publication = ?) AND d.visibility = 1)
+
+                UNION
+
+                (SELECT DISTINCT s.*
+                FROM substances as s
+                JOIN transporters t ON t.id_substance = s.id
+                JOIN transporter_datasets td ON td.id = t.id_dataset
+                WHERE (t.id_reference = ? OR td.id_reference = ?) AND td.visibility = 1)
+            ) as tab
             ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
-            LIMIT ?,?', array($idReference, ($pagination-1)*10,10));
+            LIMIT ?,?', array
+            (
+                $idReference, 
+                $idReference, 
+                $idReference, 
+                $idReference, 
+                ($pagination-1)*10,
+                10
+            )
+        );
     }
 
     /**
@@ -351,10 +373,33 @@ class Substances extends Db
         return $this->queryOne('
             SELECT COUNT(*) as count
             FROM 
-                (SELECT DISTINCT s.id
-                FROM substances as s
-                JOIN interaction as i ON s.id = i.id_substance
-                WHERE i.id_reference = ? AND visibility = 1) as tab1', array($idReference))->count;
+            (
+                SELECT DISTINCT tab.id
+                FROM 
+                (
+                    (SELECT DISTINCT s.*
+                    FROM substances as s
+                    JOIN interaction as i ON s.id = i.id_substance
+                    JOIN datasets d ON d.id = i.id_dataset
+                    WHERE (i.id_reference = ? OR d.id_publication = ?) AND d.visibility = 1)
+
+                    UNION
+
+                    (SELECT DISTINCT s.*
+                    FROM substances as s
+                    JOIN transporters t ON t.id_substance = s.id
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    WHERE (t.id_reference = ? OR td.id_reference = ?) AND td.visibility = 1)
+                ) as tab
+            ) as t'
+            ,
+            array(
+                $idReference,
+                $idReference,
+                $idReference,
+                $idReference,
+            )
+        )->count;
     }
     
     /**

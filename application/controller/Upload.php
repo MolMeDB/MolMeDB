@@ -742,38 +742,56 @@ class UploadController extends Controller
 
             $line = 1;
 
+            // Make upload report
+            $report = new Upload_report();
+
             // Add dataset rows
             foreach($values as $detail) 
             {
-                $uploader->insert_transporter(
-                    $dataset->id,
-                    self::get_value($detail, Upload_validator::NAME),
-                    self::get_value($detail, Upload_validator::SMILES),
-                    self::get_value($detail, Upload_validator::MW),
-                    self::get_value($detail, Upload_validator::LOG_P),
-                    self::get_value($detail, Upload_validator::PDB),
-                    self::get_value($detail, Upload_validator::PUBCHEM),
-                    self::get_value($detail, Upload_validator::DRUGBANK),
-                    self::get_value($detail, Upload_validator::UNIPROT_ID),
-                    self::get_value($detail, Upload_validator::PRIMARY_REFERENCE),
-                    self::get_value($detail, Upload_validator::TYPE),
-                    self::get_value($detail, Upload_validator::TARGET),
-                    self::get_value($detail, Upload_validator::IC50),
-                    self::get_value($detail, Upload_validator::EC50),
-                    self::get_value($detail, Upload_validator::KI),
-                    self::get_value($detail, Upload_validator::KM)
-                );
-                
+                try
+                {
+                    $uploader->insert_transporter(
+                        $dataset->id,
+                        self::get_value($detail, Upload_validator::NAME),
+                        self::get_value($detail, Upload_validator::SMILES),
+                        self::get_value($detail, Upload_validator::MW),
+                        self::get_value($detail, Upload_validator::LOG_P),
+                        self::get_value($detail, Upload_validator::PDB),
+                        self::get_value($detail, Upload_validator::PUBCHEM),
+                        self::get_value($detail, Upload_validator::DRUGBANK),
+                        self::get_value($detail, Upload_validator::UNIPROT_ID),
+                        self::get_value($detail, Upload_validator::PRIMARY_REFERENCE),
+                        self::get_value($detail, Upload_validator::TYPE),
+                        self::get_value($detail, Upload_validator::TARGET),
+                        self::get_value($detail, Upload_validator::IC50),
+                        self::get_value($detail, Upload_validator::EC50),
+                        self::get_value($detail, Upload_validator::KI),
+                        self::get_value($detail, Upload_validator::KM)
+                    );
+                }
+                catch(UploadLineException $e)
+                {   
+                    $report->add($line, $e->getMessage());
+                }
+
                 $line++;
             }
 
             Db::commitTransaction();
-            return "$line lines successfully saved!";
+
+            // Show report message if not empty
+            if(!$report->is_empty())
+            {
+                $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
+            }
+
+            $total_saved = $line - $report->count();
+
+            return "$total_saved lines successfully saved!";
         }
         catch (Exception $ex)
         {
             Db::rollbackTransaction();
-            $this->addMessageError('Error occured on line ' . $line);
             throw new Exception($ex->getMessage());
         }
     }
@@ -900,59 +918,73 @@ class UploadController extends Controller
 
             $dataset->save();
 
-            $line = 0;
+            $line = 1;
+
+            // Make upload report
+            $report = new Upload_report();
 
             // Add dataset rows
             foreach($values as $detail) 
             {
-                $uploader->insert_interaction(
-                    $dataset->id,
-                    self::get_value($detail, Upload_validator::PRIMARY_REFERENCE),
-                    self::get_value($detail, Upload_validator::NAME),
-                    self::get_value($detail, Upload_validator::NAME),
-                    self::get_value($detail, Upload_validator::MW),
-                    self::get_value($detail, Upload_validator::X_MIN),
-                    self::get_value($detail, Upload_validator::X_MIN_ACC),
-                    self::get_value($detail, Upload_validator::G_PEN),
-                    self::get_value($detail, Upload_validator::G_PEN_ACC),
-                    self::get_value($detail, Upload_validator::G_WAT),
-                    self::get_value($detail, Upload_validator::G_WAT_ACC),
-                    self::get_value($detail, Upload_validator::LOG_K),
-                    self::get_value($detail, Upload_validator::LOG_K_ACC),
-                    self::get_value($detail, Upload_validator::AREA),
-                    self::get_value($detail, Upload_validator::VOLUME),
-                    self::get_value($detail, Upload_validator::LOG_P),
-                    self::get_value($detail, Upload_validator::LOG_PERM),
-                    self::get_value($detail, Upload_validator::LOG_PERM_ACC),
-                    self::get_value($detail, Upload_validator::THETA),
-                    self::get_value($detail, Upload_validator::THETA_ACC),
-                    self::get_value($detail, Upload_validator::ABS_WL),
-                    self::get_value($detail, Upload_validator::ABS_WL_ACC),
-                    self::get_value($detail, Upload_validator::FLUO_WL),
-                    self::get_value($detail, Upload_validator::FLUO_WL_ACC),
-                    self::get_value($detail, Upload_validator::QY),
-                    self::get_value($detail, Upload_validator::QY_ACC),
-                    self::get_value($detail, Upload_validator::LT),
-                    self::get_value($detail, Upload_validator::LT_ACC),
-                    self::get_value($detail, Upload_validator::Q),
-                    self::get_value($detail, Upload_validator::SMILES),
-                    self::get_value($detail, Upload_validator::DRUGBANK),
-                    self::get_value($detail, Upload_validator::PUBCHEM),
-                    self::get_value($detail, Upload_validator::PDB),
-                    $membrane,
-                    $method,
-                    $temperature
-                );
-
-                // Check identifiers and names
-                $substanceModel->validate_table();
+                try 
+                {
+                    $uploader->insert_interaction(
+                        $dataset->id,
+                        self::get_value($detail, Upload_validator::PRIMARY_REFERENCE),
+                        self::get_value($detail, Upload_validator::NAME),
+                        self::get_value($detail, Upload_validator::NAME),
+                        self::get_value($detail, Upload_validator::MW),
+                        self::get_value($detail, Upload_validator::X_MIN),
+                        self::get_value($detail, Upload_validator::X_MIN_ACC),
+                        self::get_value($detail, Upload_validator::G_PEN),
+                        self::get_value($detail, Upload_validator::G_PEN_ACC),
+                        self::get_value($detail, Upload_validator::G_WAT),
+                        self::get_value($detail, Upload_validator::G_WAT_ACC),
+                        self::get_value($detail, Upload_validator::LOG_K),
+                        self::get_value($detail, Upload_validator::LOG_K_ACC),
+                        self::get_value($detail, Upload_validator::AREA),
+                        self::get_value($detail, Upload_validator::VOLUME),
+                        self::get_value($detail, Upload_validator::LOG_P),
+                        self::get_value($detail, Upload_validator::LOG_PERM),
+                        self::get_value($detail, Upload_validator::LOG_PERM_ACC), 
+                        self::get_value($detail, Upload_validator::THETA),
+                        self::get_value($detail, Upload_validator::THETA_ACC),
+                        self::get_value($detail, Upload_validator::ABS_WL),
+                        self::get_value($detail, Upload_validator::ABS_WL_ACC),
+                        self::get_value($detail, Upload_validator::FLUO_WL),
+                        self::get_value($detail, Upload_validator::FLUO_WL_ACC),
+                        self::get_value($detail, Upload_validator::QY),
+                        self::get_value($detail, Upload_validator::QY_ACC),
+                        self::get_value($detail, Upload_validator::LT),
+                        self::get_value($detail, Upload_validator::LT_ACC),
+                        self::get_value($detail, Upload_validator::Q),
+                        self::get_value($detail, Upload_validator::SMILES),
+                        self::get_value($detail, Upload_validator::DRUGBANK),
+                        self::get_value($detail, Upload_validator::PUBCHEM),
+                        self::get_value($detail, Upload_validator::PDB),
+                        $membrane,
+                        $method,
+                        $temperature
+                    );
+                }
+                catch(UploadLineException $e)
+                {   
+                    $report->add($line, $e->getMessage());
+                }
 
                 $line++;
-                // sleep(1);
             }
 
             Db::commitTransaction();
-            return "$line lines successfully saved!";
+
+            // Show report message if not empty
+            if (!$report->is_empty()) {
+                $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
+            }
+
+            $total_saved = $line - $report->count();
+
+            return "$total_saved lines successfully saved!";
         }
         catch (Exception $ex)
         {

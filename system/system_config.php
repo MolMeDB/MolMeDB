@@ -203,5 +203,10 @@ class System_config
         {
             require( APP_ROOT . "libraries/" . $class . ".php");
         }
+        // Exceptions
+        else if (file_exists("system/exceptions/" . $class . ".php"))
+        {
+            require( "system/exceptions/" . $class . ".php");
+        }
     }   
 }

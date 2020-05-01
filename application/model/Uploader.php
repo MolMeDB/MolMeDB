@@ -83,21 +83,12 @@ class Uploader extends Db
 		try
 		{
 			if($SMILES == '' || !$SMILES)
-			{        
+			{
 				// try to find SMILES in DB
 				$SMILES = $smilesModel->where('name', $ligand)
 					->select_list('SMILES')
 					->get_one()
 					->SMILES;
-				$SMILES = $SMILES && $uploadName != '' ? $SMILES : 
-					$smilesModel->where('name', $uploadName)
-						->select_list('SMILES')
-						->get_one()
-						->SMILES;
-			}
-			if($uploadName == "" || !$uploadName)
-			{
-				$uploadName = $ligand;
 			}
 
 			// Checks if substance already exists
@@ -106,8 +97,7 @@ class Uploader extends Db
 			// Protected insert 
 			if(!$substance->id)
 			{
-				// Add new one - protected db:ON_DUPLICATE_KEY
-				// $idSubstance = $substanceModel->insert_substance($ligand, $uploadName, $MW, $SMILES, $user_id, $Area, $Volume, $LogP, $PDB, $DrugBank, $PubChem);
+				// Add new one
 				$substance->name = $ligand;
 				$substance->uploadName = $ligand;
 				$substance->SMILES = $SMILES;
@@ -141,6 +131,14 @@ class Uploader extends Db
 				$substance->pdb = $PDB ? $PDB : $substance->pdb;
 				$substance->pubchem = $PubChem ? $PubChem : $substance->pubchem;
 				$substance->drugbank = $DrugBank ? $DrugBank : $substance->drugbank;
+
+				// If missing identifier, then update
+				if(!Identifiers::is_valid($substance->identifier))
+				{
+					$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
+					$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
+					$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
+				}
 
 				$substance->save();
 			}
@@ -200,9 +198,13 @@ class Uploader extends Db
 								$QY, $QY_acc, $lt, $lt_acc);
 
 		} 
+		catch(UploadLineException $e)
+		{
+			throw new UploadLineException($ligand . ' / ' . $e->getMessage());
+		}
 		catch (Exception $ex) 
 		{
-			throw new Exception($ligand . ' / ' . $ex->getMessage());
+			throw new UploadLineException($ligand . ' / ' . $ex->getMessage());
 		}
 	}
 	
@@ -285,7 +287,7 @@ class Uploader extends Db
 				$substance->drugbank = $drugbank ? $drugbank : $substance->drugbank;
 
 				// If missing identifier, then update
-				if(!$substance->identifier)
+				if(!Identifiers::is_valid($substance->identifier))
 				{
 					$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
 					$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
@@ -330,9 +332,13 @@ class Uploader extends Db
 			
 			$transporter->save();
 		} 
+		catch(UploadLineException $e)
+		{
+			throw new UploadLineException($ligand . ' / ' . $e->getMessage());
+		}
 		catch (Exception $ex) 
 		{
-			throw new Exception($ligand . ' / ' . $ex->getMessage());
+			throw new UploadLineException($ligand . ' / ' . $ex->getMessage());
 		}
 
 	}

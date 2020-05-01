@@ -10,6 +10,7 @@ class File
     public $extension;
     public $size;
     public $origin_path;
+    private $FILE;
 
     /**
      * Constructor
@@ -37,6 +38,55 @@ class File
 
             $this->get_file_info($path);
         }
+    }
+
+    /**
+     * Creates new file instance
+     */
+    public function new($filePath, $type = 'w')
+    {
+        // Get path
+        $last_slash = strrpos($filePath, '/');
+        $dir_path = substr($filePath, 0, $last_slash);
+
+        // check path
+        $this->make_path($dir_path);
+        
+        // Set default values
+        $this->FILE = fopen($filePath, $type);
+    }
+
+    /**
+     * Writes lines to the file
+     * 
+     * @param array $arr
+     * 
+     */
+    public function writeCSV($arr)
+    {
+        if(!$this->FILE)
+        {
+            throw new Exception('Wrong file instance');
+        }
+
+        foreach($arr as $line)
+        {
+            if(!is_array($line))
+            {
+                throw new Exception('Wrong array instance');
+            }
+            fputcsv($this->FILE, $line, ';');
+        }
+    }
+
+    /**
+     * Makes new filename
+     * 
+     * @return string
+     */
+    public static function generateName()
+    {
+        return 'tmp_file_' . strval(strtotime('now'));
     }
 
     /**

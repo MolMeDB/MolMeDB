@@ -404,7 +404,7 @@ class Substances extends Db
 
             $ids = trim(trim($ids), ',');
 
-            throw new Exception("Error occured while trying to find existing molecule. Total $total possible molecules found. Try to check compounds with identifiers: $ids.");
+            throw new UploadLineException("Error ocurred while trying to find existing molecule. Total $total possible molecules found. Try to check compounds with identifiers: $ids.");
         }
 
         if($total)

@@ -34,39 +34,6 @@ class Substances extends Db
         parent::__construct($id);
     }    
     
-    // /**
-    //  * Gets all substances for given membranes/methods IDs
-    //  * 
-    //  * @param array $membranes - IDs of membranes
-    //  * @param array $methods - IDs of methods
-    //  * 
-    //  * @return object
-    //  */
-    // public function get_by_membrane_method($membranes, $methods)
-    // {
-    //     $mem = !empty($membranes) ? 'idMembrane IN (' . implode( ',', $membranes) . ') AND ' : '';
-    //     $met = !empty($methods) ? 'idMethod IN (' . implode(',', $methods) . ') AND ' : '';
-        
-    //     return $this->queryAll("
-    //         SELECT name, s.id, identifier 
-    //         FROM substances s
-    //         WHERE id IN 
-    //             (SELECT DISTINCT idSubstance 
-    //             FROM interaction 
-    //             WHERE $mem $met 1)");
-    // }
-    
-    
-    // /**
-    //  * Get substance by pubchem ID
-    //  * 
-    //  * @param string $pubchem_id
-    //  */
-    // public function get_by_pubchem($pubchem_id = '')
-    // {
-    //     return $this->queryAll("SELECT idSubstance, pubchem, name, uploadName FROM substances WHERE pubchem != ?", array($pubchem_id));
-    // }
-    
     /**
      * Loads whisper detail to search engine
      * 
@@ -365,12 +332,34 @@ class Substances extends Db
     public function get_by_reference_id($idReference, $pagination)
     {
         return $this->queryAll('
-            SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
-            FROM substances as s
-            JOIN interaction as i ON s.id = i.id_substance
-            WHERE i.id_reference = ? AND visibility = 1
+            SELECT DISTINCT tab.name, tab.identifier, tab.id, tab.SMILES, tab.MW, tab.pubchem, tab.drugbank, tab.chEBI, tab.pdb, tab.chEMBL
+            FROM 
+            (
+                (SELECT DISTINCT s.*
+                FROM substances as s
+                JOIN interaction as i ON s.id = i.id_substance
+                JOIN datasets d ON d.id = i.id_dataset
+                WHERE (i.id_reference = ? OR d.id_publication = ?) AND d.visibility = 1)
+
+                UNION
+
+                (SELECT DISTINCT s.*
+                FROM substances as s
+                JOIN transporters t ON t.id_substance = s.id
+                JOIN transporter_datasets td ON td.id = t.id_dataset
+                WHERE (t.id_reference = ? OR td.id_reference = ?) AND td.visibility = 1)
+            ) as tab
             ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
-            LIMIT ?,?', array($idReference, ($pagination-1)*10,10));
+            LIMIT ?,?', array
+            (
+                $idReference, 
+                $idReference, 
+                $idReference, 
+                $idReference, 
+                ($pagination-1)*10,
+                10
+            )
+        );
     }
 
     /**
@@ -384,81 +373,99 @@ class Substances extends Db
         return $this->queryOne('
             SELECT COUNT(*) as count
             FROM 
-                (SELECT DISTINCT s.id
-                FROM substances as s
-                JOIN interaction as i ON s.id = i.id_substance
-                WHERE i.id_reference = ? AND visibility = 1) as tab1', array($idReference))->count;
+            (
+                SELECT DISTINCT tab.id
+                FROM 
+                (
+                    (SELECT DISTINCT s.*
+                    FROM substances as s
+                    JOIN interaction as i ON s.id = i.id_substance
+                    JOIN datasets d ON d.id = i.id_dataset
+                    WHERE (i.id_reference = ? OR d.id_publication = ?) AND d.visibility = 1)
+
+                    UNION
+
+                    (SELECT DISTINCT s.*
+                    FROM substances as s
+                    JOIN transporters t ON t.id_substance = s.id
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    WHERE (t.id_reference = ? OR td.id_reference = ?) AND td.visibility = 1)
+                ) as tab
+            ) as t'
+            ,
+            array(
+                $idReference,
+                $idReference,
+                $idReference,
+                $idReference,
+            )
+        )->count;
     }
     
     /**
-     * Insert new substances
-     * Protected for duplicate key entry
+     * Checks if substance already exists and return it
      * 
      * @param string $name
      * @param string $uploadName
-     * @param integer $MW
      * @param string $SMILES
-     * @param integer $userID
-     * @param float $Area
-     * @param float $Volume
-     * @param float $LogP
      * @param string $pdb
      * @param string $drugbank
      * @param string $pubchem
+     * @param string $chEBI
+     * @param string $chEMBL
      * 
-     * @return integer - ID of inserted/rewritten substance
+     * @return Substances
      */
-    public function insert_substance($name, $uploadName, $MW,  $SMILES, $userID, $Area, $Volume, $LogP, $pdb = NULL, $drugbank = NULL, $pubchem = NULL)
+    public function exists($name, $SMILES, $pdb = NULL, $drugbank = NULL, $pubchem = NULL, $chEBI = NULL, $chEMBL = NULL)
 	{
-        // Insert new record
-        $this->query("
-            INSERT INTO substances
-            VALUES(DEFAULT,DEFAULT,?,?,?,?,?,?,?,?,'',?,'',?,?,?,DEFAULT, DEFAULT)
-            ON DUPLICATE KEY
-            UPDATE `SMILES` = IF(? = '', `SMILES`, ?), `MW` = IF(? = 0, `MW`, ?), `Area` = IF(? = 0, `Area`, ?), `Volume` = IF(? = 0, `Volume`, ?),
-                    `LogP` = IF(? = 0, `LogP`, ?), `pubchem` = IF(? = '', `pubchem`, ?), `drugbank` = IF(? = '', `drugbank`, ?),
-                    `pdb` = IF(? = '', `pdb`, ?)",
+        $res = $this->queryAll(
+            'SELECT DISTINCT s.id, s.identifier
+            FROM substances s
+            LEFT JOIN alternames a ON a.id_substance = s.id 
+            WHERE SMILES LIKE ? OR pdb LIKE ? OR chEBI LIKE ? OR 
+                chEMBL LIKE ? OR drugbank LIKE ? OR pubchem LIKE ? OR 
+                s.name LIKE ? OR a.name LIKE ? OR uploadName LIKE ?',
             array
             (
-                $name,
                 $SMILES,
-                $MW,
-                $Area,
-                $Volume,
-                $LogP,
-                $pubchem,
-                $drugbank,
                 $pdb,
-                $userID,
-                0,
-                $uploadName,
-                $SMILES,$SMILES, 
-                $MW,$MW, 
-                $Area,$Area, 
-                $Volume,$Volume, 
-                $LogP,$LogP, 
-                $pubchem,$pubchem, 
-                $drugbank,$drugbank, 
-                $pdb,$pdb
-            ));
-        
-        // Get ID of inserted substance
-        $idSubstance = $this->getLastIdSubstance_time()[0];
-        
-        // Check if name is saved in alternames yet
-        $check = $this->queryOne('SELECT id_substance FROM alternames WHERE name = ?', array($name));
+                $chEBI,
+                $chEMBL,
+                $drugbank,
+                $pubchem,
+                $name, 
+                $name, 
+                $name,
+            )
+        );
 
-        if(!$check)
+        $total = count($res);
+
+        if($total > 1)
         {
-            // If not, save new
-            $this->insert('alternames', array('id_substance' => $idSubstance, 'name' => $name));
+            $ids = '';
+
+            foreach($res as $row)
+            {
+                $ids .= $row->identifier  . ', ';
+            }
+
+            $ids = trim(trim($ids), ',');
+
+            throw new UploadLineException("Error ocurred while trying to find existing molecule. Total $total possible molecules found. Try to check compounds with identifiers: $ids.");
         }
-        
-        return $idSubstance;
+
+        if($total)
+        {
+            $res = $res[0];
+        }
+
+        return new Substances($res->id);
     }
     
     /**
      * Checks if exists substances for given names
+     * DEPRECATED - USE exists method instead
      * 
      * @param string $ligand
      * @param string $uploadName

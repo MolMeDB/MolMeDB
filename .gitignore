@@ -5,9 +5,10 @@
 
 ### Upload files ###
 **/files/upload/*
+**/files/uploadReports/*
 **/files/3DStructures/* 
 
 ### Config ###
-config.php
+/config.php
 
 

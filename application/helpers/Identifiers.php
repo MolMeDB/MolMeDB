@@ -6,7 +6,11 @@ class Identifiers
 	CONST min_len = 7;
 	
 	/**
+	 * Generates new identifier
 	 * 
+	 * @param int $id
+	 * 
+	 * @return string
 	 */
 	public static function generate_substance_identifier($id = NULL)
 	{
@@ -27,5 +31,22 @@ class Identifiers
 		}
 			
 		return self::PREFIX . $id;
+	}
+
+	/**
+	 * Checks, if given identifier is valid
+	 * 
+	 * @param string $identifier
+	 * 
+	 * @return boolean
+	 */
+	public static function is_valid($identifier)
+	{
+		if(!$identifier	|| trim($identifier) == '')
+		{
+			return false;
+		}
+
+		return true;
 	}
 }

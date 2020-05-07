@@ -1,0 +1,294 @@
+<button class="btn btn-success disabled btn-block"><span class="glyphicon glyphicon-folder-open"></span>   Dataset editor</button>
+<div><?=$nonsec_navigator?></div>
+
+<div class="col-md-12 dataset-editor">
+    <div class="col-md-12 o-card">
+        <h4><b>Dataset list</b></h4>
+        <table class="dataset-table">
+            <thead>
+                <tr>
+                    <td>#</td>
+                    <td>Name</td>
+                    <td>Method</td>
+                    <td>Membrane</td>
+                    <td>Ref ID</td>
+                    <td>Visibility</td>
+                    <td>Uploaded</td>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach($datasets as $d) : ?>
+                <tr <?php if(isset($info->id) && $info->id === $d->id) : ?> class='active' <?php endif ?> onclick="redirect('edit/dsInteractions/<?=$d->id ?>')">
+                    <td><?=$d->id ?></td>
+                    <td><?=$d->name ?></td>
+                    <td><?=$d->method->name ?></td>
+                    <td><?=$d->membrane->name ?></td>
+                    <td><?=$d->id_publication ?></td>
+                    <td><?=$d->visibility ?></td>
+                    <td><?=$d->createDateTime ?></td>
+                </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+    
+<?php if($show_detail) : ?>
+    <div class="col-md-12">
+      <div class="col-md-6 o-card" id='table-basic-info-div'>
+        <h4><b>Basic info</b></h4> 
+        <table id='basic_info' class="table">
+                    <tr>
+                        <td>
+                            <b>Name:</b>  
+                        </td>
+                        <td>
+                            <?=$info['name'] ?>
+                            <input type="number" name="id_dataset" id="id_dataset" hidden value="<?=$info->id ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b>Author:</b>
+                        </td>
+                        <td>
+                            <?=$info->author->name ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b>Last edit by:</b>   
+                        </td>
+                        <td>
+                            <?=$info->editor->name ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b>Last update: </b> 
+                        </td>
+                        <td>
+                            <?=$info->lastUpdateDatetime ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b>Uploaded: </b> 
+                        </td>
+                        <td>
+                            <?=$info->createDateTime ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b>Membrane: </b> 
+                        </td>
+                        <td>
+                            <?=$info->membrane->name ?>
+                            <input type="number" id="id_membrane" hidden value="<?=$info->membrane->id ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b>Method: </b> 
+                        </td>
+                        <td>
+                            <?=$info->method->name ?>
+                            <input type="number" id="id_method" hidden value="<?=$info->method->id ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b>Publication: </b> 
+                        </td>
+                        <td>
+                            <?=$info->publication->citation ?>
+                            <input type="number" id="idPublication" hidden value="<?=$info->publication->id ?>">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <b>Visibility: </b> 
+                        </td>
+                        <td>
+                            <?=$info->get_enum_visibility() ?>
+                            <input type="number" id="visibility_num" hidden value="<?=$info->visibility ?>">
+                        </td>
+                    </tr>
+                    
+            <tr></tr>
+        </table>
+        <button onclick="delete_dataset('<?=$info->id ?>')" type='button' class='btn pull-left btn-sm btn-danger'> <span class='glyphicon glyphicon-remove'></span>  Delete dataset</button>
+        <button onclick='edit_basic_info(this)' type='button' class='btn pull-right btn-sm btn-primary'> <span class='glyphicon glyphicon-pencil'></span>  Edit </button>
+    </div>
+        
+        <div class="col-md-5 o-card">
+        <h4><b>Editing rights</b></h4>
+        <table class="dataset-table">
+            <thead>
+                <tr>
+                    <td>#</td>
+                    <td>User</td>
+                    <td>Rights</td>
+                    <td>Inherited</td>
+                    <td>Edit</td>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rights_users as $user) : ?>
+                <tr id='rights-user-<?=$user['id']?>'>
+                    <td><?=$user['id']?></td>
+                    <td><?=$user['name']?></td>
+                    <td><?=$user['access']?></td>
+                    <td><?=$user['inherited']?></td>
+                    <?php if($user['access'] === "YES" && $user['inherited'] === "NO") :?>
+                        <td title='Remove rights' onclick="toggle_rights('<?=$info->id?>','<?=$user['id']?>')" class='td-edit'><span class="glyphicon glyphicon-remove"></span></td>
+                    <?php elseif($user['access'] === "YES") : ?>
+                        <td title="Changes are not allowed. User rights are inherited from group."><span class="glyphicon glyphicon-info-sign"></span>
+                    <?php else : ?>
+                        <td title='Add rights' onclick="toggle_rights('<?=$info->id ?>','<?=$user['id']?>')" class='td-edit'><span class="glyphicon glyphicon-ok"></span></td>
+                    <?php endif?>
+                    
+                </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+        
+        <table class="dataset-table">
+            <thead>
+                <tr id='rights-group-<?=$group['id']?>'>
+                    <td>#</td>
+                    <td>Group</td>
+                    <td>Rights</td>
+                    <td>Edit</td>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($rights_groups as $group) : ?>
+                <tr>
+                    <td><?=$group['id']?></td>
+                    <td><?=$group['name']?></td>
+                    <td><?=$group['access']?></td>
+                    <?php if($group['access'] === "YES" && $group['name'] !== "ADMINS") :?>
+                        <td title='Remove rights' onclick="toggle_rights('<?=$info->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-remove"></span></td>
+                    <?php elseif($group['name'] === "ADMINS") : ?>
+                        <td></td>
+                    <?php else : ?>
+                        <td title='Add rights' onclick="toggle_rights('<?=$info->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-ok"></span></td>
+                    <?php endif ?>
+                </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+        
+        </div>
+    </div>
+    <div class="col-md-12 o-card">
+        <h4><b>Interactions</b></h4> 
+        <h5 style="color:red;"><b>Warning! Some interactions may be missing in the current dataset if only older records were edited during upload.</b></h5>
+        <h5 style="color:red;"><b>Warning! Empty columns are hidden.</b></h5>
+        <?= $nonsec_interaction_table ?>
+
+    </div>
+<?php endif ?>
+</div>
+
+<div id="myModal" class="modal-comp">
+
+  <!-- Modal content -->
+  <div class="modal-content-comp">
+    <div class="modal-header">
+      <span class="close" id="cl-modal">&times;</span>
+      <h2>Edit interaction detail</h2>
+    </div>
+      
+      <div class="myModal-body">
+          <div id="editor_interaction" class="modal-body-part">
+              <form class="form-group" method="post">
+                  <input name="id_interaction" id="id_interaction" value="" hidden>
+                  <input name="spec_type" value="edit_interaction" hidden>
+                  <div class="col-md-12">
+                      <div class="col-md-6">
+                        <span><b>Name</b></span>
+                        <input class="form-control" name="substance_name" id="substance_name">
+                        <span><b>SMILES</b></span>
+                        <input class="form-control" name="SMILES" id="SMILES">
+                        <span><b>Charge</b></span>
+                        <input class="form-control" name="charge" id="charge">
+                        <span><b>LogP</b></span>
+                        <input class="form-control" name="LogP" id="LogP">
+                        <span><b>Temperature</b></span>
+                        <input class="form-control" name="temperature" id="temperature">
+                    </div>
+                    <div class="col-md-6">
+                        <span><b>Pubchem ID</b></span>
+                        <input class="form-control" name="pubchem" id="pubchem">
+                        <span><b>PDB ID</b></span>
+                        <input class="form-control" name="pdb" id="pdb">
+                        <span><b>DrugBank ID</b></span><input class="form-control" name="drugbank" id="drugbank">
+                        <span><b>chEMBL ID</b></span><input class="form-control" name="chEMBL" id="chEMBL">
+                        <span><b>chEBI ID</b></span><input class="form-control" name="chEBI" id="chEBI">
+                    </div>
+                    <div class="col-md-12 line"></div>
+                    <div class="col-md-3">
+                        <span><b>X_min</b></span><input class="form-control" name="Position" id="Position">
+                        <span><b>LogK</b></span><input class="form-control" name="LogK" id="LogK">
+                        <span><b>G_wat</b></span><input class="form-control" name="Water" id="Water">
+                        <span><b>G_pen</b></span><input class="form-control" name="Penetration" id="Penetration">
+                        <span><b>LogPerm</b></span><input class="form-control" name="LogPerm" id="LogPerm">
+                    </div>
+                    <div class="col-md-3">
+                            <span><b>X_min_acc</b></span><input class="form-control" name="Position_acc" id="Position_acc">
+                        <span><b>LogK_acc</b></span><input class="form-control" name="LogK_acc" id="LogK_acc">
+                        <span><b>G_wat_acc</b></span><input class="form-control" name="Water_acc" id="Water_acc">
+                        <span><b>G_pen_acc</b></span><input class="form-control" name="Penetration_acc" id="Penetration_acc">
+                        <span><b>LogPerm_acc</b></span><input class="form-control" name="LogPerm_acc" id="LogPerm_acc">
+                    </div>
+                    <div class="col-md-3">
+                            <span><b>Theta</b></span><input class="form-control" name="theta" id="theta">
+                        <span><b>Abs_wl</b></span><input class="form-control" name="abs_wl" id="abs_wl">
+                        <span><b>Fluo_wl</b></span><input class="form-control" name="fluo_wl" id="fluo_wl">
+                        <span><b>QY</b></span><input class="form-control" name="QY" id="QY">
+                        <span><b>lt</b></span><input class="form-control" name="lt" id="lt">
+                    </div>
+                    <div class="col-md-3">
+                            <span><b>Theta_acc</b></span><input class="form-control" name="theta_acc" id="theta_acc">
+                        <span><b>Abs_wl_acc</b></span><input class="form-control" name="abs_wl_acc" id="abs_wl_acc">
+                        <span><b>Fluo_wl_acc</b></span><input class="form-control" name="fluo_wl_acc" id="fluo_wl_acc">
+                        <span><b>QY_acc</b></span><input class="form-control" name="QY_acc" id="QY_acc">
+                        <span><b>lt_acc</b></span><input class="form-control" name="lt_acc" id="lt_acc">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-lg btn-success pull-right">Save</button>
+                <div class="col-md-12 o-card">
+                    <table class="dataset-table">
+                        <tbody>
+                            <tr>
+                                <td><b>Membrane</b></td>
+                                <td id="membrane_name"></td>
+                            </tr>
+                            <tr>
+                                <td><b>Method</b></td>
+                                <td id="method_name"></td>
+                            </tr>
+                            <tr>
+                                <td><b>Publication</b></td>
+                                <td id="reference"></td>
+                            </tr>
+                            <tr>
+                                <td><b>Last update: </b></td>
+                                <td id="last_update"></td>
+                            </tr>
+                            <tr>
+                                <td><b>Uploaded: </b></td>
+                                <td id="uploaded"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+          </div>
+      </div>
+  </div>
+</div>
+
+<script src="js/edit/dataset.js?ver=<?=JS_VERSION?>"></script>

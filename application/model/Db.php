@@ -14,7 +14,7 @@ class Db extends Iterable_object
         PDO::ATTR_EMULATE_PREPARES => false,
     );
 
-    /** MYSQL BUILDER ATTRIBUTES */
+    /** MYSQL QUERY BUILDER ATTRIBUTES */
     protected $table;
     private $select_list = '*';
     private $limit = '';
@@ -22,6 +22,7 @@ class Db extends Iterable_object
     private $group_by = '';
     private $order_by = '';
     private $distinct = false;
+
     private $debug = false;
 
     /**
@@ -230,10 +231,6 @@ class Db extends Iterable_object
     /**
      * Get all rows from given table
      * 
-     * @param array $select - SELECT LIST
-     * @param integer $pagination
-     * @param integer $limit
-     * 
      * @return Iterable_object
      */
     public function get_all()
@@ -272,11 +269,7 @@ class Db extends Iterable_object
     }
 
     /**
-     * Get all rows from given table
-     * 
-     * @param array $select - SELECT LIST
-     * @param integer $pagination
-     * @param integer $limit
+     * Get one row from given table
      * 
      * @return Iterable_object
      */
@@ -291,13 +284,20 @@ class Db extends Iterable_object
             $this->select_list = '*';
         }
 
-        $data =  $this->queryOne('
+        $query = '
             SELECT ' . $this->select_list . ' 
             FROM ' . $this->table .
             ' ' . $this->where .
             ' ' . $this->group_by
-            . ' LIMIT 1'
-            , array(), False);
+            . ' LIMIT 1';
+
+        if($this->debug)
+        {
+            echo($query);
+            die;
+        }
+
+        $data =  $this->queryOne($query, array(), False);
 
         $class = get_class($this);
 
@@ -350,10 +350,9 @@ class Db extends Iterable_object
 
         try
         {
-            $this->beginTransaction();
             // Delete record
             $this->query("
-                DELETE FROM  $this->table
+                DELETE FROM $this->table
                 WHERE id = $this->id
             ");
 
@@ -362,11 +361,9 @@ class Db extends Iterable_object
             $this->old_data = [];
             $this->keys = [];
 
-            $this->commitTransaction();
         }
         catch(Exception $e)
         {
-            $this->rollbackTransaction();
             throw new Exception($e->getMessage());
         }
     }
@@ -515,7 +512,7 @@ class Db extends Iterable_object
                 {
                     $this->where .= $attr . ' "' . $val . '"';
                 } 
-                else if(strtoupper($val) === 'NULL')
+                else if(strtoupper($val) === 'NULL' || $val === NULL)
                 {
                     $this->where .= $attr . ' IS NULL';
                 }
@@ -689,7 +686,7 @@ class Db extends Iterable_object
         {
             $values[] = $this->id;
 
-            if(FALSE)
+            if($this->debug)
             {
                 echo '
                     UPDATE ' . $this->table .  '
@@ -700,16 +697,19 @@ class Db extends Iterable_object
                 die;
             }
 
-            return $this->query('
+            $this->query('
                 UPDATE ' . $this->table .  '
                 SET ' . $attr_str . ' 
                 WHERE id = ?
             ', $values);
+
+            self::__construct($this->id);
         } 
         else 
         {
             $last_id = $this->insert($this->table, $new_data);
             $this->id = $last_id;
+            self::__construct($this->id);
         }
     }
 
@@ -830,6 +830,9 @@ class Db extends Iterable_object
      */
     public static function beginTransaction()
     {
+        // First commit old transaction if exists
+        // self::$connection->commit(); 
+
         self::$connection->beginTransaction();
     }
     
@@ -887,7 +890,7 @@ class Db extends Iterable_object
         }
     }
 
-    // /**
+    // /** DEPRECATED
     //  * Returns current object
     //  */
     // protected function as_object($params, $class_params = False)

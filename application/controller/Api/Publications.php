@@ -54,7 +54,7 @@ class ApiPublications extends ApiController
     {
         $publ_model = new Publications();
         
-        $data = $publ_model->get_all();
+        $data = $publ_model->order_by("citation")->get_all();
         
         $this->answer($data->as_array(NULL, FALSE));
     }
@@ -69,6 +69,11 @@ class ApiPublications extends ApiController
     public function get_by_doi($doi)
     {
         $PMC = new EuropePMC();
+
+        if(!$PMC->is_connected())
+        {
+            $this->answer(NULL, self::CODE_FORBIDDEN);
+        }
 
         $publ = $PMC->search($doi);
 

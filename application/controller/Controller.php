@@ -1,6 +1,6 @@
 <?php
 
-abstract class Controller 
+abstract class Controller
 {
     /** Message types */
     CONST MESSAGE_TYPE_SUCCESS = 'success';
@@ -12,10 +12,23 @@ abstract class Controller
     protected $view = "";
     protected $header = array
     (
-            'title'         => '', 
-            'description'   => '',
-            'token'         => ''
+        'title'         => '', 
+        'description'   => '',
+        'token'         => ''
     );
+
+    /** 
+     * Class attributes 
+     */
+    protected $config;
+
+    /**
+     * Constructor
+     */
+    function __construct()
+    {
+        $this->config = new Config();
+    }
 
     /**
      * Shows current view
@@ -157,7 +170,7 @@ abstract class Controller
      */
     public function verifyUser($admin = false, $special_rights = "", $spec_array = array(), $superadmin = false)
     {
-        $usermanager = new UserManager();
+        $usermanager = new Users();
         $user = $usermanager->returnUser();
 
         if (!$user)

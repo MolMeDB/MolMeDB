@@ -7,9 +7,14 @@
  */
 class AdministrationController extends Controller 
 {
+    /**
+     * Constructor
+     * 
+     * Only for administrators
+     */
     function __construct()
     {
-        $this->verifyUser();
+        $this->verifyUser(true);
     }
 
 
@@ -18,7 +23,7 @@ class AdministrationController extends Controller
         // Check if user has admin rights
         $this->verifyUser(true);
 
-        $user_manager = new UserManager();
+        $user_manager = new Users();
         $upload_controller = new UploadController();
         $edit_controller = new EditController();
 
@@ -38,7 +43,7 @@ class AdministrationController extends Controller
      */
     public function logout()
     {
-        $usermanager = new UserManager();
+        $usermanager = new Users();
 
         $usermanager->logout();
 

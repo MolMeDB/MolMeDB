@@ -17,8 +17,8 @@
  * @property Membranes $membrane
  * @property Methods $method
  * @property Publications $publication
- * @property UserManager $author
- * @property UserManager $editor
+ * @property Users $author
+ * @property Users $editor
  */
 class Datasets extends Db
 {
@@ -41,12 +41,12 @@ class Datasets extends Db
         'id_user_upload' => array
         (
             'var' => 'author',
-            'class' => 'UserManager'
+            'class' => 'Users'
         ),
         'id_user_edit' => array
         (
             'var' => 'editor',
-            'class' => 'UserManager'
+            'class' => 'Users'
         )
     );
 

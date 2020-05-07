@@ -46,7 +46,7 @@ class RouterController extends Controller
     public function parse($parameters)
     {
         // If maintenance is in progress, show directly this site
-        if(MAINTENANCE)
+        if(MAINTENANCE && !isset($_SESSION['user']))
         {
             $this->view = 'maintenance';
             return;

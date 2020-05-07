@@ -20,13 +20,15 @@
             <button class="btn btn-primary dropdown-toggle" data-toggle="dropdown"><span class="glyphicon glyphicon-pencil"></span>  Data editor <span class="caret"></span></button>
             <ul class="dropdown-menu" role="menu">
                 <li><a href="/edit/<?= $edit_endpoints[EditController::M_ARTICLE] ?>"><span class="glyphicon glyphicon-align-left"></span>   Article</a></li>
-                <li><a href="/edit/<?= $edit_endpoints[EditController::M_DATASET] ?>"><span class="glyphicon glyphicon-folder-open"></span>   Dataset</a></li>
+                <li><a href="/edit/<?= $edit_endpoints[EditController::M_DATASET_INTER] ?>"><span class="glyphicon glyphicon-folder-open"></span>   Interactions datasets</a></li>
                 <li><a href="/edit/<?= $edit_endpoints[EditController::M_MEMBRANE] ?>"><span class="glyphicon glyphicon-option-vertical"></span>   Membrane</a></li>
                 <li><a href="/edit/<?= $edit_endpoints[EditController::M_METHOD] ?>"><span class="glyphicon glyphicon-asterisk"></span>   Method</a></li>
                 <li><a href="/edit/<?= $edit_endpoints[EditController::M_PUBLICATION] ?>"><span class="glyphicon glyphicon-link"></span>   Publication</a></li>
+                <li><a href="/edit/<?= $edit_endpoints[EditController::M_DATASET_TRANS] ?>"><span class="glyphicon glyphicon-folder-open"></span>   Transporters datasets</a></li>
                 <li><a href="/edit/<?= $edit_endpoints[EditController::M_USERS] ?>"><span class="glyphicon glyphicon-user"></span>   Users</a></li>
             </ul>
         </div>
         <a href="/validator" class="btn btn-primary"> <span class="glyphicon glyphicon-check"></span>  Data validator</a>
+        <a href="/setting/system" class="btn btn-primary"> <span class="glyphicon glyphicon-wrench"></span>  System config</a>
         <a href="/administration/logout" class="btn btn-danger"> <span class="glyphicon glyphicon-log-out"></span>  Log out</a>
     </div>

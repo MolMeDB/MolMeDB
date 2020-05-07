@@ -20,30 +20,32 @@ class ApiController extends Controller
     const CODE_NOT_FOUND = 404;
 
     /** API ENDPOINTS */
-    const S_ENGINE = 'searchEngine';
+    const COMPARATOR = 'comparator';
+    const DETAIL = 'detail';
+    const EDITOR = 'editor';
+    const INTERACTIONS = 'interactions';
     const MEMBRANES = 'membranes';
     const METHODS   = 'methods';
     const PUBLICATION = 'publications';
+    const S_ENGINE = 'searchEngine';
+    const SMILES = 'smiles';
     const STATS = 'stats';
     const UPLOADER = 'uploader';
-    const COMPARATOR = 'comparator';
-    const EDITOR = 'editor';
-    const DETAIL = 'detail';
-    const INTERACTIONS = 'interactions';
 
     // Valid endpoints
     private $valid_endpoints = array
     (
-        self::S_ENGINE,
+        self::COMPARATOR,
+        self::DETAIL,
+        self::EDITOR,
+        self::INTERACTIONS,
         self::MEMBRANES,
         self::METHODS,
-        self::PUBLICATION,
+        self::S_ENGINE,
+        self::SMILES,
         self::STATS,
+        self::PUBLICATION,
         self::UPLOADER,
-        self::COMPARATOR,
-        self::EDITOR,
-        self::DETAIL,
-        self::INTERACTIONS
     );
 
     /** REQUEST METHODS */

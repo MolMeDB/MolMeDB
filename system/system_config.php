@@ -6,6 +6,7 @@
 
 require_once('config.php');
 require_once('version.php');
+require_once('system/exceptions.php');
 
 class System_config
 {
@@ -196,6 +197,16 @@ class System_config
         else if (file_exists(APP_ROOT . "helpers/" . $class . ".php"))
         {
             require( APP_ROOT . "helpers/" . $class . ".php");
+        }
+        // Libraries
+        else if (file_exists(APP_ROOT . "libraries/" . $class . ".php"))
+        {
+            require( APP_ROOT . "libraries/" . $class . ".php");
+        }
+        // Exceptions
+        else if (file_exists("system/exceptions/" . $class . ".php"))
+        {
+            require("system/exceptions/" . $class . ".php");
         }
     }   
 }

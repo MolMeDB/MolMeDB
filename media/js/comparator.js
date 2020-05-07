@@ -421,8 +421,8 @@ function export_whole_dataset(name)
         
         data[i+1] = [
             int.substance.name,
-            int.method_name,
-            int.membrane_name,
+            int.method,
+            int.membrane,
             int.charge ? int.charge : "",
             int.temperature ? int.temperature : "",
             int.substance.LogP ? int.substance.LogP : "",
@@ -442,7 +442,7 @@ function export_whole_dataset(name)
     }
 
     
-    var d = date.getDate() + "." + date.getMonth()+1 + "." + date.getFullYear();
+    var d = date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
     exportToCsv(name + '_' + d + '.csv', data);
 
     hide_overlay();
@@ -568,11 +568,11 @@ function loadComparatorTable()
                 td.classList.toggle("first-td"); td.classList.toggle("text-primary");
             }
             else if (j==1){
-                a.innerHTML = res.membrane_name;
+                a.innerHTML = res.membrane;
                 a.href = '/browse/membranes';
             }
             else{
-                a.innerHTML = res.method_name;
+                a.innerHTML = res.method;
                 a.href='/browse/methods';
             }
             td.appendChild(a);
@@ -938,8 +938,8 @@ function returnData(id_membrane, id_method, charge, column)
                 var new_obj = {
                     name: values[j].substance.name,
                     value: val,
-                    membrane: values[j].membrane_name,
-                    method: values[j].method_name,
+                    membrane: values[j].membrane,
+                    method: values[j].method,
                 };
 
                 result.push(new_obj);
@@ -1015,6 +1015,7 @@ function summarizeData(data, data_2, separated)
         {
             var j = 0;
             size_2 = data_2.length;
+
             while(j < size_2)
             {
                 if(!data_2[j])
@@ -1050,11 +1051,11 @@ function summarizeData(data, data_2, separated)
         }
 
         size_2 = data_2.length;
-        
+
         // Add no matching data
         for(var i = 0; i < size_2; i++)
         {
-            if (!data_2[j])
+            if (!data_2[i])
             {
                 continue;
             }
@@ -1319,6 +1320,8 @@ function total_interaction()
 
     return;
 }
+
+
 
 /**
  * Creates charges

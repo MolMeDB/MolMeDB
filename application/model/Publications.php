@@ -4,10 +4,19 @@
  * Publications model
  * 
  * @property integer $id
- * @property string $reference
+ * @property string $citation
  * @property string $doi
- * @property string $description
+ * @property integer $pmid
+ * @property string $title
+ * @property string $authors
+ * @property string $journal
+ * @property string $volume
+ * @property string $issue
+ * @property string $page
+ * @property string $year
+ * @property date $publicated_date
  * @property integer $user_id
+ * @property string $pattern
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
@@ -33,26 +42,106 @@ class Publications extends Db
     public function get_nonempty_refs()
     {
         return $this->queryAll('
-            SELECT DISTINCT p.* 
-            FROM interaction as i 
-            JOIN publications as p ON i.id_reference = p.id 
-            WHERE p.id > 0 AND i.visibility = 1 
-            ORDER BY reference');
-    }
+            SELECT DISTINCT tab.* 
+            FROM 
+            (
+                (SELECT p.*
+                FROM interaction as i 
+                JOIN publications as p ON i.id_reference = p.id 
+                WHERE p.id > 0 AND i.visibility = 1 
+                )
 
-    //Deprecated
-    public function insertRef($content, $doi, $desc){
-        $id = array();
-        $id = $this->queryOne('SELECT id FROM publications WHERE reference = ? LIMIT 1', array($content));
-        if (!isset($id['id']))
-            return $this->insert('publications', array('reference' => $content, 'doi' => $doi, 'description' => $desc, 'user_id' => $_SESSION['user']['id']));
+                UNION
+
+                (SELECT p.*
+                FROM datasets as d
+                JOIN publications as p ON d.id_publication = p.id 
+                WHERE p.id > 0 AND d.visibility = 1 
+                )
+
+                UNION
+
+                (SELECT p.*
+                FROM transporters as t 
+                JOIN transporter_datasets td ON td.id = t.id_dataset
+                JOIN publications as p ON (t.id_reference = p.id OR td.id_reference = p.id) 
+                WHERE p.id > 0 AND td.visibility = 1 
+                )
+            ) as tab
+            ORDER BY citation');
     }
 
     /**
      * Load data from file
+     * 
+     * deprecated
      */
     public function loadData($filename)
     {
         return file($filename);    
+    }
+
+    /**
+     * Return reference for given $query
+     * 
+     * @param string $query
+     * 
+     * @return Publications
+     */
+    public function get_by_query($query)
+    {
+        if(!$query || $query == '')
+        {
+            return new Publications();
+        }
+
+        $row = $this->queryOne(
+            'SELECT id 
+            FROM publications
+            WHERE pmid LIKE ? OR doi LIKE ? OR citation LIKE ?'
+            , array
+            (
+                $query,
+                $query,
+                $query
+            ));
+
+        return new Publications($row['id']);
+    }
+
+    /**
+     * Returns citation for given object params
+     * 
+     * @return string
+     */
+    public function make_citation()
+    {
+        $citation = $this->authors . ': ' . trim($this->title) . ' ';
+
+        if($this->journal && $this->journal != '')
+        {
+            $citation = $citation . $this->journal . ", ";
+
+            if($this->volume && $this->volume != '')
+            {
+                $citation = $citation . "Volume " . $this->volume;
+
+                if($this->issue)
+                {
+                    $citation = $citation . " (" . $this->issue . ")";
+                }
+
+                $citation = $citation . ", ";
+            }
+
+            if($this->pages)
+            {
+                $citation = $citation . $this->pages . ", ";
+            }
+        }
+
+        $citation = $citation . $this->year;
+
+       return trim($citation);
     }
 }

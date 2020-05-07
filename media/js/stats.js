@@ -194,12 +194,12 @@ $('.stats-list-item').click(function()
                 var int = interactions[i];
                 
                 data[i+1] = [
-                    int.substance_name,
-                    int.method_name,
-                    int.membrane_name,
+                    int.substance.name,
+                    int.method,
+                    int.membrane,
                     int.charge ? int.charge : "",
                     int.temperature ? int.temperature : "",
-                    int.LogP ? int.LogP : "",
+                    int.substance.LogP ? int.substance.LogP : "",
                     int.Position ? int.Position : "",
                     int.Position_acc ? int.Position_acc : "",
                     int.Penetration ? int.Penetration : "",
@@ -210,7 +210,7 @@ $('.stats-list-item').click(function()
                     int.LogK_acc ? int.LogK_acc : "",
                     int.LogPerm ? int.LogPerm : "",
                     int.LogPerm_acc ? int.LogPerm_acc : "",
-                    int.MW ? int.MW : "",
+                    int.substance.MW ? int.substance.MW : "",
                     int.reference ? int.reference : ""
                 ];
             }

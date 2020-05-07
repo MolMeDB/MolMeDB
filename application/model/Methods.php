@@ -28,19 +28,6 @@ class Methods extends Db
         parent::__construct($id);
     }
     
-    public function insert_method($name, $description, $keywords, $CAM, $references)
-    {
-        $userManager = new UserManager();
-        $user = $userManager->returnUser();
-        
-        $idTag = strlen($CAM) < 3 ? str_replace(" ","_",$name) : str_replace(" ","_",$CAM);
-        
-        $parametres = array('name' => $name, 'description' => $description, 'keywords' => $keywords, 
-            'CAM' => $CAM, 'user_id' => $user['id'], 'references' => $references, 'idTag' => $idTag);
-        
-        return $this->insert("methods", $parametres);
-    }
-    
     /**
      * Loads search whisper for API response
      * 

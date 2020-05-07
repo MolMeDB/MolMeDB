@@ -3,7 +3,7 @@
     <input type="text" class="search" placeholder="Search publications..." id="publSearch" />
     <ul class="list" id="publList">
       <?php foreach($publications as $p) : ?>
-        <a href="/browse/sets/<?=$p->id?>/1?IOP=<?=$itemsOnPage?>"><li><p class="name"><?=$p->reference?></p></li></a>
+        <a href="/browse/sets/<?=$p->id?>/1?IOP=<?=$itemsOnPage?>"><li><p class="name"><?=$p->citation?></p></li></a>
       <?php endforeach ?>
     </ul>
     <ul class="pagination"></ul>

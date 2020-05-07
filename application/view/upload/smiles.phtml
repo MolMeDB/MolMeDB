@@ -2,11 +2,11 @@
 <div><?=$nonsec_navigator?></div>
 
 <div class="col-md-12">
-    <div class="col-md-5 uploadTableDiv">
+    <div class="col-md-8 uploadTableDiv">
         
             <form method="post" enctype="multipart/form-data" >
                 <table class="uploadTable">
-                    <tr>
+                    <tr> 
                         <td><b>Select file to upload: [.csv]</b></td>
                         <td><input type="file" name="file" ></td>
                     </tr>
@@ -14,8 +14,8 @@
                     <td><a href="files/examples/smilesFile_example.csv">Download</a></td>
                     </tr>
                     <tr>
-                        <td><b>Update table</b> <span style="cursor: help; color: #056ee1" class="glyphicon glyphicon-question-sign" title="The SMILES table will be updated. This is useful, for example, if the details of compounds were edited."></span></td>
-                        <td><a href="/upload/smiles/updateSmiles"><button type="button" class="btn btn-sm btn-success">Update</button></a></td>
+                        <td><b>Canonize all SMILES</b><label style="font-size: 10px; color: red;">Warning! This function can take up several minutes.</label></td>
+                        <td><a href="/upload/smiles/1"><button type="button" class="btn btn-sm btn-success">Update</button></a></td>
                     </tr>
                 </table>
                 <button type="submit" style="margin-top:20px;" class="btn btn-primary btn-sm pull-right">Upload</button>

@@ -2,31 +2,44 @@
 <div><?= $nonsec_navigator ?></div>
 
 <div class="col-md-12 col-sm-12 uploadTableDiv">
-    <h4 style="text-align: center;"><b>Add reference</b></h4>
+    <h4 style="text-align: center;"><b>Upload publication</b></h4>
     <form method="post">
         <input type="hidden" name="postType" value="reference">
         <div class="col-md-12">
-            <table class="uploadTable" style="margin-top: 38px; width: 100%">
-                <tr>
-                    <td><b>Text of reference</b></td>
-                    <td><input type="text" class="form-control" name="reference" required /></td>
-                </tr>
-                <tr>
-                    <td><b>DOI</b></td>
-                    <td><input class="form-control" type="text" name="doi" /></td>
-                </tr>
-            </table>
-        </div>
-        <div class="col-md-12">
-            <div class="textfield">
-                <h5><b>Description</b></h5>
-                <textarea name="description" id="description"></textarea>
-            </div>
+            <label><b>DOI</b></label>
+            <a style="cursor: pointer;" title="Download publication detail by DOI" class="glyphicon glyphicon-download" onclick="get_reference_by_doi('doi')"></a>
+            <input class="form-control" type="text" name="doi" id="doi"/>
+        
+            <label><b>Authors</b></label>
+            <input type="text" class="form-control" name="authors" id="authors" />
+        
+            <label><b>PmID</b></label>
+            <input type="text" class="form-control" name="pmid" id="pmid" />
+        
+            <label><b>Title</b></label>
+            <input type="text" class="form-control" name="title" id="title" />
+        
+            <label><b>Journal</b></label>
+            <input type="text" class="form-control" name="journal" id="journal"  />
+        
+            <label><b>Volume</b></label>
+            <input type="text" class="form-control" name="volume" id="volume"  />
+        
+            <label><b>Issue</b></label>
+            <input type="text" class="form-control" name="issue" id="issue"  />
+        
+            <label><b>Pages</b></label>
+            <input type="text" class="form-control" name="page" id="page"  />
+        
+            <label><b>Year</b></label>
+            <input type="text" class="form-control" name="year" id="year" />
+        
+            <label><b>Date of publication [d-m-y]</b></label>
+            <input type="text" class="form-control" name="publicated_date" id="publicated_date" />
+            
+            <label><b>Citation</b></label>
+            <input type="text" class="form-control" name="citation" id="citation" required />
         </div>
         <button style="margin:20px;" class="btn btn-success pull-right">Save</button>
     </form>
 </div>
-
-<script>
-    CKEDITOR.replace('description');
-</script>

@@ -7,7 +7,7 @@
         <label>Substance name</label>
         <input type="text" class="form-control" name="name" value="<?= $detail->name ?>" required>
         <label>SMILES</label>
-        <div class="glyphicon glyphicon-refresh" onclick="loadSmiles('<?= $detail->name ?>', '<?= $detail->uploadName ?>')"></div>
+        <a style="cursor: pointer;" title="Canonize SMILES" class="glyphicon glyphicon-link" onclick="canonize_smiles('<?= $detail->SMILES ?>', 'SMILES')"></a>
         <input type="text" class="form-control" id="SMILES" name="SMILES" value="<?= $detail->SMILES ?>">
         <label>MW [Da]</label>
         <input type="text" class="form-control" name="MW" id="MW" value="<?= $detail->MW ?>">
@@ -20,7 +20,7 @@
 
         <label>PubChem</label>
         <input type="text" class="form-control" name="pubchem" id="pubchem" value="<?= $detail->pubchem ?>">
-        <label>DrugBank <a href="/edit/<?= $detail->id ?>/<?= $detail->name ?>/drugbank/<?= $detail->drugbank ?>"><span class="glyphicon glyphicon-download-alt"></span></a></label>
+        <label>DrugBank</label>
         <input type="text" class="form-control" name="drugbank" id="drugbank" value="<?= $detail->drugbank ?>">
         <label>PDB</label>
         <input type="text" class="form-control" name="pdb" id="pdb" value="<?= $detail->pdb ?>">
@@ -99,7 +99,7 @@
                     <td><?= $int->temperature ?></td>
                     <td><?= $int->charge ?></td>
                     <td style="text-align: center;">
-                        <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $int->id_reference ? $int->id_reference : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $int->reference->reference ?></span></div>
+                        <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $int->id_reference ? $int->id_reference : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $int->reference->citation ?></span></div>
                     </td>
                     <td><?= $int->Position ?></td>
                     <td><?= $int->Penetration ?></td>

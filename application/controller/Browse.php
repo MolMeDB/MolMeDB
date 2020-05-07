@@ -11,52 +11,52 @@ class BrowseController extends Controller
      * 
      * @author Jakub Juračka
      */
-    public function compounds()
-    {
-        $methodModel = new Methods();
-        $membraneModel = new Membranes();
-        $substanceModel = new Substances();
+    // public function compounds()
+    // {
+    //     $methodModel = new Methods();
+    //     $membraneModel = new Membranes();
+    //     $substanceModel = new Substances();
 
-        try
-        {
-            $methods = $methodModel->get_all();
-            $membranes = $membraneModel->get_all();
+    //     try
+    //     {
+    //         $methods = $methodModel->get_all();
+    //         $membranes = $membraneModel->get_all();
 
-            $viewMem = $viewMet = array();
+    //         $viewMem = $viewMet = array();
 
-            // Apply filter
-            if ($_POST) 
-            {
-                $viewMem = $_POST['membranes'];
-                $viewMet = $_POST['methods'];
+    //         // Apply filter
+    //         if ($_POST) 
+    //         {
+    //             $viewMem = $_POST['membranes'];
+    //             $viewMet = $_POST['methods'];
 
-                $this->data['compounds'] = $substanceModel->get_by_membrane_method($viewMem, $viewMet);
-            } 
-            else
-            { // if not send, show all
-                $this->data['compounds'] = $substanceModel
-                    ->select_list(array
-                    (
-                        'id',
-                        'name',
-                        'identifier'
-                    ))
-                    ->get_all();
-            }
-        }
-        catch (Exception $e)
-        {
-            $this->addMessageError($e->getMessage());
-            $this->redirect('error');
-        }
+    //             $this->data['compounds'] = $substanceModel->get_by_membrane_method($viewMem, $viewMet);
+    //         } 
+    //         else
+    //         { // if not send, show all
+    //             $this->data['compounds'] = $substanceModel
+    //                 ->select_list(array
+    //                 (
+    //                     'id',
+    //                     'name',
+    //                     'identifier'
+    //                 ))
+    //                 ->get_all();
+    //         }
+    //     }
+    //     catch (Exception $e)
+    //     {
+    //         $this->addMessageError($e->getMessage());
+    //         $this->redirect('error');
+    //     }
 
-        $this->data['active_membranes'] = $viewMem;
-        $this->data['active_methods'] = $viewMet;
-        $this->data['membranes'] = $membranes;
-        $this->data['methods'] = $methods;
-        $this->view = 'browseCompounds';
-        $this->header['title'] = 'Compounds';
-    }
+    //     $this->data['active_membranes'] = $viewMem;
+    //     $this->data['active_methods'] = $viewMet;
+    //     $this->data['membranes'] = $membranes;
+    //     $this->data['methods'] = $methods;
+    //     $this->view = 'browseCompounds';
+    //     $this->header['title'] = 'Compounds';
+    // }
 
 
     /**
@@ -138,7 +138,7 @@ class BrowseController extends Controller
                     $this->redirect('error');
                 }
 
-                $this->data['reference_name'] = $publication->reference;
+                $this->data['reference_name'] = $publication->citation;
                 $this->data['list'] = $substanceModel->get_by_reference_id($reference_id, $pagination);
                 $this->data['count'] = $substanceModel->count_by_reference_id($reference_id);
                 $this->data['info'] = " <b> Results for: </b>" . $publication->reference;

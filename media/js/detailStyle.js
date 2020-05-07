@@ -16,8 +16,9 @@ for (i = 0; i < acc.length; i++) {
       panel.style.minHeight = "250px";
     } 
   }
-  acc[0].click();
 }
+
+acc[0].click();
 
 
 /**
@@ -142,7 +143,7 @@ function loadTable(id)
                       '&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>', '&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', 
                       'LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub></label>]', 'LogPerm <br/><label class="units">[cm/s]</label>', 
                       'Theta<br/><label class="units">[°]</label>','Abs_wl<br/><label class="units">[nm]</label>', 'Fluo_wl<br/><label class="units">[nm]</label>',
-                      'QY<br/><label class="units"></label>', 'lt<br/><label class="units">[ns]</label>', 'Publication'];
+                      'QY<br/><label class="units"></label>', 'lt<br/><label class="units">[ns]</label>', 'Primary<br/> reference', 'Secondary<br/> reference'];
     
     var methods = get_all_methods();
     var countMet = methods.length;
@@ -230,7 +231,9 @@ function loadTable(id)
             var fluo_wl = make_td(interaction.fluo_wl, false, interaction.fluo_wl_acc);
             var QY = make_td(interaction.QY, false, interaction.QY_acc);
             var lt = make_td(interaction.lt, false, interaction.lt_acc);
-            var ref = make_ref_td(interaction.id_reference, interaction.reference);
+            var primary_ref = make_ref_td(interaction.id_reference, interaction.primary_reference);
+            var secondary_ref = make_ref_td(interaction.secondary_reference_id, interaction.secondary_reference);
+            
 
             tr.appendChild(charge);
             tr.appendChild(temp);
@@ -244,7 +247,8 @@ function loadTable(id)
             tr.appendChild(fluo_wl);
             tr.appendChild(QY);
             tr.appendChild(lt);
-            tr.appendChild(ref);
+            tr.appendChild(primary_ref);
+            tr.appendChild(secondary_ref);
 
             tbody.appendChild(tr);
         }
@@ -334,14 +338,21 @@ function make_ref_td(idReference, ref)
 {
     var td = document.createElement("td");
     
-    if(idReference == 0)
+    if(idReference == 0 || idReference == "null" || idReference == null)
     {
         return td;
     }
-    
-    td.innerHTML = '<div class="popup" onclick="show_popup(\'' + ref_iter + '\')">' + idReference
+
+    if(ref.length <= 10)
+    {
+        td.innerHTML = ref;
+    }
+    else
+    {
+        td.innerHTML = '<div class="popup" onclick="show_popup(\'' + ref_iter + '\')">' + idReference
             + '<span class="popuptext" id="ref_popup_' + ref_iter + '">' + ref + '</span></div>';
-    
+    }
+
     ref_iter++;
     
     return td;
@@ -367,8 +378,8 @@ function export_detail_data(name)
     var id = document.getElementById("idSubstance").value; 
     var rows = [];
     var date = new Date();
-    rows[0] = ['Membrane', 'Method', 'Q', 'Temperature', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-',
-        'LogPerm', 'LogPerm_+/-', 'LogP', 'Theta', 'Theta_+/-', 'Abs_wl', 'Abs_wl_+/-, Fluo_wl', 'Fluo_wl_+/-','QY', 'QY_+/-', 'lt', 'lt_+/-', 'Publication'];
+    rows[0] = ['Membrane', 'Method', 'Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-',
+        'LogPerm', 'LogPerm_+/-', 'Theta', 'Theta_+/-', 'Abs_wl', 'Abs_wl_+/-', 'Fluo_wl', 'Fluo_wl_+/-','QY', 'QY_+/-', 'lt', 'lt_+/-', 'Publication'];
     
     detail = ajax_request("detail/getInteractions", {id: id, idMethods: 0, idMembranes: 0}, "POST");
     
@@ -393,6 +404,7 @@ function export_detail_data(name)
                 record.method_name,
                 record.charge ? record.charge : "",
                 record.temperature ? record.temperature : "",
+                record.substance.LogP ? record.substance.LogP : "",
                 record.Position ? record.Position : "",
                 record.Position_acc ? record.Position_acc : "",
                 record.Penetration ? record.Penetration : "",
@@ -403,7 +415,6 @@ function export_detail_data(name)
                 record.LogK_acc ? record.LogK_acc : "",
                 record.LogPerm ? record.LogPerm : "",
                 record.LogPerm_acc ? record.LogPerm_acc : "",
-                record.LogP ? record.LogP : "",
                 record.theta ? record.theta : "",
                 record.theta_acc ? record.theta_acc : "",
                 record.abs_wl ? record.abs_wl : "",

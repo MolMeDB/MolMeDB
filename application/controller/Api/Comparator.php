@@ -111,8 +111,8 @@ class ApiComparator extends ApiController
 			(
 				'id'			=> $int->id,
 				'substance'		=> $int->substance ? $int->substance->as_array() : NULL,
-				'membrane_name'	=> $int->membrane ? $int->membrane->name : NULL,
-				'method_name'	=> $int->method ? $int->method->name : NULL,
+				'membrane'		=> $int->membrane ? $int->membrane->name : NULL,
+				'method'		=> $int->method ? $int->method->name : NULL,
 				'charge'		=> $int->charge,
 				'temperature'	=> $int->temperature,
 				'Position'		=> $int->Position,
@@ -136,7 +136,7 @@ class ApiComparator extends ApiController
 				'QY'			=> $int->QY,
 				'QY_acc' 		=> $int->QY_acc,
 				'id_reference'	=> $int->id_reference,
-				'reference'		=> $int->reference ? $int->reference->reference : NULL,
+				'reference'		=> $int->reference ? $int->reference->citation : NULL,
 				'id_dataset'	=> $int->id_dataset,
 				'id_substance'	=> $int->id_substance,
 				'id_membrane'	=> $int->id_membrane,
@@ -184,6 +184,7 @@ class ApiComparator extends ApiController
 			->in('id_membrane', $membranes_ids)
 			->in('id_method', $methods_ids)
 			->in('charge', $charges)
+			->where("visibility", Interactions::VISIBLE)
 			->select_list('id, charge')
 			->get_all();
 
@@ -206,7 +207,6 @@ class ApiComparator extends ApiController
 	 * Return substances to comparator for given params
 	 * 
 	 * @GET 
-	 * 
 	 * @param type - Type of request
 	 * @param id   - ID of request type
 	 * 

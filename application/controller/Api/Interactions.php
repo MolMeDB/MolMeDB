@@ -24,7 +24,12 @@ class ApiInteractions extends ApiController
     {
         $inter = new Interactions();
 
-        $data = $inter->where('id_reference', $id)
+        $data = $inter
+            ->where(array
+            (
+                'id_reference'  => $id,
+                'visibility'    => Interactions::VISIBLE
+            ))
             ->get_all();
 
         $result = array();
@@ -36,7 +41,7 @@ class ApiInteractions extends ApiController
                 'name'  => $row->substance ? $row->substance->name : NULL,
                 'membrane'  => $row->membrane ? $row->membrane->name : NULL,
                 'method'  => $row->method ? $row->method->name : NULL,
-                'publication' => $row->reference ? $row->reference->reference : NULL,
+                'publication' => $row->reference ? $row->reference->citation : NULL,
                 'SMILES'  => $row->substance ? $row->substance->SMILES : NULL,
                 'LogP'  => $row->substance ? $row->substance->LogP : NULL,
                 'MW'  => $row->substance ? $row->substance->MW : NULL,

@@ -7,6 +7,7 @@ class UploadController extends Controller
 {
     /** POST TYPES */
     const P_SAVE_DATASET = 'save_dataset';
+    const P_SAVE_TRANSPORTERS = 'save_transporters';
     const P_UPLOAD_FILE = 'file_upload';
 
     /** MENU sections */
@@ -42,6 +43,8 @@ class UploadController extends Controller
     {
         // Only admins have access rights
         $this->verifyUser(True);
+
+        parent::__construct();
     }
 
     /**
@@ -335,10 +338,53 @@ class UploadController extends Controller
             {
                 $publication = new Publications();
 
-                $publication->reference = $_POST['reference'];
+                // Check if exists
+                if(trim($_POST['doi']) != '')
+                {
+                    $check_doi = $publication->where(
+                        array
+                        (
+                            'doi' => $_POST['doi']
+                        ))
+                        ->get_one();
+
+                    if($check_doi->id)
+                    {
+                        throw new Exception('Publication with given DOI already exists.');
+                    }
+                }
+
+                // Check if exists
+                if(trim($_POST['pmid']) != '')
+                {
+                    $check_pmid = $publication->where(
+                        array
+                        (
+                            'pmid' => $_POST['pmid']
+                        ))
+                        ->get_one();
+    
+                    if($check_pmid->id)
+                    {
+                        throw new Exception('Publication with given PmID already exists.');
+                    }
+                }
+                
+                // Save new one
                 $publication->doi = $_POST['doi'];
-                $publication->description = $_POST['description'];
+                $publication->citation = $_POST['citation'];
+                $publication->authors = $_POST['authors'];
+                $publication->pmid = $_POST['pmid'];
+                $publication->title = $_POST['title'];
+                $publication->journal = $_POST['journal'];
+                $publication->volume = $_POST['volume'];
+                $publication->issue = $_POST['issue'];
+                $publication->page = $_POST['page'];
+                $publication->year = $_POST['year'];
+                $publication->publicated_date = $_POST['publicated_date'];
                 $publication->user_id = $_SESSION['user']['id'];
+
+                $publication->set_empty_vals_to_null();
 
                 $publication->save();
 
@@ -378,12 +424,111 @@ class UploadController extends Controller
 
     /**
      * Smiles uploader
+     * 
+     * @param bool $canonize
      */
-    public function smiles()
+    public function smiles($canonize = false)
     {
         $data = array();
 
-        if (isset($_FILES['file'])) 
+        $smilesModel = new Smiles();
+
+        $redirection = isset($_GET['redirection']) ? $_GET['redirection'] : "upload/smiles";
+
+        if($canonize)
+        {
+            // Canonizes all SMILES in DB
+            try
+            {
+                $smilesModel->beginTransaction();
+
+                $rdkit = new Rdkit();
+
+                // First check, if RDKIT is working
+                if(!$rdkit->is_connected())
+                {
+                    throw new Exception('RDKIT service is not working');
+                }
+
+                $last_update = strtotime($this->config->get(Configs::LAST_SMILES_UPDATE));
+
+                // Process SMILES table
+                $smiles = $smilesModel->where(array
+                    (
+                        'editDateTime >= ' => date('Y-m-d H:i:s', $last_update)
+                    ))
+                    ->get_all();
+
+                foreach($smiles as $row)
+                {
+                    $old_smiles = $row->SMILES;
+
+                    $canonized = $rdkit->canonize_smiles($old_smiles);
+
+                    // Exists yet?
+                    $check = $smilesModel->where(array
+                        (
+                            'id != ' => $row->id,
+                            'SMILES' => $canonized,
+                        ))
+                        ->get_one();
+
+                    if($check->id)
+                    {
+                        $row->delete();
+                    }
+                    else
+                    {
+                        $row->SMILES = $canonized;
+                        $row->save();
+                    }
+                }
+
+                // Proccess substance table
+                $substanceModel = new Substances();
+
+                $smiles = $substanceModel->select_list(array
+                    (
+                        'id',
+                        'SMILES'
+                    ))
+                    ->where(array
+                    (
+                        'editDateTime >= ' => date('Y-m-d H:i:s', $last_update)
+                    ))
+                    ->get_all();
+
+                foreach($smiles as $row)
+                {
+                    $old_smiles = $row->SMILES;
+
+                    $canonized = $rdkit->canonize_smiles($old_smiles);
+
+                    if($canonized == $old_smiles)
+                    {
+                        continue;
+                    }
+
+                    $row->SMILES = $canonized;
+                    $row->save();
+                }
+
+                $this->config->set(Configs::LAST_SMILES_UPDATE, date('Y-m-d H:i:s'));
+
+                $this->addMessageSuccess('Successfully updated.');
+
+                $smilesModel->commitTransaction();
+            }
+            catch(Exception $e)
+            {   
+                $smilesModel->rollbackTransaction();
+                $this->addMessageError('Cannot update smiles table.');
+                $this->addMessageError($e->getMessage());
+            }
+            
+            $this->redirect($redirection);
+        }
+        else if (isset($_FILES['file'])) 
         {
             $file = $_FILES['file'];
             $format = 'csv';
@@ -412,7 +557,7 @@ class UploadController extends Controller
                 }
 
                 $this->addMessageSuccess('Saved');
-                $this->redirect('upload/smiles');
+                $this->redirect($redirection);
             } 
             catch (Exception $ex) 
             {
@@ -431,156 +576,39 @@ class UploadController extends Controller
     public function dataset()
     {
         $data = array();
+        $fileType = NULL;
 
         if ($_POST) 
         {
             $post_type = isset($_POST["postType"]) ? $_POST["postType"] : NULL;
+            $fileType = isset($_POST['fileType']) ? $_POST['fileType'] : NULL;
 
             // Save new datafile
-            if ($post_type === self::P_SAVE_DATASET) 
+            if (in_array($post_type, array(self::P_SAVE_DATASET, self::P_SAVE_TRANSPORTERS))) 
             {
-                $uploader = new Uploader();
-                $dataset = new Datasets();
-
-                // Get data
-                $rowCount = intval($_POST['rowCount']);
-                $membrane_id = $_POST['membrane'];
-                $method_id = $_POST['method'];
-                $temperature = $_POST['temp'];
-                $ref_id = $_POST['reference'];
-
-                // Checks if data are valid
-                $membrane = new Membranes($membrane_id);
-                $method = new Methods($method_id);
-                $publication = new Publications($ref_id);
-                $substanceModel = new Substances();
-
-                if(!$membrane->id)
+                try
                 {
-                    $this->addMessageError('Membrane was not found.');
-                    $this->redirect('upload/dataset');
-                }
-
-                if(!$method->id)
-                {
-                    $this->addMessageError('Method was not found.');
-                    $this->redirect('upload/dataset');
-                }
-
-                $types = array
-                (
-                    "Name", "uploadName", "Q", "X_min", "X_min_acc", "G_pen", "G_pen_acc", "G_wat", 
-                    "G_wat_acc", "LogK", "LogK_acc", "LogP", "LogPerm", "LogPerm_acc", "theta", "theta_acc", 
-                    "abs_wl", "abs_wl_acc", "fluo_wl", "fluo_wl_acc", "QY", "QY_acc", "lt", "lt_acc",
-                    "MW", "SMILES", "DrugBank_ID", "PubChem_ID", "PDB_ID", "Area", "Volume"
-                );
-                $values = array();
-                
-                // Parse data
-                for ($i = 1; $i < $rowCount; $i++) 
-                {
-                    for ($j = 0; $j < count($types); $j++) 
+                    if($post_type === self::P_SAVE_DATASET)
                     {
-                        if (isset($_POST[$types[$j] . $i]) && $_POST[$types[$j] . $i] != '')
-                        {
-                            $values[$i][$types[$j]] = $_POST[$types[$j] . $i];
-                        }
-                        else
-                        {
-                            $values[$i][$types[$j]] = NULL;
-                        }
+                        $message = $this->save_dataset();
                     }
-                }
-
-                // Save data
-                try 
-                {
-                    // Transaction for whole dataset 
-                    Db::beginTransaction();
-                    
-                    // Add new dataset
-                    $dataset->id_membrane = $membrane->id;
-                    $dataset->id_method = $method->id;
-                    $dataset->id_publication = $publication->id;
-                    $dataset->id_user_edit = $_SESSION['user']['id'];
-                    $dataset->id_user_upload = $_SESSION['user']['id'];
-                    $dataset->visibility = Datasets::INVISIBLE;
-                    $dataset->name = $method->CAM . '_' . $membrane->CAM;
-
-                    $dataset->save();
-
-                    $num_compounds = 0;
-
-                    // Add dataset rows
-                    for ($i = 1; $i < $rowCount; $i++) 
+                    else if($post_type === self::P_SAVE_TRANSPORTERS)
                     {
-                        $detail = $values[$i];
-
-                        if ($detail["Name"] == '') 
-                        {
-                            $detail['Name'] = NULL;
-                        }
-
-                        if ($detail["uploadName"] == '') 
-                        {
-                            $detail['uploadName'] = NULL;
-                        }
-
-                        $uploader->insert_interaction(
-                            $dataset->id,
-                            $publication->id,
-                            $detail["Name"],
-                            $detail["uploadName"],
-                            $detail["MW"],
-                            $detail["X_min"],
-                            $detail["X_min_acc"],
-                            $detail["G_pen"],
-                            $detail["G_pen_acc"],
-                            $detail["G_wat"],
-                            $detail["G_wat_acc"],
-                            $detail["LogK"],
-                            $detail["LogK_acc"],
-                            $detail["Area"],
-                            $detail["Volume"],
-                            $detail["LogP"],
-                            $detail["LogPerm"],
-                            $detail["LogPerm_acc"],
-                            $detail["theta"],
-                            $detail["theta_acc"],
-                            $detail["abs_wl"],
-                            $detail["abs_wl_acc"],
-                            $detail["fluo_wl"],
-                            $detail["fluo_wl_acc"],
-                            $detail["QY"],
-                            $detail["QY_acc"],
-                            $detail["lt"],
-                            $detail["lt_acc"],
-                            $detail["Q"],
-                            $detail["SMILES"],
-                            $detail["DrugBank_ID"],
-                            $detail["PubChem_ID"],
-                            $detail["PDB_ID"],
-                            $membrane,
-                            $method,
-                            $temperature
-                        );
-
-                        $num_compounds++;
-                        sleep(1);
+                        $message = $this->save_transporters();
+                    }
+                    else
+                    {
+                        throw new Exception('Invalid form type.');
                     }
 
-                    // Check identifiers and names
-                    $substanceModel->validate_table();
-
-                    Db::commitTransaction();
-                    $this->addMessageSuccess("$num_compounds lines successfully saved!");
-                } 
-                catch (Exception $ex) 
+                    $this->addMessageSuccess($message);
+                }
+                catch (Exception $ex)
                 {
-                    Db::rollbackTransaction();
                     $this->addMessageError($ex->getMessage());
                 }
             } 
+            // Upload new file and return path
             else if ($post_type === self::P_UPLOAD_FILE && isset($_FILES["file"])) 
             {
                 $file = $_FILES["file"];
@@ -600,14 +628,398 @@ class UploadController extends Controller
             }
             else
             {
-                $this->addMessageWarning('Wrong POST parameter');
+                $this->addMessageWarning('Invalid POST parameter');
             }
         }
 
         $this->data['detail'] = $data;
+        $this->data['fileType'] = $fileType;
         $this->data['navigator'] = $this->createNavigator(self::M_DATASET);
         $this->view = 'upload/dataset';
         $this->header['title'] = 'Uploader';
+    }
+
+    /**
+     * Saves transporters dataset
+     * 
+     * @return string - Result message
+     * 
+     * @throws Exception
+     */
+    private function save_transporters()
+    {
+        $line = 1;
+        try
+        {
+            // Transaction for whole dataset 
+            Db::beginTransaction();
+
+            $uploader = new Uploader();
+            $dataset = new Transporter_datasets();
+
+            // Get data
+            $rowCount = intval($_POST['rowCount']);
+            $colCount = intval($_POST['colCount']);
+            $secondary_ref_id = $_POST['reference'];
+
+            // Checks if data are valid
+            $publication = new Publications($secondary_ref_id);
+            $substanceModel = new Substances();
+
+            // Get valid attribute types
+            $types = Upload_validator::get_transporter_attributes();
+
+            $values = $rows = $attrs = array();
+
+            // Get rows
+            for($i = 1; $i < $rowCount; $i++)
+            {
+                $line = $i;
+
+                // Check if exists
+                if(!isset($_POST['row_' . strval($i)]))
+                {
+                    throw new Exception(PHP_POST_LIMIT);
+                }
+                
+                $r = $_POST['row_' . strval($i)];
+
+                //Check number of columns
+                if(count($r) != $colCount)
+                {
+                    throw new Exception(PHP_POST_LIMIT);
+                }
+
+                $rows[] = $r;
+            }
+
+            $line = 1;
+
+            // Get used attributes
+            if(!isset($_POST['attr']) || !is_array($_POST['attr']) || 
+                count($_POST['attr']) != $colCount)
+            {
+                throw new Exception('Attributes are not defined.');
+            }
+
+            // Checks, if attributes are valid
+            foreach($_POST['attr'] as $order => $a)
+            {
+                if(trim($a) == '')
+                {
+                    continue;
+                }
+
+                if(!in_array($a, $types))
+                {
+                    throw new Exception("Invalid attribute '$a'. Please, contact your administrator.");
+                }
+
+                $attrs[$order] = $a;
+            }
+
+            // process data
+            foreach($rows as $row)
+            {
+                $new = array();
+
+                foreach($attrs as $key => $attr)
+                {
+                    $new[$attr] = Upload_validator::get_attr_val($attr, $row[$key]);
+                }
+
+                $values[] = $new;
+            }
+
+            // Add new dataset
+            $dataset->id_reference = $publication->id;
+            $dataset->id_user_edit = $_SESSION['user']['id'];
+            $dataset->id_user_upload = $_SESSION['user']['id'];
+            $dataset->visibility = Datasets::INVISIBLE;
+            $dataset->name = date('d-m-y H:i');
+
+            $dataset->save();
+
+            $line = 1;
+
+            // Make upload report
+            $report = new Upload_report();
+
+            // Add dataset rows
+            foreach($values as $detail) 
+            {
+                try
+                {
+                    $uploader->insert_transporter(
+                        $dataset->id,
+                        self::get_value($detail, Upload_validator::NAME),
+                        self::get_value($detail, Upload_validator::SMILES),
+                        self::get_value($detail, Upload_validator::MW),
+                        self::get_value($detail, Upload_validator::LOG_P),
+                        self::get_value($detail, Upload_validator::PDB),
+                        self::get_value($detail, Upload_validator::PUBCHEM),
+                        self::get_value($detail, Upload_validator::DRUGBANK),
+                        self::get_value($detail, Upload_validator::UNIPROT_ID),
+                        self::get_value($detail, Upload_validator::PRIMARY_REFERENCE),
+                        self::get_value($detail, Upload_validator::TYPE),
+                        self::get_value($detail, Upload_validator::TARGET),
+                        self::get_value($detail, Upload_validator::IC50),
+                        self::get_value($detail, Upload_validator::EC50),
+                        self::get_value($detail, Upload_validator::KI),
+                        self::get_value($detail, Upload_validator::KM)
+                    );
+                }
+                catch(UploadLineException $e)
+                {   
+                    $report->add($line, $e->getMessage());
+                }
+
+                $line++;
+            }
+
+            Db::commitTransaction();
+
+            // Show report message if not empty
+            if(!$report->is_empty())
+            {
+                $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
+            }
+
+            $total_saved = $line - $report->count();
+
+            return "$total_saved lines successfully saved!";
+        }
+        catch (Exception $ex)
+        {
+            Db::rollbackTransaction();
+            throw new Exception($ex->getMessage());
+        }
+    }
+
+    /**
+     * Saves interactions dataset
+     * 
+     * @return string - Result message
+     * 
+     * @throws Exception
+     */
+    private function save_dataset()
+    {
+        $line = 0;
+        try
+        {
+            // print_r($_POST);
+            // Transaction for whole dataset 
+            Db::beginTransaction();
+
+            $uploader = new Uploader();
+            $dataset = new Datasets();
+
+            // Get data
+            $rowCount = intval($_POST['rowCount']);
+            $colCount = intval($_POST['colCount']);
+            $membrane_id = $_POST['membrane'];
+            $method_id = $_POST['method'];
+            $temperature = floatval($_POST['temp']);
+            $secondary_ref_id = $_POST['reference'];
+
+            // Checks if data are valid
+            $membrane = new Membranes($membrane_id);
+            $method = new Methods($method_id);
+            $publication = new Publications($secondary_ref_id);
+            $substanceModel = new Substances();
+
+            if(!$membrane->id)
+            {
+                $this->addMessageError('Membrane was not found.');
+                $this->redirect('upload/dataset');
+            }
+
+            if(!$method->id)
+            {
+                $this->addMessageError('Method was not found.');
+                $this->redirect('upload/dataset');
+            }
+
+            // Get valid attribute types
+            $types = Upload_validator::get_dataset_attributes();
+
+            $values = $rows = $attrs = array();
+
+            // Get rows
+            for($i = 1; $i < $rowCount; $i++)
+            {
+                $line = $i;
+
+                // Check if exists
+                if(!isset($_POST['row_' . strval($i)]))
+                {
+                    throw new Exception(PHP_POST_LIMIT);
+                }
+                
+                $r = $_POST['row_' . strval($i)];
+
+                //Check number of columns
+                if(count($r) != $colCount)
+                {
+                    throw new Exception(PHP_POST_LIMIT);
+                }
+
+                $rows[] = $r;
+            }
+
+            $line = 0;
+
+            // Get used attributes
+            if(!isset($_POST['attr']) || !is_array($_POST['attr']) || 
+                count($_POST['attr']) != $colCount)
+            {
+                throw new Exception('Attributes are not defined.');
+            }
+
+            // Checks, if attributes are valid
+            foreach($_POST['attr'] as $order => $a)
+            {
+                if(trim($a) == '')
+                {
+                    continue;
+                }
+
+                if(!in_array($a, $types))
+                {
+                    throw new Exception("Invalid attribute '$a'. Please, contact your administrator.");
+                }
+
+                $attrs[$order] = $a;
+            }
+
+            // process data
+            foreach($rows as $row)
+            {
+                $line++;
+                $new = array();
+
+                foreach($attrs as $key => $attr)
+                {
+                    $new[$attr] = Upload_validator::get_attr_val($attr, $row[$key]);
+                }
+
+                $values[] = $new;
+            }
+
+            // Add new dataset
+            $dataset->id_membrane = $membrane->id;
+            $dataset->id_method = $method->id;
+            $dataset->id_publication = $publication->id;
+            $dataset->id_user_edit = $_SESSION['user']['id'];
+            $dataset->id_user_upload = $_SESSION['user']['id'];
+            $dataset->visibility = Datasets::INVISIBLE;
+            $dataset->name = $method->CAM . '_' . $membrane->CAM;
+
+            $dataset->save();
+
+            $line = 1;
+
+            // Make upload report
+            $report = new Upload_report();
+
+            // Add dataset rows
+            foreach($values as $detail) 
+            {
+                try 
+                {
+                    $uploader->insert_interaction(
+                        $dataset->id,
+                        self::get_value($detail, Upload_validator::PRIMARY_REFERENCE),
+                        self::get_value($detail, Upload_validator::NAME),
+                        self::get_value($detail, Upload_validator::NAME),
+                        self::get_value($detail, Upload_validator::MW),
+                        self::get_value($detail, Upload_validator::X_MIN),
+                        self::get_value($detail, Upload_validator::X_MIN_ACC),
+                        self::get_value($detail, Upload_validator::G_PEN),
+                        self::get_value($detail, Upload_validator::G_PEN_ACC),
+                        self::get_value($detail, Upload_validator::G_WAT),
+                        self::get_value($detail, Upload_validator::G_WAT_ACC),
+                        self::get_value($detail, Upload_validator::LOG_K),
+                        self::get_value($detail, Upload_validator::LOG_K_ACC),
+                        self::get_value($detail, Upload_validator::AREA),
+                        self::get_value($detail, Upload_validator::VOLUME),
+                        self::get_value($detail, Upload_validator::LOG_P),
+                        self::get_value($detail, Upload_validator::LOG_PERM),
+                        self::get_value($detail, Upload_validator::LOG_PERM_ACC), 
+                        self::get_value($detail, Upload_validator::THETA),
+                        self::get_value($detail, Upload_validator::THETA_ACC),
+                        self::get_value($detail, Upload_validator::ABS_WL),
+                        self::get_value($detail, Upload_validator::ABS_WL_ACC),
+                        self::get_value($detail, Upload_validator::FLUO_WL),
+                        self::get_value($detail, Upload_validator::FLUO_WL_ACC),
+                        self::get_value($detail, Upload_validator::QY),
+                        self::get_value($detail, Upload_validator::QY_ACC),
+                        self::get_value($detail, Upload_validator::LT),
+                        self::get_value($detail, Upload_validator::LT_ACC),
+                        self::get_value($detail, Upload_validator::Q),
+                        self::get_value($detail, Upload_validator::SMILES),
+                        self::get_value($detail, Upload_validator::DRUGBANK),
+                        self::get_value($detail, Upload_validator::PUBCHEM),
+                        self::get_value($detail, Upload_validator::PDB),
+                        $membrane,
+                        $method,
+                        $temperature
+                    );
+                }
+                catch(UploadLineException $e)
+                {   
+                    $report->add($line, $e->getMessage());
+                }
+
+                $line++;
+            }
+
+            $line--;
+
+            Db::commitTransaction();
+
+            // Show report message if not empty
+            if (!$report->is_empty()) {
+                $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
+            }
+
+            $total_saved = $line - $report->count();
+
+            return "$total_saved lines successfully saved!";
+        }
+        catch (Exception $ex)
+        {
+            Db::rollbackTransaction();
+            $this->addMessageError('Error occured on line .' . $line);
+            throw new Exception($ex->getMessage());
+        }
+    }
+
+    /**
+     * Returns value for array if exists
+     * 
+     * @param array $arr
+     * @param string $attr - Attribute
+     * 
+     */
+    private static function get_value($arr, $attr)
+    {
+        if(!is_array($arr) || !array_key_exists($attr, $arr))
+        {
+            return NULL;
+        }
+
+        return $arr[$attr];
+    }
+
+    /**
+     * Automatically fill missing 3D structures using RDKIT
+     */
+    public function fill3dStructures()
+    {
+        $this->addMessageWarning('Sorry, service is temporarily unavailable.');
+        $this->redirect('upload/dataset');
     }
 
     /**
@@ -673,39 +1085,39 @@ class UploadController extends Controller
     public function uploadFile($file, $format, $file_type = NULL)
     {
         $target_dir = MEDIA_ROOT . "files/upload/";
-        $i = 0;
-        $target_file = $target_dir . basename($file["name"]);
-        $format = pathinfo($target_file,PATHINFO_EXTENSION);
+        $newFile = new File($file);
+
+        $target_file = $target_dir . $newFile->name;
         $temp = $target_file;
        
-        while(file_exists($temp))
+        $i = 0;
+        while(file_exists($temp . '.' . $newFile->extension))
         {
             $i++;
-            $temp = substr($target_file, 0, -4) . "_" . $i; 
+            $temp = $target_file . '_' . $i;
         }
-        
+
+        $newFile->name = str_replace($target_dir, "", $temp);
+        $target_file = $target_dir . $newFile->name . '.' . $newFile->extension;
+
         $uploader  = new Uploader();
         $smilesModel = new Smiles();
         $publicationModel = new Publications();
 
-        if(intval($file["size"]) > 5000000) // 5mb max size
+        if(intval($newFile->size) > 5000000) // 5mb max size
         {
             $this->addMessageError('Sorry, your file is too large.');
             $this->redirect('upload/dataset');
         }
-        if($format !== 'csv') // Only CSV files allowed
+
+        if($newFile->extension !== 'csv') // Only CSV files allowed
         {
             $this->addMessageWarning('Wrong file format. Upload only ".csv" files.');
             $this->redirect('upload/dataset');
         }
-        if(move_uploaded_file($file['tmp_name'], $target_file)) // Finally, move file to target directory
+        if($newFile->save_to_dir($target_dir)) // Finally, move file to target directory
         {
-            $this->addMessageSuccess ('The file "' . basename($file["name"]) . '" has been uploaded!');
-        }
-        else 
-        {
-            $this->addMessageError ('File hasn\'t been uploaded!');
-            $this->redirect('upload/dataset');
+            $this->addMessageSuccess ('The file "' . $newFile->name . '" has been uploaded!');
         }
 
         if($file_type === self::FILE_SMILES)

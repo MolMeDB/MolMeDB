@@ -111,9 +111,6 @@ class ApiMembranes extends ApiController
             }
         }
         
-
-        
-
         $this->answer($result);
     }
     

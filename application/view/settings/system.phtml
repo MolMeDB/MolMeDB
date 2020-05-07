@@ -1,0 +1,27 @@
+<div  style='text-align: center'>
+    <h2>System settings</h2>
+</div>
+
+<form method="POST">   
+    <div class="col-md-6">
+        <div class="content">   
+            <h4><b>API</b></h4>
+            <label>EuropePMC endpoint</label>
+            <input type="text" class="form-control" name="<?= Configs::EUROPEPMC_URI?>" value="<?= $europePMC ?>">
+            <label>RDKIT endpoint</label>
+            <input type="text" class="form-control" name="<?= Configs::RDKIT_URI?>" value="<?= $rdkit ?>">
+        </div>
+        <br/>
+        <div class="content">
+            <h4><b>IDENTIFIERS</b></h4>
+            <label>Drugbank pattern</label>
+            <input type="text" class="form-control" name="<?= Configs::DB_DRUGBANK_PATTERN?>" value="<?= $drugbank_pattern ?>">
+            <label>PDB pattern</label>
+            <input type="text" class="form-control" name="<?= Configs::DB_PDB_PATTERN?>" value="<?= $pdb_pattern ?>">
+            <label>Pubchem pattern</label>
+            <input type="text" class="form-control" name="<?= Configs::DB_PUBCHEM_PATTERN?>" value="<?= $pubchem_pattern ?>">
+        </div>
+        <button style="margin-top: 10px;" type="submit" class="btn btn-sm btn-success pull-right">Save</button>
+    </div>
+    
+</form>

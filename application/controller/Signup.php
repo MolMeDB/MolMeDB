@@ -9,7 +9,7 @@ class SignupController extends Controller
     {    
         if($_POST)
         {
-            $usermanager = new UserManager();
+            $usermanager = new Users();
 
             try
             {

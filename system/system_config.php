@@ -206,7 +206,7 @@ class System_config
         // Exceptions
         else if (file_exists("system/exceptions/" . $class . ".php"))
         {
-            require( "system/exceptions/" . $class . ".php");
+            require("system/exceptions/" . $class . ".php");
         }
     }   
 }

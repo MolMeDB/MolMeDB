@@ -6,8 +6,10 @@ var detail;
 var membranes;
 var methods;
 var protocol = "<?=$_SERVER['SERVER_PROTOCOL'] ?>";
-protocol = protocol.startsWith('HTTPS') ? 'https://' : 'http://';
-var url_prefix = protocol + "<?= $_SERVER['HTTP_HOST'] ?>";
+var serverPort = "<?=$_SERVER['SERVER_PORT'] ?>"
+protocol = protocol.startsWith('HTTPS') || serverPort == 443 ? 'https://' : 'http://';
+var host = "<?= $_SERVER['HTTP_HOST'] ?>";
+var url_prefix = protocol + host;
 
 /**
  * Creates new message span
@@ -68,8 +70,6 @@ function ajax_request(uri, params, method = "GET")
     uri = uri.replace(/\&+$/, '');
 
     console.log(uri);
-    console.log(params);
-    
     var result;
 
     // Send request
@@ -90,8 +90,6 @@ function ajax_request(uri, params, method = "GET")
         }
     });
 
-    console.log(result);
-    
     return result;
 }
 

@@ -9,6 +9,6 @@ var id = $("#nameStructure").val();
 
 plugin.loadMolecule({
     id: 'Mole',
-    url: '/media/files/3DStructures/' + id + '.mol',
+    url: '/media/files/3Dstructures/' + id + '.mol',
     format: 'sdf' // default
 });

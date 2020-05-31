@@ -6,8 +6,10 @@ var detail;
 var membranes;
 var methods;
 var protocol = "<?=$_SERVER['SERVER_PROTOCOL'] ?>";
-protocol = protocol.startsWith('HTTPS') ? 'https://' : 'http://';
-var url_prefix = protocol + "<?= $_SERVER['HTTP_HOST'] ?>";
+var serverPort = "<?=$_SERVER['SERVER_PORT'] ?>"
+protocol = protocol.startsWith('HTTPS') || serverPort == 443  ? 'https://' : 'http://';
+var host = "<?= $_SERVER['HTTP_HOST'] ?>";
+var url_prefix = protocol + host;
 
 /**
  * Creates new message span
@@ -469,7 +471,7 @@ function exportToCsv(filename, rows)
 
 /**
  * Shows/hides alert window
- * 
+ *
  * @param {string} message - Text of alert message
  * @param {string} address - Address, where to redirect by click to YES
  * @param {boolean} dismiss - Hide alert box? 

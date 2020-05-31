@@ -20,7 +20,7 @@ class ApiMethods extends ApiController
      * @GET
      * @param id
      */
-    public function get($id)
+    public function get($id = NULL)
     {
         $method = new Methods($id);
 
@@ -50,7 +50,7 @@ class ApiMethods extends ApiController
      * @param substance_ids Array
      * @param membrane_ids  Array
      */
-    public function getAll($substance_ids, $membrane_ids)
+    public function getAll($substance_ids = NULL, $membrane_ids = NULL)
     {
         if (!$substance_ids) 
         {

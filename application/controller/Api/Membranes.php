@@ -17,11 +17,12 @@ class ApiMembranes extends ApiController
      * Returns membrane detail
      * 
      * @GET
-     * @param id
+     * @param q
      */
-    public function get($id)
+    public function get($q = NULL)
     {
-        $membrane = new Membranes($id);
+        $membraneModel = new Membranes();
+        $membrane = $membraneModel->search($q, 1)[0];
 
         if(!$membrane->id)
         {
@@ -33,10 +34,10 @@ class ApiMembranes extends ApiController
             'id'    => $membrane->id,
             'name'  => $membrane->name,
             'keywords' => $membrane->keywords,
-            'description'   => $membrane->description,
-            'reference' => $membrane->references,
-            'CAM'   => $membrane->CAM,
-            'created'   => $membrane->createDateTime
+            'description'   => str_replace(PHP_EOL, '', strip_tags($membrane->description)),
+            'references' => str_replace(PHP_EOL, '', strip_tags($membrane->references)),
+            // 'CAM'   => $membrane->CAM,
+            // 'created'   => $membrane->createDateTime
         );
 
         $this->answer($result);
@@ -49,7 +50,7 @@ class ApiMembranes extends ApiController
      * @param substance_ids Array
      * @param method_ids  Array
      */
-    public function getAll($substance_ids, $method_ids)
+    public function getAll($substance_ids = NULL, $method_ids = NULL) 
     {
         if(!$substance_ids)
         {
@@ -122,7 +123,7 @@ class ApiMembranes extends ApiController
      * @param idSubcategory
      * @param level
      */
-    public function getCategories($cat_id, $subcat_id, $level)
+    public function getCategories($cat_id = NULL, $subcat_id = NULL, $level = NULL)
     {   
         $membraneModel = new Membranes();
         
@@ -150,7 +151,7 @@ class ApiMembranes extends ApiController
      * @GET
      * @param idMembrane
      */
-    public function getCategory($idMembrane)
+    public function getCategory($idMembrane = NULL)
     {
         $membrane_model = new Membranes();
         

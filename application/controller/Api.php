@@ -26,6 +26,7 @@ class ApiController extends Controller
     const INTERACTIONS = 'interactions';
     const MEMBRANES = 'membranes';
     const METHODS   = 'methods';
+    const MOLECULES   = 'molecules';
     const PUBLICATION = 'publications';
     const S_ENGINE = 'searchEngine';
     const SMILES = 'smiles';
@@ -41,6 +42,7 @@ class ApiController extends Controller
         self::INTERACTIONS,
         self::MEMBRANES,
         self::METHODS,
+        self::MOLECULES,
         self::S_ENGINE,
         self::SMILES,
         self::STATS,
@@ -65,11 +67,11 @@ class ApiController extends Controller
     function __construct($endPoint = NULL, $function = NULL)
     {
         // If not valid entry
-        if(!$endPoint || !$function)
+        if(!$endPoint)
         {
             $this->answer(NULL, self::CODE_NOT_FOUND);
         }
-
+        
         // Is endpoint valid?
         if(!in_array($endPoint, $this->valid_endpoints))
         {
@@ -135,18 +137,29 @@ class ApiController extends Controller
             $file = ucwords($this->endpoint);
             $className = "Api" . $file;
             $func = $this->function;
+            $data = array();
 
             if(file_exists(APP_ROOT . 'controller/Api/' . $file . '.php'))
             {
                 $class = new $className();
 
-                if(!method_exists($class, $func))
+                if(!method_exists($class, $func) && method_exists($class, 'get'))
+                {
+                    $func = 'get';
+                    $data = array($this->function);
+                }
+                else if(!method_exists($class, $func))
                 {
                     throw new Exception();
                 }
 
                 // Get function setting and get required params
                 $params = $this->check_validity_endpoint($className, $func);
+                
+                if(count($data) && $data[0] != '')
+                {
+                    $params = array_merge($data, $params);
+                }
 
                 $class->$func(...$params);
             }
@@ -169,7 +182,7 @@ class ApiController extends Controller
      * @param string $function
      * 
      * @throws Exception
-     * @return boolean
+     * @return array
      */
     private function check_validity_endpoint($class_name, $function)
     {

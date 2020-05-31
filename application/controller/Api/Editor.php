@@ -20,7 +20,7 @@ class ApiEditor extends ApiController
      * @GET 
      * @param idTag
      */
-    public function getMembrane($idTag)
+    public function getMembrane($idTag = NULL)
     {
         $membrane_model = new Membranes();
 
@@ -36,7 +36,7 @@ class ApiEditor extends ApiController
      * @GET 
      * @param idTag
      */
-    public function getMethod($idTag)
+    public function getMethod($idTag = NULL)
     {
         $method_model = new Methods();
 

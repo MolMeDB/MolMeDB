@@ -66,6 +66,9 @@ function ajax_request(uri, params, method = "GET")
     }
 
     uri = uri.replace(/\&+$/, '');
+
+    console.log(uri);
+    console.log(params);
     
     var result;
 
@@ -86,6 +89,8 @@ function ajax_request(uri, params, method = "GET")
             result = false;
         }
     });
+
+    console.log(result);
     
     return result;
 }

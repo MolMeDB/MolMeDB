@@ -109,7 +109,7 @@ class ApiDetail extends ApiController
      * @param idMethods array
      * @param idMembranes array
 	 */
-    public function getInteractions($idSubstance, $idMethods, $idMembranes)
+    public function getInteractions($idSubstance = NULL, $idMethods = NULL, $idMembranes = NULL)
     {
         $interaction_model = new Interactions();
         $membrane_model = new Membranes();
@@ -190,7 +190,7 @@ class ApiDetail extends ApiController
      * @param idMet - Method ID
      * @param limit
      */
-    public function getEnergyValues($substance_id, $membrane_id, $method_id, $limit)
+    public function getEnergyValues($substance_id = NULL, $membrane_id= NULL, $method_id = NULL, $limit = NULL)
     {
         $energy_model = new Energy();
 
@@ -223,7 +223,7 @@ class ApiDetail extends ApiController
      * @param idMem
      * @param idMet
      */
-    public function getEnergyLabel($idMembrane, $idMethod)
+    public function getEnergyLabel($idMembrane = NULL, $idMethod = NULL)
     {
         $membrane = new Membranes($idMembrane);
         $method = new Methods($idMethod);
@@ -250,7 +250,7 @@ class ApiDetail extends ApiController
      * @param list - LIST OF membrane;method combinations
      * @param id - ID of substance
      */
-    public function getEnergyData($list, $id)
+    public function getEnergyData($list = NULL, $id = NULL)
     {
         // Parse list
         $list = json_decode($list);

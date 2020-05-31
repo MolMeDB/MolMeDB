@@ -104,7 +104,7 @@ function edit_basic_info(edit_btn)
                         if(k === -1)
                         { //First option with actual value
                             var id = document.getElementById("id_membrane").value;
-                            var current = ajax_request('membranes/get', {id: id});
+                            var current = ajax_request('membranes/get', {q: id});
 
                             if(!current)
                             {

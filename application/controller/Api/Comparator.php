@@ -18,7 +18,7 @@ class ApiComparator extends ApiController
 	 * @param flags
 	 * 
 	 */
-    public function getEnergyValues($energyFlagIds)
+    public function getEnergyValues($energyFlagIds = NULL)
     {
 		$energyFlagIds = $this->remove_empty_values($energyFlagIds);
 
@@ -80,7 +80,7 @@ class ApiComparator extends ApiController
 	 * @GET
 	 * @param id Array|integer
 	 */
-    public function getInteraction($id)
+    public function getInteraction($id = NULL)
     {
 		$ids = explode(",", $id);
 
@@ -163,7 +163,7 @@ class ApiComparator extends ApiController
 	 * @param substance_ids
 	 * @param charges
 	 */
-    public function getInteractionIds($methods, $membranes, $substances, $charges)
+    public function getInteractionIds($methods = NULL, $membranes = NULL, $substances = NULL, $charges = NULL)
     {
 		$methods_ids = $methods ? $this->remove_empty_values($methods) : array();
 		$membranes_ids = $membranes ? $this->remove_empty_values($membranes) : array();
@@ -211,7 +211,7 @@ class ApiComparator extends ApiController
 	 * @param id   - ID of request type
 	 * 
 	 */
-	public function getSubstancesToComparator($type, $id)
+	public function getSubstancesToComparator($type = NULL, $id = NULL)
 	{
 		$valid_types = array
 		(

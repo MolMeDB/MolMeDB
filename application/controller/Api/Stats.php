@@ -15,7 +15,7 @@ class ApiStats extends ApiController
      * @param idMethod
      * 
      */
-    public function loadCompounds($idMembrane, $idMethod)
+    public function loadCompounds($idMembrane = NULL, $idMethod = NULL)
     {
         $substanceModel = new Substances();
         
@@ -129,7 +129,7 @@ class ApiStats extends ApiController
      * @param id_method
      * 
      */
-    public function detail($id_membrane, $id_method)
+    public function detail($id_membrane = NULL, $id_method = NULL)
     {
         $interaction_model = new Interactions();
         $membrane = new Membranes($id_membrane);

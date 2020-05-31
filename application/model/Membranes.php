@@ -51,21 +51,34 @@ class Membranes extends Db
             WHERE m.id = ?',
                 array($id));
     }
-    
-    // public function search($data, $pagination)
-    // {
-    //     $data = '%' . $data . '%';
-    //     return $this->queryAll('
-    //      SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
-    //      FROM substances as s 
-    //      JOIN interaction as i ON s.idSubstance = i.idSubstance 
-    //      WHERE i.idMembrane IN (SELECT idMembrane 
-    //                                       FROM membranes as m 
-    //                                       WHERE m.name LIKE ?)
-    //            AND i.visibility = 1
-    //      ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
-    //      LIMIT ?,?', array($data, ($pagination-1)*10,10));
-    // }
+
+    /**
+     * Returns membranes for given query
+     * 
+     * @param string $q
+     * @param int $limit
+     * 
+     */
+    public function search($q, $limit = NULL)
+    {
+        $query = "%$q%";
+
+        if($limit)
+        {
+            $limit = 'LIMIT ' . $limit;
+        }
+        else
+        {
+            $limit = '';
+        }
+
+        return $this->queryAll(
+            'SELECT * 
+            FROM membranes 
+            WHERE id = ? OR name LIKE ? ' . $limit,
+            array($q, $query)
+        );
+    }
     
     /**
      * Loads whisper detail
@@ -216,7 +229,6 @@ class Membranes extends Db
     /**
      * Gets all membrane subcategories
      * 
-     * @return Iterable
      */
     public function get_all_subcategories()
     {

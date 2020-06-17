@@ -140,6 +140,122 @@ class Substances extends Db
 
         return $this->parse_list($result, $pagination);
     }
+
+    /**
+     * Search substance by given params
+     * 
+     * @param string $identifier
+     * @param string $smiles
+     * @param string $name
+     * @param string $pubchem
+     * @param string $drugbank
+     * @param string $chebi
+     * @param string $chembl
+     * @param string $pdb
+     * @param int $limit 
+     * @param int $offset
+     * 
+     * @return Iterable
+     */
+    public function search_by_params($identifier = NULL, $smiles = NULL, $name = NULL, $pubchem = NULL, $drugbank = NULL, $chebi = NULL, $chembl = NULL, $pdb = NULL, $limit = NULL, $offset = NULL)
+	{
+        $limit_str = '';
+        $where = 'WHERE 0 ';
+        $params = [];
+
+        if($identifier && $identifier != "")
+        {
+            $where .= 'OR identifier = ? ';
+            $params[] = $identifier;
+        }
+
+        if($smiles && $smiles != "")
+        {
+            // First canonize, if possible
+            $rdkit = new Rdkit();
+            if($rdkit->is_connected())
+            {
+                $smiles = $rdkit->canonize_smiles($smiles);
+            }
+
+            $where .= ' OR SMILES LIKE ? ';
+            $params[] = $smiles;
+        }
+
+        if($name && $name != "")
+        {
+            $name = "%$name%";
+            $where .= " OR name LIKE ? ";
+            $params[] = $name;
+        }
+
+        if($pubchem && $pubchem != "")
+        {
+            $where .= ' OR pubchem LIKE ? ';
+            $params[] = $pubchem;
+        }
+
+        if($drugbank && $drugbank != "")
+        {
+            $where .= ' OR drugbank LIKE ? ';
+            $params[] = $drugbank;
+        }
+
+        if($chebi && $chebi != "")
+        {
+            $where .= ' OR chEBI LIKE ? ';
+            $params[] = $chebi;
+        }
+
+        if($chembl && $chembl != "")
+        {
+            $where .= ' OR chEMBL LIKE ? ';
+            $params[] = $chembl;
+        }
+
+        if($pdb && $pdb != "")
+        {
+            $where .= ' OR pdb LIKE ? ';
+            $params[] = $pdb;
+        }
+
+        $where = trim($where);
+
+        if($where == 'WHERE 0 OR')
+        {
+            return [];
+        }
+
+        if($limit && is_numeric($limit))
+        {
+            $limit_str = " LIMIT $limit ";
+            if($offset !== NULL && is_numeric($offset))
+            {
+                $limit_str .= " OFFSET $offset ";
+            }
+        }
+
+        $result = $this->queryAll("
+            SELECT id
+            FROM substances
+            $where
+            $limit_str"
+            ,$params);
+
+        $ids = [];
+
+        foreach($result as $r)
+        {
+            $ids[] = $r->id;
+        }
+
+        if(!count($ids))
+        {
+            return [];
+        }
+
+        return $this->in('id', $ids)->get_all();
+    }
     
     /**
      * Parsing search list detail

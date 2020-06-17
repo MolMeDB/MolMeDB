@@ -20,26 +20,59 @@ class ApiInteractions extends ApiController
      * @GET
      * @param membrane
      * @param method
+     * @param molecule
+     * @param publication
+     * @param limit
+     * @param offset
      */
-    public function get($membrane = NULL, $method = NULL)
+    public function get($membrane, $method, $molecule, $publication, $limit, $offset)
     {
         $inter_model = new Interactions();
         $membraneModel = new Membranes();
         $methodModel = new Methods();
+        $publicationModel = new Publications();
+        $substanceModel = new Substances();
 
         $membrane = $membraneModel->where('name', $membrane)->get_one();
         $method = $methodModel->where('name', $method)->get_one();
+        $molecule = $substanceModel->where('identifier', $molecule)->get_one();
+        $reference = NULL;
+        $limit_arr = array();
+        
+        $find_array = array();
 
-        if(!$membrane->id || !$method->id)
+        // Find publication
+        if($publication)
+        {
+            $publication = "%$publication%";
+            $reference = $publicationModel->get_by_query($publication);
+        }
+
+        if($membrane->id)
+        {
+            $find_array['id_membrane'] = $membrane->id;
+        }
+        if($method->id)
+        {
+            $find_array['id_method'] = $method->id;
+        }
+        if($reference && $reference->id)
+        {
+            $find_array['id_reference'] = $reference->id;
+        }
+        if($molecule->id)
+        {
+            $find_array['id_substance'] = $molecule->id;
+        }
+        
+        if(!count($find_array))
         {
             $this->answer(NULL, self::CODE_NOT_FOUND);
         }
 
-        $interactions = $inter_model->where(array
-            (
-                'id_method' => $method->id,
-                'id_membrane' => $membrane->id
-            ))
+        $interactions = $inter_model->where($find_array)
+            ->limit($limit)
+            ->offset($offset)
             ->get_all();
 
         $data = array();
@@ -49,15 +82,15 @@ class ApiInteractions extends ApiController
             $data[] = array
             (
                 'id' => $i->id,
-                'membrane' => $membrane->name,
-                'method' => $method->name,
+                'membrane' => $i->membrane->name,
+                'method' => $i->method->name,
                 'molecule' => $i->substance ? array
-                    (
-                        'name' => $i->substance->name,
-                        'SMILES' => $i->substance->SMILES,
-                        'LogP'  => $i->substance->LogP,
-                        'MW'  => $i->substance->MW,
-                    ) : NULL, 
+                (
+                    'name' => $i->substance->name,
+                    'SMILES' => $i->substance->SMILES,
+                    'LogP'  => $i->substance->LogP,
+                    'MW'  => $i->substance->MW,
+                ) : NULL, 
                 'primary_reference' => $i->publication ? $i->publication->citation : NULL,
                 'secondary_reference' => $i->dataset->publication ? $i->dataset->publication->citation : NULL,
                 'charge'  => $i->charge,

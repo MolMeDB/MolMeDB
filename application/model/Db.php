@@ -18,6 +18,7 @@ class Db extends Iterable_object
     protected $table;
     private $select_list = '*';
     private $limit = '';
+    private $offset = '';
     private $where = '';
     private $group_by = '';
     private $order_by = '';
@@ -252,7 +253,7 @@ class Db extends Iterable_object
             FROM ' . $this->table .
             ' ' . $this->where . ' ' .
             ' ' . $this->group_by .
-            $this->limit . ' '
+            $this->limit . ' ' . $this->offset . ' '
             . $this->order_by;
 
         if($this->debug) // DEBUG
@@ -578,6 +579,23 @@ class Db extends Iterable_object
         }
 
         $this->limit = $limit_str;
+
+        return $this;
+    }
+
+    /**
+     * OFFSET for MYSQL QUERY BUILDER
+     * 
+     * @param integer $offset
+     */
+    public function offset($offset)
+    {
+        if(!$offset)
+        {
+            return $this;
+        }
+
+        $this->offset = ' OFFSET ' . $offset;
 
         return $this;
     }

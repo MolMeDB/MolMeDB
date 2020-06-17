@@ -26,7 +26,7 @@ class ApiMembranes extends ApiController
 
         if(!$membrane->id)
         {
-            $this->answer(array(), self::CODE_OK_NO_CONTENT);
+            $this->answer(array(), self::CODE_NOT_FOUND);
         }
 
         $result = array
@@ -36,8 +36,6 @@ class ApiMembranes extends ApiController
             'keywords' => $membrane->keywords,
             'description'   => str_replace(PHP_EOL, '', strip_tags($membrane->description)),
             'references' => str_replace(PHP_EOL, '', strip_tags($membrane->references)),
-            // 'CAM'   => $membrane->CAM,
-            // 'created'   => $membrane->createDateTime
         );
 
         $this->answer($result);

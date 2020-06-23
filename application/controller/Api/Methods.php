@@ -43,6 +43,37 @@ class ApiMethods extends ApiController
         $this->answer($result);
     }
 
+
+    /**
+     * Finds membrane details
+     * 
+     * @GET
+     * @param q
+     */
+    public function find($q = NULL)
+    {
+        $methodModel = new Methods();
+        $methods = $methodModel->search($q, NULL, TRUE);
+
+        if (!count($methods)) {
+            $this->answer(array(), self::CODE_NOT_FOUND);
+        }
+
+        $result = [];
+
+        foreach ($methods as $mem) {
+            $result[] = array(
+                'id'    => $mem->id,
+                'name'  => $mem->name,
+                'keywords' => $mem->keywords,
+                'description'   => str_replace(PHP_EOL, '', strip_tags($mem->description)),
+                'references' => str_replace(PHP_EOL, '', strip_tags($mem->references)),
+            );
+        }
+
+        $this->answer($result);
+    }
+
     /**
      * Returns all methods for given 
      * 

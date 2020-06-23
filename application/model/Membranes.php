@@ -59,9 +59,18 @@ class Membranes extends Db
      * @param int $limit
      * 
      */
-    public function search($q, $limit = NULL)
+    public function search($q, $limit = NULL, $deepSearch = FALSE)
     {
         $query = "%$q%";
+        $where_add = "";
+        $params = [$q, $query];
+
+        if($deepSearch)
+        {
+            $where_add = " OR keywords LIKE ? OR description LIKE ? ";
+            $params[] = $query;
+            $params[] = $query;
+        }
 
         if($limit)
         {
@@ -73,10 +82,11 @@ class Membranes extends Db
         }
 
         return $this->queryAll(
-            'SELECT * 
+            'SELECT DISTINCT * 
             FROM membranes 
-            WHERE id = ? OR name LIKE ? ' . $limit,
-            array($q, $query)
+            WHERE id = ? OR name LIKE ? ' . $where_add . 
+            $limit,
+            $params
         );
     }
     

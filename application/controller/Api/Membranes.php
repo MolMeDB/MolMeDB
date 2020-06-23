@@ -42,6 +42,39 @@ class ApiMembranes extends ApiController
     }
 
     /**
+     * Finds membrane details
+     * 
+     * @GET
+     * @param q
+     */
+    public function find($q = NULL)
+    {
+        $membraneModel = new Membranes();
+        $membranes = $membraneModel->search($q, NULL, TRUE);
+
+        if(!count($membranes))
+        {
+            $this->answer(array(), self::CODE_NOT_FOUND);
+        }
+
+        $result = [];
+
+        foreach($membranes as $mem)
+        {
+            $result[] = array
+            (
+                'id'    => $mem->id,
+                'name'  => $mem->name,
+                'keywords' => $mem->keywords,
+                'description'   => str_replace(PHP_EOL, '', strip_tags($mem->description)),
+                'references' => str_replace(PHP_EOL, '', strip_tags($mem->references)),
+            );
+        }
+
+        $this->answer($result);
+    }
+
+    /**
      * Returns all membranes for given 
      * 
      * @POST

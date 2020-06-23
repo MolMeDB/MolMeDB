@@ -244,9 +244,16 @@ class ApiController extends Controller
             else
             {
                 $value = $this->remove_empty_values($remote_params[$key]);
+                unset($remote_params[$key]);
             }
 
             $params[] = $value;
+        }
+
+        // Bad request
+        if(count($remote_params))
+        {
+            $this->answer('Wrong parameters specified.', self::CODE_BAD_REQUEST);
         }
 
         return $params;

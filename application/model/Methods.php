@@ -27,6 +27,40 @@ class Methods extends Db
         $this->table = 'methods';
         parent::__construct($id);
     }
+
+    /**
+     * Returns methods for given query
+     * 
+     * @param string $q
+     * @param int $limit
+     * 
+     */
+    public function search($q, $limit = NULL, $deepSearch = FALSE)
+    {
+        $query = "%$q%";
+        $where_add = "";
+        $params = [$q, $query];
+
+        if ($deepSearch) {
+            $where_add = " OR keywords LIKE ? OR description LIKE ? ";
+            $params[] = $query;
+            $params[] = $query;
+        }
+
+        if ($limit) {
+            $limit = 'LIMIT ' . $limit;
+        } else {
+            $limit = '';
+        }
+
+        return $this->queryAll(
+            'SELECT DISTINCT * 
+            FROM methods 
+            WHERE id = ? OR name LIKE ? ' . $where_add .
+                $limit,
+            $params
+        );
+    }
     
     /**
      * Loads search whisper for API response
@@ -137,7 +171,7 @@ class Methods extends Db
      * 
      * @param integer $substance_id
      * 
-     * @return Iterable
+     * @return object
      */
     public function check_avail_by_substance($substance_id)
     {

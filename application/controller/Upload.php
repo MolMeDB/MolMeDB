@@ -1080,7 +1080,7 @@ class UploadController extends Controller
      * @param string $format - Valid file format
      * @param string $type
      * 
-     * @return string File path
+     * @return file File path
      */
     public function uploadFile($file, $format, $file_type = NULL)
     {

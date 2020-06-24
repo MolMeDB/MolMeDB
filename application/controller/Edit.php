@@ -414,7 +414,7 @@ class EditController extends Controller
 
                             Db::beginTransaction();
 
-                            if(intval($_POST['id_dataset']) !== $dataset->id)
+                            if(intval($_POST['id_dataset']) !== intval($dataset->id))
                             {
                                 throw new Exception('Wrong dataset instance.');
                             }

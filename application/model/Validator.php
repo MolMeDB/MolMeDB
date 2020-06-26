@@ -8,6 +8,15 @@
 class Validator extends Db
 {
     /**
+     * Validator constants
+     */
+    const NOT_VALIDATED = 0;
+    const VALID = 1;
+    const INVALID = 2;
+
+
+
+    /**
      * Constructor
      */
     function __construct($id = NULL)

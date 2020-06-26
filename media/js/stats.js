@@ -155,8 +155,9 @@ $('.stats-list-item').click(function()
             var data = [];
             var date = new Date();
             // Set header
-            data[0] = ['Name', 'Method', 'Membrane','Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-', 'LogPerm', 
-                'LogPerm_+/-', 'MW', 'Publication'];
+            data[0] = ['Name', 'Identifier', 'Pubchem', 'Drugbank', 'SMILES', 'Method', 'Membrane','Q', 'Temperature', 'Note', 
+                'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-', 'LogPerm', 
+                'LogPerm_+/-', 'MW', 'Primary_reference', 'Secondary_reference'];
 
             // Divide into subqueries for php GET REQUEST LENGTH limitations
             var per_request = 100;
@@ -195,23 +196,29 @@ $('.stats-list-item').click(function()
                 
                 data[i+1] = [
                     int.substance.name,
+                    int.substance.identifier,
+                    int.substance.pubchem,
+                    int.substance.drugbank,
+                    int.substance.SMILES,
                     int.method,
                     int.membrane,
-                    int.charge ? int.charge : "",
-                    int.temperature ? int.temperature : "",
-                    int.substance.LogP ? int.substance.LogP : "",
-                    int.Position ? int.Position : "",
-                    int.Position_acc ? int.Position_acc : "",
-                    int.Penetration ? int.Penetration : "",
-                    int.Penetration_acc ? int.Penetration_acc : "",
-                    int.Water ? int.Water : "",
-                    int.Water_acc ? int.Water_acc : "",
-                    int.LogK ? int.LogK : "",
-                    int.LogK_acc ? int.LogK_acc : "",
-                    int.LogPerm ? int.LogPerm : "",
-                    int.LogPerm_acc ? int.LogPerm_acc : "",
-                    int.substance.MW ? int.substance.MW : "",
-                    int.reference ? int.reference : ""
+                    int.charge,
+                    int.temperature,
+                    int.comment,
+                    int.substance.LogP,
+                    int.Position,
+                    int.Position_acc,
+                    int.Penetration,
+                    int.Penetration_acc,
+                    int.Water,
+                    int.Water_acc,
+                    int.LogK,
+                    int.LogK_acc,
+                    int.LogPerm,
+                    int.LogPerm_acc,
+                    int.substance.MW,
+                    int.reference,
+                    int.secondary_reference,
                 ];
             }
 

@@ -17,6 +17,13 @@ class Configs extends Db
     const DB_DRUGBANK_PATTERN = 'db_drugbank_pattern';
     const DB_PUBCHEM_PATTERN = 'db_pubchem_pattern';
     const DB_PDB_PATTERN = 'db_pdb_pattern';
+    
+    // Scheduler attributes
+    const S_SMILES_VALIDATIONS = 'scheduler_smiles_validations';
+    const S_3D_STRUCTURE_AUTOFILL = 'scheduler_3D_structure_autofill';
+    const S_DUPL_CHECK = 'scheduler_duplicity_check';  
+    const S_FILL_MISSING_RDKIT = 'scheduler_fill_missing_rdkit';  
+    const S_FILL_MISSING_REMOTE = 'scheduler_fill_missing_remote';  
 
 
     /** Defines valid config attributes */
@@ -28,6 +35,11 @@ class Configs extends Db
         self::DB_DRUGBANK_PATTERN,
         self::DB_PUBCHEM_PATTERN,
         self::DB_PDB_PATTERN,
+        self::S_SMILES_VALIDATIONS,
+        self::S_3D_STRUCTURE_AUTOFILL,
+        self::S_DUPL_CHECK,
+        self::S_FILL_MISSING_RDKIT,
+        self::S_FILL_MISSING_REMOTE,
     );
 
     /** Defines, which values must be regexp */

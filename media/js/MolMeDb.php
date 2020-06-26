@@ -325,14 +325,18 @@ function download_dataset_byRef(idRef)
 {
     // Header of csv file
     var spans = [
-        "Name", 
+        "Name",
+        'Identifier', 
+        'Pubchem', 
+        'Drugbank', 
+        "SMILES",  
         "Membrane", 
         "Method", 
-        "SMILES", 
         "LogP", 
         "MW", 
         "Charge", 
         "Temperature [°C]", 
+        "Note", 
         "X_min [nm]", 
         "+/-_X_min", 
         "LogK [mol_m/mol_w]", 
@@ -343,7 +347,8 @@ function download_dataset_byRef(idRef)
         "+/-_G_pen", 
         "LogPerm [cm/s]", 
         "+/-_LogPerm", 
-        "reference"
+        "primary_reference",
+        "secondary_reference"
     ];
            
     var data = [];
@@ -378,25 +383,30 @@ function download_dataset_byRef(idRef)
     for(var i = 0; i<count; i++){
         export_data[i+1] = 
         [
-            data[i].name ? data[i].name : "",
-            data[i].membrane ? data[i].membrane : "",
-            data[i].method ? data[i].method : "",
-            data[i].SMILES ? data[i].SMILES : "",
-            data[i].LogP ? data[i].LogP : "",
-            data[i].MW ? data[i].MW : "",
-            data[i].charge ? data[i].charge : "",
-            data[i].temperature ? data[i].temperature : "",
-            data[i].Position ? data[i].Position : "",
-            data[i].Position_acc ? data[i].Position_acc : "",
-            data[i].LogK ? data[i].LogK : "",
-            data[i].LogK_acc ? data[i].LogK_acc : "",
-            data[i].Water ? data[i].Water : "",
-            data[i].Water_acc ? data[i].Water_acc : "",
-            data[i].Penetration ? data[i].Penetration : "",
-            data[i].Penetration_acc ? data[i].Penetration_acc : "",
-            data[i].LogPerm ? data[i].LogPerm : "",
-            data[i].LogPerm_acc ? data[i].LogPerm_acc : "",
-            data[i].publication ? data[i].publication : ""
+            data[i].name,
+            data[i].identifier,
+            data[i].pubchem,
+            data[i].drugbank,
+            data[i].SMILES,
+            data[i].membrane,
+            data[i].method,
+            data[i].LogP,
+            data[i].MW,
+            data[i].charge,
+            data[i].temperature,
+            data[i].comment,
+            data[i].Position,
+            data[i].Position_acc,
+            data[i].LogK,
+            data[i].LogK_acc,
+            data[i].Water,
+            data[i].Water_acc,
+            data[i].Penetration,
+            data[i].Penetration_acc,
+            data[i].LogPerm,
+            data[i].LogPerm_acc,
+            data[i].publication,
+            data[i].secondary_publication,
         ];
         
     }
@@ -431,7 +441,9 @@ function exportToCsv(filename, rows)
         var finalVal = '';
         for (var j = 0; j < row.length; j++) {
             if (row[j] == 'undefined' || row[j] == null)
-                continue;
+            {
+                row[j] = '';
+            }
             var innerValue = row[j] === null ? '' : row[j].toString();
             if (row[j] instanceof Date) {
                 innerValue = row[j].toLocaleString();

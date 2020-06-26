@@ -72,6 +72,19 @@ class RouterController extends Controller
             die;
         }
 
+        // Scheduler redirection
+        if($classController === 'SchedulerController')
+        {
+            if($targetFunction !== 'run')
+            {
+                die;
+            }
+            
+            $api_controller = new SchedulerController();
+            $api_controller->run();
+            die;
+        }
+
         // If not set target function, set to "parse"
         if (!$targetFunction || !strlen($targetFunction)) 
         {

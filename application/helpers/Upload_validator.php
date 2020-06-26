@@ -44,6 +44,7 @@ class Upload_validator
     const KI = "Ki";
     const IC50 = "IC50";
     const EC50 = "EC50";
+    const COMMENT = "Note";
 
 
     /** Valid dataset types */
@@ -80,6 +81,7 @@ class Upload_validator
         self::PDB,
         self::AREA,
         self::VOLUME,
+        self::COMMENT
     );
 
     /** Valid transporter types */

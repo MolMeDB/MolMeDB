@@ -751,7 +751,7 @@ class UploadController extends Controller
                 try
                 {
                     $uploader->insert_transporter(
-                        $dataset->id,
+                        $dataset,
                         self::get_value($detail, Upload_validator::NAME),
                         self::get_value($detail, Upload_validator::SMILES),
                         self::get_value($detail, Upload_validator::MW),
@@ -827,7 +827,7 @@ class UploadController extends Controller
             $membrane = new Membranes($membrane_id);
             $method = new Methods($method_id);
             $publication = new Publications($secondary_ref_id);
-            $substanceModel = new Substances();
+            $interaction_model = new Interactions();
 
             if(!$membrane->id)
             {
@@ -958,6 +958,7 @@ class UploadController extends Controller
                         self::get_value($detail, Upload_validator::LT),
                         self::get_value($detail, Upload_validator::LT_ACC),
                         self::get_value($detail, Upload_validator::Q),
+                        self::get_value($detail, Upload_validator::COMMENT),
                         self::get_value($detail, Upload_validator::SMILES),
                         self::get_value($detail, Upload_validator::DRUGBANK),
                         self::get_value($detail, Upload_validator::PUBCHEM),
@@ -980,18 +981,38 @@ class UploadController extends Controller
             Db::commitTransaction();
 
             // Show report message if not empty
-            if (!$report->is_empty()) {
+            if (!$report->is_empty()) 
+            {
                 $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
             }
 
-            $total_saved = $line - $report->count();
+            // Get number of newly uploaded interactions
+            $new_uploaded = $interaction_model->where('id_dataset', $dataset->id)
+                ->get_all_count();
 
-            return "$total_saved lines successfully saved!";
+            if($new_uploaded < 1)
+            {
+                $dataset->delete();
+                $this->addMessageWarning('No newly added interactions. Maybe, some errors occured or only old records was filled in. So, new dataset was not created.');
+            }
+
+            if($new_uploaded != $line)
+            {
+                $this->addMessageWarning(($line - $new_uploaded) . " values were assigned to the another datasets.");
+            }
+
+            $total_saved = $line - $report->count();
+            if($total_saved > 0)
+            {
+                return "$total_saved lines successfully saved!";
+            }
+            
+            return NULL;
         }
         catch (Exception $ex)
         {
             Db::rollbackTransaction();
-            $this->addMessageError('Error occured on line .' . $line);
+            $this->addMessageError('Error occured while uploading dataset.');
             throw new Exception($ex->getMessage());
         }
     }

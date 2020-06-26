@@ -130,50 +130,93 @@ class Transporters extends Db
     }
 
     /**
-     * Check, if transporter detail exists already
+     * Check, if transporter detail already exists 
      * 
      * @param integer $id_substance
      * @param integer $id_target
      * @param integer $id_reference
+     * @param integer $id_secondary_reference
      * @param integer $type
      * 
      * @return Transporters
      */
-    public function search($id_substance, $id_target, $id_reference, $type)
+    public function search($id_substance, $id_target, $id_reference, $id_secondary_reference)
     {
         if($id_reference)
         {
-            $t = $this->queryOne('
-            SELECT id 
-            FROM transporters
-            WHERE id_substance = ? AND id_target = ? 
-                AND type = ? AND id_reference = ?
-            LIMIT 1
-            ', array
-            (
-                $id_substance,
-                $id_target,
-                $type,
-                $id_reference
-            )); 
+            if($id_secondary_reference)
+            {   
+                $t = $this->queryOne('
+                    SELECT t.id 
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    WHERE t.id_substance = ? AND t.id_target = ? 
+                         AND t.id_reference = ? AND td.id_reference = ?
+                    LIMIT 1
+                    ', 
+                array
+                (
+                    $id_substance,
+                    $id_target,
+                    $id_reference,
+                    $id_secondary_reference
+                ));
+            }
+            else
+            {
+                $t = $this->queryOne('
+                    SELECT t.id 
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    WHERE t.id_substance = ? AND t.id_target = ? 
+                        AND t.id_reference = ? AND td.id_reference IS NULL
+                    LIMIT 1
+                    ', 
+                array
+                (
+                    $id_substance,
+                    $id_target,
+                    $id_reference,
+                ));
+            }
         }
         else
         {
-            $t = $this->queryOne('
-            SELECT id 
-            FROM transporters
-            WHERE id_substance = ? AND id_target = ? 
-                AND type = ? AND id_reference IS NULL
-            LIMIT 1
-            ', array
-            (
-                $id_substance,
-                $id_target,
-                $type,
-            )); 
+            if($id_secondary_reference)
+            {   
+                $t = $this->queryOne('
+                    SELECT t.id 
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    WHERE t.id_substance = ? AND t.id_target = ? 
+                        AND t.id_reference IS NULL AND td.id_reference = ?
+                    LIMIT 1
+                    ', 
+                array
+                (
+                    $id_substance,
+                    $id_target,
+                    $id_secondary_reference
+                ));
+            }
+            else
+            {
+                $t = $this->queryOne('
+                    SELECT t.id 
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    WHERE t.id_substance = ? AND t.id_target = ? 
+                        AND t.id_reference IS NULL AND td.id_reference IS NULL
+                    LIMIT 1
+                ', array
+                (
+                    $id_substance,
+                    $id_target,
+                ));
+            }
+             
         }
         
-
         return new Transporters($t->id);
     }
 

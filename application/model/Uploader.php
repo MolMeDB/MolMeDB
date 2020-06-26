@@ -482,8 +482,6 @@ class Uploader extends Db
 		}
 		catch (Exception $ex) 
 		{
-			print_r($ex);
-			die;
 			throw new UploadLineException($ligand . ' / ' . $ex->getMessage());
 		}
 

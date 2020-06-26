@@ -664,7 +664,7 @@ class UploadController extends Controller
 
             // Checks if data are valid
             $publication = new Publications($secondary_ref_id);
-            $substanceModel = new Substances();
+            $transporter_model = new Transporters();
 
             // Get valid attribute types
             $types = Upload_validator::get_transporter_attributes();
@@ -785,9 +785,28 @@ class UploadController extends Controller
                 $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
             }
 
-            $total_saved = $line - $report->count();
+            // Get number of newly uploaded interactions
+            $new_uploaded = $transporter_model->where('id_dataset', $dataset->id)
+                ->get_all_count();
 
-            return "$total_saved lines successfully saved!";
+            if($new_uploaded < 1)
+            {
+                $dataset->delete();
+                $this->addMessageWarning('No newly added interactions. Maybe, some errors occured or only old records was filled in. So, new dataset was not created.');
+            }
+
+            if($new_uploaded != $line)
+            {
+                $this->addMessageWarning(($line - $new_uploaded - $report->count()) . " values were assigned to the another datasets.");
+            }
+
+            $total_saved = $line - $report->count();
+            if($total_saved > 0)
+            {
+                return "$total_saved lines successfully saved!";
+            }
+            
+            return NULL;
         }
         catch (Exception $ex)
         {
@@ -808,7 +827,6 @@ class UploadController extends Controller
         $line = 0;
         try
         {
-            // print_r($_POST);
             // Transaction for whole dataset 
             Db::beginTransaction();
 
@@ -998,7 +1016,7 @@ class UploadController extends Controller
 
             if($new_uploaded != $line)
             {
-                $this->addMessageWarning(($line - $new_uploaded) . " values were assigned to the another datasets.");
+                $this->addMessageWarning(($line - $new_uploaded - $report->count()) . " values were assigned to the another datasets.");
             }
 
             $total_saved = $line - $report->count();

@@ -171,7 +171,7 @@ class Uploader extends Db
 					'id_method'		=> $method->id,
 					'id_substance'	=> $substance->id,
 					'temperature'	=> $temperature,
-					'charge'		=> $Q,
+					'charge'		=> $Q,	
 					'id_reference'	=> $reference_id,
 					'comment LIKE' 	=> $comment
 				))
@@ -417,7 +417,17 @@ class Uploader extends Db
 			$transporter = new Transporters();
 
 			// Check, if already exists
-			$transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $dataset->id_reference);
+			// $transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $dataset->id_reference);
+
+			$transporter = $transporter->where(array
+				(
+					'id_substance' => $substance->id,
+					'id_target' => $target_obj->id,
+					'id_reference'	=> $id_reference
+				))
+				->get_one();
+
+			$transporter = new Transporters($transporter->id);
 
 			// Check, if data can be filled
 			if($transporter->id)
@@ -426,28 +436,28 @@ class Uploader extends Db
 				{
 					if($transporter->Km && $KM !== $transporter->Km)
 					{
-						throw new Exception('For given reference already exists detail with different "Km" value. Please, check dataset ID:' . $transporter->dataset->id);
+						throw new Exception('For given reference already exists detail with different "Km" value. Please, check dataset ID:' . $transporter->dataset->id . '. Transporter ID:' . $transporter->id);
 					}
 				}
 				if($KI)
 				{
 					if($transporter->Ki && $KI !== $transporter->Ki)
 					{
-						throw new Exception('For given reference already exists detail with different "Ki" value. Please, check dataset ID:' . $transporter->dataset->id);
+						throw new Exception('For given reference already exists detail with different "Ki" value. Please, check dataset ID:' . $transporter->dataset->id . '. Transporter ID:' . $transporter->id);
 					}
 				}
 				if($EC50)
 				{
 					if($transporter->EC50 && $EC50 !== $transporter->EC50)
 					{
-						throw new Exception('For given reference already exists detail with different "EC50" value. Please, check dataset ID:' . $transporter->dataset->id);
+						throw new Exception('For given reference already exists detail with different "EC50" value. Please, check dataset ID:' . $transporter->dataset->id . '. Transporter ID:' . $transporter->id);
 					}
 				}
 				if($IC50)
 				{
 					if($transporter->IC50 && $IC50 !== $transporter->IC50)
 					{
-						throw new Exception('For given reference already exists detail with different "IC50" value. Please, check dataset ID:' . $transporter->dataset->id);
+						throw new Exception('For given reference already exists detail with different "IC50" value. Please, check dataset ID:' . $transporter->dataset->id . '. Transporter ID:' . $transporter->id);
 					}
 				}
 			}
@@ -463,7 +473,7 @@ class Uploader extends Db
 			$transporter->IC50 = $IC50 ? $IC50 : $transporter->IC50;
 			$transporter->id_reference = $id_reference;
 			$transporter->id_user = $user_id;
-			
+
 			$transporter->save();
 		} 
 		catch(UploadLineException $e)
@@ -472,6 +482,8 @@ class Uploader extends Db
 		}
 		catch (Exception $ex) 
 		{
+			print_r($ex);
+			die;
 			throw new UploadLineException($ligand . ' / ' . $ex->getMessage());
 		}
 

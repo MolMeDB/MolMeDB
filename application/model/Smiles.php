@@ -93,9 +93,7 @@ class Smiles extends Db
             if($substance->id)
             {
                 $s = new Substances($substance->id);
-
                 $s->SMILES = $row->SMILES;
-
                 $s->save();
             }
         }

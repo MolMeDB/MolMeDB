@@ -62,6 +62,11 @@ abstract class Controller
      */
     public function addMessageWarning($message)
     {
+        if(!$message || $message == '')
+        {
+            return;
+        }
+        
         if (isset($_SESSION['Warning_messages']))
             $_SESSION['Warning_messages'][] .= $message;
         else
@@ -75,6 +80,11 @@ abstract class Controller
      */
     public function addMessageSuccess($message)
     {
+        if(!$message || $message == '')
+        {
+            return;
+        }
+
         if (isset($_SESSION['Success_messages']))
             $_SESSION['Success_messages'][] .= $message;
         else
@@ -88,6 +98,11 @@ abstract class Controller
      */
     public function addMessageError($message)
     {
+        if(!$message || $message == '')
+        {
+            return;
+        }
+
         if (isset($_SESSION['Error_messages']))
             $_SESSION['Error_messages'][] .= $message;
         else
@@ -230,5 +245,30 @@ abstract class Controller
         {
             return $output;
         }
+    }
+
+    /**
+     * Transforms exception to short text string
+     * 
+     * @param Exception $e
+     * 
+     * @return string
+     * @author Jakub Juračka
+     */
+    public static function transform_exception($e)
+    {
+        $message_text = $e->getMessage();
+
+        // Remove junk info
+        $end = strpos($message_text, 'Stack trace');
+        $message_text = $end ? substr($message_text, 0, $end) : $message_text;
+
+        return json_encode(
+            array
+            (
+                'text' => $message_text,
+                'trace' => json_encode($e->getTrace())
+            )
+        );
     }
 }

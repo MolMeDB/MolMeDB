@@ -139,7 +139,7 @@ function loadTable(id)
     var thead = document.createElement("thead");
     var tbody = document.createElement("tbody");
     thead.setAttribute("class", "thead-detail");
-    var attributes = ["Membrane", "Method", "Q", 'T <br/><label class="units">[°C]</label>', 'X<sub>min</sub> <br/><label class="units">[nm]</label>', 
+    var attributes = ["Membrane", "Method", "Note", "Q", 'T <br/><label class="units">[°C]</label>', 'X<sub>min</sub> <br/><label class="units">[nm]</label>', 
                       '&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>', '&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', 
                       'LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub></label>]', 'LogPerm <br/><label class="units">[cm/s]</label>', 
                       'Theta<br/><label class="units">[°]</label>','Abs_wl<br/><label class="units">[nm]</label>', 'Fluo_wl<br/><label class="units">[nm]</label>',
@@ -219,6 +219,7 @@ function loadTable(id)
             tr.appendChild(td);
 
             //Fill table
+            var note = make_textfield_td(interaction.comment, true);
             var charge = make_td(interaction.charge, true);
             var temp = make_td(interaction.temperature, true);
             var x_min = make_td(interaction.Position, false, interaction.Position_acc);
@@ -235,6 +236,7 @@ function loadTable(id)
             var secondary_ref = make_ref_td(interaction.secondary_reference_id, interaction.secondary_reference);
             
 
+            tr.appendChild(note);
             tr.appendChild(charge);
             tr.appendChild(temp);
             tr.appendChild(x_min);
@@ -326,6 +328,32 @@ function make_td(content, nobreak = false, acc = false)
     return td;
 }
 
+/**
+ * Helper for making <td> with long text field element
+ * 
+ * @param {string} content 
+ */
+function make_textfield_td(content)
+{
+    var td = document.createElement("td");
+    var text = content;
+    var label = text;
+    
+    if(text == null)
+    {
+       return td; 
+    }
+    
+    if(text.length > 20)
+    {
+        text = text.substring(0,15) + "...";
+    }
+    
+    td.innerHTML = "<p title='" + label + "' class='attribute'>" + text + "</p>";
+    
+    return td;
+}
+
 
 /**
  * Makes reference <td> with whisper
@@ -378,8 +406,8 @@ function export_detail_data(name)
     var id = document.getElementById("idSubstance").value; 
     var rows = [];
     var date = new Date();
-    rows[0] = ['Membrane', 'Method', 'Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-',
-        'LogPerm', 'LogPerm_+/-', 'Theta', 'Theta_+/-', 'Abs_wl', 'Abs_wl_+/-', 'Fluo_wl', 'Fluo_wl_+/-','QY', 'QY_+/-', 'lt', 'lt_+/-', 'Publication'];
+    rows[0] = ['Membrane', 'Method', 'Note', 'Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-',
+        'LogPerm', 'LogPerm_+/-', 'Theta', 'Theta_+/-', 'Abs_wl', 'Abs_wl_+/-', 'Fluo_wl', 'Fluo_wl_+/-','QY', 'QY_+/-', 'lt', 'lt_+/-', 'Primary_reference', 'Secondary_reference'];
     
     detail = ajax_request("detail/getInteractions", {id: id, idMethods: 0, idMembranes: 0}, "POST");
     
@@ -402,36 +430,38 @@ function export_detail_data(name)
             rows[row] = [
                 record.membrane_name,
                 record.method_name,
-                record.charge ? record.charge : "",
-                record.temperature ? record.temperature : "",
-                record.substance.LogP ? record.substance.LogP : "",
-                record.Position ? record.Position : "",
-                record.Position_acc ? record.Position_acc : "",
-                record.Penetration ? record.Penetration : "",
-                record.Penetration_acc ? record.Penetration_acc : "",
-                record.Water ? record.Water : "",
-                record.Water_acc ? record.Water_acc : "",
-                record.LogK ? record.LogK : "",
-                record.LogK_acc ? record.LogK_acc : "",
-                record.LogPerm ? record.LogPerm : "",
-                record.LogPerm_acc ? record.LogPerm_acc : "",
-                record.theta ? record.theta : "",
-                record.theta_acc ? record.theta_acc : "",
-                record.abs_wl ? record.abs_wl : "",
-                record.abs_wl_acc ? record.abs_wl_acc : "",
-                record.fluo_wl ? record.fluo_wl : "",
-                record.fluo_wl_acc ? record.fluo_wl_acc : "",
-                record.QY ? record.QY : "",
-                record.QY_acc ? record.QY_acc : "",
-                record.lt ? record.lt : "",
-                record.lt_acc ? record.lt_acc : "",
-                record.reference ? record.reference : ""
+                record.comment,
+                record.charge,
+                record.temperature,
+                record.substance.LogP,
+                record.Position ,
+                record.Position_acc, 
+                record.Penetration ,
+                record.Penetration_acc, 
+                record.Water, 
+                record.Water_acc, 
+                record.LogK, 
+                record.LogK_acc, 
+                record.LogPerm, 
+                record.LogPerm_acc, 
+                record.theta, 
+                record.theta_acc, 
+                record.abs_wl, 
+                record.abs_wl_acc, 
+                record.fluo_wl, 
+                record.fluo_wl_acc, 
+                record.QY, 
+                record.QY_acc, 
+                record.lt, 
+                record.lt_acc, 
+                record.primary_reference, 
+                record.secondary_reference 
             ];
 
             row++;
         }
     }
 
-    var d = date.getMonth()+1 + "." + date.getDate() + "." + date.getFullYear();
+    var d = date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
     exportToCsv(name + '_' + d + '.csv', rows, false);
 }

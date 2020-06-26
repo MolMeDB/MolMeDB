@@ -184,7 +184,7 @@ function parse_interaction_file(file)
     var count = file[0].length;
     var tr = document.createElement("tr");
     tr.setAttribute("class", "types");
-    var types = ["Don't use", "Name", "Primary_reference", "Q", "X_min", "X_min_acc", "G_pen", "G_pen_acc", "G_wat", "G_wat_acc", "LogK", "LogK_acc", "LogP", "LogPerm", "LogPerm_acc"
+    var types = ["Don't use", "Name", "Primary_reference", "Note", "Q", "X_min", "X_min_acc", "G_pen", "G_pen_acc", "G_wat", "G_wat_acc", "LogK", "LogK_acc", "LogP", "LogPerm", "LogPerm_acc"
         ,"theta", "theta_acc", "abs_wl", "abs_wl_acc", "fluo_wl", "fluo_wl_acc", "QY", "QY_acc", "lt", "lt_acc", "MW", "SMILES", "DrugBank_ID", "PubChem_ID", "PDB_ID", "Area", "Volume"];
     
     for(var i=0; i<count; i++){

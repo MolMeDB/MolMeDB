@@ -70,15 +70,17 @@ class Uploader extends Db
 	 * 
 	 * @throws Exception
 	 */
-    public function insert_interaction($dataset_id, $reference, $ligand, $uploadName,$MW,$position,$position_acc, $penetration, $penetration_acc, $water, $water_acc, 
+    public function insert_interaction($dataset_id, $reference_id, $ligand, $uploadName,$MW,$position,$position_acc, $penetration, $penetration_acc, $water, $water_acc, 
                             $LogK, $LogK_acc, $Area,$Volume, $LogP, $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc, $fluo_wl, $fluo_wl_acc, 
                             $QY, $QY_acc, $lt, $lt_acc,
-                            $Q, $SMILES, $DrugBank, $PubChem, $PDB, $membrane, $method, $temperature)
+                            $Q, $comment, $SMILES, $DrugBank, $PubChem, $PDB, $membrane, $method, $temperature)
     {
         $substanceModel = new Substances();
         $interactionModel = new Interactions();
         $smilesModel = new Smiles();
 		$user_id = $_SESSION['user']['id'];
+
+		$comment = trim($comment);
 		
 		try
 		{
@@ -154,7 +156,7 @@ class Uploader extends Db
 			$exists = $alterName->where('name LIKE', $ligand)
 				->get_one();
 
-			if(!$exists)
+			if(!$exists->id)
 			{
 				$alterName->name = $ligand;
 				$alterName->id_substance = $substance->id;
@@ -170,46 +172,81 @@ class Uploader extends Db
 					'id_substance'	=> $substance->id,
 					'temperature'	=> $temperature,
 					'charge'		=> $Q,
-					'id_reference'	=> $reference
+					'id_reference'	=> $reference_id,
+					'comment LIKE' 	=> $comment
 				))
 				->select_list('id')
 				->get_one()
 				->id;
 
-			if($interaction_id) // Exists ? Then update
-			{
-				$interaction = new Interactions($interaction_id);
+			$interaction = new Interactions($interaction_id);
 
-				$interaction->Position = $position ? $position : $interaction->Position;
-				$interaction->Position_acc = $position_acc ? $position_acc : $interaction->Position_acc;
-				$interaction->Penetration = $penetration ? $penetration : $interaction->Penetration;
-				$interaction->Penetration_acc = $penetration_acc ? $penetration_acc : $interaction->Penetration;
-				$interaction->Water = $water ? $water : $interaction->Water;
-				$interaction->Water_acc = $water_acc ? $water_acc : $interaction->Water_acc;
-				$interaction->LogK = $LogK ? $LogK : $interaction->LogK;
-				$interaction->LogK_acc = $LogK_acc ? $LogK_acc : $interaction->LogK_acc;
-				$interaction->LogPerm = $LogPerm ? $LogPerm : $interaction->LogPerm;
-				$interaction->LogPerm_acc = $LogPerm_acc ? $LogPerm_acc : $interaction->LogPerm_acc;
-				$interaction->theta = $Theta ? $Theta : $interaction->theta;
-				$interaction->theta_acc = $Theta_acc ? $Theta_acc : $interaction->theta_acc;
-				$interaction->abs_wl = $abs_wl ? $abs_wl : $interaction->abs_wl;
-				$interaction->abs_wl_acc = $abs_wl_acc ? $abs_wl_acc : $interaction->abs_wl_acc;
-				$interaction->fluo_wl = $fluo_wl ? $fluo_wl : $interaction->fluo_wl;
-				$interaction->fluo_wl_acc = $fluo_wl_acc ? $fluo_wl_acc : $interaction->fluo_wl_acc;
-				$interaction->QY = $QY ? $QY : $interaction->QY;
-				$interaction->QY_acc = $QY_acc ? $QY_acc : $interaction->QY_acc;
-				$interaction->lt = $lt ? $lt : $interaction->lt;
-				$interaction->lt_acc = $lt_acc ? $lt_acc : $interaction->lt_acc;
+			// If not exists or has different comment, then add new interaction detail
+			if(!$interaction->id) 
+			{
+				$interaction->id_dataset = $dataset_id;
+				$interaction->id_membrane = $membrane->id;
+				$interaction->id_method = $method->id;
+				$interaction->id_substance = $substance->id;
+				$interaction->id_reference = $reference_id;
+				$interaction->charge = $Q;
+				$interaction->temperature = $temperature;
+				$interaction->comment = $comment;
+
+				$interaction->Position = $position;
+				$interaction->Position_acc = $position_acc;
+				$interaction->Penetration = $penetration;
+				$interaction->Penetration_acc = $penetration_acc;
+				$interaction->Water = $water;
+				$interaction->Water_acc = $water_acc;
+				$interaction->LogK = $LogK;
+				$interaction->LogK_acc = $LogK_acc;
+				$interaction->LogPerm = $LogPerm;
+				$interaction->LogPerm_acc = $LogPerm_acc;
+				$interaction->theta = $Theta;
+				$interaction->theta_acc = $Theta_acc;
+				$interaction->abs_wl = $abs_wl;
+				$interaction->abs_wl_acc = $abs_wl_acc;
+				$interaction->fluo_wl = $fluo_wl;
+				$interaction->fluo_wl_acc = $fluo_wl_acc;
+				$interaction->QY = $QY;
+				$interaction->QY_acc = $QY_acc;
+				$interaction->lt = $lt;
+				$interaction->lt_acc = $lt_acc;
+
+				$interaction->validated = Interactions::NOT_VALIDATED;
 
 				$interaction->save();
+			}
+			else // Exists and has the same comment, so try to fill missing data
+			{
+				$interaction->Position = self::check_int_val($interaction->Position, $position, 'Position', $interaction->id_dataset);
+				$interaction->Position_acc = $interaction->Position === $position ? $position_acc : $interaction->Position_acc;
+				$interaction->Penetration = self::check_int_val($interaction->Penetration, $penetration, 'Penetration', $interaction->id_dataset);
+				$interaction->Penetration_acc = $interaction->Penetration === $penetration ? $penetration_acc : $interaction->Penetration_acc;
+				$interaction->Water = self::check_int_val($interaction->Water, $water, 'Water', $interaction->id_dataset);
+				$interaction->Water_acc = $interaction->Water === $water ? $water_acc : $interaction->Water_acc;
+				$interaction->LogK = self::check_int_val($interaction->LogK, $LogK, 'LogK', $interaction->id_dataset);
+				$interaction->LogK_acc = $interaction->LogK === $LogK ? $LogK_acc : $interaction->LogK_acc;
+				$interaction->LogPerm = self::check_int_val($interaction->LogPerm, $LogPerm, 'LogPerm', $interaction->id_dataset);
+				$interaction->LogPerm_acc =$interaction->LogPerm === $LogPerm ? $LogPerm_acc : $interaction->LogPerm_acc;
+				$interaction->theta = self::check_int_val($interaction->theta, $Theta, 'theta', $interaction->id_dataset);
+				$interaction->theta_acc = $interaction->theta === $Theta ? $Theta_acc : $interaction->theta_acc;
+				$interaction->abs_wl = self::check_int_val($interaction->abs_wl, $abs_wl, 'abs_wl', $interaction->id_dataset);
+				$interaction->abs_wl_acc = $interaction->abs_wl === $abs_wl ? $abs_wl_acc : $interaction->abs_wl_acc;
+				$interaction->fluo_wl = self::check_int_val($interaction->fluo_wl, $fluo_wl, 'fluo_wl', $interaction->id_dataset);
+				$interaction->fluo_wl_acc = $interaction->fluo_wl === $fluo_wl ? $fluo_wl_acc : $interaction->fluo_wl_acc;
+				$interaction->QY = self::check_int_val($interaction->QY, $QY, 'QY', $interaction->id_dataset);
+				$interaction->QY_acc = $interaction->QY === $QY ? $QY_acc : $interaction->QY_acc;
+				$interaction->lt = self::check_int_val($interaction->lt, $lt, 'lt', $interaction->id_dataset);
+				$interaction->lt_acc = $interaction->lt === $lt ? $lt_acc : $interaction->lt_acc;
 
-				return $interaction->id;
+				$interaction->validated = Interactions::NOT_VALIDATED;
+
+				$interaction->save();
 			}
 
-			// Insert new interaction - protected db:ON_DUPLICATE_KEY
-			return $interactionModel->insert_interaction($dataset_id, $reference, $temperature, $Q, $membrane->id, $substance->id, $method->id, $position,$position_acc, $penetration, $penetration_acc, $water, $water_acc, 
-								$LogK, $LogK_acc, $user_id, "", $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc, $fluo_wl, $fluo_wl_acc, 
-								$QY, $QY_acc, $lt, $lt_acc);
+			return $interaction->id;
 		} 
 		catch(UploadLineException $e)
 		{
@@ -220,12 +257,39 @@ class Uploader extends Db
 			throw new UploadLineException($ligand . ' / ' . $ex->getMessage());
 		}
 	}
+
+	/**
+	 * Checks interaction detail values - ONLY FLOAT values!
+	 * If OLD value is set and new value is different, then throws Exception
+	 * 
+	 * @param $old OLD VALUE
+	 * @param $new NEW VALUE
+	 * 
+	 * @throws Exception
+	 * @return float
+	 * 
+	 * @author Jakub Juračka
+	 */
+	private static function check_int_val($old, $new, $attr, $dataset_id)
+	{
+		if($old === NULL)
+		{
+			return $new;
+		}
+
+		if($old !== NULL && $new !== NULL && floatval($old) !== floatval($new))
+		{
+			throw new Exception('For given interaction already exists different value for attr [' . $attr  .']. Please, check dataset ID:' . $dataset_id);
+		}
+
+		return $old;
+	}
 	
 
 	/**
 	 * Insert new transporter record
 	 * 
-	 * @param integer $id_dataset
+	 * @param Transporter_datasets $dataset
 	 * @param string $ligand
 	 * @param string $SMILES
 	 * @param float $MW
@@ -243,7 +307,7 @@ class Uploader extends Db
 	 * @param float $KM
 	 * 
 	 */
-	public function insert_transporter($id_dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
+	public function insert_transporter($dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
 		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM)
 	{
 		$substanceModel = new Substances();
@@ -252,6 +316,11 @@ class Uploader extends Db
 
 		try
 		{
+			if(!$IC50 && !$EC50 && !$KI && !$KM)
+			{
+				throw new Exception('Invalid interaction values.');
+			}
+
 			if($SMILES === '' || !$SMILES)
 			{        
 				// try to find SMILES in DB
@@ -348,17 +417,50 @@ class Uploader extends Db
 			$transporter = new Transporters();
 
 			// Check, if already exists
-			$transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $type);
+			$transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $dataset->id_reference);
 
-			// Create/rewrite record
-			$transporter->id_dataset = $id_dataset;
+			// Check, if data can be filled
+			if($transporter->id)
+			{
+				if($KM)
+				{
+					if($transporter->Km && $KM !== $transporter->Km)
+					{
+						throw new Exception('For given reference already exists detail with different "Km" value. Please, check dataset ID:' . $transporter->dataset->id);
+					}
+				}
+				if($KI)
+				{
+					if($transporter->Ki && $KI !== $transporter->Ki)
+					{
+						throw new Exception('For given reference already exists detail with different "Ki" value. Please, check dataset ID:' . $transporter->dataset->id);
+					}
+				}
+				if($EC50)
+				{
+					if($transporter->EC50 && $EC50 !== $transporter->EC50)
+					{
+						throw new Exception('For given reference already exists detail with different "EC50" value. Please, check dataset ID:' . $transporter->dataset->id);
+					}
+				}
+				if($IC50)
+				{
+					if($transporter->IC50 && $IC50 !== $transporter->IC50)
+					{
+						throw new Exception('For given reference already exists detail with different "IC50" value. Please, check dataset ID:' . $transporter->dataset->id);
+					}
+				}
+			}
+
+			// Create/fill record
+			$transporter->id_dataset = $transporter->id_dataset ? $transporter->id_dataset : $dataset->id;
 			$transporter->id_substance = $substance->id;
 			$transporter->id_target = $target_obj->id;
 			$transporter->type = $type;
-			$transporter->Km = $KM;
-			$transporter->Ki = $KI;
-			$transporter->EC50 = $EC50;
-			$transporter->IC50 = $IC50;
+			$transporter->Km = $KM ? $KM : $transporter->Km;
+			$transporter->Ki = $KI ? $KI : $transporter->Ki;
+			$transporter->EC50 = $EC50 ? $EC50 : $transporter->EC50;
+			$transporter->IC50 = $IC50 ? $IC50 : $transporter->IC50;
 			$transporter->id_reference = $id_reference;
 			$transporter->id_user = $user_id;
 			

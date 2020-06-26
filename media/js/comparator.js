@@ -387,8 +387,8 @@ function export_whole_dataset(name)
     var data = [];
     var date = new Date();
     // Set header
-    data[0] = ['Name', 'Method', 'Membrane','Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-', 'LogPerm', 
-        'LogPerm_+/-', 'MW', 'Publication'];
+    data[0] = ['Name', 'Identifier', 'Pubchem', 'Drugbank', 'SMILES', 'Method', 'Membrane', 'Note', 'Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-', 'LogPerm', 
+        'LogPerm_+/-', 'MW', 'Primary_reference', 'Secondary_reference'];
 
     // Divide into subqueries for php limitations
     var per_request = 100;
@@ -421,23 +421,29 @@ function export_whole_dataset(name)
         
         data[i+1] = [
             int.substance.name,
+            int.substance.identifier,
+            int.substance.pubchem,
+            int.substance.drugbank,
+            int.substance.SMILES,
             int.method,
             int.membrane,
-            int.charge ? int.charge : "",
-            int.temperature ? int.temperature : "",
-            int.substance.LogP ? int.substance.LogP : "",
-            int.Position ? int.Position : "",
-            int.Position_acc ? int.Position_acc : "",
-            int.Penetration ? int.Penetration : "",
-            int.Penetration_acc ? int.Penetration_acc : "",
-            int.Water ? int.Water : "",
-            int.Water_acc ? int.Water_acc : "",
-            int.LogK ? int.LogK : "",
-            int.LogK_acc ? int.LogK_acc : "",
-            int.LogPerm ? int.LogPerm : "",
-            int.LogPerm_acc ? int.LogPerm_acc : "",
-            int.substance.MW ? int.substance.MW : "",
-            int.reference ? int.reference : ""
+            int.comment, 
+            int.charge, 
+            int.temperature, 
+            int.substance.LogP,
+            int.Position, 
+            int.Position_acc, 
+            int.Penetration, 
+            int.Penetration_acc, 
+            int.Water, 
+            int.Water_acc, 
+            int.LogK, 
+            int.LogK_acc, 
+            int.LogPerm, 
+            int.LogPerm_acc, 
+            int.substance.MW,
+            int.reference, 
+            int.secondary_reference && int.id_reference != int.id_secondary_reference ? int.secondary_reference : "",
         ];
     }
 
@@ -446,6 +452,32 @@ function export_whole_dataset(name)
     exportToCsv(name + '_' + d + '.csv', data);
 
     hide_overlay();
+}
+
+/**
+ * Helper for making <td> with long text field element
+ * 
+ * @param {string} content 
+ */
+function make_textfield_td(content)
+{
+    var td = document.createElement("td");
+    var text = content;
+    var label = text;
+    
+    if(text == null)
+    {
+       return td; 
+    }
+    
+    if(text.length > 20)
+    {
+        text = text.substring(0,15) + "...";
+    }
+    
+    td.innerHTML = "<p title='" + label + "' class='attribute'>" + text + "</p>";
+    
+    return td;
 }
 
 
@@ -491,7 +523,7 @@ function loadComparatorTable()
     table.classList.toggle("table-comparator"); table.id = "comparatorTable";
     var thead = document.createElement("thead");
     thead.classList.toggle("thead-comparator");
-    var headNames = ["<b>Name</b>", "<b>Membrane</b>", "<b>Method</b>","<b>Q</b>" , "<b>T<br/> <label class='units'>[°C]</label></b>", "<b>LogP<br/> <label class='units'>[mol<sub>m</sub>/mol<sub>w</sub>]</label></b>", 
+    var headNames = ["<b>Name</b>", "<b>Membrane</b>", "<b>Method</b>","<b>Q</b>", "<b>Note</b>" , "<b>T<br/> <label class='units'>[°C]</label></b>", "<b>LogP<br/> <label class='units'>[mol<sub>m</sub>/mol<sub>w</sub>]</label></b>", 
         "<b>X<sub>min</sub> <label class='units'>[nm]</label></b>", '<b>&Delta;G<sub>pen</sub> <label class="units">[kcal / mol]</label></b>', '<b>&Delta;G<sub>wat</sub> <label class="units">[kcal / mol]</label></b>', 
         '<b>LogK<sub>m</sub> <label class="units">[mol<sub>m</sub>/mol<sub>w</sub>]</label></b>', '<b>LogPerm <label class="units">[cm/s]</label></b>', 
         '<b>MW [Da]</b>', "<b>Reference</b>",
@@ -581,6 +613,7 @@ function loadComparatorTable()
             
             // Load interaction details
             
+            var td_note = make_textfield_td(res.comment);
             var td_Q = createTD(res.charge);
             var td_T = createTD(res.temperature);
             var td_logP = createTD(res.substance.LogP);
@@ -618,6 +651,7 @@ function loadComparatorTable()
             td_checkbox.appendChild(input);
             
             tr.appendChild(td_Q);
+            tr.appendChild(td_note);
             tr.appendChild(td_T);
             tr.appendChild(td_logP);
             tr.appendChild(td_x_min);

@@ -92,7 +92,7 @@ class Http_request
 		$http_respond = trim( strip_tags( $http_respond ) );
 		$http_code = strval(curl_getinfo( $ch, CURLINFO_HTTP_CODE ));
 
-		if ($http_code[0] !== "4" && $http_code[0] !== 5) 
+		if ($http_code[0] !== "5") 
 		{
 			return true;
 		} 

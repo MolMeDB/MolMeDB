@@ -8,6 +8,7 @@
  * @property string $name
  * @property string $uploadName
  * @property string $SMILES
+ * @property string $inchikey
  * @property float $MW
  * @property float $Area
  * @property float $Volume

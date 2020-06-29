@@ -12,6 +12,9 @@ class File
     public $origin_path;
     private $FILE;
 
+    // 3dstructure folder
+    const FOLDER_3DSTRUCTURES = MEDIA_ROOT . "files/3DStructures/";
+
     /**
      * Constructor
      * 
@@ -169,5 +172,36 @@ class File
         {
             mkdir($dir_path, 0777, True);
         }
+    }
+
+    /**
+     * Checks if exists 3d structure for given molecule identifier
+     * 
+     * @param string $identifier
+     */
+    public function structure_file_exists($identifier)
+    {
+        // If not exists, then make folder
+        $this->make_path(self::FOLDER_3DSTRUCTURES);
+
+        return file_exists(self::FOLDER_3DSTRUCTURES . $identifier . '.mol');
+    }
+
+    /**
+     * Saves new file structure
+     * 
+     * @param string $identifier
+     * @param string $content
+     */
+    public function save_structure_file($identifier, $content)
+    {
+        if($this->structure_file_exists($identifier))
+        {
+            throw new Exception('Structure file already exists.');
+        }
+
+        $file = fopen(self::FOLDER_3DSTRUCTURES . $identifier . '.mol', 'w');
+        fwrite($file, $content);
+        fclose($file);
     }
 }

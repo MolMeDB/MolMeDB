@@ -486,7 +486,14 @@ class Db extends Iterable_object
 
             if(count(explode(' ', $attr)) > 1)
             {
-                $this->where .= $attr . ' "' . $val . '"';
+                if($val == "NULL")
+                {
+                    $this->where .= $attr . ' ' . $val;
+                }
+                else
+                {
+                    $this->where .= $attr . ' "' . $val . '"';
+                }
             }
             else if(strtoupper($val) === 'NULL')
             {
@@ -510,7 +517,13 @@ class Db extends Iterable_object
 
                 if (count(explode(' ', $attr)) > 1) 
                 {
-                    $this->where .= $attr . ' "' . $val . '"';
+                    if ($val == "NULL") {
+                        $this->where .= $attr . ' ' . $val;
+                    } 
+                    else 
+                    {
+                        $this->where .= $attr . ' "' . $val . '"';
+                    }
                 } 
                 else if(strtoupper($val) === 'NULL' || $val === NULL)
                 {
@@ -574,7 +587,7 @@ class Db extends Iterable_object
         } 
         else if ($par1) 
         {
-            $limit_str = " LIMIT $par1";
+            $limit_str = " LIMIT $par1 ";
         }
 
         $this->limit = $limit_str;

@@ -11,8 +11,14 @@ class Validator extends Db
      * Validator constants
      */
     const NOT_VALIDATED = 0;
-    const VALID = 1;
-    const INVALID = 2;
+    /** MISSING DATA AUTO-FILLED */
+    const STAGE_1 = 1;
+    /** CHECKED DUPLICITIES */
+    const STAGE_2 = 2;
+    /** LABELED AS POSSIBLE DUPLICITY */
+    const STAGE_3 = 3;
+    /** VALIDATED */
+    const VALIDATED = 4;
 
 
 

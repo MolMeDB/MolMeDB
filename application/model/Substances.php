@@ -553,5 +553,31 @@ class Substances extends Db
 
             $substance->save();
 		}	
-	}
+    }
+    
+    /**
+     * Label given substance as possible duplicity for current object
+     * 
+     * @param $id_substance - Found duplicity
+     * @param $duplicity - Duplicity detail
+     */
+    public function add_duplicity($id_substance, $duplicity)
+    {
+        if(!$this->id || !$id_substance)
+        {
+            throw new Exception('Cannot add duplicity. Invalid instance or substance_id.');
+        }
+
+        $validation = new Validator();
+
+        $validation->id_substance_1 = $this->id;
+        $validation->id_substance_2 = $id_substance;
+        $validation->duplicity = $duplicity;
+
+        $validation->save();
+
+        // Label molecule as possible duplicity
+        $this->validated = Validator::POSSIBLE_DUPLICITY;
+        $this->save();
+    }
 }

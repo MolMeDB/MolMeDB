@@ -4,6 +4,7 @@
  * Publications model
  * 
  * @property integer $id
+ * @property integer $type
  * @property string $citation
  * @property string $doi
  * @property integer $pmid
@@ -23,6 +24,17 @@
  */
 class Publications extends Db
 {
+    /** TYPES */
+    const PUBCHEM = 1;
+    const CHEMBL = 2;
+
+    /** Valid types */
+    private static $valid_types = array
+    (
+        self::PUBCHEM,
+        self::CHEMBL
+    );
+
     /**
      * Constructor
      * 
@@ -32,6 +44,24 @@ class Publications extends Db
     {
         $this->table = 'publications';
         parent::__construct($id);
+    }
+
+    /**
+     * Get publication by type
+     * 
+     * @param int $type
+     * 
+     * @return Publications
+     */
+    public function get_by_type($type)
+    {
+        if(!in_array($type, self::$valid_types))
+        {
+            return new Iterable_object([]);
+        }
+
+        return $this->where('type', $type)
+            ->get_one();
     }
 
     /**

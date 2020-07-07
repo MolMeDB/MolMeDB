@@ -43,6 +43,10 @@
                                     <td><?= $substance->SMILES ?>
                                 </tr>
                                 <tr>
+                                    <td><b>InChIKey</b></td>
+                                    <td><?= $substance->inchikey ?>
+                                </tr>
+                                <tr>
                                     <td><b>MW [Da]</b></td>
                                     <td>
                                         <?php if ($substance->MW == 0) : ?>

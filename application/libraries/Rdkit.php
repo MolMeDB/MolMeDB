@@ -133,7 +133,7 @@ class Rdkit
     {
         if(!$this->STATUS)
         {
-            return false;
+            return NULL;
         }
 
         $uri = 'general';
@@ -152,11 +152,11 @@ class Rdkit
                 return $response;
             }
 
-            return False;
+            return NULL;
         }
         catch(Exception $e)
         {
-            return false;
+            return NULL;
         }
     }
 

@@ -184,7 +184,9 @@ class File
         // If not exists, then make folder
         $this->make_path(self::FOLDER_3DSTRUCTURES);
 
-        return file_exists(self::FOLDER_3DSTRUCTURES . $identifier . '.mol');
+        $path = self::FOLDER_3DSTRUCTURES . $identifier . '.mol';
+
+        return file_exists($path) && filesize($path);
     }
 
     /**
@@ -197,11 +199,26 @@ class File
     {
         if($this->structure_file_exists($identifier))
         {
-            throw new Exception('Structure file already exists.');
+            $this->remove_structure_file($identifier);
         }
 
         $file = fopen(self::FOLDER_3DSTRUCTURES . $identifier . '.mol', 'w');
         fwrite($file, $content);
         fclose($file);
+    }
+
+    /**
+     * Removes structure file
+     * 
+     * @param string $identifier
+     */
+    public function remove_structure_file($identifier)
+    {
+        $path = self::FOLDER_3DSTRUCTURES . $identifier . '.mol';
+
+        if($this->structure_file_exists($identifier))
+        {
+            unlink($path);
+        }
     }
 }

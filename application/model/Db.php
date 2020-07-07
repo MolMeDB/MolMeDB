@@ -271,7 +271,7 @@ class Db extends Iterable_object
     /**
      * Get one row from given table
      * 
-     * @return Iterable_object
+     * @return Db
      */
     public function get_one()
     {

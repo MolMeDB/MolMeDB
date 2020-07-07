@@ -6,6 +6,7 @@
 ### Upload files ###
 **/files/upload/*
 **/files/uploadReports/*
+**/files/schedulerReports/*
 **/files/3DStructures/* 
 
 ### Config ###

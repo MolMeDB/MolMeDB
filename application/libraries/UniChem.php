@@ -15,8 +15,8 @@ class UniChem
     const CHEMBL = 1;
     const DRUGBANK = 2;
     const PDB = 3;
-    const PUBCHEM = 22;
     const CHEBI = 7;
+    const PUBCHEM = 22;
 
 
     /**

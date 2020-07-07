@@ -11,6 +11,11 @@ class Chembl
     /** STATUS */
     private $STATUS = false;
 
+    /** INTERACTION DATA DETAIL */
+    const logP_MEMBRANE_TYPE = Membranes::LOGP_TYPE;
+    const logP_METHOD_TYPE = Methods::CHEMBL_LOGP_TYPE;
+    const DATASET_TYPE = Datasets::CHEMBL;
+    const PUBLICATION_TYPE = Publications::CHEMBL;
 
 
     /**
@@ -34,6 +39,50 @@ class Chembl
             $this->STATUS = false;
             throw new Exception('Chembl service is unreachable.');
         }
+    }
+
+    /**
+     * Returns membrane for LogP value
+     * 
+     * @return Membranes
+     */
+    public static function get_logP_membrane()
+    {
+        $membrane = new Membranes();
+        return $membrane->get_by_type(self::logP_MEMBRANE_TYPE);
+    }
+
+    /**
+     * Returns method for LogP value
+     * 
+     * @return Methods
+     */
+    public static function get_logP_method()
+    {
+        $method = new Methods();
+        return $method->get_by_type(self::logP_METHOD_TYPE);
+    }
+
+    /**
+     * Returns dataset for new interaction details
+     * 
+     * @return Datasets
+     */
+    public static function get_dataset()
+    {
+        $ds = new Datasets();
+        return $ds->get_by_type(self::DATASET_TYPE);
+    }
+
+    /**
+     * Returns dataset for new interaction details
+     * 
+     * @return Datasets
+     */
+    public static function get_publication()
+    {
+        $p = new Publications();
+        return $p->get_by_type(self::PUBLICATION_TYPE);
     }
 
     /**
@@ -67,7 +116,6 @@ class Chembl
         try 
         {
             $response = $this->client->request($uri, $method, $params);
-
             $result = array();
 
             if($response && $response->molecule_properties)

@@ -54,6 +54,19 @@ $upgrade_sql = array
 
     "ALTER TABLE `substances` CHANGE `SMILES` `SMILES` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL DEFAULT NULL;",
     
-    "CREATE TABLE `log_scheduler` ( `id` INT NOT NULL AUTO_INCREMENT , `datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , `error_count` INT NULL DEFAULT NULL , `success_count` INT NULL DEFAULT NULL , `report_path` VARCHAR(255) NULL DEFAULT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB;"
+    "CREATE TABLE `log_scheduler` ( `id` INT NOT NULL AUTO_INCREMENT , `datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , `error_count` INT NULL DEFAULT NULL , `success_count` INT NULL DEFAULT NULL , `report_path` VARCHAR(255) NULL DEFAULT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
     
+    "CREATE TABLE `scheduler_errors` 
+        ( 
+            `id` INT NOT NULL AUTO_INCREMENT , 
+            `id_substance` INT NOT NULL , 
+            `error_text` TEXT CHARACTER SET utf8 COLLATE utf8_czech_ci NOT NULL ,
+            `count` INT NOT NULL DEFAULT '1', 
+            `last_update` DATETIME on update CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , 
+            PRIMARY KEY (`id`)
+        ) ENGINE = InnoDB;",
+
+    "ALTER TABLE `scheduler_errors` ADD FOREIGN KEY (`id_substance`) REFERENCES `substances`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
+
+
 );

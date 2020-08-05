@@ -59,15 +59,19 @@ class SchedulerController extends Controller
         $fileModel = new File();
         $unichem = new UniChem();
 
+        // Init log
         $scheduler_log = new Log_scheduler();
-        
+        $scheduler_log->error_count = 0;
+        $scheduler_log->success_count = 0;
+        $scheduler_log->save();
+
         // In one run, check max 1000 molecules
         $substances = $substance_model->where(array
             (
                 'validated != ' => Validator::VALIDATED,
                 'validated !=' => Validator::POSSIBLE_DUPLICITY,
             ))
-            ->limit(1000)
+            ->limit(5000)
             ->get_all();
 
         $total_substances = count($substances);
@@ -310,6 +314,27 @@ class SchedulerController extends Controller
             catch(Exception $e)
             {
                 $report->add('Substance: ' . $s->identifier, $e->getMessage());
+
+                $error_record = new Scheduler_errors();
+                //exists?
+                $log = $error_record->where(array
+                    (
+                        'id_substance'  => $s->id,
+                        'error_text'    => $e->getMessage() 
+                    ))
+                    ->get_one();
+
+                if($log->id)
+                {
+                    $log->count = $log->count + 1;
+                    $log->save();
+                }
+                else // Make new record
+                {
+                    $error_record->id_substance = $s->id;
+                    $error_record->error_text = $e->getMessage();
+                    $error_record->save();
+                }
             }
         }
 

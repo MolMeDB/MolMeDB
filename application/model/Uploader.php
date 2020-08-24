@@ -387,9 +387,16 @@ class Uploader extends Db
 			// Add altername record if not exists
 			$alterName = new AlterNames();
 
-			$exists = $alterName->where('name LIKE', $ligand)
-				->get_one();
-
+			if($ligand)
+			{
+				$exists = $alterName->where('name LIKE', $ligand)
+					->get_one();
+			}
+			else
+			{
+				$exists = NULL;
+			}
+			
 			if(!$exists)
 			{
 				$alterName->name = $ligand;

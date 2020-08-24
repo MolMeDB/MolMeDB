@@ -234,7 +234,7 @@ class Upload_validator
                 return $value;
 
             default:
-                return $value != '' ? $value : NULL;
+                return trim($value) != '' ? $value : NULL;
         }
     }
 

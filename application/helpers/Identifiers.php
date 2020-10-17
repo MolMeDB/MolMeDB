@@ -16,13 +16,16 @@ class Identifiers
 	public static function generate_substance_identifier($id = NULL)
 	{
 		$subst_model = new Substances();
+		$subst_link_model = new Substance_links();
 		$identifier = self::get_identifier($id);
 		
 		// Check, if already exists
 		$exists = $subst_model->where('identifier', $identifier)
 			->get_one();
 
-		if(!$id || $exists->id)
+		$exists_2 = $subst_link_model->where('identifier', $identifier)->get_one();
+
+		if(!$id || $exists->id || $exists_2->id)
 		{
 			$id = Db::getLastIdSubstance() + 1;
 			return self::get_identifier($id);

@@ -20,7 +20,6 @@ $upgrade_sql = array
         DROP `MW`,
         DROP `SMILES`;',
     'ALTER TABLE `validations` ADD `duplicity` TEXT NOT NULL AFTER `id_substance_2`;',
-    'UPDATE `substances` SET validated = 0',
     'ALTER TABLE `membranes` ADD `type` INT NULL DEFAULT NULL AFTER `id`;',
     'ALTER TABLE `membranes` ADD UNIQUE (`type`);',
     'ALTER TABLE `methods` ADD `type` INT NULL DEFAULT NULL AFTER `id`;',
@@ -54,6 +53,7 @@ $upgrade_sql = array
 
     "ALTER TABLE `substances` CHANGE `SMILES` `SMILES` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL DEFAULT NULL;",
     
+    // Scheduler logs
     "CREATE TABLE `log_scheduler` ( `id` INT NOT NULL AUTO_INCREMENT , `datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , `error_count` INT NULL DEFAULT NULL , `success_count` INT NULL DEFAULT NULL , `report_path` VARCHAR(255) NULL DEFAULT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
     
     "CREATE TABLE `scheduler_errors` 
@@ -68,5 +68,17 @@ $upgrade_sql = array
 
     "ALTER TABLE `scheduler_errors` ADD FOREIGN KEY (`id_substance`) REFERENCES `substances`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
 
+    // LINKS
+    "CREATE TABLE `substance_links` ( `id_substance` INT NOT NULL , `identifier` VARCHAR(100) NOT NULL ) ENGINE = InnoDB;",
+    "ALTER TABLE `substance_links` ADD FOREIGN KEY (`id_substance`) REFERENCES `substances`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
+    "ALTER TABLE `substance_links` ADD `id` INT NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`id`);",
+    "ALTER TABLE `substance_links` ADD `user_id` INT NOT NULL AFTER `identifier`, ADD `datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `user_id`;",
+    "ALTER TABLE `substance_links` ADD FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
+    "INSERT INTO `config` (`id`, `attribute`, `value`) VALUES (NULL, 'scheduler_active', '1');",
+
+    // Email queue
+    "CREATE TABLE `email_queue` ( `id` INT NOT NULL AUTO_INCREMENT , `sender_email` VARCHAR(255) NULL DEFAULT NULL , `recipient_email` VARCHAR(255) NOT NULL , `subject` TEXT NOT NULL , `text` TEXT NOT NULL , `status` INT NOT NULL , `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , `last_attemp_date` DATETIME NULL DEFAULT NULL , `error_text` TEXT NULL DEFAULT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
+    "ALTER TABLE `email_queue` ADD `file_path` VARCHAR(255) NULL DEFAULT NULL AFTER `status`;",
+    
 
 );

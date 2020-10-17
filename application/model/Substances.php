@@ -570,11 +570,22 @@ class Substances extends Db
 
         $validation = new Validator();
 
-        $validation->id_substance_1 = $this->id;
-        $validation->id_substance_2 = $id_substance;
-        $validation->duplicity = $duplicity;
+        $exists = $validation->where(array
+            (
+                'id_substance_1' => $this->id,
+                'id_substance_2' => $id_substance,
+                'duplicity LIKE' => $duplicity
+            ))
+            ->get_one();
 
-        $validation->save();
+        if(!$exists->id)
+        {
+            $validation->id_substance_1 = $this->id;
+            $validation->id_substance_2 = $id_substance;
+            $validation->duplicity = $duplicity;
+
+            $validation->save();
+        }
 
         // Label molecule as possible duplicity
         $this->validated = Validator::POSSIBLE_DUPLICITY;

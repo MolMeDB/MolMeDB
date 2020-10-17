@@ -19,9 +19,8 @@ class SchedulerController extends Controller
     }
 
     /**
-     * Should be an only public function!
+     * Main scheduler funtion
      * 
-     * // ADD STATS
      */
     public function run()
     {
@@ -31,21 +30,95 @@ class SchedulerController extends Controller
 		{
 			echo 'access denied';
 			die();
-		}
+        }
         
         try
         {
+            if(!$this->config->get(Configs::S_ACTIVE))
+            {
+                echo 'Scheduler is not active.';
+                return;
+            }
+
+            // Send all unsent emails
+            $this->send_emails();
+            echo 'Emails sent. <br/>';
+
             // ---- Molecules data autofill ---- //
             $this->substance_autofill_missing_data();
+
+            echo 'OK';
         }
         catch(Exception $e)
         {
-            // Save to the file!
-            print_r($e);
+            $text = "General error occured while scheduler was running.<br/><br/>" . $e->getMessage();
+            echo $text;
+
+            try
+            {
+                $report = new File();
+                $filePath = MEDIA_ROOT . 'files/schedulerReports/general_' . $report->generateName() . '.log';
+                $report->create($filePath);
+                $report->writeLine($e->getMessage());
+            }
+            catch(Exception $e)
+            {
+                echo 'Cannot make report file - ' . $e->getMessage();
+                $this->send_email_to_admins($text, 'Scheduler error');
+                return;
+            }
+            
+            $this->send_email_to_admins($text, 'Scheduler error', $filePath);
         }
-        
     }
 
+     /**
+     * Sends unsent emails
+     */
+    private function send_emails()
+    {
+        $email_model = new Email_queue();
+        $sender = new Email();
+
+        $emails = $email_model->where(array
+            (
+                'status !=' => Email_queue::SENT
+            ))
+            ->get_all();
+
+        foreach($emails as $e)
+        {
+            $record = new Email_queue($e->id);
+
+            if(!$record->id)
+            {
+                continue;
+            }
+
+            try
+            {
+                $email_model->beginTransaction();
+                // Send email
+                $sender->send([$record->recipient_email], $record->subject, $record->text, $record->sender_email);
+
+                // Change status
+                $record->status = Email_queue::SENT;
+                $record->last_attemp_date = date('Y-m-d H:i:s');
+                $record->save();
+
+                $email_model->commitTransaction();
+            }
+            catch(Exception $e)
+            {
+                $email_model->rollbackTransaction();
+                $record->status = Email_queue::ERROR;
+                $record->error_text = $e->getMessage();
+                $record->last_attemp_date = date('Y-m-d H:i:s');
+
+                $record->save();
+            }
+        }
+    }
 
     /**
      * Autofill molecules missing info
@@ -71,7 +144,7 @@ class SchedulerController extends Controller
                 'validated != ' => Validator::VALIDATED,
                 'validated !=' => Validator::POSSIBLE_DUPLICITY,
             ))
-            ->limit(5000)
+            ->limit(1000)
             ->get_all();
 
         $total_substances = count($substances);
@@ -85,6 +158,10 @@ class SchedulerController extends Controller
         {
             try
             {
+                // Change first letter of name to uppercase
+                $s->name = ucfirst($s->name);
+                $s->save();
+
                 // Fill substance info if missing
                 if($s->validated < Validator::SUBSTANCE_FILLED)
                 {
@@ -94,13 +171,14 @@ class SchedulerController extends Controller
                         $s->identifier = Identifiers::generate_substance_identifier($s->id);
                     }
 
-                    // If not smiles, then continue
+                    // If not smiles
                     if(!$s->SMILES || $s->SMILES == '')
                     {
                         // If not exists SMILES, try to find in another DBs
                         $s->SMILES = $this->find_smiles($s);
                     }
 
+                    // Get RDKIT data
                     $data = $rdkit->get_general_info($s->SMILES);
 
                     if(!$data)
@@ -132,7 +210,7 @@ class SchedulerController extends Controller
                         
                         if($exists_smiles->id)
                         {
-                            $err_text = "Found possible duplicity. Found [$exists_smiles->identifier] with the same SMILES = $s->SMILES.";
+                            $err_text = "Found possible duplicity. Found [$exists_smiles->identifier] with the same CANONICAL SMILES = $canonized.";
                             $s->add_duplicity($exists_smiles->id, $err_text);
 
                             throw new Exception($err_text);
@@ -149,7 +227,7 @@ class SchedulerController extends Controller
 
                         if($exists_inchikey->id)
                         {
-                            $err_text = "Found possible duplicity. Found [$exists_inchikey->identifier] with the same inchikey = $s->inchikey.";
+                            $err_text = "Found possible duplicity. Found [$exists_inchikey->identifier] with the same inchikey = $inchikey.";
                             $s->add_duplicity($exists_inchikey->id, $err_text);
 
                             throw new Exception($err_text);
@@ -160,12 +238,13 @@ class SchedulerController extends Controller
                     $s->SMILES = $canonized ? $canonized : $s->SMILES;
                     $s->inchikey = $inchikey ? $inchikey : $s->inchikey;
                     $s->MW = $s->MW ? $s->MW : $MW;
-                    $s->LogP = $s->LogP ? $s->LogP : $logP;
+                    $s->LogP = $logP ? $logP : $s->LogP;
                     // Set as filled_data state
                     $s->validated = Validator::SUBSTANCE_FILLED;
 
                     $s->save();
-                }
+                } 
+                // END OF FILLING MISSING DATA 
 
                 // Generate 3d structure file if missing
                 if(!$fileModel->structure_file_exists($s->identifier))
@@ -179,9 +258,10 @@ class SchedulerController extends Controller
                     }
                 }
 
+                // FILL IDENTIFIERS
                 if($s->validated < Validator::IDENTIFIERS_FILLED)
                 {
-                    // Find identifiers by inchikey
+                    // Find identifiers by inchikey in unichem
                     if($s->inchikey && $unichem->is_connected())
                     {
                         // Get identifiers by Unichem service
@@ -293,13 +373,14 @@ class SchedulerController extends Controller
                             throw new Exception("Cannot find identifiers. Will be ignored in next run.");
                         }
                     }
-
                     else
                     {
                         throw new Exception("Invalid inchikey. Cannot find identifiers.");
                     }
-                }
+                } 
+                /// END OF FINDING IDENTIFIERS
 
+                // Try to find LogPs from another DBs
                 if($s->validated < Validator::LogP_FILLED)
                 {
                     // With filled in identifiers, try to fill LogPs
@@ -350,8 +431,49 @@ class SchedulerController extends Controller
             $scheduler_log->save();
 
             // Send email with report
+            $text = 'A new error report was currently generated on the MolMeDB server while the scheduler was running.<br/>
+                    <br/> Total checked substances: ' . $total_substances . "<br/>
+                    - Error: " . ($total_substances-$success) . "<br/>
+                    - Success: $success<br/><br/>
+                    Check the attachment for more info.";
+
+            $this->send_email_to_admins($text, 'Scheduler run report', $scheduler_log->report_path);
         }
     }
+
+    /**
+     * Sends emails to the admins
+     * 
+     * @param string $message
+     */
+    private function send_email_to_admins($message, $subject = 'Scheduler run report', $file_path = NULL)
+    {
+        $email_addresses = explode(';', $this->config->get(Configs::EMAIL_ADMIN_EMAILS));
+
+        if(!count($email_addresses))
+        {
+            return;
+        }
+
+        foreach($email_addresses as $e)
+        {
+            if(!Email::check_email_validity($e))
+            {
+                continue;
+            }
+
+            $email_queue = new Email_queue();
+
+            $email_queue->recipient_email = $e;
+            $email_queue->subject = $subject;
+            $email_queue->text = $message;
+            $email_queue->file_path = $file_path;
+            $email_queue->status = Email_queue::SENDING;
+
+            $email_queue->save();
+        }
+    }
+
 
     /**
      * Fills logPs for given substance
@@ -381,7 +503,7 @@ class SchedulerController extends Controller
                     if(!$membrane || !$membrane->id || !$method || !$method->id ||
                         !$dataset || !$dataset->id || !$publication || !$publication->id)
                     {
-                        throw new Exception('Pubchem default membrane/method/dataset/publication was not found!');
+                        throw new Exception('Cannot fill Pubchem LogP. Pubchem default membrane/method/dataset/publication was not found!');
                     }
 
                     // Exists yet in DB?
@@ -422,7 +544,7 @@ class SchedulerController extends Controller
                 }
             }
         }
-        if($s->chEMBL)
+        if($s->chEMBL && FALSE) // Temporary not required
         {
             $chembl = new Chembl();
 
@@ -440,7 +562,7 @@ class SchedulerController extends Controller
                     if(!$membrane || !$membrane->id || !$method || !$method->id ||
                         !$dataset || !$dataset->id || !$publication || !$publication->id)
                     {
-                        throw new Exception('ChEMBL default membrane/method/dataset/publication was not found!');
+                        throw new Exception('Cannot fill LogP. ChEMBL default membrane/method/dataset/publication was not found!');
                     }
 
                     // Exists yet in DB?
@@ -498,6 +620,7 @@ class SchedulerController extends Controller
     {
         $pubchem = new Pubchem();
         $chembl = new Chembl();
+        $substance_model = new Substances();
 
         if(!$pubchem->is_connected() && !$chembl->is_connected())
         {
@@ -521,6 +644,21 @@ class SchedulerController extends Controller
 
             if($remote_data && $remote_data->pubchem_id)
             {
+                $exists = $substance_model->where(array
+                    (
+                    'pubchem' => $remote_data->pubchem_id,
+                    'id !=' => $substance->id
+                    ))
+                    ->get_one();
+
+                if($exists->id)
+                {
+                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pubchem_id = $remote_data->pubchem_id.";
+                    $substance->add_duplicity($exists->id, $err_text);
+
+                    throw new Exception($err_text);
+                }
+
                 $substance->pubchem = $remote_data->pubchem_id;
                 $substance->save();
             }

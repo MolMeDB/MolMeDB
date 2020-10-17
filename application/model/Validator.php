@@ -27,6 +27,15 @@ class Validator extends Db
     /** VALIDATED */
     const VALIDATED = 5;
 
+    public static $enum_states = array
+    (
+        self::NOT_VALIDATED => 'Not validated',
+        self::SUBSTANCE_FILLED => 'Missing values filled',
+        self::IDENTIFIERS_FILLED => 'Identifiers filled',
+        self::POSSIBLE_DUPLICITY => 'Possible duplicity',
+        self::LogP_FILLED => 'LogP filled',
+        self::VALIDATED => 'Validated'
+    );
 
     /**
      * Constructor
@@ -35,6 +44,81 @@ class Validator extends Db
     {
         $this->table = 'validations';
         parent::__construct($id);
+    }
+
+    /**
+     * Returns enum state
+     * 
+     * @param int $state_id
+     * 
+     * @return string
+     */
+    public function get_enum_state($state_id)
+    {
+        if(in_array($state_id, self::$enum_states))
+        {
+            return self::$enum_states[$state_id];
+        }
+        return NULL;
+    }
+
+    /**
+     * Get validator data
+     * 
+     * @return Iterable_object
+     */
+    public function get_substances()
+    {
+        return $this->queryAll('
+            SELECT t.id, SUM(errors) errors, t.name, t.validated, t.identifier
+            FROM
+            (
+                        
+                SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type
+                FROM substances s
+                JOIN validations v ON v.id_substance_1 = s.id
+                WHERE s.validated != ?
+                GROUP BY id
+                
+                UNION
+                
+                SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type
+                FROM substances s
+                JOIN scheduler_errors e ON e.id_substance = s.id
+                WHERE s.validated != ?
+                GROUP BY id
+            ) t 
+            GROUP BY id
+            ORDER BY validated DESC
+        ', array(self::VALIDATED, self::VALIDATED));
+    }
+
+    /**
+     * Get validator data for substance id
+     * 
+     * @param int $id
+     */
+    public function get_substance_detail($id)
+    {
+        return $this->queryAll('
+        SELECT *
+        FROM
+        (    
+            SELECT s.*, v.id_substance_2, s2.identifier as identifier_2, v.duplicity COLLATE utf8_general_ci as duplicity, v.createDateTime as datetime
+            FROM substances s
+            JOIN validations v ON v.id_substance_1 = s.id
+            JOIN substances s2 ON s2.id = v.id_substance_2
+            WHERE s.id = ?
+
+            UNION 
+
+            SELECT s.*, NULL as id_substance_2, NULL as identifier_2, e.error_text COLLATE utf8_general_ci as duplicity, e.last_update as datetime
+            FROM substances s
+            JOIN scheduler_errors e ON e.id_substance = s.id
+            WHERE s.id = ?
+        ) t
+        ORDER BY datetime DESC
+        ', array($id, $id));
     }
 
     /**
@@ -116,5 +200,29 @@ class Validator extends Db
     } 
 
 
-    
+    /**
+     * Deletes all links on old molecule
+     *
+     * @param int $id_substance
+     */    
+    public function delete_links_on_substance($id_substance)
+    {
+        $this->query('
+            DELETE FROM `validations`
+            WHERE `id_substance_1` = ? OR `id_substance_2` = ?
+        ', array($id_substance, $id_substance));
+    }
+
+    /**
+     * Deletes all substance links
+     * 
+     * @param int $id_substance
+     */
+    public function delete_substance_links($id_substance)
+    {
+        $this->query('
+            DELETE FROM `validations`
+            WHERE `id_substance_1` = ?
+        ', array($id_substance));
+    }
 }

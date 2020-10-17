@@ -83,6 +83,21 @@ class File
     }
 
     /**
+     * Writes line to the file
+     * 
+     * @param string $line
+     */
+    public function writeLine($line)
+    {
+        if(!$this->FILE)
+        {
+            throw new Exception('Wrong file instance');
+        }
+
+        fwrite($this->FILE, $line . PHP_EOL);
+    }
+
+    /**
      * Makes new filename
      * 
      * @return string
@@ -220,5 +235,20 @@ class File
         {
             unlink($path);
         }
+    }
+
+    /**
+     * Gets FILE
+     * 
+     * @return File
+     */
+    public function get_file()
+    {
+        if(!$this->FILE)
+        {
+            return NULL;
+        }
+
+        return $this->FILE;
     }
 }

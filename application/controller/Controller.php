@@ -22,12 +22,20 @@ abstract class Controller
      */
     protected $config;
 
+    /** Form submit handler */
+    protected $form;
+
+    /** SESSION HOLDER */
+    protected $session;
+
     /**
      * Constructor
      */
     function __construct()
     {
         $this->config = new Config();
+        $this->form = new Form();
+        $this->session = new Iterable_object($_SESSION, true);
     }
 
     /**

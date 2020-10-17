@@ -1,7 +1,7 @@
     <input hidden id="nameStructure" value="<?= $substance->identifier ?>">
     <textarea hidden id="2dInput" class="textin" onload="update()"><?= $substance->SMILES ?>;<?= $substance->name ?></textarea>
     <input hidden id="idSubstance" value="<?= $substance->id ?>">
-    <div class="row content">
+    <div class="content">
         <div>
             <p class="compoundTitle"><?= $substance->name ?></p>
             <?php if (isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>

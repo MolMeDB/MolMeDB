@@ -32,7 +32,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
      * @param array $data
      * @param boolean $multi_array - Instance of new classes
      */
-    public function __construct($data, $multi_array = False)
+    public function __construct($data = [], $multi_array = False)
     {
         if(!is_array($data))
         {

@@ -13,6 +13,7 @@ class MolController extends Controller
         $substanceModel = new Substances();
         $transporterModel = new Transporters();
         $transporter_dataset_model = new Transporter_datasets();
+        $link_model = new Substance_links();
         
         try
         {
@@ -20,6 +21,14 @@ class MolController extends Controller
             $substance = $substanceModel
                 ->where('identifier', $identifier)
                 ->get_one();
+
+            $by_link = false;
+
+            if(!$substance->id)
+            {
+                $substance = $link_model->get_substance_by_identifier($identifier);
+                $by_link = True;
+            }
 
             if(!$substance->id)
             {
@@ -49,6 +58,11 @@ class MolController extends Controller
                 ))
                 ->in('id_dataset', $dataset_ids)
                 ->get_all();
+
+            if($by_link)
+            {
+                $this->addMessageWarning('Your request has been redirected from record ' . $identifier);
+            }
         } 
         catch (Exception $ex) 
         {

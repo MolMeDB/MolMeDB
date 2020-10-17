@@ -48,7 +48,7 @@ class Scheduler_report
     public function add($attr, $err)
     {
         if(!$err){
-            $err = 'Not defined error';
+            $err = 'Undefined error';
         }
         $this->errors[] = array
         (

@@ -15,6 +15,47 @@ class ValidatorController extends Controller
     function __construct()
     {
         $this->verifyUser(True);
+        parent::__construct();
+    }
+
+    /**
+     * Default redirection
+     */
+    function parse($params = NULL)
+    {
+        $this->redirect('validator/show');
+    }
+
+    /**
+     * Shows detail of scheduler compound errors
+     * 
+     * @param int $id
+     */
+    public function show($id = null)
+    {
+        $validator = new Validator();
+        $scheduler_reports = new Log_scheduler();
+        $substance = new Substances($id);
+
+        if($id && !$substance->id)
+        {
+            $this->addMessageError('Invalid substance id.');
+            $this->redirect('validator/show');
+        }
+
+        if($substance->id)
+        {
+            $records = $validator->get_substance_detail($id);
+            $this->data['detail'] = $records;
+        }
+        else
+        {
+            $this->data['detail'] = FALSE;
+        }
+        
+        $this->data['compounds'] = $validator->get_substances();
+        $this->data['reports'] = $scheduler_reports->order_by('id', 'desc')->get_all();
+        $this->view = 'validator/validator';
     }
 
     /**
@@ -33,8 +74,8 @@ class ValidatorController extends Controller
             $substance_2 = isset($_POST['substance_2']) ? $_POST['substance_2'] : $substance_2;
         }
 
-        $old = new Substances($substance_1);
-        $new = new Substances($substance_2);
+        $new = new Substances($substance_1);
+        $old = new Substances($substance_2);
 
         // Check if exists
         if($substance_1 && !$old->id)
@@ -61,18 +102,59 @@ class ValidatorController extends Controller
                 $new->beginTransaction();
 
                 // Join alternames
-                $validatorModel->join_alternames($old->id, $new->id);
+                try
+                {
+                    $validatorModel->join_alternames($old->id, $new->id);
+                }
+                catch(Exception $e)
+                {
+                    throw new Exception('Cannot join alternames.');
+                }
 
                 // Join energy data
-                $validatorModel->join_energy_values($old->id, $new->id);
+                try
+                {
+                    $validatorModel->join_energy_values($old->id, $new->id);
+                }
+                catch(Exception $e)
+                {
+                    throw new Exception('Cannot join energy values.');
+                }
 
                 // Join interactions
-                $validatorModel->join_interactions($old->id, $new->id);
+                try
+                {
+                    $validatorModel->join_interactions($old->id, $new->id);
+                }
+                catch(Exception $e)
+                {
+                    throw new Exception('Cannot join interaction values.');
+                }
 
                 // Join transporters
-                $validatorModel->join_transporters($old->id, $new->id);
+                try
+                {
+                    $validatorModel->join_transporters($old->id, $new->id);
+                }
+                catch(Exception $e)
+                {
+                    throw new Exception('Cannot join transporter values.');
+                }
+
+                // Proccess info about duplications
+                $validatorModel->delete_links_on_substance($old->id);
+                $validatorModel->delete_substance_links($new->id);
+
+                // Check name
+                $new_name = $new->name;
+
+                if($new_name == $new->identifier && $old->name != $old->identifier)
+                {
+                    $new_name = $old->name;
+                }
 
                 // Join substance details
+                $new->name = $new_name;
                 $new->SMILES = !$new->SMILES || $new->SMILES == '' ? $old->SMILES : $new->SMILES;
                 $new->MW = $new->MW === NULL || $new->MW == '' ? $old->MW : $new->MW;
                 $new->Area = $new->Area === NULL || $new->Area == '' ? $old->Area : $new->Area;
@@ -83,14 +165,32 @@ class ValidatorController extends Controller
                 $new->chEBI = !$new->chEBI || $new->chEBI == '' ? $old->chEBI : $new->chEBI;
                 $new->chEMBL = !$new->chEMBL || $new->chEMBL == '' ? $old->chEMBL : $new->chEMBL;
                 $new->pdb = !$new->pdb || $new->pdb == '' ? $old->pdb : $new->pdb;
+                $new->validated = Validator::NOT_VALIDATED;
+
+                // Add record about link
+                try
+                {
+                    $link = new Substance_links();
+                    $link->id_substance = $new->id;
+                    $link->identifier = $old->identifier;
+                    $link->user_id = $this->session->user->id;
+
+                    $link->save();
+                }
+                catch(Exception $e)
+                {
+                    throw new Exception('Cannot add link from old substance to the new one.');
+                }
 
                 // Delete old substance
                 $old->delete();
+                $new->save();
 
                 // Commit
                 $new->commitTransaction();
 
                 $this->addMessageSuccess('Molecules was successfully joined.');
+                $this->addMessageWarning('New molecule was labeled as NOT VALIDATED and will be validated in next valdation run.');
             }
             catch(Exception $e)
             {
@@ -99,58 +199,6 @@ class ValidatorController extends Controller
             }
         }
 
-        $this->header['title'] = 'Join molecules';
-        $this->view = 'validator/joiner';
+        $this->redirect('validator/show');
     }
-
-    // public function parse() 
-    // {
-    //     $this->redirect('validator/join');
-    //     $validatorModel = new Validator();
-    //     $substanceModel = new Substances();
-        
-    //     if($_POST)
-    //     {
-    //         if(isset($_POST['asValidated'])){
-    //             $id = $_POST['ligand_1'];
-    //             try{
-    //                 $validatorModel->set_as_validated($id);
-    //                 $this->addMessageSuccess("Molecule with id = " . $id . " was labeled as validated.");
-    //             }
-    //             catch(Exception $ex){
-    //                 $this->addMessageError("Error");
-    //             }
-    //         }
-            
-    //         else if(isset($_POST['join'])){
-    //             $id_1 = $_POST['ligand_1'];
-    //             $id_2 = $_POST['ligand_2'];
-    //             try{
-    //                 DB::beginTransaction();
-    //                 //Změnit idSubstance pro interakce - z ID2 na ID1
-    //                 $validatorModel->changeInterIDs($id_1, $id_2);
-    //                 //Zěnit hodnoty volných energií z ID2 na ID1
-    //                 $validatorModel->changeEnergyIDs($id_1, $id_2);
-    //                 //Změnit alternames z ID2 na ID1
-    //                 $validatorModel->changeAlterNamesIDs($id_1, $id_2);
-    //                 //Odstranit záznamy validací s ID1 x ID2
-    //                 //UPDATE validace z ID2 na ID1
-    //                 $validatorModel->delete_change_ids($id_1, $id_2);
-    //                 //Odstranění molekuly
-    //                 $substanceModel->delete($id_2);
-    //                 Db::commitTransaction();
-    //                 $this->addMessageSuccess("Molecules with IDs " . $id_1 . " and " . $id_2 . " was successfully joined.");
-    //             }
-    //             catch(Exception $ex){
-    //                 $this->addMessageError("Error - molecules can't contain same interaction (same combination of Method,Membrane,Reference,Charge and Temperature)." . $ex->getMessage());
-    //                 Db::rollbackTransaction();
-    //             }
-    //         }
-    //     }
-        
-    //     // $this->data['molecules'] = $validatorModel->get_duplicites_ids();
-    //     // $this->data['num_notValidated'] = $validatorModel->num_notValidated();
-    //     $this->header['title'] = 'Validator';
-    //     $this->view = 'validator';
-    // }
 }

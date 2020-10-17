@@ -5,12 +5,12 @@
  */
 class SettingController extends Controller 
 {
-
-    public function send()
+    /**
+     * Constructor
+     */
+    function __construct()
     {
-        $email = new Email();
-
-        $email->send(['jakub.juracka55@gmail.com'], 'jowak je pen', 'A to tak ze velmi');
+        $this->verifyUser(true);
     }
 
     /**

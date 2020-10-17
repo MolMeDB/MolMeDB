@@ -9,7 +9,6 @@
  */
 class SchedulerController extends Controller
 {
-
     /**
      * Constructor
      */
@@ -31,6 +30,11 @@ class SchedulerController extends Controller
 			echo 'access denied';
 			die();
         }
+
+        // Holds info about run time
+        $time = $this->time = new Time();
+
+        echo '--- RUN ' . $time->get_string() . " ---\n";
         
         try
         {
@@ -42,17 +46,21 @@ class SchedulerController extends Controller
 
             // Send all unsent emails
             $this->send_emails();
-            echo 'Emails sent. <br/>';
+            echo "Emails sent. \n";
 
             // ---- Molecules data autofill ---- //
-            $this->substance_autofill_missing_data();
+            if($time->is_minute(1)) // Run only once per hour
+            {
+                $this->substance_autofill_missing_data();
+                echo "Subtance validations done. \n";
+            }
 
-            echo 'OK';
+            echo "DONE \n";
         }
         catch(Exception $e)
         {
             $text = "General error occured while scheduler was running.<br/><br/>" . $e->getMessage();
-            echo $text;
+            echo $text . ' in ' . $time->get_string();
 
             try
             {
@@ -70,6 +78,8 @@ class SchedulerController extends Controller
             
             $this->send_email_to_admins($text, 'Scheduler error', $filePath);
         }
+
+        echo '-------------------------';
     }
 
      /**

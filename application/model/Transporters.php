@@ -9,9 +9,13 @@
  * @property integer $id_target
  * @property integer $type
  * @property float $Km
+ * @property float $Km_acc
  * @property float $EC50
+ * @property float $EC50_acc
  * @property float $Ki
+ * @property float $Ki_acc
  * @property float $IC50
+ * @property float $IC50_acc
  * @property integer $id_reference
  * @property integer $id_user
  * @property datetime $create_datetime

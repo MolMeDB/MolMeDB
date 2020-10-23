@@ -41,9 +41,13 @@ class Upload_validator
     const TARGET = "Target";
     const TYPE = "Type";
     const KM = "Km";
+    const KM_ACC = "Km_acc";
     const KI = "Ki";
+    const KI_ACC = "Ki_acc";
     const IC50 = "IC50";
+    const IC50_ACC = "IC50_acc";
     const EC50 = "EC50";
+    const EC50_ACC = "EC50_acc";
 
 
     /** Valid dataset types */
@@ -88,9 +92,13 @@ class Upload_validator
         self::TARGET,
         self::TYPE,
         self::KM,
+        self::KM_ACC,
         self::KI,
+        self::KI_ACC,
         self::IC50,
+        self::IC50_ACC,
         self::EC50,
+        self::EC50_ACC,
         self::NAME,
         self::LOG_P,
         self::MW,
@@ -130,9 +138,35 @@ class Upload_validator
         self::AREA,
         self::VOLUME,
         self::KM,
+        self::KM_ACC,
         self::KI,
+        self::KI_ACC,
         self::EC50,
+        self::EC50_ACC,
         self::IC50,
+        self::IC50_ACC,
+    );
+
+    /** Non-negative attributes - must be numeric! */
+    private static $non_negative_types = array
+    (
+        self::X_MIN_ACC,
+        self::G_PEN_ACC,
+        self::G_WAT_ACC,
+        self::LOG_K_ACC,
+        self::LOG_PERM_ACC,
+        self::THETA_ACC,
+        self::ABS_WL_ACC,
+        self::FLUO_WL_ACC,
+        self::QY_ACC,
+        self::LT_ACC,
+        self::MW,
+        self::AREA,
+        self::VOLUME,
+        self::KM_ACC,
+        self::KI_ACC,
+        self::EC50_ACC,
+        self::IC50_ACC
     );
 
     /** DB identifiers */
@@ -185,7 +219,15 @@ class Upload_validator
         if(in_array($attr, self::$numeric_types))
         {
             $value = str_replace(',', '.', $value);
-            return $value != '' ? floatval($value) : NULL;
+            $value = $value != '' ? floatval($value) : NULL;
+            
+            // Should be value non-negative?
+            if($value && in_array($attr, self::$non_negative_types))
+            {
+                $value = abs($value);
+            }
+
+            return $value;
         }
 
         // Other validations
@@ -353,6 +395,8 @@ class Upload_validator
                 }
 
                 $ext = $external_data[0];
+
+                $pub_timestamp = strtotime($ext['publicatedDate']);
                 
                 // Not exists? Add new record to DB
                 $ref = new Publications();
@@ -366,7 +410,7 @@ class Upload_validator
                 $ref->volume = $ext['volume'];
                 $ref->year = $ext['year'];
                 $ref->page = $ext['pages'];
-                $ref->publicated_date = $ext['publicatedDate'];
+                $ref->publicated_date = $pub_timestamp ? date('Y-m-d', $pub_timestamp) : NULL;
                 $ref->citation = $ref->make_citation();
 
                 $ref->save();

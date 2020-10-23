@@ -664,7 +664,6 @@ class UploadController extends Controller
 
             // Checks if data are valid
             $publication = new Publications($secondary_ref_id);
-            $substanceModel = new Substances();
 
             // Get valid attribute types
             $types = Upload_validator::get_transporter_attributes();
@@ -766,7 +765,11 @@ class UploadController extends Controller
                         self::get_value($detail, Upload_validator::IC50),
                         self::get_value($detail, Upload_validator::EC50),
                         self::get_value($detail, Upload_validator::KI),
-                        self::get_value($detail, Upload_validator::KM)
+                        self::get_value($detail, Upload_validator::KM),
+                        self::get_value($detail, Upload_validator::IC50_ACC),
+                        self::get_value($detail, Upload_validator::EC50_ACC),
+                        self::get_value($detail, Upload_validator::KI_ACC),
+                        self::get_value($detail, Upload_validator::KM_ACC)
                     );
                 }
                 catch(UploadLineException $e)

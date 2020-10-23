@@ -242,9 +242,10 @@ class Uploader extends Db
 	 * @param float $KI
 	 * @param float $KM
 	 * 
+	 * @author Jakub Juracka
 	 */
 	public function insert_transporter($id_dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
-		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM)
+		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM, $IC50_acc = NULL, $EC50_acc = NULL, $KI_acc = NULL, $KM_acc = NULL)
 	{
 		$substanceModel = new Substances();
 		$smilesModel = new Smiles();
@@ -316,17 +317,20 @@ class Uploader extends Db
 			}
 
 			// Add altername record if not exists
-			$alterName = new AlterNames();
-
-			$exists = $alterName->where('name LIKE', $ligand)
-				->get_one();
-
-			if(!$exists)
+			if($ligand && strlen($ligand) > 0)
 			{
-				$alterName->name = $ligand;
-				$alterName->id_substance = $substance->id;
+				$alterName = new AlterNames();
 
-				$alterName->save();
+				$exists = $alterName->where('name LIKE', $ligand)
+					->get_one();
+
+				if(!$exists)
+				{
+					$alterName->name = $ligand;
+					$alterName->id_substance = $substance->id;
+
+					$alterName->save();
+				}
 			}
 
 			// Check if target already exists
@@ -344,7 +348,7 @@ class Uploader extends Db
 				$target_obj->save();
 			}
 
-			// save new transporter
+			// Save new transporter
 			$transporter = new Transporters();
 
 			// Check, if already exists
@@ -356,9 +360,13 @@ class Uploader extends Db
 			$transporter->id_target = $target_obj->id;
 			$transporter->type = $type;
 			$transporter->Km = $KM;
+			$transporter->Km_acc = $KM_acc;
 			$transporter->Ki = $KI;
+			$transporter->Ki_acc = $KI_acc;
 			$transporter->EC50 = $EC50;
+			$transporter->EC50_acc = $EC50_acc;
 			$transporter->IC50 = $IC50;
+			$transporter->IC50_acc = $IC50_acc;
 			$transporter->id_reference = $id_reference;
 			$transporter->id_user = $user_id;
 			

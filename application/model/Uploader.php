@@ -359,14 +359,14 @@ class Uploader extends Db
 			$transporter->id_substance = $substance->id;
 			$transporter->id_target = $target_obj->id;
 			$transporter->type = $type;
-			$transporter->Km = $KM;
-			$transporter->Km_acc = $KM_acc;
-			$transporter->Ki = $KI;
-			$transporter->Ki_acc = $KI_acc;
-			$transporter->EC50 = $EC50;
-			$transporter->EC50_acc = $EC50_acc;
-			$transporter->IC50 = $IC50;
-			$transporter->IC50_acc = $IC50_acc;
+			$transporter->Km = $KM ? $KM : $transporter->Km;
+			$transporter->Km_acc = $KM ? $KM_acc : NULL;
+			$transporter->Ki = $KI ? $KI : $transporter->Ki;
+			$transporter->Ki_acc = $KI ? $KI_acc : NULL;
+			$transporter->EC50 = $EC50 ? $EC50 : $transporter->EC50;
+			$transporter->EC50_acc = $EC50 ? $EC50_acc : NULL;
+			$transporter->IC50 = $IC50 ? $IC50 : $transporter->IC50;
+			$transporter->IC50_acc = $IC50 ? $IC50_acc : NULL;
 			$transporter->id_reference = $id_reference;
 			$transporter->id_user = $user_id;
 			

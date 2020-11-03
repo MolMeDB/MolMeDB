@@ -1,12 +1,10 @@
 <?php
 
-/**
- * Main function for checking valid configuration
- */
-
 require_once('config.php');
 require_once('version.php');
 require_once('system/exceptions.php');
+ini_set('memory_limit', '-1');
+
 
 class System_config
 {

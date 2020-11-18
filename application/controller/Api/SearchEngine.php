@@ -10,6 +10,8 @@ class ApiSearchEngine extends ApiController
     const T_SMILES = 'smiles';
     const T_MEMBRANES = 'membranes';
     const T_METHOD = 'methods';
+    const T_TRANSPORTER = 'transporter';
+    // const T_UNIPROT = 'uniprot';
 
     // Valid search types
     private $valid_search_types = array
@@ -17,7 +19,9 @@ class ApiSearchEngine extends ApiController
         self::T_COMPOUND,
         self::T_SMILES,
         self::T_MEMBRANES,
-        self::T_METHOD
+        self::T_METHOD,
+        // self::T_UNIPROT,
+        self::T_TRANSPORTER
     );
 
 
@@ -69,6 +73,11 @@ class ApiSearchEngine extends ApiController
             case self::T_METHOD:
                 $method_model = new Methods();
                 $data = $method_model->loadSearchWhisper($query);
+                break;
+            
+            case self::T_TRANSPORTER:
+                $transporter_model = new Transporter_targets();
+                $data = $transporter_model->loadSearchWhisper($query);
                 break;
         }
         

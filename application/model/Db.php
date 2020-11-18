@@ -18,6 +18,7 @@ class Db extends Iterable_object
     protected $table;
     private $select_list = '*';
     private $limit = '';
+    private $offset = '';
     private $where = '';
     private $group_by = '';
     private $order_by = '';
@@ -266,6 +267,43 @@ class Db extends Iterable_object
         $this->reload();
 
         return new Iterable_object($data, get_class($this));
+    }
+
+    /**
+     * COunt all rows from given table
+     * 
+     * @return Iterable_object
+     */
+    public function count_all()
+    {
+        if (!$this->table) 
+        {
+            throw new Exception('No table name was set.');
+        }
+
+        if(!$this->select_list)
+        {
+            $this->select_list = '*';
+        }
+
+        // Prepare query
+        $query = '
+            SELECT COUNT(*) as count 
+            FROM ' . $this->table .
+            ' ' . $this->where . ' ' .
+            ' ' . $this->group_by;
+
+        if($this->debug) // DEBUG
+        {
+            echo($query);
+            die;
+        }
+
+        $data = $this->queryOne($query);
+
+        $this->reload();
+
+        return $data->count;
     }
 
     /**
@@ -570,7 +608,7 @@ class Db extends Iterable_object
 
         if ($par1 && $par2) 
         {
-            $limit_str = " LIMIT " . ($par1 - 1) * 10 . ',' . $par2;
+            $limit_str = " LIMIT " . ($par1 - 1) * $par2 . ',' . $par2;
         } 
         else if ($par1) 
         {

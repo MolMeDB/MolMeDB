@@ -10,6 +10,7 @@ class SearchController extends Controller
     const T_MEMBRANE = 'membrane';
     const T_METHOD = 'method';
     const T_SMILES = 'smiles';
+    const T_TRANSPORTER = 'transporter';
 
     
     /** Allowed types */
@@ -18,7 +19,8 @@ class SearchController extends Controller
         self::T_COMPOUND,
         self::T_MEMBRANE,
         self::T_METHOD,
-        self::T_SMILES
+        self::T_SMILES,
+        self::T_TRANSPORTER
     );
 
 
@@ -77,7 +79,40 @@ class SearchController extends Controller
             case self::T_SMILES:
                 return $this->by_smiles($query, $pagination);
 
+            case self::T_TRANSPORTER:
+                return $this->by_transporter($query, $pagination);
         }
+    }
+
+    /**
+     * Search by transporter
+     * 
+     * @param string $query
+     * @param int $pagination
+     */
+    private function by_transporter($query, $pagination)
+    {
+        $substance_model = new Substances();
+
+        $list = array();
+        $total = 0;
+
+        try 
+        {
+            $list = $substance_model->search_by_transporter($query, $pagination);
+            $total = $substance_model->search_by_transporter_count($query);
+        } 
+        catch (ErrorUser $ex) 
+        {
+            $this->addMessageError($ex);
+            $this->redirect('search');
+        }
+
+        $this->data['list'] = $list;
+        $this->data['count'] = $total;
+        $this->data['show_detail'] = True;
+        $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
+        $this->data['info'] = $info;
     }
 
     /**

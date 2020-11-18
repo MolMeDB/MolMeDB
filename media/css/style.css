@@ -324,6 +324,16 @@ footer{
     justify-content: space-around;
 }
 
+.follow-us{
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.follow-us img{
+    width: 25px;
+    margin-left: 10px;;
+}
+
 .collapse {
   height: auto;
   width: auto;

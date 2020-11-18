@@ -399,10 +399,11 @@ class EditController extends Controller
      * Edits dataset
      * 
      * @param integer $id ID of dataset
+     * @param integer $pagination
      * 
      * @author Jakub Juračka
      */
-    public function dsInteractions($id = NULL)
+    public function dsInteractions($id = NULL, $pagination = 1)
     {
         $dataset = new Datasets($id);
 
@@ -415,11 +416,11 @@ class EditController extends Controller
         // Is loaded dataset ? Then show detail
         $show_detail = $dataset->id ? True : False;
 
-        if ($_POST) 
+        if ($this->form->is_post()) 
         {
             try
             {
-                switch ($_POST['spec_type']) 
+                switch ($this->form->param->spec_type) 
                 {
                     case 'edit_rights':
                         try 
@@ -429,8 +430,8 @@ class EditController extends Controller
 
                             Db::beginTransaction();
 
-                            $id_entity = $_POST['id_entity'];
-                            $group = $_POST['group'];
+                            $id_entity = $this->form->param->id_entity;
+                            $group = $this->form->param->group;
 
                             $dataset->change_rights($id_entity, $group);
                             
@@ -564,12 +565,21 @@ class EditController extends Controller
         {
             $interaction_model = new Interactions();
 
+            $items = 100;
+
             $dataset_interactions = $interaction_model
                 ->where('id_dataset', $dataset->id)
+                ->limit($pagination, $items)
                 ->get_all();
+
+            $total = $interaction_model
+                ->where('id_dataset', $dataset->id)
+                ->count_all();
 
             $this->data['info'] = $dataset;
             $this->data['interaction_table'] = self::createInteractionTable($dataset_interactions, $dataset->id);
+            $this->data['total'] = $total;
+            $this->data['pagination'] = $pagination;
             $this->data['rights_users'] = $dataset->get_rights();
             $this->data['rights_groups'] = $dataset->get_rights(true);
         }
@@ -1293,7 +1303,7 @@ class EditController extends Controller
         }
 
         $table .= '</tbody></table>';
-
+        
         return $table;
     }
 

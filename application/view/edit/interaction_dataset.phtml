@@ -51,7 +51,7 @@
                             <b>Author:</b>
                         </td>
                         <td>
-                            <?=$info->author->name ?>
+                            <?=$info->author ? $info->author->name : NULL ?>
                         </td>
                     </tr>
                     <tr>
@@ -59,7 +59,7 @@
                             <b>Last edit by:</b>   
                         </td>
                         <td>
-                            <?=$info->editor->name ?>
+                            <?=$info->editor ? $info->editor->name : NULL ?>
                         </td>
                     </tr>
                     <tr>
@@ -187,8 +187,21 @@
         <h5 style="color:red;"><b>Warning! Some interactions may be missing in the current dataset if only older records were edited during upload.</b></h5>
         <h5 style="color:red;"><b>Warning! Empty columns are hidden.</b></h5>
         <?= $nonsec_interaction_table ?>
-
     </div>
+    <?php if(isset($total) && $total) : ?>
+        <div class="text-center">
+            <ul class="pagination pagination-lg" id="paginator">
+            <?php for ($i = 1; $i < ($total / 100) + 1; $i++) : ?>
+                <?php if ($i == $pagination) : ?>
+                <li class="active" id="activePag"><a href="/edit/dsInteractions/<?= $info->id ?>/<?= $i ?>"><?= $i ?></a></li>
+                <?php else : ?>
+                <li><a href="/edit/dsInteractions/<?= $info->id ?>/<?= $i ?>"><?= $i ?></a></li>
+                <?php endif ?>
+            <?php endfor ?>
+            <script>verifyPagination('<?=$total?>');</script>
+            </ul>
+        </div>
+    <?php endif ?>
 <?php endif ?>
 </div>
 

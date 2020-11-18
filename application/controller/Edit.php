@@ -48,6 +48,7 @@ class EditController extends Controller
      */
     function __construct()
     {
+        parent::__construct();
         $this->verifyUser(True);
         $this->make_submenu();
     }
@@ -273,33 +274,70 @@ class EditController extends Controller
             $this->redirect($redir_path ? $redir_path : 'error');
         }
 
-        if($_POST)
+        if($this->form->is_post())
         {
             try 
             {
+                if($this->form->param->Position_acc && !$this->form->param->Position)
+                {
+                    throw new Exception('Invalid position value.');
+                }
+                if($this->form->param->Penetration_acc && !$this->form->param->Penetration)
+                {
+                    throw new Exception('Invalid Penetration value.');
+                }
+                if($this->form->param->Water_acc && !$this->form->param->Water)
+                {
+                    throw new Exception('Invalid Water value.');
+                }
+                if($this->form->param->LogPerm_acc && !$this->form->param->LogPerm)
+                {
+                    throw new Exception('Invalid LogPerm value.');
+                }
+                if($this->form->param->theta_acc && !$this->form->param->theta)
+                {
+                    throw new Exception('Invalid theta value.');
+                }
+                if($this->form->param->abs_wl_acc && !$this->form->param->abs_wl)
+                {
+                    throw new Exception('Invalid abs_wl value.');
+                }
+                if($this->form->param->fluo_wl_acc && !$this->form->param->fluo_wl)
+                {
+                    throw new Exception('Invalid fluo_wl value.');
+                }
+                if($this->form->param->QY_acc && !$this->form->param->QY)
+                {
+                    throw new Exception('Invalid QY value.');
+                }
+                if($this->form->param->lt_acc && !$this->form->param->lt)
+                {
+                    throw new Exception('Invalid lt value.');
+                }
+
                 // Edit interaction
-                $interaction->Position = $_POST['Position'];
-                $interaction->Position_acc = $_POST['Position_acc'];
-                $interaction->Penetration = $_POST['Penetration'];
-                $interaction->Penetration_acc = $_POST['Penetration_acc'];
-                $interaction->Water = $_POST['Water'];
-                $interaction->Water_acc = $_POST['Water_acc'];
-                $interaction->LogK = $_POST['LogK'];
-                $interaction->LogK_acc = $_POST['LogK_acc'];
-                $interaction->LogPerm = $_POST['LogPerm'];
-                $interaction->LogPerm_acc = $_POST['LogPerm_acc'];
-                $interaction->theta = $_POST['theta'];
-                $interaction->theta_acc = $_POST['theta_acc'];
-                $interaction->abs_wl = $_POST['abs_wl'];
-                $interaction->abs_wl_acc = $_POST['abs_wl_acc'];
-                $interaction->fluo_wl = $_POST['fluo_wl'];
-                $interaction->fluo_wl_acc = $_POST['fluo_wl_acc'];
-                $interaction->QY = $_POST['QY'];
-                $interaction->QY_acc = $_POST['QY_acc'];
-                $interaction->lt = $_POST['lt'];
-                $interaction->lt_acc = $_POST['lt_acc'];
-                $interaction->temperature = $_POST['Temperature'];
-                $interaction->charge = $_POST['Q'];
+                $interaction->Position = $this->form->param->Position;
+                $interaction->Position_acc = $this->form->param->Position_acc;
+                $interaction->Penetration = $this->form->param->Penetration;
+                $interaction->Penetration_acc = $this->form->param->Penetration_acc;
+                $interaction->Water = $this->form->param->Water;
+                $interaction->Water_acc = $this->form->param->Water_acc;
+                $interaction->LogK = $this->form->param->LogK;
+                $interaction->LogK_acc = $this->form->param->LogK_acc;
+                $interaction->LogPerm = $this->form->param->LogPerm;
+                $interaction->LogPerm_acc = $this->form->param->LogPerm_acc;
+                $interaction->theta = $this->form->param->theta;
+                $interaction->theta_acc = $this->form->param->theta_acc;
+                $interaction->abs_wl = $this->form->param->abs_wl;
+                $interaction->abs_wl_acc = $this->form->param->abs_wl_acc;
+                $interaction->fluo_wl = $this->form->param->fluo_wl;
+                $interaction->fluo_wl_acc = $this->form->param->fluo_wl_acc;
+                $interaction->QY = $this->form->param->QY;
+                $interaction->QY_acc = $this->form->param->QY_acc;
+                $interaction->lt = $this->form->param->lt;
+                $interaction->lt_acc = $this->form->param->lt_acc;
+                $interaction->temperature = $this->form->param->Temperature;
+                $interaction->charge = $this->form->param->Q;
 
                 $interaction->save();
 

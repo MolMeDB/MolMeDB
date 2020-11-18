@@ -73,7 +73,7 @@ class Uploader extends Db
     public function insert_interaction($dataset_id, $reference_id, $ligand, $uploadName,$MW,$position,$position_acc, $penetration, $penetration_acc, $water, $water_acc, 
                             $LogK, $LogK_acc, $Area,$Volume, $LogP, $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc, $fluo_wl, $fluo_wl_acc, 
                             $QY, $QY_acc, $lt, $lt_acc,
-                            $Q, $comment, $SMILES, $DrugBank, $PubChem, $PDB, $membrane, $method, $temperature)
+                            $Q, $comment, $SMILES, $DrugBank, $PubChem, $PDB, $CHEMBL, $CHEBI, $membrane, $method, $temperature)
     {
         $substanceModel = new Substances();
         $interactionModel = new Interactions();
@@ -94,7 +94,7 @@ class Uploader extends Db
 			}
 
 			// Checks if substance already exists
-			$substance = $substanceModel->exists($ligand, $SMILES, $PDB, $DrugBank, $PubChem);
+			$substance = $substanceModel->exists($ligand, $SMILES, $PDB, $DrugBank, $PubChem, $CHEBI, $CHEMBL);
 
 			// Protected insert 
 			if(!$substance->id)
@@ -110,6 +110,8 @@ class Uploader extends Db
 				$substance->pdb = $PDB;
 				$substance->pubchem = $PubChem;
 				$substance->drugbank = $DrugBank;
+				$substance->chEMBL = $CHEMBL;
+				$substance->chEBI = $CHEBI;
 				$substance->user_id = $user_id;
 				$substance->validated = 0;
 				
@@ -133,6 +135,8 @@ class Uploader extends Db
 				$substance->pdb = $PDB ? $PDB : $substance->pdb;
 				$substance->pubchem = $PubChem ? $PubChem : $substance->pubchem;
 				$substance->drugbank = $DrugBank ? $DrugBank : $substance->drugbank;
+				$substance->chEMBL = $CHEMBL ? $CHEMBL : $substance->chEMBL;
+				$substance->chEBI = $CHEBI ? $CHEBI : $substance->chEBI;
 
 				// If missing identifier, then update
 				if(!Identifiers::is_valid($substance->identifier))

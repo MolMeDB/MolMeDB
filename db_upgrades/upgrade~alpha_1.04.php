@@ -16,5 +16,4 @@ $upgrade_sql = array
     'ALTER TABLE `interaction` ADD `comment` TEXT NULL DEFAULT NULL AFTER `id_reference`;',
     'ALTER TABLE `interaction` DROP INDEX `UNIQUE_KEY_COMB`;',
     "ALTER TABLE `interaction` ADD `validated` INT(2) NOT NULL DEFAULT '0' AFTER `user_id`;",
-    ""
 );

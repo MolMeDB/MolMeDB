@@ -49,9 +49,9 @@ class SchedulerController extends Controller
             echo "Emails sent. \n";
 
             // ---- Molecules data autofill ---- //
-            if($time->is_minute(1)) // Run only once per hour
+            if($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 3)) // Run only once per hour and only at night
             {
-                $this->substance_autofill_missing_data();
+                $this->substance_autofill_missing_data($time->get_hour() % 2);
                 echo "Subtance validations done. \n";
             }
 
@@ -109,7 +109,7 @@ class SchedulerController extends Controller
             {
                 $email_model->beginTransaction();
                 // Send email
-                $sender->send([$record->recipient_email], $record->subject, $record->text, $record->sender_email);
+                $sender->send([$record->recipient_email], $record->subject, $record->text, $record->file_path);
 
                 // Change status
                 $record->status = Email_queue::SENT;
@@ -135,7 +135,7 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juračka
      */
-    private function substance_autofill_missing_data()
+    private function substance_autofill_missing_data($only_not_validated = False)
     {
         $substance_model = new Substances();
         $rdkit = new Rdkit();
@@ -148,14 +148,29 @@ class SchedulerController extends Controller
         $scheduler_log->success_count = 0;
         $scheduler_log->save();
 
-        // In one run, check max 1000 molecules
-        $substances = $substance_model->where(array
-            (
-                'validated != ' => Validator::VALIDATED,
-                'validated !=' => Validator::POSSIBLE_DUPLICITY,
-            ))
-            ->limit(1000)
-            ->get_all();
+        if(!$only_not_validated)
+        {
+            $substances = $substance_model->where(array
+                (
+                    'prev_validation_state IS NULL',
+                    'OR',
+                    '(',
+                    'validated != ' => Validator::VALIDATED,
+                    'validated !=' => Validator::POSSIBLE_DUPLICITY,
+                    ")"
+                ))
+                ->limit(1000)
+                ->get_all();
+        }
+        else
+        {
+            $substances = $substance_model->where(array
+                (
+                    'validated' => Validator::NOT_VALIDATED,
+                ))
+                ->limit(1000)
+                ->get_all();
+        }
 
         $total_substances = count($substances);
         $success = 0;
@@ -166,6 +181,14 @@ class SchedulerController extends Controller
         // For each substance, get data and fill missing
         foreach($substances as $s)
         {
+            if($s->validated == Validator::VALIDATED)
+            {
+                $s->prev_validation_state = Validator::VALIDATED;
+                $s->save();
+
+                continue;
+            }
+
             try
             {
                 // Change first letter of name to uppercase
@@ -250,6 +273,7 @@ class SchedulerController extends Controller
                     $s->MW = $s->MW ? $s->MW : $MW;
                     $s->LogP = $logP ? $logP : $s->LogP;
                     // Set as filled_data state
+                    $s->prev_validation_state = $s->validated;
                     $s->validated = Validator::SUBSTANCE_FILLED;
 
                     $s->save();
@@ -371,12 +395,14 @@ class SchedulerController extends Controller
                             $s->chEBI = $s->chEBI ? $s->chEBI : $identifiers->chebi;
                             $s->chEMBL = $s->chEMBL ? $s->chEMBL : $identifiers->chembl;
                             $s->pdb = $s->pdb ? $s->pdb : $identifiers->pdb;
+                            $s->prev_validation_state = $s->validated;
                             $s->validated = Validator::IDENTIFIERS_FILLED;
 
                             $s->save();
                         }
                         else if(!$s->pubchem && !$s->chEMBL)
                         {
+                            $s->prev_validation_state = $s->validated;
                             $s->validated = Validator::IDENTIFIERS_FILLED;
                             $s->save();
 
@@ -385,6 +411,9 @@ class SchedulerController extends Controller
                     }
                     else
                     {
+                        $s->prev_validation_state = $s->validated;
+                        $s->save();
+
                         throw new Exception("Invalid inchikey. Cannot find identifiers.");
                     }
                 } 
@@ -397,6 +426,7 @@ class SchedulerController extends Controller
                     $this->fill_logP($s);
                 }
 
+                $s->prev_validation_state = $s->validated;
                 $s->validated = Validator::VALIDATED;
                 $s->save();
 
@@ -404,7 +434,10 @@ class SchedulerController extends Controller
             }
             catch(Exception $e)
             {
-                $report->add('Substance: ' . $s->identifier, $e->getMessage());
+                if($s->validated !== $s->prev_validation_state)
+                {
+                    $report->add('Substance: ' . $s->identifier, $e->getMessage());
+                }
 
                 $error_record = new Scheduler_errors();
                 //exists?
@@ -513,6 +546,8 @@ class SchedulerController extends Controller
                     if(!$membrane || !$membrane->id || !$method || !$method->id ||
                         !$dataset || !$dataset->id || !$publication || !$publication->id)
                     {
+                        $s->prev_validation_state = $s->validated;
+                        $s->save();
                         throw new Exception('Cannot fill Pubchem LogP. Pubchem default membrane/method/dataset/publication was not found!');
                     }
 
@@ -572,6 +607,8 @@ class SchedulerController extends Controller
                     if(!$membrane || !$membrane->id || !$method || !$method->id ||
                         !$dataset || !$dataset->id || !$publication || !$publication->id)
                     {
+                        $s->prev_validation_state = $s->validated;
+                        $s->save();
                         throw new Exception('Cannot fill LogP. ChEMBL default membrane/method/dataset/publication was not found!');
                     }
 
@@ -695,6 +732,9 @@ class SchedulerController extends Controller
                 return $data->SMILES;
             }
         }
+
+        $substance->prev_validation_state = $substance->validated;
+        $substance->save();
 
         throw new Exception("Cannot find SMILES.");
     }

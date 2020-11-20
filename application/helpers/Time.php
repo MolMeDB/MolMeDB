@@ -52,6 +52,26 @@ class Time
     }
 
     /**
+     * Returns hour
+     * 
+     * @return int
+     */
+    public function get_hour()
+    {
+        return intval(date('H', $this->current));
+    }
+
+    /**
+     * Returns minute
+     * 
+     * @return int
+     */
+    public function get_minute()
+    {
+        return intval(date('i', $this->current));
+    }
+
+    /**
      * Checks if current MINUTE is equal to given
      * 
      * @param int $minute

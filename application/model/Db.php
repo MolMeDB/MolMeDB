@@ -252,8 +252,8 @@ class Db extends Iterable_object
             FROM ' . $this->table .
             ' ' . $this->where . ' ' .
             ' ' . $this->group_by .
-            $this->limit . ' '
-            . $this->order_by;
+            $this->order_by
+            . $this->limit;
 
         if($this->debug) // DEBUG
         {
@@ -468,7 +468,7 @@ class Db extends Iterable_object
         {
             $this->where = 'WHERE ';
         }
-        else
+        else if (substr(trim($this->where), -1) != '(')
         {
             $this->where .= ' AND ';
         }
@@ -529,12 +529,29 @@ class Db extends Iterable_object
                 {
                     $this->where .= $attr . ' IS NULL';
                 }
+                else if(is_numeric($attr))
+                {
+                    if(trim($val) == ")" || trim($val) == "OR" || trim($val) == "AND")
+                    {
+                        $this->where = rtrim(trim($this->where), 'AND');
+                        $this->where = rtrim(trim($this->where), 'OR');
+                    }
+                    
+                    $this->where .= " $val";
+                }
                 else 
                 {
                     $this->where .= $attr . ' = "' . $val . '"';
                 }
 
-                $this->where .= ' AND ';
+                if(substr(trim($this->where), -2) != "OR" && substr(trim($this->where), -1) != '(')
+                {
+                    $this->where .= ' AND ';
+                }
+                else
+                {
+                    $this->where .= ' ';
+                }
             }
         }
 
@@ -636,7 +653,7 @@ class Db extends Iterable_object
 
         $this->reload();
 
-        return $count;
+        return intval($count);
     }
 
 
@@ -671,7 +688,7 @@ class Db extends Iterable_object
             }
 
             // If change is recognized
-            if (array_key_exists($key, $old_data) && $old_data[$key] != $val && !is_object($val) && !is_array($val)) // Improve required
+            if (array_key_exists($key, $old_data) && $old_data[$key] !== $val && !is_object($val) && !is_array($val)) // Improve required
             {
                 $new_data[$key] = $val;
             }

@@ -13,6 +13,7 @@ $upgrade_sql = array
 (
     // Get ready for data validators
     'UPDATE `substances` SET `validated` = 0, `LogP` = NULL WHERE 1;',
+    'ALTER TABLE `substances` ADD `prev_validation_state` TINYINT NULL DEFAULT NULL AFTER `validated`;',
     'UPDATE `interaction` SET `validated` = 0 WHERE 1;',
     'ALTER TABLE `validations`
         DROP `name`,
@@ -32,8 +33,8 @@ $upgrade_sql = array
     // Add default LogP Membrane
     "INSERT INTO `membranes` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', '1-octanol', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
     // Add default LogP methods
-    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', 'Pubchem Method', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
-    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '2', 'ChEMBL Method', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', 'Pubchem', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '2', 'ChEMBL', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
     // Add default publications
     "INSERT INTO `publications` (`id`, `type`, `citation`, `doi`, `pmid`, `title`, `authors`, `journal`, `volume`, `issue`, `page`, `year`, `publicated_date`, `pattern`, `user_id`, `createDateTime`) VALUES (NULL, '1', 'PUBCHEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP);",
     "INSERT INTO `publications` (`id`, `type`, `citation`, `doi`, `pmid`, `title`, `authors`, `journal`, `volume`, `issue`, `page`, `year`, `publicated_date`, `pattern`, `user_id`, `createDateTime`) VALUES (NULL, '2', 'ChEMBL', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP);",

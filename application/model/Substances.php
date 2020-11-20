@@ -19,7 +19,8 @@
  * @property string $pdb
  * @property string $chEMBL
  * @property integer $user_id
- * @property boolean $validated
+ * @property integer $validated
+ * @property integer $prev_validation_state
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
@@ -588,6 +589,7 @@ class Substances extends Db
         }
 
         // Label molecule as possible duplicity
+        $this->prev_validation_state = $this->validated;
         $this->validated = Validator::POSSIBLE_DUPLICITY;
         $this->save();
     }

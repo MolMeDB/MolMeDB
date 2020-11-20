@@ -31,16 +31,21 @@ class ValidatorController extends Controller
      * 
      * @param int $id
      */
-    public function show($id = null)
+    public function show($state = Validator::POSSIBLE_DUPLICITY, $id = null)
     {
         $validator = new Validator();
         $scheduler_reports = new Log_scheduler();
         $substance = new Substances($id);
 
+        if(!Validator::is_state_valid($state) && $state && !$id)
+        {
+            $this->redirect('validator/show/' . Validator::POSSIBLE_DUPLICITY . '/' . $state);
+        }
+
         if($id && !$substance->id)
         {
             $this->addMessageError('Invalid substance id.');
-            $this->redirect('validator/show');
+            $this->redirect('validator/show/' . $state);
         }
 
         if($substance->id)
@@ -53,8 +58,10 @@ class ValidatorController extends Controller
             $this->data['detail'] = FALSE;
         }
         
-        $this->data['compounds'] = $validator->get_substances();
-        $this->data['reports'] = $scheduler_reports->order_by('id', 'desc')->get_all();
+        $this->data['state'] = $state;
+        $this->data['compounds'] = $validator->get_substances($state, 100);
+        $this->data['total_compounds'] = count($validator->get_substances($state));
+        $this->data['reports'] = $scheduler_reports->order_by('id', 'desc')->limit(50)->get_all();
         $this->view = 'validator/validator';
     }
 
@@ -68,10 +75,10 @@ class ValidatorController extends Controller
      */
     public function join($substance_1 = NULL, $substance_2 = NULL)
     {
-        if($_POST)
+        if($this->form->is_post())
         {
-            $substance_1 = isset($_POST['substance_1']) ? $_POST['substance_1'] : $substance_1;
-            $substance_2 = isset($_POST['substance_2']) ? $_POST['substance_2'] : $substance_2;
+            $substance_1 = $this->form->param->substance_1 ? $this->form->param->substance_1 : $substance_1;
+            $substance_2 = $this->form->param->substance_2 ? $this->form->param->substance_2 : $substance_2;
         }
 
         $new = new Substances($substance_1);
@@ -190,7 +197,9 @@ class ValidatorController extends Controller
                 $new->commitTransaction();
 
                 $this->addMessageSuccess('Molecules was successfully joined.');
-                $this->addMessageWarning('New molecule was labeled as NOT VALIDATED and will be validated in next valdation run.');
+                $this->addMessageWarning('New molecule was labeled as NOT VALIDATED and will be re-validated in next validation run.');
+
+                $this->redirect('mol/' . $new->identifier);
             }
             catch(Exception $e)
             {

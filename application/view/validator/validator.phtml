@@ -1,3 +1,15 @@
+
+<div class='joiner-overlay' id='joiner-overlay'>
+    <div class='joiner-content' id='joiner-content'>
+        <div class='close' id='close-joiner' style='color: red; width:100%; text-align: right;'>X</div>
+        <div class="joiner-overlay-title"><b>Join molecules</b></div>
+        <div class="joiner-columns" id='joiner_columns'>
+            
+        </div>
+    </div>
+</div>
+
+
 <h2 style="font-weight: bold; text-align: center;">Data validator</h2>
 
 <div class='col-md-12 row justify-content-center'>
@@ -15,7 +27,18 @@
 
 <div class='col-md-12' style="margin-bottom: 50px;"> 
     <div class='col-md-6'>
-        <h4>Remains to validate (<?= count($compounds) ?>)</h4>
+        <div class="validator-states">
+            <div>Choose state: </div>
+            <div>
+                <a class="<?= $state == Validator::NOT_VALIDATED ? 'active' : '' ?>" href="/validator/show/<?= Validator::NOT_VALIDATED ?>"><?= Validator::NOT_VALIDATED ?></a>
+                <a class="<?= $state == Validator::SUBSTANCE_FILLED ? 'active' : '' ?>" href="/validator/show/<?= Validator::SUBSTANCE_FILLED ?>"><?= Validator::SUBSTANCE_FILLED ?></a>
+                <a class="<?= $state == Validator::IDENTIFIERS_FILLED ? 'active' : '' ?>" href="/validator/show/<?= Validator::IDENTIFIERS_FILLED ?>"><?= Validator::IDENTIFIERS_FILLED ?></a>
+                <a class="<?= $state == Validator::POSSIBLE_DUPLICITY ? 'active' : '' ?>" href="/validator/show/<?= Validator::POSSIBLE_DUPLICITY ?>"><?= Validator::POSSIBLE_DUPLICITY ?></a>
+                <a class="<?= $state == Validator::LogP_FILLED ? 'active' : '' ?>" href="/validator/show/<?= Validator::LogP_FILLED ?>"><?= Validator::LogP_FILLED ?></a>
+                <a class="<?= $state == Validator::VALIDATED ? 'active' : '' ?>" href="/validator/show/<?= Validator::VALIDATED ?>"><?= Validator::VALIDATED ?></a>
+            </div>
+        </div>
+        <h4>Records (<?= $total_compounds ?>)</h4>
         <div style='max-height: 400px; overflow-y:auto;'>
             <table class='table'>
                 <thead>
@@ -32,7 +55,7 @@
                         <td><?= $c->name ?></td>
                         <td><?= $c->validated ?></td>
                         <td><?= $c->errors ?></td>
-                        <td><button type='button' onclick='redirect("validator/show/<?=$c->id ?>")' class='btn btn-sm btn-warning'>Show</button></td>
+                        <td><button type='button' onclick='redirect("validator/show/<?= $state ?>/<?=$c->id ?>")' class='btn btn-sm btn-warning'>Show</button></td>
                     </tr>
                     <?php endforeach ?>
                 </tbody>
@@ -58,7 +81,8 @@
                             <td><?= date('d.m.Y H:i', strtotime($d->datetime)) ?></td>
                             <td>
                                 <?php if($d->identifier_2) : ?> 
-                                <button type='button' onclick="alert_window('Are you sure you want to join molecules (<?= $d->id . ', ' . $d->id_substance_2 ?>)?', 'validator/join/<?=$d->id ?>/<?= $d->id_substance_2 ?>', false)" class='btn btn-sm btn-danger'>Join</button>
+                                <!-- <button type='button' onclick="alert_window('Are you sure you want to join molecules (<?= $d->id . ', ' . $d->id_substance_2 ?>)?', 'validator/join/<?=$d->id ?>/<?= $d->id_substance_2 ?>', false)" class='btn btn-sm btn-danger'>Show</button> -->
+                                <button type='button' onclick="compare_substances('<?= $d->identifier ?>', '<?= $d->identifier_2 ?>')" class='btn btn-sm btn-success'>Show</button>
                                 <?php endif ?>
                             </td>
                             <td><?= "$d->duplicity" ?></td>
@@ -73,7 +97,7 @@
 
 <div class='col-md-12'>
     <div class='col-md-6'>
-        <h4>Last scheduler runs</h4>
+        <h4>Last 50 scheduler runs</h4>
         <div style='max-height: 400px; overflow-y:auto;'>
             <table class='table'>
                 <thead>

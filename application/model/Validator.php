@@ -47,13 +47,25 @@ class Validator extends Db
     }
 
     /**
+     * Is state valid?
+     * 
+     * @param int $state_id
+     * 
+     * @return boolean
+     */ 
+    public static function is_state_valid($state_id)
+    {
+        return array_key_exists($state_id, self::$enum_states);
+    }
+
+    /**
      * Returns enum state
      * 
      * @param int $state_id
      * 
      * @return string
      */
-    public function get_enum_state($state_id)
+    public static function get_enum_state($state_id)
     {
         if(in_array($state_id, self::$enum_states))
         {
@@ -67,30 +79,67 @@ class Validator extends Db
      * 
      * @return Iterable_object
      */
-    public function get_substances()
+    public function get_substances($state = NULL, $limit = NULL)
     {
-        return $this->queryAll('
-            SELECT t.id, SUM(errors) errors, t.name, t.validated, t.identifier
-            FROM
-            (
-                        
-                SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type
-                FROM substances s
-                JOIN validations v ON v.id_substance_1 = s.id
-                WHERE s.validated != ?
+        $limit_str = "";
+
+        if($limit && is_numeric($limit))
+        {
+            $limit_str = "LIMIT $limit";
+        }
+
+        if($state === NULL || !self::is_state_valid($state))
+        {
+            return $this->queryAll("
+                SELECT DISTINCT t.id, SUM(errors) errors, t.name, t.validated, t.identifier
+                FROM
+                (
+                            
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type
+                    FROM substances s
+                    JOIN validations v ON v.id_substance_1 = s.id
+                    WHERE s.validated != ?
+                    GROUP BY id
+                    
+                    UNION
+                    
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type
+                    FROM substances s
+                    JOIN scheduler_errors e ON e.id_substance = s.id
+                    WHERE s.validated != ?
+                    GROUP BY id
+                ) t 
                 GROUP BY id
-                
-                UNION
-                
-                SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type
-                FROM substances s
-                JOIN scheduler_errors e ON e.id_substance = s.id
-                WHERE s.validated != ?
+                ORDER BY validated DESC, errors DESC
+                $limit_str
+            ", array(self::VALIDATED, self::VALIDATED));
+        }
+        else
+        {
+            return $this->queryAll("
+                SELECT DISTINCT t.id, SUM(errors) errors, t.name, t.validated, t.identifier
+                FROM
+                (
+                            
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type
+                    FROM substances s
+                    JOIN validations v ON v.id_substance_1 = s.id
+                    WHERE s.validated = ?
+                    GROUP BY id
+                    
+                    UNION
+                    
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type
+                    FROM substances s
+                    JOIN scheduler_errors e ON e.id_substance = s.id
+                    WHERE s.validated = ?
+                    GROUP BY id
+                ) t 
                 GROUP BY id
-            ) t 
-            GROUP BY id
-            ORDER BY validated DESC
-        ', array(self::VALIDATED, self::VALIDATED));
+                ORDER BY validated DESC, errors DESC
+                $limit_str
+            ", array($state, $state));
+        }
     }
 
     /**

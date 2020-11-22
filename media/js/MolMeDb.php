@@ -186,7 +186,7 @@ function addSetToComparator(type, id)
 
     if(!ligands)
     {
-        add_message('Compounds was not added to comparator list.', 'danger');
+        add_message('Compounds were not added to the comparator list.', 'danger');
         return;
     }
 
@@ -642,6 +642,11 @@ function get_attr(id)
  */
 function get_substance_id(attr)
 {
+    if(!attr)
+    {
+        return null;
+    }
+
     var is_a_num = new RegExp("^[0-9]*$");
 
     if (is_a_num.test(attr))

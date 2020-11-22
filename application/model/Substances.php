@@ -142,6 +142,56 @@ class Substances extends Db
 
         return $this->parse_list($result, $pagination);
     }
+
+    /**
+     * Count search list for query
+     * 
+     * @param string $query
+     * 
+     * @return integer
+     */
+    public function search_by_transporter_count($query)
+    {
+        $query = '%' . $query . '%';
+
+        return $this->queryOne('
+            SELECT COUNT(*) as count 
+            FROM
+            (
+                SELECT DISTINCT s.id
+                FROM substances s
+                JOIN transporters t on t.id_substance = s.id
+                JOIN transporter_datasets d ON d.id = t.id_dataset
+                JOIN transporter_targets tt ON tt.id = t.id_target
+                WHERE tt.name LIKE ? AND d.visibility = ?
+            ) tab ',
+            array($query, Transporter_datasets::VISIBLE)
+        )->count;
+    }
+
+    /**
+     * Search substance by given query
+     * 
+     * @param string $query
+     * 
+     * @return Iterable
+     */
+    public function search_by_transporter($query, $pagination = 1)
+	{
+        $query = '%' . $query . '%';
+        
+        $result = $this->queryAll('
+            SELECT DISTINCT s.*
+            FROM substances s
+            JOIN transporters t on t.id_substance = s.id
+            JOIN transporter_datasets d ON d.id = t.id_dataset
+            JOIN transporter_targets tt ON tt.id = t.id_target
+            WHERE tt.name LIKE ? AND d.visibility = ?
+            ORDER BY IF(s.name RLIKE "^[a-z]", 1, 2), s.name'
+            , array($query, Transporter_datasets::VISIBLE));
+
+        return $this->parse_list($result, $pagination);
+    }
     
     /**
      * Parsing search list detail

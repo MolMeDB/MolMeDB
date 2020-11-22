@@ -526,7 +526,7 @@ function loadComparatorTable()
     var headNames = ["<b>Name</b>", "<b>Membrane</b>", "<b>Method</b>","<b>Q</b>", "<b>Note</b>" , "<b>T<br/> <label class='units'>[°C]</label></b>", "<b>LogP<br/> <label class='units'>[mol<sub>m</sub>/mol<sub>w</sub>]</label></b>", 
         "<b>X<sub>min</sub> <label class='units'>[nm]</label></b>", '<b>&Delta;G<sub>pen</sub> <label class="units">[kcal / mol]</label></b>', '<b>&Delta;G<sub>wat</sub> <label class="units">[kcal / mol]</label></b>', 
         '<b>LogK<sub>m</sub> <label class="units">[mol<sub>m</sub>/mol<sub>w</sub>]</label></b>', '<b>LogPerm <label class="units">[cm/s]</label></b>', 
-        '<b>MW [Da]</b>', "<b>Primary reference</b>", "<b>Secondary reference</b>",
+        '<b>MW [Da]</b>', "<b>Reference</b>",
         '<i class="fa fa-line-chart" style="font-size:24px; color: #269abc;"></i>'];
     var count = headNames.length;
     var tr = document.createElement("tr");
@@ -624,23 +624,17 @@ function loadComparatorTable()
             var td_logPerm = createTD(res.LogPerm, res.LogPerm_acc);
             var td_mw = createTD(res.substance.MW);
             
-            // Load references detail
+            // Load reference detail
             var td_ref = document.createElement('td');
-            var td_ref_sec = document.createElement('td');
             ref_iterator++;
             
-            if(res.id_reference != 0 && res.id_reference != null)
+            if(res.id_reference != 0)
                 td_ref.innerHTML = "<div class=\"popup\" onclick=\"show_popup('" + ref_iterator + "')\">" + res.id_reference + "<span class=\"popuptext\" id=\"ref_popup_" + ref_iterator + "\">" + res.reference + "</span></div>";
             else
                 td_ref.innerHTML = "";
-
-            ref_iterator++;
-            if(res.id_secondary_reference != 0 && res.id_secondary_reference != null && res.id_secondary_reference != res.id_reference)
-                td_ref_sec.innerHTML = "<div class=\"popup\" onclick=\"show_popup('" + ref_iterator + "')\">" + res.id_secondary_reference + "<span class=\"popuptext\" id=\"ref_popup_" + ref_iterator + "\">" + res.secondary_reference + "</span></div>";
-            else
-                td_ref_sec.innerHTML = "";
             
             //Checkbox for chart
+            var id_substance = res.id_substance;
             var td_checkbox = document.createElement("td");
             var input = document.createElement("input");
             
@@ -667,7 +661,6 @@ function loadComparatorTable()
             tr.appendChild(td_logPerm);
             tr.appendChild(td_mw);
             tr.appendChild(td_ref);
-            tr.appendChild(td_ref_sec);
             tr.appendChild(td_checkbox);
             tbody.appendChild(tr);
             
@@ -1494,8 +1487,7 @@ function create_mems()
     //Other values
     var c = options['membranes'].length;
     
-    for(var i = 0; i < c; i++)
-    {
+    for(var i = 0; i < c; i++){
         var td = document.createElement('td');
         td.className = 'filter-mems';
         td.setAttribute('onclick', 'advanced_style(this, 1)');

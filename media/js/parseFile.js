@@ -72,7 +72,7 @@ function parse_transporters_file(file)
     var tr = document.createElement("tr");
     tr.setAttribute("class", "types");
     var types = ["Don't use", "Name", "Target", "Primary_reference", 
-                "Uniprot_id", "Type", "Km", "Ki", "IC50", "EC50", 'SMILES', "DrugBank_ID", "PubChem_ID", "PDB_ID",
+                "Uniprot_id", "Type", "Km", "Ki", "IC50", "EC50", 'SMILES', "DrugBank_ID", "PubChem_ID", "PDB_ID", "Chebi_id", "Chembl_id",
                 "MW", 'LogP'];
     
     for(var i=0; i<count; i++){
@@ -185,7 +185,7 @@ function parse_interaction_file(file)
     var tr = document.createElement("tr");
     tr.setAttribute("class", "types");
     var types = ["Don't use", "Name", "Primary_reference", "Note", "Q", "X_min", "X_min_acc", "G_pen", "G_pen_acc", "G_wat", "G_wat_acc", "LogK", "LogK_acc", "LogP", "LogPerm", "LogPerm_acc"
-        ,"theta", "theta_acc", "abs_wl", "abs_wl_acc", "fluo_wl", "fluo_wl_acc", "QY", "QY_acc", "lt", "lt_acc", "MW", "SMILES", "DrugBank_ID", "PubChem_ID", "PDB_ID", "Area", "Volume"];
+        ,"theta", "theta_acc", "abs_wl", "abs_wl_acc", "fluo_wl", "fluo_wl_acc", "QY", "QY_acc", "lt", "lt_acc", "MW", "SMILES", "DrugBank_ID", "PubChem_ID", "PDB_ID", "Chembl_id", "Chebi_id", "Area", "Volume"];
     
     for(var i=0; i<count; i++){
         var td = document.createElement("td");

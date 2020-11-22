@@ -49,4 +49,21 @@ class Transporter_targets extends Db
         
         return $t;
     }
+
+    /**
+     * Get data to the whisper
+     * 
+     * @param string $query
+     */
+    public function loadSearchWhisper($query)
+    {
+        return $this->queryAll('
+            SELECT CONCAT(tt.name, " [", tt.uniprot_id, "]") as name
+            FROM transporter_targets tt
+            JOIN transporters t ON t.id_target = tt.id
+            JOIN transporter_datasets td ON td.id = t.id_dataset
+            WHERE (tt.name LIKE ? OR tt.uniprot_id LIKE ?) AND td.visibility = ?
+            LIMIT 10
+        ', array($query, $query, Transporter_datasets::VISIBLE), False);
+    }
 }

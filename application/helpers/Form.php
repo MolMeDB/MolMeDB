@@ -102,5 +102,13 @@ class Form
             $this->file = new Iterable_object($_FILES, true);
         }
 
+        // Proccess params
+        foreach($this->param as $key => $val)
+        {
+            if(!is_array($val) && trim(strval($val)) == '')
+            {
+                $this->param->$key = NULL;
+            }
+        }
     }
 }

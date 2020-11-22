@@ -22,10 +22,15 @@ abstract class Controller
      */
     protected $config;
 
+    /** Alerts handler */
+    protected $alert;
+
     /** Form submit handler */
     protected $form;
 
-    /** SESSION HOLDER */
+    /**
+     * Session info holder
+     */
     protected $session;
 
     /**
@@ -34,6 +39,7 @@ abstract class Controller
     function __construct()
     {
         $this->config = new Config();
+        $this->alert = new Alert();
         $this->form = new Form();
         $this->session = new Iterable_object($_SESSION, true);
     }

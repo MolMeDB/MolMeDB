@@ -139,11 +139,11 @@ function loadTable(id)
     var thead = document.createElement("thead");
     var tbody = document.createElement("tbody");
     thead.setAttribute("class", "thead-detail");
-    var attributes = ["Membrane", "Method", "Note", "Q", 'T <br/><label class="units">[°C]</label>', 'X<sub>min</sub> <br/><label class="units">[nm]</label>', 
+    var attributes = ["Membrane", "Method", "Q", 'T <br/><label class="units">[°C]</label>', 'X<sub>min</sub> <br/><label class="units">[nm]</label>', 
                       '&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>', '&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', 
                       'LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub></label>]', 'LogPerm <br/><label class="units">[cm/s]</label>', 
                       'Theta<br/><label class="units">[°]</label>','Abs_wl<br/><label class="units">[nm]</label>', 'Fluo_wl<br/><label class="units">[nm]</label>',
-                      'QY<br/><label class="units"></label>', 'lt<br/><label class="units">[ns]</label>', 'Primary<br/> reference', 'Secondary<br/> reference'];
+                      'QY<br/><label class="units"></label>', 'lt<br/><label class="units">[ns]</label>', 'Primary<br/> reference', 'Secondary<br/> reference', "Note"];
     
     var methods = get_all_methods();
     var countMet = methods.length;
@@ -236,7 +236,6 @@ function loadTable(id)
             var secondary_ref = make_ref_td(interaction.secondary_reference_id, interaction.secondary_reference);
             
 
-            tr.appendChild(note);
             tr.appendChild(charge);
             tr.appendChild(temp);
             tr.appendChild(x_min);
@@ -251,6 +250,7 @@ function loadTable(id)
             tr.appendChild(lt);
             tr.appendChild(primary_ref);
             tr.appendChild(secondary_ref);
+            tr.appendChild(note);
 
             tbody.appendChild(tr);
         }

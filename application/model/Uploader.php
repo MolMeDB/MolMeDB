@@ -310,9 +310,11 @@ class Uploader extends Db
 	 * @param float $KI
 	 * @param float $KM
 	 * 
+	 * @author Jakub Juracka
 	 */
-	public function insert_transporter($dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
-		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM)
+	public function insert_transporter($id_dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
+		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM, $IC50_acc = NULL, $EC50_acc = NULL, $KI_acc = NULL, $KM_acc = NULL)
+
 	{
 		$substanceModel = new Substances();
 		$smilesModel = new Smiles();
@@ -389,24 +391,18 @@ class Uploader extends Db
 			}
 
 			// Add altername record if not exists
-			$alterName = new AlterNames();
-
-			if($ligand)
+			if($ligand && strlen($ligand) > 0)
 			{
+				$alterName = new AlterNames();
 				$exists = $alterName->where('name LIKE', $ligand)
 					->get_one();
-			}
-			else
-			{
-				$exists = NULL;
-			}
-			
-			if(!$exists)
-			{
-				$alterName->name = $ligand;
-				$alterName->id_substance = $substance->id;
 
-				$alterName->save();
+				if(!$exists)
+				{
+					$alterName->name = $ligand;
+					$alterName->id_substance = $substance->id;
+					$alterName->save();
+				}
 			}
 
 			// Check if target already exists
@@ -424,7 +420,7 @@ class Uploader extends Db
 				$target_obj->save();
 			}
 
-			// save new transporter
+			// Save new transporter
 			$transporter = new Transporters();
 
 			// Check, if already exists
@@ -469,9 +465,14 @@ class Uploader extends Db
 			$transporter->id_target = $target_obj->id;
 			$transporter->type = $type;
 			$transporter->Km = $KM ? $KM : $transporter->Km;
+			$transporter->Km_acc = $KM ? $KM_acc : NULL;
 			$transporter->Ki = $KI ? $KI : $transporter->Ki;
+			$transporter->Ki_acc = $KI ? $KI_acc : NULL;
 			$transporter->EC50 = $EC50 ? $EC50 : $transporter->EC50;
+			$transporter->EC50_acc = $EC50 ? $EC50_acc : NULL;
 			$transporter->IC50 = $IC50 ? $IC50 : $transporter->IC50;
+			$transporter->IC50_acc = $IC50 ? $IC50_acc : NULL;
+
 			$transporter->id_reference = $id_reference;
 			$transporter->id_user = $user_id;
 			
@@ -484,7 +485,6 @@ class Uploader extends Db
 		catch (Exception $ex) 
 		{
 			throw new UploadLineException($ligand . ' / ' . $ex->getMessage());
-		}
-
+    }
 	}
 }

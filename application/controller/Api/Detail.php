@@ -17,6 +17,61 @@ class ApiDetail extends ApiController
     }
 
     /**
+     * Returns molecule data
+     * 
+     * @GET
+     * @param identifier
+     */
+    public function mol($identifier)
+    {
+        $subs = new Substances($identifier);
+
+        if(!$subs->id)
+        {
+            $subs = $subs->where('identifier', $identifier)->get_one();
+        }
+
+        if(!$subs->id)
+        {
+            $this->answer(NULL, self::CODE_NOT_FOUND);
+        }
+
+        $result = array();
+
+        $result['detail'] = $subs->as_array();
+        $result['interactions'] = [];
+        $result['transporters'] = [];
+
+        $interaction_model = new Interactions();
+        $interactions = $interaction_model->where('id_substance', $subs->id)->get_all();
+
+        foreach($interactions as $i)
+        {
+            $result['interactions'][] = $i->as_array(null, True) + array
+                (
+                    'membrane' => $i->membrane->name,
+                    'method' => $i->method->name,
+                    "id_dataset_reference" => $i->dataset->id_publication
+                );
+        }
+
+        $transporter_model = new Transporters();
+        $transporters = $transporter_model->where('id_substance', $subs->id)->get_all();
+
+        foreach($transporters as $t)
+        {
+            $result['transporters'][] = $t->as_array(null, true) + array
+                (
+                    'target' => $t->target->name, 
+                    'dataset_ref' => $t->dataset->id_reference,
+                    'uniprot_id' => $t->target->uniprot_id
+                );
+        }
+
+        $this->answer($result);
+    }
+
+    /**
      * Returns methods with available interactions for given substance ID
      * 
      * @GET

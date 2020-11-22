@@ -1,7 +1,7 @@
     <input hidden id="nameStructure" value="<?= $substance->identifier ?>">
     <textarea hidden id="2dInput" class="textin" onload="update()"><?= $substance->SMILES ?>;<?= $substance->name ?></textarea>
     <input hidden id="idSubstance" value="<?= $substance->id ?>">
-    <div class="row content">
+    <div class="content">
         <div>
             <p class="compoundTitle"><?= $substance->name ?></p>
             <?php if (isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>
@@ -41,6 +41,10 @@
                                 <tr>
                                     <td><b>SMILES</b></td>
                                     <td><?= $substance->SMILES ?>
+                                </tr>
+                                <tr>
+                                    <td><b>InChIKey</b></td>
+                                    <td><?= $substance->inchikey ?>
                                 </tr>
                                 <tr>
                                     <td><b>MW [Da]</b></td>
@@ -152,10 +156,10 @@
                                 <td><b>Target</b></td>
                                 <td>Uniprot ID</td>
                                 <td>Type</td>
-                                <td>Km</td>
-                                <td>EC<sub>50</sub></td>
-                                <td>K<sub>i</sub></td>
-                                <td>IC<sub>50</sub></td>
+                                <td>pKm</td>
+                                <td>pEC<sub>50</sub></td>
+                                <td>pK<sub>i</sub></td>
+                                <td>pIC<sub>50</sub></td>
                                 <td>Primary<br/>reference</td>
                                 <td>Secondary<br/>reference</td>
                             </thead>

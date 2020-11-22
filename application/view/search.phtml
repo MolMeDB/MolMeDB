@@ -7,6 +7,8 @@
   <li><a data-toggle="tab" href="#membrane">Membrane</a></li>
   <li><a data-toggle="tab" href="#method">Method</a></li>
   <li><a data-toggle="tab" href="#smiles">SMILES</a></li>
+  <li><a data-toggle="tab" href="#transporters">Transporters</a></li>
+  <!-- <li><a data-toggle="tab" href="#uniprot">Uniprot ID</a></li> -->
 </ul>
 
 <div class="tab-content">
@@ -75,6 +77,36 @@
       </div>
     </div>
   </div>
+  <div id="transporters" class="tab-pane fade">
+    <div class="panel-group">
+      <div class="panel panel-primary">
+        <div class="panel-heading">Search compounds by transporter targets</div>
+        <div class="panel-body">
+          <form method="get" action="/search/transporter/1" autocomplete="off">
+            <div class="autocomplete">
+              <input type="text" class="searchEngine" name="q" id='transporterSearch' placeholder="Search compounds by transporter">
+            </div>
+            <button type="submit" class="btn btn-success pull-right">Search</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- <div id="uniprot" class="tab-pane fade">
+    <div class="panel-group">
+      <div class="panel panel-primary">
+        <div class="panel-heading">Search compounds by uniprot ID</div>
+        <div class="panel-body">
+          <form method="get" action="/search/uniprot/1" autocomplete="off">
+            <div class="autocomplete">
+              <input type="text" class="searchEngine" name="q" id='uniprotSearch' placeholder="Search compounds by uniprot ID">
+            </div>
+            <button type="submit" class="btn btn-success pull-right">Search</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div> -->
 
 </div>
 

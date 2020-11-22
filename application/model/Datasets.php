@@ -4,6 +4,7 @@
  * Dataset model
  * 
  * @property integer $id
+ * @property integer $type
  * @property integer $visibility
  * @property string $name
  * @property integer $id_membrane
@@ -24,13 +25,24 @@ class Datasets extends Db
 {
     /** VISIBILITY CONSTANTS */
 	const VISIBLE = 1;
-	const INVISIBLE = 2;
+    const INVISIBLE = 2;
+    
+    /** TYPES */
+    const PUBCHEM = 1;
+    const CHEMBL = 2;
 
 	private $enum_visibilities = array
 	(
 		self::VISIBLE => 'Visible',
 		self::INVISIBLE => 'Invisible'
-	);
+    );
+    
+    /** Valid types */
+    private static $valid_types = array
+    (
+        self::PUBCHEM,
+        self::CHEMBL
+    );
 
     /** Foreign keys to other tables */
     public $has_one = array
@@ -49,6 +61,26 @@ class Datasets extends Db
             'class' => 'Users'
         )
     );
+
+    /**
+     * Get dataset by type
+     * 
+     * @param int $type
+     * 
+     * @return Datasets
+     */
+    public function get_by_type($type)
+    {
+        if(!in_array($type, self::$valid_types))
+        {
+            return new Iterable_object([]);
+        }
+
+        $obj = $this->where('type', $type)
+            ->get_one();
+
+        return $obj->id ? new Datasets($obj->id) : null;
+    }
 
     /**
      * Constructor

@@ -1,163 +1,364 @@
-function load_duplicates(id, obj){
-    var list = [];
-    var labelValid = document.getElementById("labelAsValidated");
-    var tab_list = document.getElementById("list_table");
-    var ligand_1_1_id = document.getElementById("ligand_1_1_id");
-    var table = document.getElementById("duplicates_table");
-    var children = tab_list.children;
-    var name = document.getElementById(id).innerHTML;
-    for(var i = 0; i < children.length; i++){
-        if (children[i].children[0].classList.contains("active"))
-            children[i].children[0].classList.toggle("active");
+var joiner_parent = $('#joiner-overlay');
+
+$('#close-joiner').on('click', function()
+{
+    $(joiner_parent).hide();  
+});
+
+function compare_substances(subst_id_1, subst_id_2)
+{
+    // Show joiner
+    $(joiner_parent).show();
+
+    var substance_1 = ajax_request('detail/mol',{'identifier': subst_id_1});
+    var substance_2 = ajax_request('detail/mol', {'identifier': subst_id_2});
+
+    if(!substance_1 || !substance_2)
+    {
+        alert('Invalid data.');
     }
-    
-    obj.classList.toggle("active");
-    table.innerHTML = '';
-    var count;
-    $.ajax({
-      url: "AJAX/validator/load_duplicates.php?id=" + id,
-      type: "GET",
-      async: false,
-      success: function(data){
-              list = data.split("|");
-              count = list.length;
-              for(var i = 0; i<count; i++)
-                  list[i] = list[i].split(";");
-    }});
-    
-    for(var i = 0; i< count-1; i++){
-       var tr = document.createElement("tr");
-       var td = document.createElement("td");
-       td.innerHTML = list[i][1] + " [id: " + list[i][0] + "]";
-       td.setAttribute("onclick", "load_detail('" + id + "', '" + list[i][0] + "', this);");
-       tr.appendChild(td);
-       table.appendChild(tr);
-       
+
+    var target = $('#joiner_columns');
+
+    // First, clear target
+    $(target).html('');
+    clearButtons();
+
+    var col_1 = create_joiner_col(
+        "<a href='/mol/" + substance_1.detail.identifier + "' target='_blank'>" +
+        substance_1.detail.name + "</a>"
+    );
+    var col_2 = create_joiner_col(
+        "<a href='/mol/" + substance_2.detail.identifier + "' target='_blank'>" +
+        substance_2.detail.name + "</a>"
+    );
+
+    // Basic section
+    col_1.appendChild(create_section('Basic'));
+    col_2.appendChild(create_section('Basic'));
+
+    col_1.appendChild(create_row('Identifier', substance_1.detail.identifier));
+    col_2.appendChild(create_row('Identifier', substance_2.detail.identifier));
+
+    col_1.appendChild(create_row('LogP', substance_1.detail.LogP));
+    col_2.appendChild(create_row('LogP', substance_2.detail.LogP));
+
+    col_1.appendChild(create_row('SMILES', substance_1.detail.SMILES));
+    col_2.appendChild(create_row('SMILES', substance_2.detail.SMILES));
+
+    col_1.appendChild(create_row('InchiKey', substance_1.detail.inchikey));
+    col_2.appendChild(create_row('InchiKey', substance_2.detail.inchikey));
+
+    col_1.appendChild(create_row('pubchem', substance_1.detail.pubchem));
+    col_2.appendChild(create_row('pubchem', substance_2.detail.pubchem));
+
+    col_1.appendChild(create_row('chEMBL', substance_1.detail.chEMBL));
+    col_2.appendChild(create_row('chEMBL', substance_2.detail.chEMBL));
+
+    col_1.appendChild(create_row('chEBI', substance_1.detail.chEBI));
+    col_2.appendChild(create_row('chEBI', substance_2.detail.chEBI));
+
+    col_1.appendChild(create_row('pdb', substance_1.detail.pdb));
+    col_2.appendChild(create_row('pdb', substance_2.detail.pdb));
+
+    col_1.appendChild(create_row('drugbank', substance_1.detail.drugbank));
+    col_2.appendChild(create_row('drugbank', substance_2.detail.drugbank));
+
+    // Structures section
+    col_1.appendChild(create_section('2D structure'));
+    col_2.appendChild(create_section('2D structure'));
+
+    var pic_div_1 = document.createElement("div");
+    var pic_div_2 = document.createElement("div");
+
+    pic_div_1.setAttribute("id", "joiner_pic_1");
+    pic_div_2.setAttribute("id", "joiner_pic_2");
+
+    col_1.appendChild(pic_div_1);
+    col_2.appendChild(pic_div_2);
+
+    // add_structure(col_1, substance_1.detail.SMILES)
+    // add_structure(col_2, substance_2.detail.SMILES)
+
+    // Interactions section
+    col_1.appendChild(create_section('Interactions'));
+    col_2.appendChild(create_section('Interactions'));
+
+    var table_keys = {
+        Membrane: "membrane",
+        Method: "method",
+        Q: "charge",
+        T: "temperature",
+        X_min: "Position",
+        G_pen: "Penetration",
+        G_wat: "Water",
+        LogK: "LogK",
+        LogPerm: "LogPerm",
+        P_reference: "id_reference",
+        S_reference: "id_dataset_reference"
+    };
+
+
+    var table_div_1 = document.createElement("div");
+    var table_div_2 = document.createElement("div");
+    var table_1 = create_table(table_keys);
+    var tbody_1 = document.createElement('tbody');
+    var table_2 = create_table(table_keys);
+    var tbody_2 = document.createElement('tbody');
+
+    for(var i = 0; i < substance_1.interactions.length; i++)
+    {
+        var inter = substance_1.interactions[i];
+        var tr = document.createElement("tr");
+        for (const [key,value] of Object.entries(table_keys))
+        {
+            var val = inter[value] == null ? "" : inter[value];
+            
+            var td = document.createElement('td');
+            td.innerHTML = val;
+
+            tr.appendChild(td);
+        }
+        tbody_1.appendChild(tr);
     }
-    
-    labelValid.innerHTML = 'Label <b>' + name + '</b> as validated molecule <br/> <div style="color: red;">Warning! This choose will delete <b>' + name + '</b> from Possible duplicates list!</div>';
-    ligand_1_1_id.value = id;
+
+    for(var i = 0; i < substance_2.interactions.length; i++)
+    {
+        var inter = substance_2.interactions[i];
+        var tr = document.createElement("tr");
+        for (const [key,value] of Object.entries(table_keys))
+        {
+            var val = inter[value] == null ? "" : inter[value];
+            
+            var td = document.createElement('td');
+            td.innerHTML = val;
+
+            tr.appendChild(td);
+        }
+        tbody_2.appendChild(tr);
+    }   
+
+    table_div_1.classList.toggle("table-detail");
+    table_div_2.classList.toggle("table-detail");
+    table_div_1.classList.toggle("scrollable");
+    table_div_2.classList.toggle("scrollable");
+
+    table_1.appendChild(tbody_1);
+    table_2.appendChild(tbody_2);
+
+    table_div_1.appendChild(table_1);
+    table_div_2.appendChild(table_2);
+
+    col_1.appendChild(table_div_1);
+    col_2.appendChild(table_div_2);
+
+    // Transporter section
+    col_1.appendChild(create_section('Transporters'));
+    col_2.appendChild(create_section('Transporters'));
+
+    var table_keys = {
+        Target: "target",
+        Uniprot_id: "uniprot_id",
+        pKm: "Km",
+        pEC: "EC50",
+        pKi: "Ki",
+        pIC: "IC50",
+    };
+
+    hide_columns(table_div_1)
+    hide_columns(table_div_2)
+
+    var table_div_1 = document.createElement("div");
+    var table_div_2 = document.createElement("div");
+    var table_1 = create_table(table_keys);
+    var tbody_1 = document.createElement('tbody');
+    var table_2 = create_table(table_keys);
+    var tbody_2 = document.createElement('tbody');
+
+    for(var i = 0; i < substance_1.transporters.length; i++)
+    {
+        var inter = substance_1.transporters[i];
+        var tr = document.createElement("tr");
+        for (const [key,value] of Object.entries(table_keys))
+        {
+            var val = inter[value] == null ? "" : inter[value];
+            
+            var td = document.createElement('td');
+            td.innerHTML = val;
+
+            tr.appendChild(td);
+        }
+        tbody_1.appendChild(tr);
+    }
+
+    for(var i = 0; i < substance_2.transporters.length; i++)
+    {
+        var inter = substance_2.transporters[i];
+        var tr = document.createElement("tr");
+        for (const [key,value] of Object.entries(table_keys))
+        {
+            var val = inter[value] == null ? "" : inter[value];
+            
+            var td = document.createElement('td');
+            td.innerHTML = val;
+
+            tr.appendChild(td);
+        }
+        tbody_2.appendChild(tr);
+    }   
+
+    table_div_1.classList.toggle("table-detail");
+    table_div_2.classList.toggle("table-detail");
+    table_div_1.classList.toggle("scrollable");
+    table_div_2.classList.toggle("scrollable");
+
+    table_1.appendChild(tbody_1);
+    table_2.appendChild(tbody_2);
+
+    table_div_1.appendChild(table_1);
+    table_div_2.appendChild(table_2);
+
+    col_1.appendChild(table_div_1);
+    col_2.appendChild(table_div_2);
+
+    hide_columns(table_div_1)
+    hide_columns(table_div_2)
+
+    $(target).append(col_1);
+    $(target).append(col_2);
+
+    // Add buttons
+    add_bottom_buttons(substance_1, substance_2)
+
+    // Load 2D structures
+    update(substance_1.detail.SMILES, "joiner_pic_1");
+    update(substance_2.detail.SMILES, "joiner_pic_2");
+
 }
 
+function hide_columns(element)
+{
+    deleted = 0;
 
+    // Hide empty columns
+    $(element).find('thead').find('td').each(function (key, th) {
+        var is_empty = true;
 
-function load_detail(id1, id2, obj){
-    var tab1 = document.getElementById("properties_1");
-    var tab2 = document.getElementById("properties_2");
-    var ligand_2_1_id = document.getElementById("ligand_2_1_id");
-    var ligand_2_2_id = document.getElementById("ligand_2_2_id");
-    var list = document.getElementById("duplicates_table");
-    var joining = document.getElementById("joiningPairs");
-    var detail_1 = [];
-    var detail_2 = [];
-    var alter_names_1;
-    var alter_names_2;
-    var headers = ["Name: ", "ID: ","MW: ", "Structure: ", "SMILES: ", "Alternative names: "];
-    
-    ligand_2_1_id.setAttribute("value", id1);
-    ligand_2_2_id.setAttribute("value", id2);
-    
-    tab1.innerHTML = tab2.innerHTML = '';
-    
-    var children = list.children;
-    for(var i = 0; i < children.length; i++){
-        if (children[i].children[0].classList.contains("active"))
-            children[i].children[0].classList.toggle("active");
+        $(element).find('tr>td:nth-child(' + (key + 1 - deleted) + ')').each(function(k, td)
+        {
+            var val = $(td).html();
+
+            if(!(val == '' || !val))
+            {
+                is_empty = false;
+                return false;
+            }
+        })
+
+        if(is_empty)
+        {
+            $(element).find('tr>td:nth-child(' + (key + 1 - deleted) + ')').each(function (k, td) {
+                $(td).remove();
+            })
+
+            // Hide header
+            $(th).remove();
+
+            deleted++;
+        }
+    });
+}
+
+function clearButtons()
+{
+    $('#joiner-content').find('button').each(function(k,l)
+    {
+        l.remove();
+    });
+}
+
+function add_bottom_buttons(s1, s2)
+{
+    var target = $('#joiner-content');
+    var div = document.createElement('div');
+    div.classList.toggle('joiner-buttons');
+
+    var btn_1 = document.createElement('button');
+    var btn_2 = document.createElement('button');
+
+    var s1name = s1.detail.name;
+    var s2name = s2.detail.name;
+    var s1id = s1.detail.id;
+    var s2id = s2.detail.id;
+
+    btn_1.classList.toggle('btn');
+    btn_2.classList.toggle('btn');
+    btn_1.classList.toggle('btn-success');
+    btn_2.classList.toggle('btn-success');
+    btn_1.setAttribute("onclick", 
+        "alert_window('Do you really want to merge " + s1name + " to " + s2name + "?', 'validator/join/" + s2id + "/" + s1id + "');")
+    btn_2.setAttribute("onclick", 
+        "alert_window('Do you really want to merge " + s2name + " to " + s1name + "?', 'validator/join/" + s1id + "/" + s2id + "');")
+
+    btn_1.innerHTML = "Merge: " + s1name + " -> <b>" + s2name + "</b>";
+    btn_2.innerHTML = "Merge: <b>" + s1name + "</b> <- " + s2name;
+
+    div.appendChild(btn_1);
+    div.appendChild(btn_2);
+
+    target.append(div);
+}
+
+function create_table(keys = {})
+{
+    var table = document.createElement('table');
+    var head = document.createElement('thead');
+
+    head.classList.toggle("thead-detail");
+    head.setAttribute("style", "font-weight: bold;");
+
+    for (const [key,value] of Object.entries(keys))
+    {
+        var td = document.createElement('td');
+        td.innerHTML = key;
+        head.appendChild(td);
     }
-    obj.classList.toggle("active");
-    
-    $.ajax({
-      url: "AJAX/validator/load_validation_data.php?id=" + id1,
-      type: "GET",
-      async: false,
-      success: function(data){
-              detail_1 = data.split(";");
-    }});
 
-    $.ajax({
-          url: "AJAX/validator/load_validation_data.php?id=" + id2,
-          type: "GET",
-          async: false,
-          success: function(data){
-                  detail_2 = data.split(";");
-    }});
+    table.appendChild(head);
+    return table;
+}
 
-    $.ajax({
-      url: "AJAX/validator/load_alter_names.php?id=" + id1,
-      type: "GET",
-      async: false,
-      success: function(data){
-              if(data != '')
-                  alter_names_1 = data;
-              else
-                  alter_names_1 = 'NO RECORDS';
-    }});
+function create_joiner_col(title)
+{
+    var res = document.createElement('div');
+    res.classList.toggle('joiner-col');
+    res.innerHTML = "<div><h3>" + title + "</h3></div>";
 
-    $.ajax({
-          url: "AJAX/validator/load_alter_names.php?id=" + id2,
-          type: "GET",
-          async: false,
-          success: function(data){
-              if(data != '')
-                  alter_names_2 = data;
-              else
-                  alter_names_2 = 'NO RECORDS';
-    }});
+    return res;
+}
 
-    var smiles_1;
-    var smiles_2;
-    
-    for(var i = 0; i< 6; i++){
-       var tr = document.createElement("tr");
-       var td = document.createElement("td");
-       var td_data = document.createElement("td");
-       
-       td.innerHTML = headers[i];
-       if(i < 5){
-           if(i == 0)
-               td_data.innerHTML = '<a href="detail/' + id1 + '">' + detail_1[i] + '</a>';
-           if(i == 3){
-               td_data.innerHTML = '<div class="col-md-12"  id="2dStructure_1"></div>';
-               smiles_1 = detail_1[i];
-           }
-           else
-               td_data.innerHTML = detail_1[i]
-       }
-       else
-           td_data.innerHTML = alter_names_1;
-       tr.appendChild(td);
-       tr.appendChild(td_data);
-       tab1.appendChild(tr);
-    }
-    
-    for(var i = 0; i< 6; i++){
-       var tr = document.createElement("tr");
-       var td = document.createElement("td");
-       var td_data = document.createElement("td");
-       
-       td.innerHTML = headers[i];
-       if(i < 5){
-           if(i == 0)
-               td_data.innerHTML = '<a href="detail/' + id2 + '">' + detail_2[i] + '</a>';
-           if(i == 3){
-               td_data.innerHTML = '<div class="col-md-12"  id="2dStructure_2"></div>';
-               smiles_2 = detail_2[i];
-           }
-           else
-               td_data.innerHTML = detail_2[i];
-       }
-       else
-           td_data.innerHTML = alter_names_2;
-       tr.appendChild(td);
-       tr.appendChild(td_data);
-       tab2.appendChild(tr);
-    }
-       
-    joining.innerHTML = 'Join <b>' + detail_1[0] + '</b> and <b>' + detail_2[0] + '</b>';
-    
-    //Načíst 2D struktury
-    if(smiles_1 != '')
-        update(smiles_1, '2dStructure_1');
-    if(smiles_2 != '')
-        update(smiles_2, '2dStructure_2');
+function create_section(title)
+{
+    var r = document.createElement('div');
+    r.classList.toggle('joiner-section');
+    r.innerHTML = title;
+
+    return r;
+}
+
+function create_row(label, val)
+{
+    var r = document.createElement('div');
+    var t1 = document.createElement('div');
+    var t2 = document.createElement('div');
+
+    r.classList.toggle('joiner-row');
+
+    t1.innerHTML = label;
+    t2.innerHTML = val;
+
+    r.appendChild(t1);
+    r.appendChild(t2);
+
+    return r;
 }

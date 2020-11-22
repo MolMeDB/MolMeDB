@@ -4,6 +4,7 @@
  * Method model
  * 
  * @property integer $id
+ * @property integer $type
  * @property string $name
  * @property string $description
  * @property string $references
@@ -17,6 +18,17 @@
  */
 class Methods extends Db
 {
+    /** Method specical types */
+    const PUBCHEM_LOGP_TYPE = 1;
+    const CHEMBL_LOGP_TYPE = 2;
+
+    /** Valid types */
+    private static $valid_types = array
+    (
+        self::PUBCHEM_LOGP_TYPE,
+        self::CHEMBL_LOGP_TYPE,
+    );
+
     /**
      * Method constructor
      * 
@@ -27,7 +39,28 @@ class Methods extends Db
         $this->table = 'methods';
         parent::__construct($id);
     }
+
+    /**
+     * Returns method by type
+     * 
+     * @param int $type
+     * 
+     * @return Methods
+     */
+    public function get_by_type($type)
+    {
+        if(!in_array($type, self::$valid_types))
+        {
+            return NULL;
+        }
+
+        $mem = $this->where('type', $type)
+            ->get_one();
+
+        return $mem->id ? $mem : NULL;
+    }
     
+
     /**
      * Loads search whisper for API response
      * 

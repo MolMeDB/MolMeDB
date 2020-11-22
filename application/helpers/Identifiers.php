@@ -4,6 +4,7 @@ class Identifiers
 {
 	CONST PREFIX = 'MM';
 	CONST min_len = 7;
+	CONST PATTERN = '/^MM{1}[0-9]+/';
 	
 	/**
 	 * Generates new identifier
@@ -14,11 +15,37 @@ class Identifiers
 	 */
 	public static function generate_substance_identifier($id = NULL)
 	{
-		if(!$id)
+		$subst_model = new Substances();
+		$subst_link_model = new Substance_links();
+		$identifier = self::get_identifier($id);
+		
+		// Check, if already exists
+		$exists = $subst_model->where('identifier', $identifier)
+			->get_one();
+
+		$exists_2 = $subst_link_model->where('identifier', $identifier)->get_one();
+
+		if(!$id || $exists->id || $exists_2->id)
 		{
 			$id = Db::getLastIdSubstance() + 1;
+			return self::get_identifier($id);
+		}
+		else
+		{
+			return $identifier;
 		}
 		
+	}
+
+	/**
+	 * Generates identifier
+	 * 
+	 * @param int $id
+	 * 
+	 * @return string
+	 */
+	private static function get_identifier($id)
+	{
 		// Get string value
 		$id = strval($id);
 		$id_len = strlen($id);
@@ -42,11 +69,11 @@ class Identifiers
 	 */
 	public static function is_valid($identifier)
 	{
-		if(!$identifier	|| trim($identifier) == '')
+		if(!$identifier	|| trim($identifier) == '' || strlen($identifier) < self::min_len)
 		{
 			return false;
 		}
 
-		return true;
+		return preg_match(self::PATTERN, $identifier);
 	}
 }

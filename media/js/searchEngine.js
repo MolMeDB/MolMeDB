@@ -104,7 +104,7 @@
                 type: type
             });
 
-            if (data == false) 
+            if (!data || data == false) 
             {
                 return;
             }
@@ -129,7 +129,11 @@
                 var limit = 0;
 
                 var text = arr[i].name;
-                text += arr[i].pattern != '' ? " - [" + arr[i].pattern + "]" : "";
+
+                if(arr[i].pattern)
+                {
+                    text += arr[i].pattern != '' ? " - [" + arr[i].pattern + "]" : "";
+                }
 
                 /*check if the item starts with the same letters as the text field value:*/
                 while (!(text.substr(j, val.length).toUpperCase() == val.toUpperCase()) && j < text.length) 
@@ -237,3 +241,5 @@
     autocomplete(document.getElementById("smilesSearch"), "smiles");
     autocomplete(document.getElementById("membraneSearch"), "membranes");
     autocomplete(document.getElementById("methodSearch"), "methods");
+    autocomplete(document.getElementById("transporterSearch"), "transporter");
+    autocomplete(document.getElementById("uniprotSearch"), "uniprot");

@@ -18,6 +18,7 @@ class Db extends Iterable_object
     protected $table;
     private $select_list = '*';
     private $limit = '';
+    private $offset = '';
     private $where = '';
     private $group_by = '';
     private $order_by = '';
@@ -252,8 +253,8 @@ class Db extends Iterable_object
             FROM ' . $this->table .
             ' ' . $this->where . ' ' .
             ' ' . $this->group_by .
-            $this->limit . ' '
-            . $this->order_by;
+            $this->order_by
+            . $this->limit;
 
         if($this->debug) // DEBUG
         {
@@ -269,9 +270,46 @@ class Db extends Iterable_object
     }
 
     /**
-     * Get one row from given table
+     * COunt all rows from given table
      * 
      * @return Iterable_object
+     */
+    public function count_all()
+    {
+        if (!$this->table) 
+        {
+            throw new Exception('No table name was set.');
+        }
+
+        if(!$this->select_list)
+        {
+            $this->select_list = '*';
+        }
+
+        // Prepare query
+        $query = '
+            SELECT COUNT(*) as count 
+            FROM ' . $this->table .
+            ' ' . $this->where . ' ' .
+            ' ' . $this->group_by;
+
+        if($this->debug) // DEBUG
+        {
+            echo($query);
+            die;
+        }
+
+        $data = $this->queryOne($query);
+
+        $this->reload();
+
+        return $data->count;
+    }
+
+    /**
+     * Get one row from given table
+     * 
+     * @return Db
      */
     public function get_one()
     {
@@ -468,7 +506,7 @@ class Db extends Iterable_object
         {
             $this->where = 'WHERE ';
         }
-        else
+        else if (substr(trim($this->where), -1) != '(')
         {
             $this->where .= ' AND ';
         }
@@ -486,7 +524,14 @@ class Db extends Iterable_object
 
             if(count(explode(' ', $attr)) > 1)
             {
-                $this->where .= $attr . ' "' . $val . '"';
+                if($val == "NULL")
+                {
+                    $this->where .= $attr . ' ' . $val;
+                }
+                else
+                {
+                    $this->where .= $attr . ' "' . $val . '"';
+                }
             }
             else if(strtoupper($val) === 'NULL')
             {
@@ -510,18 +555,41 @@ class Db extends Iterable_object
 
                 if (count(explode(' ', $attr)) > 1) 
                 {
-                    $this->where .= $attr . ' "' . $val . '"';
+                    if ($val == "NULL") {
+                        $this->where .= $attr . ' ' . $val;
+                    } 
+                    else 
+                    {
+                        $this->where .= $attr . ' "' . $val . '"';
+                    }
                 } 
                 else if(strtoupper($val) === 'NULL' || $val === NULL)
                 {
                     $this->where .= $attr . ' IS NULL';
+                }
+                else if(is_numeric($attr))
+                {
+                    if(trim($val) == ")" || trim($val) == "OR" || trim($val) == "AND")
+                    {
+                        $this->where = rtrim(trim($this->where), 'AND');
+                        $this->where = rtrim(trim($this->where), 'OR');
+                    }
+                    
+                    $this->where .= " $val";
                 }
                 else 
                 {
                     $this->where .= $attr . ' = "' . $val . '"';
                 }
 
-                $this->where .= ' AND ';
+                if(substr(trim($this->where), -2) != "OR" && substr(trim($this->where), -1) != '(')
+                {
+                    $this->where .= ' AND ';
+                }
+                else
+                {
+                    $this->where .= ' ';
+                }
             }
         }
 
@@ -570,11 +638,11 @@ class Db extends Iterable_object
 
         if ($par1 && $par2) 
         {
-            $limit_str = " LIMIT " . ($par1 - 1) * 10 . ',' . $par2;
+            $limit_str = " LIMIT " . ($par1 - 1) * $par2 . ',' . $par2;
         } 
         else if ($par1) 
         {
-            $limit_str = " LIMIT $par1";
+            $limit_str = " LIMIT $par1 ";
         }
 
         $this->limit = $limit_str;
@@ -623,7 +691,7 @@ class Db extends Iterable_object
 
         $this->reload();
 
-        return $count;
+        return intval($count);
     }
 
 
@@ -658,7 +726,7 @@ class Db extends Iterable_object
             }
 
             // If change is recognized
-            if (array_key_exists($key, $old_data) && $old_data[$key] != $val && !is_object($val) && !is_array($val)) // Improve required
+            if (array_key_exists($key, $old_data) && $old_data[$key] !== $val && !is_object($val) && !is_array($val)) // Improve required
             {
                 $new_data[$key] = $val;
             }

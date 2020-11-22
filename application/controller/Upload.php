@@ -578,10 +578,10 @@ class UploadController extends Controller
         $data = array();
         $fileType = NULL;
 
-        if ($_POST) 
+        if ($this->form->is_post()) 
         {
-            $post_type = isset($_POST["postType"]) ? $_POST["postType"] : NULL;
-            $fileType = isset($_POST['fileType']) ? $_POST['fileType'] : NULL;
+            $post_type = $this->form->param->postType;
+            $fileType = $this->form->param->fileType;
 
             // Save new datafile
             if (in_array($post_type, array(self::P_SAVE_DATASET, self::P_SAVE_TRANSPORTERS))) 
@@ -658,9 +658,9 @@ class UploadController extends Controller
             $dataset = new Transporter_datasets();
 
             // Get data
-            $rowCount = intval($_POST['rowCount']);
-            $colCount = intval($_POST['colCount']);
-            $secondary_ref_id = $_POST['reference'];
+            $rowCount = intval($this->form->param->rowCount);
+            $colCount = intval($this->form->param->colCount);
+            $secondary_ref_id = $this->form->param->reference;
 
             // Checks if data are valid
             $publication = new Publications($secondary_ref_id);
@@ -674,14 +674,15 @@ class UploadController extends Controller
             for($i = 1; $i < $rowCount; $i++)
             {
                 $line = $i;
+                $a = "row_" . strval($i);
 
                 // Check if exists
-                if(!isset($_POST['row_' . strval($i)]))
+                if(!$this->form->param->$a)
                 {
                     throw new Exception(PHP_POST_LIMIT);
                 }
                 
-                $r = $_POST['row_' . strval($i)];
+                $r = $this->form->param->$a;
 
                 //Check number of columns
                 if(count($r) != $colCount)
@@ -695,14 +696,14 @@ class UploadController extends Controller
             $line = 1;
 
             // Get used attributes
-            if(!isset($_POST['attr']) || !is_array($_POST['attr']) || 
-                count($_POST['attr']) != $colCount)
+            if(!$this->form->param->attr || !is_array($this->form->param->attr) || 
+                count($this->form->param->attr) != $colCount)
             {
                 throw new Exception('Attributes are not defined.');
             }
 
             // Checks, if attributes are valid
-            foreach($_POST['attr'] as $order => $a)
+            foreach($this->form->param->attr as $order => $a)
             {
                 if(trim($a) == '')
                 {
@@ -732,8 +733,8 @@ class UploadController extends Controller
 
             // Add new dataset
             $dataset->id_reference = $publication->id;
-            $dataset->id_user_edit = $_SESSION['user']['id'];
-            $dataset->id_user_upload = $_SESSION['user']['id'];
+            $dataset->id_user_edit = $this->session->user->id;
+            $dataset->id_user_upload = $this->session->user->id;
             $dataset->visibility = Datasets::INVISIBLE;
             $dataset->name = date('d-m-y H:i');
 
@@ -750,7 +751,7 @@ class UploadController extends Controller
                 try
                 {
                     $uploader->insert_transporter(
-                        $dataset->id,
+                        $dataset,
                         self::get_value($detail, Upload_validator::NAME),
                         self::get_value($detail, Upload_validator::SMILES),
                         self::get_value($detail, Upload_validator::MW),
@@ -808,10 +809,14 @@ class UploadController extends Controller
      */
     private function save_dataset()
     {
+        if(!$this->form->is_post())
+        {
+            throw new Exception('Invalid post form.');
+        }
+
         $line = 0;
         try
         {
-            // print_r($_POST);
             // Transaction for whole dataset 
             Db::beginTransaction();
 
@@ -819,18 +824,18 @@ class UploadController extends Controller
             $dataset = new Datasets();
 
             // Get data
-            $rowCount = intval($_POST['rowCount']);
-            $colCount = intval($_POST['colCount']);
-            $membrane_id = $_POST['membrane'];
-            $method_id = $_POST['method'];
-            $temperature = floatval($_POST['temp']);
-            $secondary_ref_id = $_POST['reference'];
+            $rowCount = $this->form->param->rowCount;
+            $colCount = $this->form->param->colCount;
+            $membrane_id = $this->form->param->membrane;
+            $method_id = $this->form->param->method;
+            $temperature = floatval($this->form->param->temp);
+            $secondary_ref_id = $this->form->param->reference;
 
             // Checks if data are valid
             $membrane = new Membranes($membrane_id);
             $method = new Methods($method_id);
             $publication = new Publications($secondary_ref_id);
-            $substanceModel = new Substances();
+            $interaction_model = new Interactions();
 
             if(!$membrane->id)
             {
@@ -853,14 +858,15 @@ class UploadController extends Controller
             for($i = 1; $i < $rowCount; $i++)
             {
                 $line = $i;
+                $a = "row_" . strval($i);
 
                 // Check if exists
-                if(!isset($_POST['row_' . strval($i)]))
+                if(!$this->form->param->$a)
                 {
                     throw new Exception(PHP_POST_LIMIT);
                 }
                 
-                $r = $_POST['row_' . strval($i)];
+                $r = $this->form->param->$a;
 
                 //Check number of columns
                 if(count($r) != $colCount)
@@ -874,14 +880,14 @@ class UploadController extends Controller
             $line = 0;
 
             // Get used attributes
-            if(!isset($_POST['attr']) || !is_array($_POST['attr']) || 
-                count($_POST['attr']) != $colCount)
+            if(!isset($this->form->param->attr) || !is_array($this->form->param->attr) || 
+                count($this->form->param->attr) != $colCount)
             {
                 throw new Exception('Attributes are not defined.');
             }
 
             // Checks, if attributes are valid
-            foreach($_POST['attr'] as $order => $a)
+            foreach($this->form->param->attr as $order => $a)
             {
                 if(trim($a) == '')
                 {
@@ -914,8 +920,8 @@ class UploadController extends Controller
             $dataset->id_membrane = $membrane->id;
             $dataset->id_method = $method->id;
             $dataset->id_publication = $publication->id;
-            $dataset->id_user_edit = $_SESSION['user']['id'];
-            $dataset->id_user_upload = $_SESSION['user']['id'];
+            $dataset->id_user_edit = $this->session->user->id;
+            $dataset->id_user_upload = $this->session->user->id;
             $dataset->visibility = Datasets::INVISIBLE;
             $dataset->name = $method->CAM . '_' . $membrane->CAM;
 
@@ -961,10 +967,13 @@ class UploadController extends Controller
                         self::get_value($detail, Upload_validator::LT),
                         self::get_value($detail, Upload_validator::LT_ACC),
                         self::get_value($detail, Upload_validator::Q),
+                        self::get_value($detail, Upload_validator::COMMENT),
                         self::get_value($detail, Upload_validator::SMILES),
                         self::get_value($detail, Upload_validator::DRUGBANK),
                         self::get_value($detail, Upload_validator::PUBCHEM),
                         self::get_value($detail, Upload_validator::PDB),
+                        self::get_value($detail, Upload_validator::CHEMBL_ID),
+                        self::get_value($detail, Upload_validator::CHEBI_ID),
                         $membrane,
                         $method,
                         $temperature
@@ -983,18 +992,38 @@ class UploadController extends Controller
             Db::commitTransaction();
 
             // Show report message if not empty
-            if (!$report->is_empty()) {
+            if (!$report->is_empty()) 
+            {
                 $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
             }
 
-            $total_saved = $line - $report->count();
+            // Get number of newly uploaded interactions
+            $new_uploaded = $interaction_model->where('id_dataset', $dataset->id)
+                ->get_all_count();
 
-            return "$total_saved lines successfully saved!";
+            if($new_uploaded < 1)
+            {
+                $dataset->delete();
+                $this->addMessageWarning('No newly added interactions. Maybe, some errors occured or only old records was filled in. So, new dataset was not created.');
+            }
+
+            if($new_uploaded != $line)
+            {
+                $this->addMessageWarning(($line - $new_uploaded) . " values were assigned to the another datasets.");
+            }
+
+            $total_saved = $line - $report->count();
+            if($total_saved > 0)
+            {
+                return "$total_saved lines successfully saved!";
+            }
+            
+            return NULL;
         }
         catch (Exception $ex)
         {
             Db::rollbackTransaction();
-            $this->addMessageError('Error occured on line .' . $line);
+            $this->addMessageError('Error occured while uploading dataset.');
             throw new Exception($ex->getMessage());
         }
     }

@@ -1,101 +1,129 @@
+
+<div class='joiner-overlay' id='joiner-overlay'>
+    <div class='joiner-content' id='joiner-content'>
+        <div class='close' id='close-joiner' style='color: red; width:100%; text-align: right;'>X</div>
+        <div class="joiner-overlay-title"><b>Join molecules</b></div>
+        <div class="joiner-columns" id='joiner_columns'>
+            
+        </div>
+    </div>
+</div>
+
+
 <h2 style="font-weight: bold; text-align: center;">Data validator</h2>
 
-<?php if($num_notValidated != 0) : ?>
-<div class="col-md-12 validator-table-possib">
-    <table class="table table-striped">
-        <tr>
-            <td><b>Duplicates were not checked for <?=$num_notValidated ?> molecules.</b></td>
-            <td><button type="button" class="btn btn-sm btn-success" onclick="redirect('validator/validate')">Check all</button></td>
-        </tr>
-    </table>
-</div>
-<?php endif ?>
-
-<div class="col-md-6">
-    <div class="col-md-6 col-sm-12 validator-table" style="margin-right: -5px;">
-        <table>
-            <thead>
-                <tr>
-                    <td>Possible duplicates #1</td>
-                </tr>
-            </thead>
-            <tbody id="list_table">
-                <?php foreach($molecules as $m) : ?>
-                <tr>
-                    <td onclick="load_duplicates('<?=$m['idSubstance']?>', this)" id="<?=$m['idSubstance']?>"><?=$m['name']?> [id: <?=$m['idSubstance']?>]</td>
-                </tr>
-                <?php endforeach ?>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="col-md-6 col-sm-12 validator-table" style="margin-right: -5px;">
-        <table>
-            <thead>
-                <tr>
-                    <td>Matched ligands #2</td>
-                </tr>
-            </thead>
-            <tbody id="duplicates_table">
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="col-md-12 validator-table-possib">
-        <h3 style="text-align: center;">What to do?</h3>
-        <table class="table table-striped">
-            <tr>
-                <td id="labelAsValidated">Choose some molecules</td>
-                <td><form method="POST">
-                        <input hidden type="text" value="" name="ligand_1" id="ligand_1_1_id">
-                        <input hidden type="text" value="1" name="asValidated">
-                        <button type="submit" class="btn bnt-sm btn-success">Do it</button>
-                    </form>
-                </td>
-            </tr>
-            <tr>
-                <td id="joiningPairs">Choose some molecules</td>
-                <td><form method="POST"> 
-                        <input hidden type="text" value="" name="ligand_1" id="ligand_2_1_id">
-                        <input hidden type="text" value="" name="ligand_2" id="ligand_2_2_id">
-                        <input hidden type="text" value="1" name="join">
-                        
-                        <button type="submit" class="btn bnt-sm btn-success">Do it</button>
-                    </form>
-                </td>
-            </tr>
-        </table>
+<div class='col-md-12 row justify-content-center'>
+    <div class='row justify-content-start align-items-center'>
+        <div style='font-weight: bold; margin-right: 10px;'>
+            States: 
+        </div>
+        <?php foreach(Validator::$enum_states as $id => $val): ?>
+            <div style='color:green; font-weight:bold; margin-right: 20px;'>
+                <?= "$id - $val" ?>
+            </div>
+        <?php endforeach ?>
     </div>
 </div>
 
-
-<div class="col-md-6 col-sm-12" style="margin-right: -20px;">
-    <div class="col-md-12 col-sm-12 validator-compare-table">
-        <table>
-            <thead>
-                <tr>
-                    <td colspan="2">#1 Properties</td>
-                </tr>
-            </thead>
-            <tbody id="properties_1">
-            
-            </tbody>
-        </table>
+<div class='col-md-12' style="margin-bottom: 50px;"> 
+    <div class='col-md-6'>
+        <div class="validator-states">
+            <div>Choose state: </div>
+            <div>
+                <a class="<?= $state == Validator::NOT_VALIDATED ? 'active' : '' ?>" href="/validator/show/<?= Validator::NOT_VALIDATED ?>"><?= Validator::NOT_VALIDATED ?></a>
+                <a class="<?= $state == Validator::SUBSTANCE_FILLED ? 'active' : '' ?>" href="/validator/show/<?= Validator::SUBSTANCE_FILLED ?>"><?= Validator::SUBSTANCE_FILLED ?></a>
+                <a class="<?= $state == Validator::IDENTIFIERS_FILLED ? 'active' : '' ?>" href="/validator/show/<?= Validator::IDENTIFIERS_FILLED ?>"><?= Validator::IDENTIFIERS_FILLED ?></a>
+                <a class="<?= $state == Validator::POSSIBLE_DUPLICITY ? 'active' : '' ?>" href="/validator/show/<?= Validator::POSSIBLE_DUPLICITY ?>"><?= Validator::POSSIBLE_DUPLICITY ?></a>
+                <a class="<?= $state == Validator::LogP_FILLED ? 'active' : '' ?>" href="/validator/show/<?= Validator::LogP_FILLED ?>"><?= Validator::LogP_FILLED ?></a>
+                <a class="<?= $state == Validator::VALIDATED ? 'active' : '' ?>" href="/validator/show/<?= Validator::VALIDATED ?>"><?= Validator::VALIDATED ?></a>
+            </div>
+        </div>
+        <h4>Records (<?= $total_compounds ?>)</h4>
+        <div style='max-height: 400px; overflow-y:auto;'>
+            <table class='table'>
+                <thead>
+                    <td><b>ID</b></td>
+                    <td><b>Name</b></td>
+                    <td><b>State</b></td>
+                    <td><b>Errors</b></td>
+                    <td><b>Action</b></td>
+                </thead>
+                <tbody>
+                    <?php foreach($compounds as $c) : ?>
+                    <tr>
+                        <td><?= $c->identifier ? Html::anchor('mol/' . $c->identifier, $c->id, true) : $c->id  ?></td>
+                        <td><?= $c->name ?></td>
+                        <td><?= $c->validated ?></td>
+                        <td><?= $c->errors ?></td>
+                        <td><button type='button' onclick='redirect("validator/show/<?= $state ?>/<?=$c->id ?>")' class='btn btn-sm btn-warning'>Show</button></td>
+                    </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
     </div>
-
-    
-    <div class="col-md-12 col-sm-12 validator-compare-table">
-        <table>
-            <thead>
-                <tr>
-                    <td colspan="2">#2 Properties</td>
-                </tr>
-            </thead>
-            <tbody id="properties_2">
-            
-            </tbody>
-        </table>
+    <div class='col-md-6'>
+        <?php if($detail && count($detail)) : ?>
+            <h2><?= $detail[0]->name ?></h2>
+            <h4>Compound reports</h4>
+            <div style='max-height: 400px; overflow-y:auto;'>
+                <table class='table'>
+                    <thead>
+                        <td><b>Id substance</b></td>
+                        <td><b>Datetime</b></td>
+                        <td><b>Actions</b></td>
+                        <td><b>Message</b></td>
+                    </thead>
+                    <tbody>
+                        <?php foreach($detail as $d) : ?>
+                        <tr>
+                            <td><?= !$d->identifier_2 ? '' : Html::anchor('mol/' . $d->identifier_2, $d->identifier_2, true) ?></td>
+                            <td><?= date('d.m.Y H:i', strtotime($d->datetime)) ?></td>
+                            <td>
+                                <?php if($d->identifier_2) : ?> 
+                                <!-- <button type='button' onclick="alert_window('Are you sure you want to join molecules (<?= $d->id . ', ' . $d->id_substance_2 ?>)?', 'validator/join/<?=$d->id ?>/<?= $d->id_substance_2 ?>', false)" class='btn btn-sm btn-danger'>Show</button> -->
+                                <button type='button' onclick="compare_substances('<?= $d->identifier ?>', '<?= $d->identifier_2 ?>')" class='btn btn-sm btn-success'>Show</button>
+                                <?php endif ?>
+                            </td>
+                            <td><?= "$d->duplicity" ?></td>
+                        </tr>
+                        <?php endforeach ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif ?>
     </div>
 </div>
+
+<div class='col-md-12'>
+    <div class='col-md-6'>
+        <h4>Last 50 scheduler runs</h4>
+        <div style='max-height: 400px; overflow-y:auto;'>
+            <table class='table'>
+                <thead>
+                    <td><b>ID</b></td>
+                    <td><b>Datetime</b></td>
+                    <td><b>Error/Success</b></td>
+                    <td><b>Action</b></td>
+                </thead>
+                <tbody>
+                    <?php foreach($reports as $r) : ?>
+                    <tr>
+                        <td><?= $r->id ?></td>
+                        <td><?= date('d.m.Y H:i', strtotime($r->datetime)) ?></td>
+                        <td><?= "$r->error_count/$r->success_count" ?></td>
+                        <td>
+                            <?php if($r->report_path) : ?>
+                            <button type='button' onclick='redirect("<?=$r->report_path ?>")' class='btn btn-sm btn-success'>Download report</button>
+                            <?php endif ?>
+                        </td>
+                    </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 
 <script src="js/validator.js?ver=<?=JS_VERSION?>"></script>

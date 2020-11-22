@@ -5,6 +5,9 @@
  */
 class Upload_validator 
 {
+    /** ROUND NUM DECIMALS */
+    const ROUND_DEC = 2;
+
     /** Defines attributes */
     const NAME = 'Name';
     const PRIMARY_REFERENCE = 'Primary_reference';
@@ -36,6 +39,8 @@ class Upload_validator
     const PUBCHEM = 'PubChem_ID';
     const PDB = 'PDB_ID';
     const UNIPROT_ID = "Uniprot_id";
+    const CHEMBL_ID = "Chembl_id";
+    const CHEBI_ID = "Chebi_id";
     const AREA = 'Area';
     const VOLUME = 'Volume';
     const TARGET = "Target";
@@ -48,6 +53,8 @@ class Upload_validator
     const IC50_ACC = "IC50_acc";
     const EC50 = "EC50";
     const EC50_ACC = "EC50_acc";
+    const COMMENT = "Note";
+
 
 
     /** Valid dataset types */
@@ -81,9 +88,12 @@ class Upload_validator
         self::SMILES,
         self::DRUGBANK,
         self::PUBCHEM,
+        self::CHEMBL_ID,
+        self::CHEBI_ID,
         self::PDB,
         self::AREA,
         self::VOLUME,
+        self::COMMENT
     );
 
     /** Valid transporter types */
@@ -175,7 +185,42 @@ class Upload_validator
         self::DRUGBANK,
         self::PUBCHEM,
         self::PDB,
-        self::UNIPROT_ID
+        self::UNIPROT_ID,
+        self::CHEBI_ID,
+        self::CHEMBL_ID
+    );
+
+    /** Which vals shoud be rounded ? */
+    private static $round_attr = array
+    (
+        self::X_MIN,
+        self::X_MIN_ACC,
+        self::G_PEN,
+        self::G_PEN_ACC,
+        self::G_WAT,
+        self::G_WAT_ACC,
+        self::LOG_K,
+        self::LOG_K_ACC,
+        self::LOG_P,
+        self::LOG_PERM,
+        self::LOG_PERM_ACC,
+        self::THETA,
+        self::THETA_ACC,
+        self::ABS_WL,
+        self::ABS_WL_ACC,
+        self::FLUO_WL,
+        self::FLUO_WL_ACC,
+        self::QY,
+        self::QY_ACC,
+        self::LT,
+        self::LT_ACC,
+        self::MW,
+        self::AREA,
+        self::VOLUME,
+        self::KM,
+        self::KI,
+        self::EC50,
+        self::IC50,
     );
 
     /**
@@ -217,14 +262,24 @@ class Upload_validator
 
         // Is attribute numeric?
         if(in_array($attr, self::$numeric_types))
-        {
+        {         
             $value = str_replace(',', '.', $value);
             $value = $value != '' ? floatval($value) : NULL;
+          
+            if($value === NULL)
+            {
+                return NULL;
+            }
             
             // Should be value non-negative?
             if($value && in_array($attr, self::$non_negative_types))
             {
                 $value = abs($value);
+            }
+
+            if(in_array($attr, self::$round_attr))
+            {
+                $value = round($value, self::ROUND_DEC);
             }
 
             return $value;
@@ -274,7 +329,7 @@ class Upload_validator
                 return $value;
 
             default:
-                return $value != '' ? $value : NULL;
+                return trim($value) != '' ? $value : NULL;
         }
     }
 

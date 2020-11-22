@@ -11,6 +11,7 @@
  * @property float $temperature
  * @property float $charge
  * @property float $id_reference
+ * @property string $comment
  * @property float $Position
  * @property float $Position_acc
  * @property float $Penetration
@@ -31,9 +32,10 @@
  * @property float $QY_wl_acc
  * @property float $lt
  * @property float $lt_acc
- * @property integer user_id
- * @property datetime createDateTime
- * @property datetime editDateTime
+ * @property integer $user_id
+ * @property integer $validated
+ * @property datetime $createDateTime
+ * @property datetime $editDateTime
  * 
  * @property Substances $substance
  * @property Membranes $membrane
@@ -47,6 +49,20 @@ class Interactions extends Db
 	/** VISIBILITY CONSTANTS */
 	const VISIBLE = 1;
 	const INVISIBLE = 2;
+
+	/**
+	 * Validator constants
+	 */
+	const NOT_VALIDATED = 0;
+	/** MISSING DATA AUTO-FILLED */
+	const STAGE_1 = 1;
+	/** CHECKED DUPLICITIES */
+	const STAGE_2 = 2;
+	/** LABELED AS POSSIBLE DUPLICITY */
+	const STAGE_3 = 3;
+	/** VALIDATED */
+	const VALIDATED = 4;
+	
 
 	private $enum_visibilities = array
 	(

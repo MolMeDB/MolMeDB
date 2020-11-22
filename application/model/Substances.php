@@ -8,6 +8,7 @@
  * @property string $name
  * @property string $uploadName
  * @property string $SMILES
+ * @property string $inchikey
  * @property float $MW
  * @property float $Area
  * @property float $Volume
@@ -18,7 +19,8 @@
  * @property string $pdb
  * @property string $chEMBL
  * @property integer $user_id
- * @property boolean $validated
+ * @property integer $validated
+ * @property integer $prev_validation_state
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
@@ -137,6 +139,56 @@ class Substances extends Db
             JOIN substances as s ON a.id = s.id
             ORDER BY IF(s.name RLIKE "^[a-z]", 1, 2), s.name'
             , array($query, $query));
+
+        return $this->parse_list($result, $pagination);
+    }
+
+    /**
+     * Count search list for query
+     * 
+     * @param string $query
+     * 
+     * @return integer
+     */
+    public function search_by_transporter_count($query)
+    {
+        $query = '%' . $query . '%';
+
+        return $this->queryOne('
+            SELECT COUNT(*) as count 
+            FROM
+            (
+                SELECT DISTINCT s.id
+                FROM substances s
+                JOIN transporters t on t.id_substance = s.id
+                JOIN transporter_datasets d ON d.id = t.id_dataset
+                JOIN transporter_targets tt ON tt.id = t.id_target
+                WHERE tt.name LIKE ? AND d.visibility = ?
+            ) tab ',
+            array($query, Transporter_datasets::VISIBLE)
+        )->count;
+    }
+
+    /**
+     * Search substance by given query
+     * 
+     * @param string $query
+     * 
+     * @return Iterable
+     */
+    public function search_by_transporter($query, $pagination = 1)
+	{
+        $query = '%' . $query . '%';
+        
+        $result = $this->queryAll('
+            SELECT DISTINCT s.*
+            FROM substances s
+            JOIN transporters t on t.id_substance = s.id
+            JOIN transporter_datasets d ON d.id = t.id_dataset
+            JOIN transporter_targets tt ON tt.id = t.id_target
+            WHERE tt.name LIKE ? AND d.visibility = ?
+            ORDER BY IF(s.name RLIKE "^[a-z]", 1, 2), s.name'
+            , array($query, Transporter_datasets::VISIBLE));
 
         return $this->parse_list($result, $pagination);
     }
@@ -552,5 +604,43 @@ class Substances extends Db
 
             $substance->save();
 		}	
-	}
+    }
+    
+    /**
+     * Label given substance as possible duplicity for current object
+     * 
+     * @param $id_substance - Found duplicity
+     * @param $duplicity - Duplicity detail
+     */
+    public function add_duplicity($id_substance, $duplicity)
+    {
+        if(!$this->id || !$id_substance)
+        {
+            throw new Exception('Cannot add duplicity. Invalid instance or substance_id.');
+        }
+
+        $validation = new Validator();
+
+        $exists = $validation->where(array
+            (
+                'id_substance_1' => $this->id,
+                'id_substance_2' => $id_substance,
+                'duplicity LIKE' => $duplicity
+            ))
+            ->get_one();
+
+        if(!$exists->id)
+        {
+            $validation->id_substance_1 = $this->id;
+            $validation->id_substance_2 = $id_substance;
+            $validation->duplicity = $duplicity;
+
+            $validation->save();
+        }
+
+        // Label molecule as possible duplicity
+        $this->prev_validation_state = $this->validated;
+        $this->validated = Validator::POSSIBLE_DUPLICITY;
+        $this->save();
+    }
 }

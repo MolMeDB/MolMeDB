@@ -12,6 +12,9 @@ class File
     public $origin_path;
     private $FILE;
 
+    // 3dstructure folder
+    const FOLDER_3DSTRUCTURES = MEDIA_ROOT . "files/3DStructures/";
+
     /**
      * Constructor
      * 
@@ -77,6 +80,21 @@ class File
             }
             fputcsv($this->FILE, $line, ';');
         }
+    }
+
+    /**
+     * Writes line to the file
+     * 
+     * @param string $line
+     */
+    public function writeLine($line)
+    {
+        if(!$this->FILE)
+        {
+            throw new Exception('Wrong file instance');
+        }
+
+        fwrite($this->FILE, $line . PHP_EOL);
     }
 
     /**
@@ -169,5 +187,68 @@ class File
         {
             mkdir($dir_path, 0777, True);
         }
+    }
+
+    /**
+     * Checks if exists 3d structure for given molecule identifier
+     * 
+     * @param string $identifier
+     */
+    public function structure_file_exists($identifier)
+    {
+        // If not exists, then make folder
+        $this->make_path(self::FOLDER_3DSTRUCTURES);
+
+        $path = self::FOLDER_3DSTRUCTURES . $identifier . '.mol';
+
+        return file_exists($path) && filesize($path);
+    }
+
+    /**
+     * Saves new file structure
+     * 
+     * @param string $identifier
+     * @param string $content
+     */
+    public function save_structure_file($identifier, $content)
+    {
+        if($this->structure_file_exists($identifier))
+        {
+            $this->remove_structure_file($identifier);
+        }
+
+        $file = fopen(self::FOLDER_3DSTRUCTURES . $identifier . '.mol', 'w');
+        fwrite($file, $content);
+        fclose($file);
+    }
+
+    /**
+     * Removes structure file
+     * 
+     * @param string $identifier
+     */
+    public function remove_structure_file($identifier)
+    {
+        $path = self::FOLDER_3DSTRUCTURES . $identifier . '.mol';
+
+        if($this->structure_file_exists($identifier))
+        {
+            unlink($path);
+        }
+    }
+
+    /**
+     * Gets FILE
+     * 
+     * @return File
+     */
+    public function get_file()
+    {
+        if(!$this->FILE)
+        {
+            return NULL;
+        }
+
+        return $this->FILE;
     }
 }

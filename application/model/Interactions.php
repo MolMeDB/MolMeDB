@@ -50,10 +50,18 @@ class Interactions extends Db
 	const VISIBLE = 1;
 	const INVISIBLE = 2;
 
-	/** VALIDATION CONSTS */
-	const NOT_VALIDATED = Validator::NOT_VALIDATED;
-	const VALID = Validator::VALID;
-	const INVALID = Validator::INVALID;
+	/**
+	 * Validator constants
+	 */
+	const NOT_VALIDATED = 0;
+	/** MISSING DATA AUTO-FILLED */
+	const STAGE_1 = 1;
+	/** CHECKED DUPLICITIES */
+	const STAGE_2 = 2;
+	/** LABELED AS POSSIBLE DUPLICITY */
+	const STAGE_3 = 3;
+	/** VALIDATED */
+	const VALIDATED = 4;
 	
 
 	private $enum_visibilities = array

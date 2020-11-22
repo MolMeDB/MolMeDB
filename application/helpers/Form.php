@@ -110,6 +110,5 @@ class Form
                 $this->param->$key = NULL;
             }
         }
-
     }
 }

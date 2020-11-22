@@ -4,6 +4,7 @@
  * Membrane model
  * 
  * @property integer $id
+ * @property integer $type
  * @property string $name
  * @property string $description
  * @property string $references
@@ -17,6 +18,35 @@
  */
 class Membranes extends Db
 {   
+    /** Membrane specical types */
+    const LOGP_TYPE = 1;
+
+    /** Valid types */
+    private static $valid_types = array
+    (
+        self::LOGP_TYPE
+    );
+
+    /**
+     * Returns membrane by type
+     * 
+     * @param int $type
+     * 
+     * @return Membranes
+     */
+    public function get_by_type($type)
+    {
+        if(!in_array($type, self::$valid_types))
+        {
+            return NULL;
+        }
+
+        $mem = $this->where('type', $type)
+            ->get_one();
+
+        return $mem->id ? $mem : NULL;
+    }
+
     /**
      * Membranes constructor
      * 

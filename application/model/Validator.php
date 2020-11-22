@@ -3,6 +3,11 @@
 /**
  * Validator class
  * 
+ * @property int $id
+ * @property int $id_substance_1
+ * @property int $id_substance_2
+ * @property int $duplicity
+ * @property string $createDateTime
  * 
  */
 class Validator extends Db
@@ -11,10 +16,26 @@ class Validator extends Db
      * Validator constants
      */
     const NOT_VALIDATED = 0;
-    const VALID = 1;
-    const INVALID = 2;
+    /** MISSING DATA AUTO-FILLED */
+    const SUBSTANCE_FILLED = 1;
+    /** Filled identifiers */
+    const IDENTIFIERS_FILLED = 2;
+    /** LABELED AS POSSIBLE DUPLICITY */
+    const POSSIBLE_DUPLICITY = 3;
+    /** Filled LogPs */
+    const LogP_FILLED = 4;
+    /** VALIDATED */
+    const VALIDATED = 5;
 
-
+    public static $enum_states = array
+    (
+        self::NOT_VALIDATED => 'Not validated',
+        self::SUBSTANCE_FILLED => 'Missing values filled',
+        self::IDENTIFIERS_FILLED => 'Identifiers filled',
+        self::POSSIBLE_DUPLICITY => 'Possible duplicity',
+        self::LogP_FILLED => 'LogP filled',
+        self::VALIDATED => 'Validated'
+    );
 
     /**
      * Constructor
@@ -23,6 +44,130 @@ class Validator extends Db
     {
         $this->table = 'validations';
         parent::__construct($id);
+    }
+
+    /**
+     * Is state valid?
+     * 
+     * @param int $state_id
+     * 
+     * @return boolean
+     */ 
+    public static function is_state_valid($state_id)
+    {
+        return array_key_exists($state_id, self::$enum_states);
+    }
+
+    /**
+     * Returns enum state
+     * 
+     * @param int $state_id
+     * 
+     * @return string
+     */
+    public static function get_enum_state($state_id)
+    {
+        if(in_array($state_id, self::$enum_states))
+        {
+            return self::$enum_states[$state_id];
+        }
+        return NULL;
+    }
+
+    /**
+     * Get validator data
+     * 
+     * @return Iterable_object
+     */
+    public function get_substances($state = NULL, $limit = NULL)
+    {
+        $limit_str = "";
+
+        if($limit && is_numeric($limit))
+        {
+            $limit_str = "LIMIT $limit";
+        }
+
+        if($state === NULL || !self::is_state_valid($state))
+        {
+            return $this->queryAll("
+                SELECT DISTINCT t.id, SUM(errors) errors, t.name, t.validated, t.identifier
+                FROM
+                (
+                            
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type
+                    FROM substances s
+                    JOIN validations v ON v.id_substance_1 = s.id
+                    WHERE s.validated != ?
+                    GROUP BY id
+                    
+                    UNION
+                    
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type
+                    FROM substances s
+                    JOIN scheduler_errors e ON e.id_substance = s.id
+                    WHERE s.validated != ?
+                    GROUP BY id
+                ) t 
+                GROUP BY id
+                ORDER BY validated DESC, errors DESC
+                $limit_str
+            ", array(self::VALIDATED, self::VALIDATED));
+        }
+        else
+        {
+            return $this->queryAll("
+                SELECT DISTINCT t.id, SUM(errors) errors, t.name, t.validated, t.identifier
+                FROM
+                (
+                            
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type
+                    FROM substances s
+                    JOIN validations v ON v.id_substance_1 = s.id
+                    WHERE s.validated = ?
+                    GROUP BY id
+                    
+                    UNION
+                    
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type
+                    FROM substances s
+                    JOIN scheduler_errors e ON e.id_substance = s.id
+                    WHERE s.validated = ?
+                    GROUP BY id
+                ) t 
+                GROUP BY id
+                ORDER BY validated DESC, errors DESC
+                $limit_str
+            ", array($state, $state));
+        }
+    }
+
+    /**
+     * Get validator data for substance id
+     * 
+     * @param int $id
+     */
+    public function get_substance_detail($id)
+    {
+        return $this->queryAll('
+        SELECT *
+        FROM
+        (    
+            SELECT s.*, v.id_substance_2, s2.identifier as identifier_2, v.duplicity COLLATE utf8_general_ci as duplicity, v.createDateTime as datetime
+            FROM substances s
+            JOIN validations v ON v.id_substance_1 = s.id
+            JOIN substances s2 ON s2.id = v.id_substance_2
+            WHERE s.id = ?
+
+            UNION 
+
+            SELECT s.*, NULL as id_substance_2, NULL as identifier_2, e.error_text COLLATE utf8_general_ci as duplicity, e.last_update as datetime
+            FROM substances s
+            JOIN scheduler_errors e ON e.id_substance = s.id
+            WHERE s.id = ?
+        ) t
+        ORDER BY datetime DESC
+        ', array($id, $id));
     }
 
     /**
@@ -104,60 +249,29 @@ class Validator extends Db
     } 
 
 
-    // public function get_duplicites_ids()
-    // {
-    //     $ids = array();
-    //     $ids = Db::queryAll('SELECT DISTINCT id_substance_1 FROM validations ');
-        
-    //     $result = array();
-    //     foreach($ids as $id){
-    //         $result[] = Db::queryOne('SELECT idSubstance, name FROM substances WHERE idSubstance = ? LIMIT 1', array($id['id_substance_1']));
-    //     }
-    //     return $result;
-    // }
-    
-    // public function set_as_validated($id){
-    //     return Db::query("DELETE FROM validations WHERE id_substance_1 = ? OR id_substance_2 = ?", array($id, $id));
-    // }
-    
-    // public function changeInterIds($to, $from){
-    //     //From and To are IDs
-    //     $exists = Db::queryAll('SELECT * FROM interaction WHERE idSubstance = ?', array($from));
-        
-    //     //Check possible duplicites
-    //     foreach($exists as $detail){
-    //         $check = Db::queryOne('SELECT id FROM interaction WHERE idMembrane = ? AND idSubstance = ? AND idMethod = ? AND temperature = ? AND charge = ? AND idReference = ?', 
-    //                 array($detail['idMembrane'], $to, $detail['idMethod'], $detail['temperature'], $detail['charge'], $detail['idReference']));
-    //         if($check){
-    //             throw new Exception('Interaction duplicates.');
-    //         }     
-    //     }
-        
-    //     return Db::query("UPDATE `interaction` SET `idSubstance` = ? WHERE `idSubstance` = ?", array($to, $from));
-    // }
-    
-    // public function changeEnergyIds($to, $from){
-    //     //From and To are IDs
-    //     return Db::query("UPDATE `energy` SET `idSubstance` = ? WHERE `idSubstance` = ?", array($to, $from));
-    // }
-    
-    // public function changeAlterNamesIDs($to, $from){
-    //     //From and To are IDs
-    //     return Db::query("UPDATE `alternames` SET `idSubstance` = ? WHERE `idSubstance` = ?", array($to, $from));
-    // }
-    
-    // public function delete_change_ids($to, $from){
-    //     //From and To are IDs
-    //     Db::query("DELETE FROM `validations` WHERE (`id_substance_1` = ? AND `id_substance_2` = ?) OR (`id_substance_1` = ? AND `id_substance_2` = ?)", array($to, $from, $from, $to));
-    //     Db::query("UPDATE `validations` SET `id_substance_2` = ? WHERE `id_substance_2` = ?", array($to, $from));
-    //     return Db::query("UPDATE `validations` SET `id_substance_1` = ? WHERE `id_substance_1` = ?", array($to, $from));
-    // }
-    
-    // public function num_notValidated(){
-    //     return Db::queryOne("SELECT COUNT(*) as pocet FROM substances WHERE validated = 0")['pocet'];
-    // }
-    
-    // public function validate(){
-    //     return Db::insert('log_validations', array('user_id' => $_SESSION['user']['id']));
-    // }
+    /**
+     * Deletes all links on old molecule
+     *
+     * @param int $id_substance
+     */    
+    public function delete_links_on_substance($id_substance)
+    {
+        $this->query('
+            DELETE FROM `validations`
+            WHERE `id_substance_1` = ? OR `id_substance_2` = ?
+        ', array($id_substance, $id_substance));
+    }
+
+    /**
+     * Deletes all substance links
+     * 
+     * @param int $id_substance
+     */
+    public function delete_substance_links($id_substance)
+    {
+        $this->query('
+            DELETE FROM `validations`
+            WHERE `id_substance_1` = ?
+        ', array($id_substance));
+    }
 }

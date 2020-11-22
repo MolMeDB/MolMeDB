@@ -169,7 +169,7 @@ class ApiController extends Controller
      * @param string $function
      * 
      * @throws Exception
-     * @return boolean
+     * @return array
      */
     private function check_validity_endpoint($class_name, $function)
     {

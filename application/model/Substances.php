@@ -8,6 +8,7 @@
  * @property string $name
  * @property string $uploadName
  * @property string $SMILES
+ * @property string $inchikey
  * @property float $MW
  * @property float $Area
  * @property float $Volume
@@ -18,7 +19,8 @@
  * @property string $pdb
  * @property string $chEMBL
  * @property integer $user_id
- * @property boolean $validated
+ * @property integer $validated
+ * @property integer $prev_validation_state
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
@@ -602,5 +604,43 @@ class Substances extends Db
 
             $substance->save();
 		}	
-	}
+    }
+    
+    /**
+     * Label given substance as possible duplicity for current object
+     * 
+     * @param $id_substance - Found duplicity
+     * @param $duplicity - Duplicity detail
+     */
+    public function add_duplicity($id_substance, $duplicity)
+    {
+        if(!$this->id || !$id_substance)
+        {
+            throw new Exception('Cannot add duplicity. Invalid instance or substance_id.');
+        }
+
+        $validation = new Validator();
+
+        $exists = $validation->where(array
+            (
+                'id_substance_1' => $this->id,
+                'id_substance_2' => $id_substance,
+                'duplicity LIKE' => $duplicity
+            ))
+            ->get_one();
+
+        if(!$exists->id)
+        {
+            $validation->id_substance_1 = $this->id;
+            $validation->id_substance_2 = $id_substance;
+            $validation->duplicity = $duplicity;
+
+            $validation->save();
+        }
+
+        // Label molecule as possible duplicity
+        $this->prev_validation_state = $this->validated;
+        $this->validated = Validator::POSSIBLE_DUPLICITY;
+        $this->save();
+    }
 }

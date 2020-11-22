@@ -366,12 +366,15 @@ class EditController extends Controller
      */
     private function upload_3d_structure($file, $substance, $fileURL = False)
     {
-        $target_file = MEDIA_ROOT . "files/3DStructures/" . $substance->identifier . ".mol";
+        $file_model = new File();
+        $target_file = File::FOLDER_3DSTRUCTURES . $substance->identifier . ".mol";
        
-        if (file_exists($target_file)) 
+        if ($file_model->structure_file_exists($substance->identifier)) 
         {
             throw new Exception("Sorry, 3D structure file already exists.");
         }
+
+        $file_model->make_path(File::FOLDER_3DSTRUCTURES);
        
         if($fileURL)
         {

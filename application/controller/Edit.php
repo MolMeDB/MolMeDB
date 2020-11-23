@@ -231,10 +231,11 @@ class EditController extends Controller
                 $detail->drugbank = $_POST['drugbank'];
                 $detail->chEBI = $_POST['chEBI'];
                 $detail->chEMBL = $_POST['chEMBL'];
+                $detail->validated = Validator::NOT_VALIDATED;
 
                 $detail->save();
 
-                $this->addMessageSuccess('Saved');
+                $this->addMessageSuccess('Saved. Will be re-validated in next scheduler run.');
                 $this->redirect('edit/compound/' . $detail->id);
             } 
             catch (Exception $ex) 

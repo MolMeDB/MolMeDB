@@ -113,7 +113,7 @@ class Uploader extends Db
 				$substance->chEMBL = $CHEMBL;
 				$substance->chEBI = $CHEBI;
 				$substance->user_id = $user_id;
-				$substance->validated = 0;
+				$substance->validated = Validator::NOT_VALIDATED;
 				
 				$substance->save();
 
@@ -137,6 +137,7 @@ class Uploader extends Db
 				$substance->drugbank = $DrugBank ? $DrugBank : $substance->drugbank;
 				$substance->chEMBL = $CHEMBL ? $CHEMBL : $substance->chEMBL;
 				$substance->chEBI = $CHEBI ? $CHEBI : $substance->chEBI;
+				$substance->validated = Validator::NOT_VALIDATED;
 
 				// If missing identifier, then update
 				if(!Identifiers::is_valid($substance->identifier))
@@ -352,6 +353,7 @@ class Uploader extends Db
 				$substance->pubchem = $pubchem;
 				$substance->drugbank = $drugbank;
 				$substance->user_id = $user_id;
+				$substance->validated = Validator::NOT_VALIDATED;
 				
 				$substance->save();
 
@@ -373,6 +375,7 @@ class Uploader extends Db
 				$substance->pdb = $pdb ? $pdb : $substance->pdb;
 				$substance->pubchem = $pubchem ? $pubchem : $substance->pubchem;
 				$substance->drugbank = $drugbank ? $drugbank : $substance->drugbank;
+				$substance->validated = Validator::NOT_VALIDATED;
 
 				// If missing identifier, then update
 				if(!Identifiers::is_valid($substance->identifier))

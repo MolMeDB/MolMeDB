@@ -728,7 +728,7 @@ class Db extends Iterable_object
             // If change is recognized
             if (array_key_exists($key, $old_data) && $old_data[$key] !== $val && !is_object($val) && !is_array($val)) // Improve required
             {
-                $new_data[$key] = $val;
+                $new_data[$key] = trim($val);
             }
         }
 

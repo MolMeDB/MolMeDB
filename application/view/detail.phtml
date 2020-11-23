@@ -169,10 +169,22 @@
                                         <td><b><?=$t->target->name?></b></td>
                                         <td><a target="_blank" href="https://www.uniprot.org/uniprot/<?=$t->target->uniprot_id?>"><?=$t->target->uniprot_id?></a></td>
                                         <td><?=$t->get_enum_type()?></td>
-                                        <td><?=$t->Km?></td>
-                                        <td><?=$t->EC50?></td>
-                                        <td><?=$t->Ki?></td>
-                                        <td><?=$t->IC50?></td>
+                                        <td>
+                                            <p class="attribute"><?=$t->Km?></p>
+                                            <p class="accuracy"><?=$t->Km && $t->Km_acc ? "+/- $t->Km_acc" : ''?></p>
+                                        </td>
+                                        <td>
+                                            <p class="attribute"><?=$t->EC50?></p>
+                                            <p class="accuracy"><?=$t->EC50 && $t->EC50_acc ? "+/- $t->EC50_acc" : ''?></p>
+                                        </td>
+                                        <td>
+                                            <p class="attribute"><?=$t->Ki?></p>
+                                            <p class="accuracy"><?=$t->Ki && $t->Ki_acc ? "+/- $t->Ki_acc" : ''?></p>
+                                        </td>
+                                        <td>
+                                            <p class="attribute"><?=$t->IC50?></p>
+                                            <p class="accuracy"><?=$t->IC50 && $t->IC50_acc ? "+/- $t->IC50_acc" : ''?></p>
+                                        </td>
                                         <td>
                                             <?php if ($t->reference) : ?>
                                                 <?php if(strlen($t->reference->citation) < 15): ?>

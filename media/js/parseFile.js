@@ -72,7 +72,7 @@ function parse_transporters_file(file)
     var tr = document.createElement("tr");
     tr.setAttribute("class", "types");
     var types = ["Don't use", "Name", "Target", "Primary_reference", 
-                "Uniprot_id", "Type", "Km", "Ki", "IC50", "EC50", 'SMILES', "DrugBank_ID", "PubChem_ID", "PDB_ID", "Chebi_id", "Chembl_id",
+                "Uniprot_id", "Type", "Km", "Km_acc", "Ki", "Ki_acc", "IC50", "IC50_acc", "EC50", "EC50_acc", 'SMILES', "DrugBank_ID", "PubChem_ID", "PDB_ID",
                 "MW", 'LogP'];
     
     for(var i=0; i<count; i++){

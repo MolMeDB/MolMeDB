@@ -5,10 +5,65 @@ $('#close-joiner').on('click', function()
     $(joiner_parent).hide();  
 });
 
+function join_molecules()
+{
+    var target = $('#joiner_columns');
+
+    // First, clear target
+    $(target).html('');
+    clearButtons();
+
+    var inp_1 = document.createElement('input');
+    var inp_2 = document.createElement('input');
+
+    inp_1.classList.toggle('form-control');
+    inp_2.classList.toggle('form-control');
+
+    inp_1.setAttribute('id', 'iden_1');
+    inp_2.setAttribute('id', 'iden_2');
+
+    inp_1.setAttribute('placeholder', 'MMXXXXX');
+    inp_2.setAttribute('placeholder', 'MMXXXXX');
+
+    var col_1 = create_joiner_col('<h3>Insert identifier 1</h3>');
+    var col_2 = create_joiner_col('<h3>Insert identifier 2</h3>');
+
+    col_1.appendChild(inp_1);
+    col_2.appendChild(inp_2);
+
+    var target_btn = $('#joiner-content');
+    var div = document.createElement('div');
+    div.classList.toggle('joiner-buttons');
+
+    var btn_1 = document.createElement('button');
+
+    btn_1.classList.toggle('btn');
+    btn_1.classList.toggle('btn-success');
+    btn_1.setAttribute("onclick", "compare_substances(0,0)");
+
+    btn_1.innerHTML = "Compare";
+
+    div.appendChild(btn_1);
+
+    $(target_btn).append(div);
+
+    $(target).append(col_1);
+    $(target).append(col_2);
+
+    // Show joiner
+    $(joiner_parent).show();
+}
+
 function compare_substances(subst_id_1, subst_id_2)
 {
     // Show joiner
     $(joiner_parent).show();
+
+    if(!subst_id_1 && !subst_id_2)
+    {
+        subst_id_1 = $('#iden_1').val();
+        subst_id_2 = $('#iden_2').val();
+    }
 
     var substance_1 = ajax_request('detail/mol',{'identifier': subst_id_1});
     var substance_2 = ajax_request('detail/mol', {'identifier': subst_id_2});

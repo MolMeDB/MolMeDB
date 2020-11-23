@@ -31,10 +31,10 @@ $upgrade_sql = array
     'ALTER TABLE `publications` ADD UNIQUE (`type`);',
     'ALTER TABLE `datasets` CHANGE `id_user_edit` `id_user_edit` INT(11) NULL;',
     // Add default LogP Membrane
-    "INSERT INTO `membranes` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', '1-octanol', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+    "INSERT INTO `membranes` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', '1-octanol', NULL, NULL, '1-octanol', '1-octanol', '1-octanol', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
     // Add default LogP methods
-    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', 'XLOGP3', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
-    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '2', 'ChEMBL', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', 'XLOGP3', NULL, NULL, 'XLOGP3', 'XLOGP3', 'XLOGP3', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '2', 'ChEMBL', NULL, NULL, 'ChEMBL', 'ChEMBL', 'ChEMBL', NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
     // Add default publications
     "INSERT INTO `publications` (`id`, `type`, `citation`, `doi`, `pmid`, `title`, `authors`, `journal`, `volume`, `issue`, `page`, `year`, `publicated_date`, `pattern`, `user_id`, `createDateTime`) VALUES (NULL, '1', 'PUBCHEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP);",
     "INSERT INTO `publications` (`id`, `type`, `citation`, `doi`, `pmid`, `title`, `authors`, `journal`, `volume`, `issue`, `page`, `year`, `publicated_date`, `pattern`, `user_id`, `createDateTime`) VALUES (NULL, '2', 'ChEMBL', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP);",

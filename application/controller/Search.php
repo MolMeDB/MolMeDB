@@ -64,6 +64,14 @@ class SearchController extends Controller
             return;
         }
 
+        // Remove whisper if exists
+        $end = strpos($query, '[');
+
+        if($end)
+        {
+            $query = trim(substr($query, 0, $end));
+        }
+
         // Get data
         switch ($type) 
         {

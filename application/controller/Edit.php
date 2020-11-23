@@ -861,11 +861,6 @@ class EditController extends Controller
     {
         $publication = new Publications($id);
 
-        if($publication->id)
-        {
-            $this->data['detail'] = $publication;
-        }
-
         if ($_POST) 
         {
             if(!$publication->id)
@@ -914,7 +909,7 @@ class EditController extends Controller
                 $publication->issue = $_POST['issue'];
                 $publication->page = $_POST['page'];
                 $publication->year = $_POST['year'];
-                $publication->publicated_date = $_POST['publicated_date'];
+                $publication->publicated_date = isset($_POST['publicated_date']) && !empty($_POST['publicated_date']) ? date('Y-m-d', strtotime($_POST['publicated_date'])) : NULL;
                 $publication->user_id = $_SESSION['user']['id'];
 
                 $publication->set_empty_vals_to_null();
@@ -927,6 +922,12 @@ class EditController extends Controller
             {
                 $this->addMessageError($ex->getMessage());
             }
+        }
+
+        if($publication->id)
+        {
+            $publication->publicated_date = $publication->publicated_date ? date('d-m-Y', strtotime($publication->publicated_date)) : NULL;
+            $this->data['detail'] = $publication;
         }
 
         $this->data['publications'] = $publication->get_all();

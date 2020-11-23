@@ -33,7 +33,7 @@ $upgrade_sql = array
     // Add default LogP Membrane
     "INSERT INTO `membranes` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', '1-octanol', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
     // Add default LogP methods
-    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', 'Pubchem', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
+    "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '1', 'XLOGP3', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
     "INSERT INTO `methods` (`id`, `type`, `name`, `description`, `references`, `keywords`, `CAM`, `idTag`, `user_id`, `createDateTime`, `editDateTime`) VALUES (NULL, '2', 'ChEMBL', NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);",
     // Add default publications
     "INSERT INTO `publications` (`id`, `type`, `citation`, `doi`, `pmid`, `title`, `authors`, `journal`, `volume`, `issue`, `page`, `year`, `publicated_date`, `pattern`, `user_id`, `createDateTime`) VALUES (NULL, '1', 'PUBCHEM', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, CURRENT_TIMESTAMP);",

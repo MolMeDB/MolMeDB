@@ -312,7 +312,7 @@ class Uploader extends Db
 	 * 
 	 * @author Jakub Juracka
 	 */
-	public function insert_transporter($id_dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
+	public function insert_transporter($dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
 		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM, $IC50_acc = NULL, $EC50_acc = NULL, $KI_acc = NULL, $KM_acc = NULL)
 
 	{

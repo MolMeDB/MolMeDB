@@ -79,13 +79,13 @@ class Validator extends Db
      * 
      * @return Iterable_object
      */
-    public function get_substances($state = NULL, $limit = NULL)
+    public function get_substances($state = NULL, $sql_offset = 0, $limit = NULL)
     {
         $limit_str = "";
 
         if($limit && is_numeric($limit))
         {
-            $limit_str = "LIMIT $limit";
+            $limit_str = "LIMIT $sql_offset, $limit";
         }
 
         if($state === NULL || !self::is_state_valid($state))

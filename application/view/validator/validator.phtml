@@ -54,12 +54,26 @@
                         <td><?= $c->name ?></td>
                         <td><?= $c->validated ?></td>
                         <td><?= $c->errors ?></td>
-                        <td><button type='button' onclick='redirect("validator/show/<?= $state ?>/<?=$c->id ?>")' class='btn btn-sm btn-warning'>Show</button></td>
+                        <td><button type='button' onclick='redirect("validator/show/<?= $state ?>/<?= $pagination ?>/<?=$c->id ?>")' class='btn btn-sm btn-warning'>Show</button></td>
                     </tr>
                     <?php endforeach ?>
                 </tbody>
             </table>
         </div>
+        <?php if(isset($total_compounds) && $total_compounds) : ?>
+                <div class="text-center">
+                    <ul class="pagination pagination-lg" id="paginator">
+                    <?php for ($i = 1; $i < ($total_compounds / 100) + 1; $i++) : ?>
+                        <?php if ($i == $pagination) : ?>
+                        <li class="active" id="activePag"><a href="/validator/show/<?= $state ?>/<?= $i ?>"><?= $i ?></a></li>
+                        <?php else : ?>
+                        <li><a href="/validator/show/<?= $state ?>/<?= $i ?>"><?= $i ?></a></li>
+                        <?php endif ?>
+                    <?php endfor ?>
+                    <script>verifyPagination('<?=$total_compounds?>');</script>
+                    </ul>
+                </div>
+            <?php endif ?>
     </div>
     <div class='col-md-6'>
         <?php if($detail && count($detail)) : ?>

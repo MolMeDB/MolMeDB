@@ -31,7 +31,7 @@ class ValidatorController extends Controller
      * 
      * @param int $id
      */
-    public function show($state = Validator::POSSIBLE_DUPLICITY, $id = null)
+    public function show($state = Validator::POSSIBLE_DUPLICITY, $pagination = 1, $id = null)
     {
         $validator = new Validator();
         $scheduler_reports = new Log_scheduler();
@@ -39,13 +39,13 @@ class ValidatorController extends Controller
 
         if(!Validator::is_state_valid($state) && $state && !$id)
         {
-            $this->redirect('validator/show/' . Validator::POSSIBLE_DUPLICITY . '/' . $state);
+            $this->redirect('validator/show/' . Validator::POSSIBLE_DUPLICITY . '/' . $pagination . "/" . $state);
         }
 
         if($id && !$substance->id)
         {
             $this->addMessageError('Invalid substance id.');
-            $this->redirect('validator/show/' . $state);
+            $this->redirect('validator/show/' . $state . "/" . $pagination);
         }
 
         if($substance->id)
@@ -59,7 +59,8 @@ class ValidatorController extends Controller
         }
         
         $this->data['state'] = $state;
-        $this->data['compounds'] = $validator->get_substances($state, 100);
+        $this->data['pagination'] = $pagination;
+        $this->data['compounds'] = $validator->get_substances($state, 100*($pagination - 1), 100);
         $this->data['total_compounds'] = count($validator->get_substances($state));
         $this->data['reports'] = $scheduler_reports->order_by('id', 'desc')->limit(50)->get_all();
         $this->view = 'validator/validator';

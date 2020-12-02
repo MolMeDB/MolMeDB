@@ -62,6 +62,13 @@ class SchedulerController extends Controller
                 echo "Interaction datasets checked.\n";
             }
 
+            // Checks interactions datasets - NOW INACTIVATED
+            if(FALSE && $time->is_hour(5) && $time->is_minute(1))
+            {
+                $this->check_transporter_datasets();
+                echo "Transporter datasets checked.\n";
+            }
+
             echo "DONE \n";
         }
         catch(Exception $e)
@@ -140,6 +147,62 @@ class SchedulerController extends Controller
         {
             echo 'Total ' . $removed . " empty datasets were removed. \n";
         }
+    }
+
+    /**
+     * Checks transporter datasets 
+     * 
+     * @NOT USED NOW
+     * 
+     * @author Jakub Juracka      
+     */
+    private function check_transporter_datasets()
+    {
+        return;
+        $dataset_model = new Transporter_datasets();
+        $interaction_model = new Transporters();
+        $removed = 0;
+
+        // Join the same datasets
+        // Same -> membrane/method/secondary reference/author + the same upload day
+        // $duplcs = $dataset_model->get_duplicites();
+        
+        // foreach($duplcs as $ids)
+        // {
+        //     $final_id = array_shift($ids)['id'];
+
+        //     // For each dataset, change interaction dataset id
+        //     foreach($ids as $dataset_id)
+        //     {
+        //         $interaction_model->change_dataset_id($dataset_id['id'], $final_id);
+        //     }
+        // }
+
+        // if(count($duplcs))
+        // {
+        //     echo 'Total ' . count($duplcs) . " datasets were joined. \n";
+        // }
+
+        // // Remove empty datasets
+        // $empty_datasets = $dataset_model->get_empty_datasets();
+
+        // foreach($empty_datasets as $dataset)
+        // {
+        //     $total_int = $dataset->get_count_interactions();
+            
+        //     if($total_int > 0)
+        //     {
+        //         continue;
+        //     }
+
+        //     $dataset->delete();
+        //     $removed++;
+        // }
+
+        // if($removed > 0)
+        // {
+        //     echo 'Total ' . $removed . " empty datasets were removed. \n";
+        // }
     }
 
 

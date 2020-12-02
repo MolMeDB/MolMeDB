@@ -55,6 +55,13 @@ class SchedulerController extends Controller
                 echo "Subtance validations done. \n";
             }
 
+            // Checks interactions datasets
+            if($time->is_hour(4) && $time->is_minute(1))
+            {
+                $this->check_interaction_datasets();
+                echo "Interaction datasets checked.\n";
+            }
+
             echo "DONE \n";
         }
         catch(Exception $e)
@@ -81,6 +88,60 @@ class SchedulerController extends Controller
 
         echo '-------------------------';
     }
+
+    /**
+     * Checks interactions datasets
+     * 
+     * @author Jakub Juracka      
+     */
+    private function check_interaction_datasets()
+    {
+        $dataset_model = new Datasets();
+        $interaction_model = new Interactions();
+        $removed = 0;
+
+        // Join the same datasets
+        // Same -> membrane/method/secondary reference/author + the same upload day
+        $duplcs = $dataset_model->get_duplicites();
+        
+        foreach($duplcs as $ids)
+        {
+            $final_id = array_shift($ids)['id'];
+
+            // For each dataset, change interaction dataset id
+            foreach($ids as $dataset_id)
+            {
+                $interaction_model->change_dataset_id($dataset_id['id'], $final_id);
+            }
+        }
+
+        if(count($duplcs))
+        {
+            echo 'Total ' . count($duplcs) . " datasets were joined. \n";
+        }
+
+        // Remove empty datasets
+        $empty_datasets = $dataset_model->get_empty_datasets();
+
+        foreach($empty_datasets as $dataset)
+        {
+            $total_int = $dataset->get_count_interactions();
+            
+            if($total_int > 0)
+            {
+                continue;
+            }
+
+            $dataset->delete();
+            $removed++;
+        }
+
+        if($removed > 0)
+        {
+            echo 'Total ' . $removed . " empty datasets were removed. \n";
+        }
+    }
+
 
      /**
      * Sends unsent emails

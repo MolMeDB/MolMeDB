@@ -67,11 +67,11 @@ $upgrade_sql = array
             PRIMARY KEY (`id`)
         ) ENGINE = InnoDB;",
 
-    "ALTER TABLE `scheduler_errors` ADD FOREIGN KEY (`id_substance`) REFERENCES `substances`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
+    "ALTER TABLE `scheduler_errors` ADD FOREIGN KEY (`id_substance`) REFERENCES `substances`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;",
 
     // LINKS
     "CREATE TABLE `substance_links` ( `id_substance` INT NOT NULL , `identifier` VARCHAR(100) NOT NULL ) ENGINE = InnoDB;",
-    "ALTER TABLE `substance_links` ADD FOREIGN KEY (`id_substance`) REFERENCES `substances`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
+    "ALTER TABLE `substance_links` ADD FOREIGN KEY (`id_substance`) REFERENCES `substances`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;",
     "ALTER TABLE `substance_links` ADD `id` INT NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`id`);",
     "ALTER TABLE `substance_links` ADD `user_id` INT NOT NULL AFTER `identifier`, ADD `datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `user_id`;",
     "ALTER TABLE `substance_links` ADD FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",

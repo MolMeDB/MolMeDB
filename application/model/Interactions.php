@@ -126,6 +126,21 @@ class Interactions extends Db
 		return '';
 	}
 
+	/**
+	 * Updates interaction dataset id
+	 * 
+	 * @param int $from_id
+	 * @param int $to_id
+	 */
+	public function change_dataset_id($from_id, $to_id)
+	{
+		return $this->query('
+			UPDATE `interaction`
+			SET `id_dataset` = ?
+			WHERE `id_dataset` = ?
+		', array($to_id, $from_id));
+	}
+
 
 	/**
 	 * 

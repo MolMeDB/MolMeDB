@@ -23,6 +23,14 @@ class SearchController extends Controller
         self::T_TRANSPORTER
     );
 
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
 
 
     /**

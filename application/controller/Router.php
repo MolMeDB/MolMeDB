@@ -8,6 +8,14 @@ class RouterController extends Controller
     protected $controller;
 
     /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
      * String to camelCaps
      * 
      * @param string $text

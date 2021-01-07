@@ -18,6 +18,7 @@ class DeleteController extends Controller
      */
     function __construct()
     {
+        parent::__construct();
         $this->verifyUser(True);
     }
 

@@ -14,6 +14,7 @@ class AdministrationController extends Controller
      */
     function __construct()
     {
+        parent::__construct();
         $this->verifyUser(true);
     }
 

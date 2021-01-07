@@ -14,8 +14,8 @@ class ValidatorController extends Controller
      */
     function __construct()
     {
-        $this->verifyUser(True);
         parent::__construct();
+        $this->verifyUser(True);
     }
 
     /**

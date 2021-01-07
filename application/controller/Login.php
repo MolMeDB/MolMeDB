@@ -5,6 +5,14 @@
  */
 class LoginController extends Controller 
 {
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
     public function parse()
     {
         if($_POST)

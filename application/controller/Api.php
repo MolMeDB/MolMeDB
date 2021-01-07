@@ -64,6 +64,8 @@ class ApiController extends Controller
      */
     function __construct($endPoint = NULL, $function = NULL)
     {
+        parent::__construct();
+        
         // If not valid entry
         if(!$endPoint || !$function)
         {

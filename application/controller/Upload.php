@@ -42,9 +42,8 @@ class UploadController extends Controller
     function __construct()
     {
         // Only admins have access rights
-        $this->verifyUser(True);
-
         parent::__construct();
+        $this->verifyUser(True);
     }
 
     /**

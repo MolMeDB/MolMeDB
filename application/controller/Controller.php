@@ -116,22 +116,22 @@ abstract class Controller
 
         if (!$user)
         {
-                $this->addMessageError('Please log in.');
-                $this->redirect('login');
+            $this->alert->error('Please log in.');
+            $this->redirect('login');
         }
         else if ($admin && !$user['admin'])
         {
-            $this->addMessageError('Insufficient rights. Contact your administrator.');
+            $this->alert->error('Insufficient rights. Contact your administrator.');
             $this->redirect('detail/intro');
         }
         else if ($superadmin && !$user['superadmin'])
         {
-            $this->addMessageError('Insufficient rights. Admin rights can change only administrators. Contact your administrator.');
+            $this->alert->error('Insufficient rights. Admin rights can change only administrators. Contact your administrator.');
             $this->redirect($spec_array['url']);
         }
         else if ($special_rights != "" && !$usermanager->verify_user($special_rights, $spec_array))
         {
-            $this->addMessageError("Insufficient rights. Contact your administrator.");
+            $this->alert->error("Insufficient rights. Contact your administrator.");
             $this->redirect($spec_array['url']);
         } 
     }

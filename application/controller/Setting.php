@@ -10,8 +10,8 @@ class SettingController extends Controller
      */
     function __construct()
     {
-        $this->verifyUser(true);
         parent::__construct();
+        $this->verifyUser(true);
     }
 
     /**

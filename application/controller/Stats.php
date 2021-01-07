@@ -9,6 +9,14 @@
     const T_MEMBRANE = 1;
     const T_METHOD = 2;
 
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
 
     /**
      * Shows summary stats

@@ -5,6 +5,14 @@
  */
 class MolController extends Controller 
 {
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
     public function parse($identifier = NULL) 
     {
         $energyModel = new Energy();

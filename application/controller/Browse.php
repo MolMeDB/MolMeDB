@@ -6,6 +6,14 @@
 class BrowseController extends Controller 
 {
     /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
      * Compounds browser
      * DEPRECATED
      * 

@@ -43,7 +43,6 @@
                 <thead>
                     <td><b>ID</b></td>
                     <td><b>Name</b></td>
-                    <td><b>State</b></td>
                     <td><b>Errors</b></td>
                     <td><b>Action</b></td>
                 </thead>
@@ -51,10 +50,14 @@
                     <?php foreach($compounds as $c) : ?>
                     <tr>
                         <td><?= $c->identifier ? Html::anchor('mol/' . $c->identifier, $c->id, true) : $c->id  ?></td>
-                        <td><?= $c->name ?></td>
-                        <td><?= $c->validated ?></td>
+                        <td><?= $c->waiting && $c->validated !== Validator::POSSIBLE_DUPLICITY ? '<span title="Waiting for state validation." class="glyphicon glyphicon-pause" style="color: red;"></span>' : "" ?> <?= $c->name ?></td>
                         <td><?= $c->errors ?></td>
-                        <td><button type='button' onclick='redirect("validator/show/<?= $state ?>/<?= $pagination ?>/<?=$c->id ?>")' class='btn btn-sm btn-warning'>Show</button></td>
+                        <td>
+                            <button type='button' onclick='redirect("validator/show/<?= $state ?>/<?= $pagination ?>/<?=$c->id ?>")' class='btn btn-sm btn-warning'>Show</button>
+                            <?php if($c->waiting && $c->validated !== Validator::POSSIBLE_DUPLICITY) : ?>
+                            <br/><button style="margin-top: 5px;" type='button' onclick='redirect("validator/validate_state/<?=$c->id ?>")' class='btn btn-sm btn-success'>Validate state</button>
+                            <?php endif ?>
+                        </td>
                     </tr>
                     <?php endforeach ?>
                 </tbody>
@@ -77,8 +80,11 @@
     </div>
     <div class='col-md-6'>
         <?php if($detail && count($detail)) : ?>
-            <h2><?= $detail[0]->name ?></h2>
+            <h2><?= html::anchor('mol/' . $detail[0]->identifier, $detail[0]->name, true) ?></h2>
             <h4>Compound reports</h4>
+            <?php if($detail[0]->waiting && $detail[0]->validated !== Validator::POSSIBLE_DUPLICITY) : ?>
+                <button type='button' onclick='redirect("validator/validate_state/<?=$detail[0]->id ?>")' class='btn btn-sm btn-success'>Validate current state</button>
+            <?php endif ?>
             <div style='max-height: 400px; overflow-y:auto;'>
                 <table class='table'>
                     <thead>
@@ -91,7 +97,7 @@
                         <?php foreach($detail as $d) : ?>
                         <tr>
                             <td><?= !$d->identifier_2 ? '' : Html::anchor('mol/' . $d->identifier_2, $d->identifier_2, true) ?></td>
-                            <td><?= date('d.m.Y H:i', strtotime($d->datetime)) ?></td>
+                            <td><?= date('d.m.Y H:i:s', strtotime($d->datetime)) ?></td>
                             <td>
                                 <?php if($d->identifier_2) : ?> 
                                 <!-- <button type='button' onclick="alert_window('Are you sure you want to join molecules (<?= $d->id . ', ' . $d->id_substance_2 ?>)?', 'validator/join/<?=$d->id ?>/<?= $d->id_substance_2 ?>', false)" class='btn btn-sm btn-danger'>Show</button> -->
@@ -115,6 +121,7 @@
             <table class='table'>
                 <thead>
                     <td><b>ID</b></td>
+                    <td><b>Type</b></td>
                     <td><b>Datetime</b></td>
                     <td><b>Error/Success</b></td>
                     <td><b>Action</b></td>
@@ -123,6 +130,7 @@
                     <?php foreach($reports as $r) : ?>
                     <tr>
                         <td><?= $r->id ?></td>
+                        <td><?= Log_scheduler::get_enum_type($r->type) ?></td>
                         <td><?= date('d.m.Y H:i', strtotime($r->datetime)) ?></td>
                         <td><?= "$r->error_count/$r->success_count" ?></td>
                         <td>

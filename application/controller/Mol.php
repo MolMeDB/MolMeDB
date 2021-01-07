@@ -14,6 +14,16 @@ class MolController extends Controller
         $transporterModel = new Transporters();
         $transporter_dataset_model = new Transporter_datasets();
         $link_model = new Substance_links();
+
+         // Get substance detail
+        // $substance = $substanceModel
+        //     ->where('identifier', $identifier)
+        //     ->get_one();
+
+        // $pubchem = new Drugbank();
+
+        // print_r($pubchem->get_3d_structure($substance));
+        // die;
         
         try
         {

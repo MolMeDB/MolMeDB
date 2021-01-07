@@ -31,8 +31,6 @@ class Rdkit
         catch(Exception $e)
         {
             $this->STATUS = false;
-
-            throw new Exception('RDkit service is unreachable.');
         }
     }
 
@@ -163,22 +161,22 @@ class Rdkit
     /**
      * For given SMILES returns SDF content (3D structure)
      * 
-     * @param string $smiles
+     * @param Substances $substance
      * 
      * @return $string
      */
-    public function get_3d_structure($smiles)
+    public function get_3d_structure($substance)
     {
-        if(!$this->STATUS)
+        if(!$this->STATUS || !$substance->SMILES)
         {
-            return false;
+            return NULL;
         }
 
         $uri = '3dstructure/generate';
         $method = Http_request::METHOD_GET;
         $params = array
         (
-            'smi' => $smiles
+            'smi' => $substance->SMILES
         );
 
         try
@@ -190,11 +188,11 @@ class Rdkit
                 return $response[0];
             }
 
-            return False;
+            return NULL;
         }
         catch(Exception $e)
         {
-            return false;
+            return NULL;
         }
     }
 

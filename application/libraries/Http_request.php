@@ -115,7 +115,7 @@ class Http_request
 	*
 	* @author Jakub Juračka  
 	*/
-	public function request($uri = NULL, $method = self::METHOD_GET, $data = array(), $include_response_header = FALSE, $timeout = 10)
+	public function request($uri = NULL, $method = self::METHOD_GET, $data = array(), $include_response_header = FALSE, $timeout = 10, $json=TRUE)
 	{
 		$this->curl->include_response_headers($include_response_header);
 
@@ -155,7 +155,7 @@ class Http_request
 			throw new Exception($this->curl->get_error_msg());
 		}
 
-		return json_decode($result);
+		return $json ? json_decode($result) : $result;
 	}
         
 }

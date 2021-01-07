@@ -53,7 +53,6 @@ class Pubchem
         catch (Exception $e) 
         {
             $this->STATUS = false;
-            throw new Exception('Pubchem service is unreachable.');
         }
     }
 
@@ -99,6 +98,40 @@ class Pubchem
     {
         $p = new Publications();
         return $p->get_by_type(self::PUBLICATION_TYPE);
+    }
+
+    /**
+     * Finds 3D structure for given molecule
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|null
+     */
+    public function get_3d_structure($substance)
+    {
+        if(!$substance->pubchem)
+        {
+            return NULL;
+        }
+
+        $uri = "compound/CID/$substance->pubchem/record/SDF/?record_type=3d&response_type=save";
+        $method = Http_request::METHOD_GET;
+
+        try
+        {        
+            $response = $this->client->request($uri, $method, array(), FALSE, 10, FALSE);
+
+            if($response)
+            {
+                return $response;
+            }
+        }
+        catch(Exception $e)
+        {
+            return NULL;
+        }
+        
+        return NULL;
     }
 
     /**

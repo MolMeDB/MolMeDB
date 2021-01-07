@@ -39,7 +39,7 @@ function join_molecules()
 
     btn_1.classList.toggle('btn');
     btn_1.classList.toggle('btn-success');
-    btn_1.setAttribute("onclick", "compare_substances(0,0)");
+    btn_1.setAttribute("onclick", "compare_substances(0,0,false)");
 
     btn_1.innerHTML = "Compare";
 
@@ -54,7 +54,7 @@ function join_molecules()
     $(joiner_parent).show();
 }
 
-function compare_substances(subst_id_1, subst_id_2)
+function compare_substances(subst_id_1, subst_id_2, nondupl = true)
 {
     // Show joiner
     $(joiner_parent).show();
@@ -283,7 +283,7 @@ function compare_substances(subst_id_1, subst_id_2)
     $(target).append(col_2);
 
     // Add buttons
-    add_bottom_buttons(substance_1, substance_2)
+    add_bottom_buttons(substance_1, substance_2, nondupl)
 
     // Load 2D structures
     update(substance_1.detail.SMILES, "joiner_pic_1");
@@ -332,7 +332,7 @@ function clearButtons()
     });
 }
 
-function add_bottom_buttons(s1, s2)
+function add_bottom_buttons(s1, s2, nondupl = false)
 {
     var target = $('#joiner-content');
     var div = document.createElement('div');
@@ -340,6 +340,7 @@ function add_bottom_buttons(s1, s2)
 
     var btn_1 = document.createElement('button');
     var btn_2 = document.createElement('button');
+    var btn_3 = document.createElement('button');
 
     var s1name = s1.detail.name;
     var s2name = s2.detail.name;
@@ -348,18 +349,28 @@ function add_bottom_buttons(s1, s2)
 
     btn_1.classList.toggle('btn');
     btn_2.classList.toggle('btn');
+    btn_3.classList.toggle('btn');
     btn_1.classList.toggle('btn-success');
     btn_2.classList.toggle('btn-success');
+    btn_3.classList.toggle('btn-danger');
     btn_1.setAttribute("onclick", 
         "alert_window('Do you really want to merge " + s1name + " to " + s2name + "?', 'validator/join/" + s2id + "/" + s1id + "');")
     btn_2.setAttribute("onclick", 
         "alert_window('Do you really want to merge " + s2name + " to " + s1name + "?', 'validator/join/" + s1id + "/" + s2id + "');")
+    btn_3.setAttribute("onclick", 
+        "alert_window('Do you really want to label " + s2name + " <-> " + s1name + " as nonduplicity?', 'validator/disjoin/" + s1id + "/" + s2id + "');")
 
     btn_1.innerHTML = "Merge: " + s1name + " -> <b>" + s2name + "</b>";
     btn_2.innerHTML = "Merge: <b>" + s1name + "</b> <- " + s2name;
+    btn_3.innerHTML = "Label as NON-duplicity";
 
     div.appendChild(btn_1);
     div.appendChild(btn_2);
+
+    if(nondupl)
+    {
+        div.appendChild(btn_3);
+    }
 
     target.append(div);
 }

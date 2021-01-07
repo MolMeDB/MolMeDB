@@ -25,7 +25,6 @@ class EditController extends Controller
     const M_USERS = 7;
     const M_DATASET_TRANS = 8;
 
-
     /** MENU ENDPOINTS */
     private $menu_endpoints = array
     (
@@ -179,6 +178,8 @@ class EditController extends Controller
     public function compound($id, $spec_type = NULL)
     {
         $interactModel = new Interactions();
+        $transporters_model = new Transporters();
+        $scheduler_error = new Scheduler_errors();
 
         $detail = new Substances($id);
 
@@ -202,8 +203,96 @@ class EditController extends Controller
                 }
                 else 
                 {
-                    $fileURL = $_POST['fileURL'];
-                    $this->upload_3d_structure($fileURL, $detail, True);
+                    $type = $_POST['fileURL'];
+                    $content = NULL;
+
+                    switch($type)
+                    {
+                        case 'drugbank':
+                            $drugbank = new Drugbank();
+                            
+                            if(!$drugbank->is_connected())
+                            {
+                                throw new Exception('Cannot connect to drugbank server.');
+                            }
+
+                            if(!$detail->drugbank)
+                            {
+                                throw new Exception('Missing drugbank identifier.');
+                            }
+
+                            $content = $drugbank->get_3d_structure($detail);
+                            break;
+
+                        case 'pdb':
+                            $driver = new PDB();
+                            
+                            if(!$driver->is_connected())
+                            {
+                                throw new Exception('Cannot connect to the PDB server.');
+                            }
+
+                            if(!$detail->pdb)
+                            {
+                                throw new Exception('Missing pdb identifier.');
+                            }
+
+                            $content = $driver->get_3d_structure($detail);
+                            break;
+
+                        case 'pubchem':
+                            $driver = new Pubchem();
+                            
+                            if(!$driver->is_connected())
+                            {
+                                throw new Exception('Cannot connect to the pubchem server.');
+                            }
+
+                            if(!$detail->pubchem)
+                            {
+                                throw new Exception('Missing pubchem identifier.');
+                            }
+
+                            $content = $driver->get_3d_structure($detail);
+                            break;
+
+                        case 'rdkit':
+                            $driver = new Rdkit();
+                            
+                            if(!$driver->is_connected())
+                            {
+                                throw new Exception('Cannot connect to Rdkit server.');
+                            }
+
+                            if(!$detail->SMILES)
+                            {
+                                throw new Exception('Missing SMILES.');
+                            }
+
+                            $content = $driver->get_3d_structure($detail);
+                            break;
+
+                        default:
+                            throw new Exception('Invalid parameter.');
+                    }
+
+                    if(!$content)
+                    {
+                        throw new Exception('Cannot find 3D structure file.');
+                    }
+
+                    // Fill identifier, if missing
+                    if(!$detail->identifier)
+                    {
+                        $detail->identifier = Identifiers::generate_substance_identifier($detail->id);
+                    }
+
+                    $file_model = new File();
+
+                    $file_model->save_structure_file($detail->identifier, $content);
+                    $detail->invalid_structure_flag = NULL;
+
+                    $detail->save();
                 }
 
                 $this->addMessageSuccess('3D Structure was saved.');
@@ -215,23 +304,96 @@ class EditController extends Controller
 
             $this->redirect('edit/compound/' . $id);
         }
-        else if ($_POST) 
+        else if ($this->form->is_post()) 
         {
             // Edit substance
             try 
             {
+                $rdkit = new Rdkit();
+
+                $same = [];
+                $keys_check = array
+                (
+                    'pubchem',
+                    'drugbank',
+                    'pdb',
+                    'chEBI',
+                    'chEMBL',
+                    'SMILES',
+                    'inchikey',
+                    'name'
+                );
+
+                // Check, if new DB_ids are not in DB yet
+                foreach($keys_check as $k)
+                {
+                    if(!empty($_POST[$k]))
+                    {
+                        $exists = $detail->where(array
+                        (
+                            $k => $_POST[$k],
+                            'id !='   => $detail->id
+                        ))
+                        ->get_one();
+
+                        if($exists->id)
+                        {
+                            $same[$k] = $exists->id;
+                        }
+                    }
+                }
+
+                if(count($same))
+                {
+                    $this->alert->warning('Found some possible duplicites for '. implode(', ', array_keys($same))
+                        . ' values. Check validator ' . Html::anchor('validator/show/3/1/' . $detail->id, 'detail') . ' for more info.');
+
+                    foreach($same as $key => $subst_id)
+                    {
+                        $detail->add_duplicity($subst_id, "Same $key found.");
+                    }
+                }
+
                 $detail->name = $_POST['name'];
                 $detail->MW = $_POST['MW'];
                 $detail->SMILES = $_POST['SMILES'];
+                $detail->inchikey = $_POST['inchikey'];
                 $detail->LogP = $_POST['LogP'];
-                $detail->Area = $_POST['Area'];
-                $detail->Volume = $_POST['Volume'];
+                // $detail->Area = $_POST['Area'];
+                // $detail->Volume = $_POST['Volume'];
                 $detail->pdb = $_POST['pdb'];
                 $detail->pubchem = $_POST['pubchem'];
                 $detail->drugbank = $_POST['drugbank'];
                 $detail->chEBI = $_POST['chEBI'];
                 $detail->chEMBL = $_POST['chEMBL'];
                 $detail->validated = Validator::NOT_VALIDATED;
+
+                $diff = $detail->get_changes(True);
+
+                // Log changes
+                $scheduler_error->add_diff($detail->id, $diff);
+
+                // Autofill inchikey if missing
+                if(empty($_POST['inchikey']) && !empty($_POST['SMILES']) && $rdkit->is_connected())
+                {
+                    $data = $rdkit->get_general_info($_POST['SMILES']);
+
+                    if(!$data)
+                    {
+                        $this->alert->warning('Cannot load general data from rdkit. Please, check SMILES.');
+                    }
+                    elseif(!empty($data->canonized_smiles))
+                    {
+                        $detail->SMILES = $data->canonized_smiles;
+                        $this->alert->success('SMILES was automatically canonized.');
+                    }
+                    
+                    if($data && !empty($data->inchi))
+                    {
+                        $detail->inchikey = $data->inchi;
+                        $this->alert->success('Inchikey was automatically generated.');
+                    }
+                }
 
                 $detail->save();
 
@@ -245,11 +407,22 @@ class EditController extends Controller
         }
 
         $assigned_interactions = $interactModel
-            ->where('id_substance', $id)
+            ->where('id_substance', $detail->id)
+            ->get_all();
+
+        $assigned_transporters = $transporters_model
+            ->where('id_substance', $detail->id)
+            ->get_all();
+
+        $logs = $scheduler_error
+            ->where('id_substance', $detail->id)
+            ->order_by("id", "DESC")
             ->get_all();
 
         $this->data['detail'] = $detail;
         $this->data['interactions_all'] = $assigned_interactions;
+        $this->data['transporters_all'] = $assigned_transporters;
+        $this->data['logs'] = $logs;
         $this->header['title'] = 'Edit compound';
 
         $this->view = 'edit/compound';
@@ -369,11 +542,6 @@ class EditController extends Controller
     {
         $file_model = new File();
         $target_file = File::FOLDER_3DSTRUCTURES . $substance->identifier . ".mol";
-       
-        if ($file_model->structure_file_exists($substance->identifier)) 
-        {
-            throw new Exception("Sorry, 3D structure file already exists.");
-        }
 
         $file_model->make_path(File::FOLDER_3DSTRUCTURES);
        

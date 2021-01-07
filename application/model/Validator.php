@@ -7,6 +7,7 @@
  * @property int $id_substance_1
  * @property int $id_substance_2
  * @property int $duplicity
+ * @property int $active
  * @property string $createDateTime
  * 
  */
@@ -91,11 +92,11 @@ class Validator extends Db
         if($state === NULL || !self::is_state_valid($state))
         {
             return $this->queryAll("
-                SELECT DISTINCT t.id, SUM(errors) errors, t.name, t.validated, t.identifier
+                SELECT DISTINCT t.id, SUM(errors) errors, t.name, t.validated, t.identifier, t.waiting, MAX(t.create_date_time) as create_date_time
                 FROM
                 (
                             
-                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, s.waiting, 1 as type, MAX(v.createDateTime) as create_date_time
                     FROM substances s
                     JOIN validations v ON v.id_substance_1 = s.id
                     WHERE s.validated != ?
@@ -103,25 +104,25 @@ class Validator extends Db
                     
                     UNION
                     
-                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, s.waiting, 2 as type, MAX(e.last_update) as create_date_time
                     FROM substances s
                     JOIN scheduler_errors e ON e.id_substance = s.id
                     WHERE s.validated != ?
                     GROUP BY id
                 ) t 
                 GROUP BY id
-                ORDER BY validated DESC, errors DESC
+                ORDER BY create_date_time DESC
                 $limit_str
             ", array(self::VALIDATED, self::VALIDATED));
         }
         else
         {
             return $this->queryAll("
-                SELECT DISTINCT t.id, SUM(errors) errors, t.name, t.validated, t.identifier
+                SELECT DISTINCT t.id, SUM(errors) errors, t.name, t.validated, t.identifier, t.waiting, MAX(t.create_date_time) as create_date_time
                 FROM
                 (
                             
-                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 1 as type, s.waiting, MAX(v.createDateTime) as create_date_time
                     FROM substances s
                     JOIN validations v ON v.id_substance_1 = s.id
                     WHERE s.validated = ?
@@ -129,14 +130,14 @@ class Validator extends Db
                     
                     UNION
                     
-                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type
+                    SELECT DISTINCT s.id, s.identifier, COUNT(s.id) errors, s.name, s.validated, 2 as type, s.waiting, MAX(e.last_update) as create_date_time
                     FROM substances s
                     JOIN scheduler_errors e ON e.id_substance = s.id
                     WHERE s.validated = ?
                     GROUP BY id
                 ) t 
                 GROUP BY id
-                ORDER BY validated DESC, errors DESC
+                ORDER BY create_date_time DESC
                 $limit_str
             ", array($state, $state));
         }
@@ -157,7 +158,7 @@ class Validator extends Db
             FROM substances s
             JOIN validations v ON v.id_substance_1 = s.id
             JOIN substances s2 ON s2.id = v.id_substance_2
-            WHERE s.id = ?
+            WHERE s.id = ? AND v.active = 1
 
             UNION 
 

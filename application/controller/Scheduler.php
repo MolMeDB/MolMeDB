@@ -48,21 +48,28 @@ class SchedulerController extends Controller
             $this->send_emails();
             echo "Emails sent. \n";
 
+            // Delete substances without interactions
+            if($time->is_minute(5) && $time->is_hour(23))
+            {
+                echo "Deleting empty substances. \n";
+                $this->delete_empty_substances();
+            }
+
             // ---- Molecules data autofill ---- //
             if($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 3)) // Run only once per hour and only at night
             {
+                echo "Subtance validations is running. \n";
                 $this->substance_autofill_missing_data($time->get_hour() % 2);
-                echo "Subtance validations done. \n";
             }
 
             // Checks interactions datasets
             if($time->is_hour(4) && $time->is_minute(1))
             {
+                echo "Checking interaction datasets.\n";
                 $this->check_interaction_datasets();
-                echo "Interaction datasets checked.\n";
             }
 
-            // Checks interactions datasets - NOW INACTIVATED
+            // Checks transporter datasets - NOW INACTIVATED
             if(FALSE && $time->is_hour(5) && $time->is_minute(1))
             {
                 $this->check_transporter_datasets();
@@ -97,6 +104,57 @@ class SchedulerController extends Controller
     }
 
     /**
+     * Delets substances without interactions
+     */
+    public function delete_empty_substances()
+    {
+        $subst_model = new Substances();
+        $empty = $subst_model->get_empty_substances();
+        $total = 0;
+        $molecules = array(['Deleted molecules']);
+
+        foreach($empty as $s_id)
+        {
+            $total++;
+            $substance = new Substances($s_id);
+            $molecules[] = [$substance->name];
+            $substance->delete();
+        }
+
+        // Save report and send to the admins
+        if($total)
+        {
+            try
+            {
+                $report = new File();
+                $file_path = MEDIA_ROOT . 'files/schedulerReports/subs_delete_' . $report->generateName() . '.csv';
+                $report->create($file_path);
+                $report->writeCSV($molecules);
+
+                // Send emails
+                $this->send_email_to_admins('A total of ' . $total . ' molecules were deleted.', 'Scheduler autoremove report', $file_path);
+
+                // Add info about log file
+                $scheduler_log = new Log_scheduler();
+
+                $scheduler_log->error_count = 0;
+                $scheduler_log->success_count = $total;
+                $scheduler_log->report_path = $file_path;
+                $scheduler_log->type = Log_scheduler::T_SUBSTANCE_AUTOREMOVE;
+
+                $scheduler_log->save();
+            }
+            catch(Exception $e)
+            {
+                echo $e->getMessage();
+                echo 'Cannot make `substance_delete` log file.';
+            }
+
+            echo('Total ' . $total . ' substances were deleted.' . "\n");
+        }
+    }
+
+    /**
      * Checks interactions datasets
      * 
      * @author Jakub Juracka      
@@ -106,10 +164,12 @@ class SchedulerController extends Controller
         $dataset_model = new Datasets();
         $interaction_model = new Interactions();
         $removed = 0;
+        $joioned = 0;
 
         // Join the same datasets
         // Same -> membrane/method/secondary reference/author + the same upload day
         $duplcs = $dataset_model->get_duplicites();
+        $joioned = count($duplcs);
         
         foreach($duplcs as $ids)
         {
@@ -146,6 +206,46 @@ class SchedulerController extends Controller
         if($removed > 0)
         {
             echo 'Total ' . $removed . " empty datasets were removed. \n";
+        }
+
+        if($removed > 0 || $joioned > 0)
+        {
+            // Save report and send to the admins
+            try
+            {
+                $csv = array
+                (
+                    ['Empty interaction datasets deleted:', $removed],
+                    ['Interaction datasets joined:', $joioned],
+                );
+
+                $report = new File();
+                $file_path = MEDIA_ROOT . 'files/schedulerReports/inter_ds_check_' . $report->generateName() . '.csv';
+                $report->create($file_path);
+                $report->writeCSV($csv);
+
+                $text = "Some interaction datasets were deleted/joined. <br/>"
+                    .   " - Total deleted: " . $removed . '<br/>'
+                    .   " - Total joined: " . $joioned;
+
+                // Send emails
+                $this->send_email_to_admins($text, 'Scheduler dataset checker report');
+
+                // Add info about log file
+                $scheduler_log = new Log_scheduler();
+
+                $scheduler_log->error_count = 0;
+                $scheduler_log->success_count = $joioned + $removed;
+                $scheduler_log->report_path = $file_path;
+                $scheduler_log->type = Log_scheduler::T_INT_CHECK_DATASET;
+
+                $scheduler_log->save();
+            }
+            catch(Exception $e)
+            {
+                echo $e->getMessage();
+                echo 'Cannot make `interaction_delete/join` log file.';
+            }
         }
     }
 
@@ -268,6 +368,7 @@ class SchedulerController extends Controller
 
         // Init log
         $scheduler_log = new Log_scheduler();
+        $scheduler_log->type = Log_scheduler::T_SUBSTANCE_FILL;
         $scheduler_log->error_count = 0;
         $scheduler_log->success_count = 0;
         $scheduler_log->save();
@@ -276,12 +377,19 @@ class SchedulerController extends Controller
         {
             $substances = $substance_model->where(array
                 (
+                    '(',
                     'prev_validation_state IS NULL',
+                    'waiting IS NULL',
+                    ')',
                     'OR',
                     '(',
+                    'waiting IS NULL',
                     'validated != ' => Validator::VALIDATED,
-                    'validated !=' => Validator::POSSIBLE_DUPLICITY,
-                    ")"
+                    ")",
+                    'OR',
+                    '(',
+                    'invalid_structure_flag' => Substances::INVALID_STRUCTURE,
+                    ')'
                 ))
                 ->limit(1000)
                 ->get_all();
@@ -290,6 +398,7 @@ class SchedulerController extends Controller
         {
             $substances = $substance_model->where(array
                 (
+                    'waiting IS NULL',
                     'validated' => Validator::NOT_VALIDATED,
                 ))
                 ->limit(1000)
@@ -305,19 +414,21 @@ class SchedulerController extends Controller
         // For each substance, get data and fill missing
         foreach($substances as $s)
         {
-            if($s->validated == Validator::VALIDATED)
-            {
-                $s->prev_validation_state = Validator::VALIDATED;
-                $s->save();
-
-                continue;
-            }
-
             try
             {
+                if($s->validated == Validator::VALIDATED)
+                {
+                    $s->prev_validation_state = Validator::VALIDATED;
+                    $s->save();
+
+                    continue;
+                }
+
                 // Change first letter of name to uppercase
                 $s->name = ucfirst($s->name);
                 $s->save();
+
+                $ignore_dupl_ids = $s->get_non_duplicities();
 
                 // Fill substance info if missing
                 if($s->validated < Validator::SUBSTANCE_FILLED)
@@ -332,7 +443,7 @@ class SchedulerController extends Controller
                     if(!$s->SMILES || $s->SMILES == '')
                     {
                         // If not exists SMILES, try to find in another DBs
-                        $s->SMILES = $this->find_smiles($s);
+                        $s->SMILES = $this->find_smiles($s, $ignore_dupl_ids);
                     }
 
                     // Get RDKIT data
@@ -341,7 +452,7 @@ class SchedulerController extends Controller
                     if(!$data)
                     {
                         // If error, try to find new SMILES
-                        $s->SMILES = $this->find_smiles($s);
+                        $s->SMILES = $this->find_smiles($s, $ignore_dupl_ids);
                         $data = $rdkit->get_general_info($s->SMILES);
 
                         if(!$data)
@@ -363,6 +474,7 @@ class SchedulerController extends Controller
                                 'SMILES' => $canonized,
                                 'id !=' => $s->id
                             ))
+                            ->in('id NOT', $ignore_dupl_ids)
                             ->get_one();
                         
                         if($exists_smiles->id)
@@ -380,6 +492,7 @@ class SchedulerController extends Controller
                                 'inchikey' => $inchikey,
                                 'id !=' => $s->id
                             ))
+                            ->in('id NOT', $ignore_dupl_ids)
                             ->get_one();
 
                         if($exists_inchikey->id)
@@ -396,6 +509,7 @@ class SchedulerController extends Controller
                     $s->inchikey = $inchikey ? $inchikey : $s->inchikey;
                     $s->MW = $s->MW ? $s->MW : $MW;
                     $s->LogP = $logP ? $logP : $s->LogP;
+                    
                     // Set as filled_data state
                     $s->prev_validation_state = $s->validated;
                     $s->validated = Validator::SUBSTANCE_FILLED;
@@ -405,14 +519,17 @@ class SchedulerController extends Controller
                 // END OF FILLING MISSING DATA 
 
                 // Generate 3d structure file if missing
-                if(!$fileModel->structure_file_exists($s->identifier))
+                if($s->invalid_structure_flag || !$fileModel->structure_file_exists($s->identifier))
                 {
-                    $content = $rdkit->get_3d_structure($s->SMILES);
+                    $content = $this->find_3d_structure($s);
 
                     if($content)
                     {
                         # Save new structure
                         $fileModel->save_structure_file($s->identifier, $content);
+                        $s->invalid_structure_flag = NULL;
+
+                        $s->save();
                     }
                 }
 
@@ -427,87 +544,204 @@ class SchedulerController extends Controller
 
                         if($identifiers)
                         {
+                            $filled = false;
+
                             // Check duplicities
-                            if($identifiers->pubchem)
+                            if($pubchem = $s->pubchem ? $s->pubchem : $identifiers->pubchem)
                             {
+                                $filled = $pubchem !== $s->pubchem ? true : $filled;
+
+                                // Add info about new found identifier
+                                if($pubchem !== $s->pubchem)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found pubchem_id = ' . $pubchem . ' on remote server.');
+
+                                    if(self::check_identifiers_waiting_state($identifiers, $s))
+                                    {
+                                        $s->waiting = 1;
+                                        $s->pubchem = $pubchem;
+                                        $s->save();
+                                        throw new Exception("Found pubchem_id on unichem. Waiting for validation.");
+                                    }
+                                }
+                                else if($s->pubchem && $identifiers->pubchem && $s->pubchem !== $identifiers->pubchem)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found different pubchem_id = ' . $identifiers->pubchem . ' [saved = ' . $s->pubchem . '] on remote server.');
+                                }
+
                                 $exists = $substance_model->where(array
                                     (
-                                    'pubchem' => $identifiers->pubchem,
+                                    'pubchem' => $pubchem,
                                     'id !=' => $s->id
                                     ))
+                                    ->in('id NOT', $ignore_dupl_ids)
                                     ->get_one();
 
                                 if($exists->id)
                                 {
-                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pubchem_id = $identifiers->pubchem.";
+                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pubchem_id = $pubchem.";
                                     $s->add_duplicity($exists->id, $err_text);
 
                                     throw new Exception($err_text);
                                 }
                             }
-                            if($identifiers->drugbank)
+                            if($drugbank = $s->drugbank ? $s->drugbank : $identifiers->drugbank)
                             {
+                                $filled = $drugbank !== $s->drugbank ? true : $filled;
+
+                                // Add info about new found identifier
+                                if($drugbank !== $s->drugbank)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found drugbank_id = ' . $drugbank . ' on remote server.');
+
+                                    if(self::check_identifiers_waiting_state($identifiers, $s))
+                                    {
+                                        $s->waiting = 1;
+                                        $s->drugbank = $drugbank;
+                                        $s->save();
+                                        throw new Exception("Found drugbank_id on unichem. Waiting for validation.");
+                                    }
+                                }
+                                else if($s->drugbank && $identifiers->drugbank && $s->drugbank !== $identifiers->drugbank)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found different drugbank_id = ' . $identifiers->drugbank . ' [saved = ' . $s->drugbank . '] on remote server.');
+                                }
+
                                 $exists = $substance_model->where(array
                                     (
-                                    'drugbank' => $identifiers->drugbank,
+                                    'drugbank' => $drugbank,
                                     'id !=' => $s->id
                                     ))
+                                    ->in('id NOT', $ignore_dupl_ids)
                                     ->get_one();
 
                                 if($exists->id)
                                 {
-                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same drugbank_id = $identifiers->drugbank.";
+                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same drugbank_id = $drugbank.";
                                     $s->add_duplicity($exists->id, $err_text);
 
                                     throw new Exception($err_text);
                                 }
                             }
-                            if($identifiers->chebi)
+                            if($chebi = $s->chEBI ? $s->chEBI : $identifiers->chebi)
                             {
+                                $filled = $chebi !== $s->chEBI ? true : $filled;
+
+                                // Add info about new found identifier
+                                if($chebi !== $s->chEBI)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found chebi = ' . $chebi . ' on remote server.');
+
+                                    if(self::check_identifiers_waiting_state($identifiers, $s))
+                                    {
+                                        $s->waiting = 1;
+                                        $s->chEBI = $chebi;
+                                        $s->save();
+                                        throw new Exception("Found chebi_id on unichem. Waiting for validation.");
+                                    }
+                                }
+                                else if($s->chEBI && $identifiers->chebi && $s->chEBI !== $identifiers->chebi)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found different chebi_id = ' . $identifiers->chebi . ' [saved = ' . $s->chEBI . '] on remote server.');
+                                }
+
                                 $exists = $substance_model->where(array
                                     (
-                                    'chEBI' => $identifiers->chebi,
+                                    'chEBI' => $chebi,
                                     'id !=' => $s->id
                                     ))
+                                    ->in('id NOT', $ignore_dupl_ids)
                                     ->get_one();
 
                                 if($exists->id)
                                 {
-                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same chebi_id = $identifiers->chebi.";
+                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same chebi_id = $chebi.";
                                     $s->add_duplicity($exists->id, $err_text);
 
                                     throw new Exception($err_text);
                                 }
                             }
-                            if($identifiers->chembl)
+                            if($chembl = $s->chEMBL ? $s->chEMBL : $identifiers->chembl)
                             {
+                                $filled = $chembl !== $s->chEMBL ? true : $filled;
+
+                                // Add info about new found identifier
+                                if($chembl !== $s->chEMBL)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found chembl_id = ' . $chembl . ' on remote server.');
+
+                                    if(self::check_identifiers_waiting_state($identifiers, $s))
+                                    {
+                                        $s->waiting = 1;
+                                        $s->chEMBL = $chembl;
+                                        $s->save();
+                                        throw new Exception("Found chembl_id on unichem. Waiting for validation.");
+                                    }
+                                }
+                                else if($s->chEMBL && $identifiers->chembl && $s->chEMBL !== $identifiers->chembl)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found different chembl_id = ' . $identifiers->chembl . ' [saved = ' . $s->chEMBL . '] on remote server.');
+                                }
+
                                 $exists = $substance_model->where(array
                                     (
-                                    'chEMBL' => $identifiers->chembl,
+                                    'chEMBL' => $chembl,
                                     'id !=' => $s->id
                                     ))
+                                    ->in('id NOT', $ignore_dupl_ids)
                                     ->get_one();
 
                                 if($exists->id)
                                 {
-                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same chembl_id = $identifiers->chembl.";
+                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same chembl_id = $chembl.";
                                     $s->add_duplicity($exists->id, $err_text);
 
                                     throw new Exception($err_text);
                                 }
                             }
-                            if($identifiers->pdb)
+                            if($pdb = $s->pdb ? $s->pdb : $identifiers->pdb)
                             {
+                                $filled = $pdb !== $s->pdb ? true : $filled;
+
+                                // Add info about new found identifier
+                                if($pdb !== $s->pdb)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found pdb_id = ' . $pdb . ' on remote server.');
+
+                                    if(self::check_identifiers_waiting_state($identifiers, $s))
+                                    {
+                                        $s->waiting = 1;
+                                        $s->pdb = $pdb;
+                                        $s->save();
+                                        throw new Exception("Found pdb_id on unichem. Waiting for validation.");
+                                    }
+                                }
+                                else if($s->pdb && $identifiers->pdb && $s->pdb !== $identifiers->pdb)
+                                {
+                                    $error_record = new Scheduler_errors();
+                                    $error_record->add($s->id, 'Found different pdb_id = ' . $identifiers->pdb . ' [saved = ' . $s->pdb . '] on remote server.');
+                                }
+
                                 $exists = $substance_model->where(array
                                     (
-                                    'pdb' => $identifiers->pdb,
+                                    'pdb' => $pdb,
                                     'id !=' => $s->id
                                     ))
+                                    ->in('id NOT', $ignore_dupl_ids)
                                     ->get_one();
 
                                 if($exists->id)
                                 {
-                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pdb_id = $identifiers->pdb.";
+                                    $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pdb_id = $pdb.";
                                     $s->add_duplicity($exists->id, $err_text);
 
                                     throw new Exception($err_text);
@@ -526,11 +760,22 @@ class SchedulerController extends Controller
                         }
                         else if(!$s->pubchem && !$s->chEMBL)
                         {
+                            $text = "Cannot find identifiers. ";
+
                             $s->prev_validation_state = $s->validated;
-                            $s->validated = Validator::IDENTIFIERS_FILLED;
+                            if($s->SMILES && $s->SMILES != '')
+                            {
+                                $s->validated = Validator::IDENTIFIERS_FILLED;
+                                $text .= 'Will be ignored in next run.';
+                            }
+                            else
+                            {
+                                $s->validated = Validator::SUBSTANCE_FILLED;
+                            }
+
                             $s->save();
 
-                            throw new Exception("Cannot find identifiers. Will be ignored in next run.");
+                            throw new Exception($text);
                         }
                     }
                     else
@@ -552,6 +797,7 @@ class SchedulerController extends Controller
 
                 $s->prev_validation_state = $s->validated;
                 $s->validated = Validator::VALIDATED;
+                $s->waiting = NULL;
                 $s->save();
 
                 $success++;
@@ -560,29 +806,11 @@ class SchedulerController extends Controller
             {
                 if($s->validated !== $s->prev_validation_state)
                 {
-                    $report->add('Substance: ' . $s->identifier, $e->getMessage());
+                    $report->add($s->identifier, $e->getMessage());
                 }
 
                 $error_record = new Scheduler_errors();
-                //exists?
-                $log = $error_record->where(array
-                    (
-                        'id_substance'  => $s->id,
-                        'error_text'    => $e->getMessage() 
-                    ))
-                    ->get_one();
-
-                if($log->id)
-                {
-                    $log->count = $log->count + 1;
-                    $log->save();
-                }
-                else // Make new record
-                {
-                    $error_record->id_substance = $s->id;
-                    $error_record->error_text = $e->getMessage();
-                    $error_record->save();
-                }
+                $error_record->add($s->id, $e->getMessage());
             }
         }
 
@@ -606,6 +834,68 @@ class SchedulerController extends Controller
 
             $this->send_email_to_admins($text, 'Scheduler run report', $scheduler_log->report_path);
         }
+    }
+
+    /**
+     * Checks, if downloaded data are valid
+     * 
+     * @param object $obj
+     * @param Substances $substance
+     * 
+     * @return boolean
+     */
+    private static function check_identifiers_waiting_state($obj, $substance)
+    {
+        return !(($substance->pubchem && $substance->pubchem == $obj->pubchem) ||
+            ($substance->pdb && $substance->pdb == $obj->pdb) ||
+            ($substance->drugbank && $substance->drugbank == $obj->drugbank) ||
+            ($substance->chEMBL && $substance->chEMBL == $obj->chembl) ||
+            ($substance->chEBI && $substance->chEBI == $obj->chebi));
+    }
+
+    /**
+     * Tries to find 3D structure for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string
+     */
+    public function find_3d_structure($substance)
+    {
+        $pdb = new PDB();
+        $drugbank = new Drugbank();
+        $rdkit = new Rdkit();
+        $pubchem = new Pubchem();
+        $report = new Scheduler_errors();
+
+        // Persist priority!
+        $sources = array
+        (
+            'pubchem' => $pubchem,
+            'drugbank' => $drugbank,
+            'rdkit' => $rdkit,
+            'pdb' => $pdb,
+        );
+
+        $structure = NULL;
+
+        foreach($sources as $type => $source)
+        {
+            if(!$source->is_connected())
+            {
+                continue;
+            }
+
+            $structure = $source->get_3d_structure($substance);
+
+            if($structure)
+            {
+                $report->add($substance->id, 'Found 3D structure on ' . $type . ' server.');
+                break;
+            }
+        }
+
+        return $structure;
     }
 
     /**
@@ -650,6 +940,7 @@ class SchedulerController extends Controller
     private function fill_logP($s)
     {
         $interaction_model = new Interactions();
+        $log = new Scheduler_errors();
 
         // Try to find LogPs in another DBs
         if($s->pubchem)
@@ -709,6 +1000,8 @@ class SchedulerController extends Controller
                         $interaction->visibility = Interactions::VISIBLE;
 
                         $interaction->save();
+
+                        $log->add($s->id, 'Filled Pubchem_LogP value.');
                     }
                 }
             }
@@ -787,11 +1080,12 @@ class SchedulerController extends Controller
      * 
      * @return string
      */
-    private function find_smiles($substance)
+    private function find_smiles($substance, $ignore = array())
     {
         $pubchem = new Pubchem();
         $chembl = new Chembl();
         $substance_model = new Substances();
+        $log = new Scheduler_errors();
 
         if(!$pubchem->is_connected() && !$chembl->is_connected())
         {
@@ -799,7 +1093,7 @@ class SchedulerController extends Controller
         }
 
         // If missing identifiers, try to find by name on remote servers
-        if(!$substance->pubchem)
+        if(!$substance->pubchem && $pubchem->is_connected())
         {
             $remote_data = NULL;
 
@@ -815,11 +1109,14 @@ class SchedulerController extends Controller
 
             if($remote_data && $remote_data->pubchem_id)
             {
+                $log->add($substance->id, 'Found pubchem_id = ' . $remote_data->pubchem_id . ' on remote server by inchikey/name.');
+
                 $exists = $substance_model->where(array
                     (
                     'pubchem' => $remote_data->pubchem_id,
                     'id !=' => $substance->id
                     ))
+                    ->in('id NOT', $ignore)
                     ->get_one();
 
                 if($exists->id)
@@ -831,7 +1128,10 @@ class SchedulerController extends Controller
                 }
 
                 $substance->pubchem = $remote_data->pubchem_id;
+                $substance->waiting = 1;
                 $substance->save();
+
+                throw new Exception("Added pubchem_id. Waiting for validation.");
             }
         }
 
@@ -842,6 +1142,7 @@ class SchedulerController extends Controller
 
             if($data->SMILES && $data->SMILES !== '')
             {
+                $log->add($substance->id, 'Found SMILES = ' . $data->SMILES . ' on pubchem server.');
                 return $data->SMILES;
             }
         }
@@ -853,6 +1154,7 @@ class SchedulerController extends Controller
             
             if($data && $data->SMILES && $data->SMILES !== '')
             {
+                $log->add($substance->id, 'Found SMILES = ' . $data->SMILES . ' on chembl server.');
                 return $data->SMILES;
             }
         }

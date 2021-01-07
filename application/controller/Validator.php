@@ -58,12 +58,51 @@ class ValidatorController extends Controller
             $this->data['detail'] = FALSE;
         }
         
+        $this->header['title'] = 'Validator' . ($substance->name ? " | $substance->name" : '');
         $this->data['state'] = $state;
         $this->data['pagination'] = $pagination;
         $this->data['compounds'] = $validator->get_substances($state, 100*($pagination - 1), 100);
         $this->data['total_compounds'] = count($validator->get_substances($state));
         $this->data['reports'] = $scheduler_reports->order_by('id', 'desc')->limit(50)->get_all();
         $this->view = 'validator/validator';
+    }
+
+    /**
+     * Validates current substance state
+     * 
+     * @param int $substance_id
+     */
+    public function validate_state($substance_id)
+    {
+        $substance = new Substances($substance_id);
+
+        if(!$substance->id)
+        {
+            $this->alert->error('Substance not found.');
+            $this->redirect('validator/show');
+        }
+
+        try
+        {
+            $substance->waiting = NULL;
+            $substance->save();
+
+            $log = new Scheduler_errors();
+            $log->id_substance = $substance->id;
+            $log->error_text = 'State = ' . $substance->validated . ' was validated.';
+            $log->id_user = $this->session->user->id;
+            $log->count = 1;
+
+            $log->save();
+
+            $this->alert->success('Current state of substance [' . $substance->name . '] was labeled as validated.');
+        }
+        catch(Exception $e)
+        {
+            $this->alert->error($e->getMessage());
+        }
+
+        $this->redirect('validator/show/' . $substance->validated . "/1/" . $substance->id);
     }
 
     /**
@@ -174,6 +213,7 @@ class ValidatorController extends Controller
                 $new->chEMBL = !$new->chEMBL || $new->chEMBL == '' ? $old->chEMBL : $new->chEMBL;
                 $new->pdb = !$new->pdb || $new->pdb == '' ? $old->pdb : $new->pdb;
                 $new->validated = Validator::NOT_VALIDATED;
+                $new->waiting = NULL;
 
                 // Add record about link
                 try
@@ -210,5 +250,115 @@ class ValidatorController extends Controller
         }
 
         $this->redirect('validator/show');
+    }
+
+    /**
+     * Disjoin 2 possible duplicity molecules
+     * 
+     * @param int $substance_id_1
+     * @param int $substance_id_2
+     * 
+     * @author Jakub Juracka
+     */
+    public function disjoin($substance_id_1, $substance_id_2)
+    {
+        $substance_1 = new Substances($substance_id_1);
+        $substance_2 = new Substances($substance_id_2);
+
+        if(!$substance_1->id || !$substance_2->id)
+        {
+            $this->alert->error('Invalid arguments.');
+        }
+
+        try
+        {
+            $substance_1->beginTransaction();
+
+            $validator_model = new Validator();
+            $rows = $validator_model->where(array
+                (
+                    '(',
+                    'id_substance_1' => $substance_1->id,
+                    'id_substance_2' => $substance_2->id,
+                    ')',
+                ))
+                ->where(array
+                (
+                    'OR',
+                    '(',
+                    'id_substance_1' => $substance_2->id,
+                    'id_substance_2' => $substance_1->id,
+                    ')'
+                ))
+                ->get_all();
+
+            // Change state of validations
+            foreach($rows as $r)
+            {
+                $val = new Validator($r->id);
+                if(!$val->id)
+                {
+                    continue;
+                }
+
+                $val->active = 0;
+                $val->save();
+
+                // Add info about action
+                $err = new Scheduler_errors();
+                $err_2 = new Scheduler_errors();
+                $err->id_substance = $substance_1->id;
+                $err_2->id_substance = $substance_2->id;
+                $err->error_text = 'Labeled as non duplicity. (' . $substance_2->identifier . ' - ' . $substance_2->name . ').';
+                $err_2->error_text = 'Labeled as non duplicity. (' . $substance_1->identifier  . ' - ' . $substance_1->name . ').';
+                $err->count = $err_2->count = 1;
+                $err->id_user = $this->session->user->id;
+                $err_2->id_user = $this->session->user->id;
+
+                $err->save();
+                $err_2->save();
+            }
+
+            // If substance doesnt have next possible duplicity, then revalidate
+            $s1_vals = $validator_model->where(array
+                (
+                    'id_substance_1' => $substance_1->id,
+                    'active' => '1'
+                ))
+                ->get_all();
+
+            $s2_vals = $validator_model->where(array
+                (
+                    'id_substance_1' => $substance_2->id,
+                    'active' => '1'
+                ))
+                ->get_all();
+
+            if(!count($s1_vals))
+            {
+                $this->alert->warning('Substance ' . $substance_1->name . " [$substance_1->identifier] will be revalidated in next scheduler run.");
+                $substance_1->validated = Validator::NOT_VALIDATED;
+                $substance_1->waiting = NULL;
+                $substance_1->save();
+            }
+
+            if(!count($s2_vals))
+            {
+                $this->alert->warning('Substance ' . $substance_2->name . " [$substance_2->identifier] will be revalidated in next scheduler run.");
+                $substance_2->validated = Validator::NOT_VALIDATED;
+                $substance_2->waiting = NULL;
+                $substance_2->save();
+            }
+
+            $substance_1->commitTransaction();
+            $this->alert->success('Relation between ' . $substance_1->name . ' and ' . $substance_2->name . ' was labeled as nonduplicity.');
+        }
+        catch(Exception $e)
+        {   
+            $substance_1->rollbackTransaction();
+            $this->alert->error($e);
+        }
+
+        $this->redirect('validator/3/1/' . $substance_1->id);
     }
 }

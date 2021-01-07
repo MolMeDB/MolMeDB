@@ -410,6 +410,45 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
 
         return $result;
     }
+
+    /**
+     * Returns changes in object
+     * 
+     * @return Iterable_object|array
+     */
+    public function get_changes($as_array = FALSE)
+    {
+        $prev_data = $this->old_data;
+        $curr_data = new Iterable_object($this->data);
+        $diff = array();
+        $mss = "x@#sd#";
+
+        // print_r($curr_data);
+
+        foreach($prev_data as $p_key => $p_val)
+        {
+            if(is_array($p_val) || is_object($p_val))
+            {
+                continue;
+            }
+
+            $str_val = $p_val === NULL ? "NULL" : trim(strval($p_val));
+            $curr_str_val = !is_array($curr_data->$p_key) && !is_object($curr_data->$p_key) ? ($curr_data->$p_key === NULL || trim(strval($curr_data->$p_key)) === '' ? "NULL" : trim(strval($curr_data->$p_key))) : $mss;
+
+            // echo $p_key . ' - ' . $str_val . ' / ' . $curr_str_val . '<br/>';
+
+            if($curr_str_val !== $mss && $curr_str_val !== $str_val)
+            {
+                $diff[$p_key] = array
+                (
+                    'prev' => $str_val,
+                    'curr' => $curr_str_val
+                );
+            }
+        }
+
+        return $as_array ? $diff : new Iterable_object($diff, true);
+    }
 }
 
 

@@ -441,7 +441,8 @@ class Db extends Iterable_object
     /**
      * IN for MYSQL QUERY BUILDER
      * 
-     * @param $data
+     * @param $attr
+     * @param $vals
      */
     public function in($attr, $vals)
     {
@@ -553,6 +554,8 @@ class Db extends Iterable_object
             {
                 $attr = trim($attr);
 
+                // echo($attr . ' / ' . $val . '<br/>');
+
                 if (count(explode(' ', $attr)) > 1) 
                 {
                     if ($val == "NULL") {
@@ -562,10 +565,13 @@ class Db extends Iterable_object
                     {
                         $this->where .= $attr . ' "' . $val . '"';
                     }
+
+                    // echo($this->where . '<br/>');
                 } 
                 else if(strtoupper($val) === 'NULL' || $val === NULL)
                 {
                     $this->where .= $attr . ' IS NULL';
+                    // echo($this->where . '<br/>');
                 }
                 else if(is_numeric($attr))
                 {
@@ -576,19 +582,23 @@ class Db extends Iterable_object
                     }
                     
                     $this->where .= " $val";
+                    // echo($this->where . '<br/>');
                 }
                 else 
                 {
                     $this->where .= $attr . ' = "' . $val . '"';
+                    // echo($this->where . '<br/>');
                 }
 
                 if(substr(trim($this->where), -2) != "OR" && substr(trim($this->where), -1) != '(')
                 {
                     $this->where .= ' AND ';
+                    // echo($this->where . '<br/>');
                 }
                 else
                 {
                     $this->where .= ' ';
+                    // echo($this->where . '<br/>');
                 }
             }
         }
@@ -725,10 +735,15 @@ class Db extends Iterable_object
                 continue;
             }
 
+            if(!is_object($val) && !is_array($val) && trim(strval($val)) === '')
+            {
+                $val = NULL;
+            }
+
             // If change is recognized
             if (array_key_exists($key, $old_data) && $old_data[$key] !== $val && !is_object($val) && !is_array($val)) // Improve required
             {
-                $new_data[$key] = trim($val);
+                $new_data[$key] = $val === NULL ? NULL : trim($val);
             }
         }
 

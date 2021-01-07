@@ -76,15 +76,7 @@ abstract class Controller
      */
     public function addMessageWarning($message)
     {
-        if(!$message || $message == '')
-        {
-            return;
-        }
-        
-        if (isset($_SESSION['Warning_messages']))
-            $_SESSION['Warning_messages'][] .= $message;
-        else
-            $_SESSION['Warning_messages'] = array($message);
+        $this->alert->warning($message);
     }
     
     /**
@@ -94,15 +86,7 @@ abstract class Controller
      */
     public function addMessageSuccess($message)
     {
-        if(!$message || $message == '')
-        {
-            return;
-        }
-
-        if (isset($_SESSION['Success_messages']))
-            $_SESSION['Success_messages'][] .= $message;
-        else
-            $_SESSION['Success_messages'] = array($message);
+        $this->alert->success($message);
     }
     
     /**
@@ -112,81 +96,9 @@ abstract class Controller
      */
     public function addMessageError($message)
     {
-        if(!$message || $message == '')
-        {
-            return;
-        }
-
-        if (isset($_SESSION['Error_messages']))
-            $_SESSION['Error_messages'][] .= $message;
-        else
-            $_SESSION['Error_messages'] = array($message);
+        $this->alert->error($message);
     }
 
-    /**
-     * Get all current messages
-     * 
-     * @return array
-     */
-    public static function returnMessages()
-    {
-        $result = array();
-        
-        // Process success messages
-        if(isset($_SESSION['Success_messages']))
-        {
-            $Success_messages = $_SESSION['Success_messages'];
-            unset($_SESSION['Success_messages']);
-
-            foreach($Success_messages as $m)
-            {
-                $result[] = self::makeMessage($m, self::MESSAGE_TYPE_SUCCESS);
-            }
-        }
-       
-        // Process error messages
-        if(isset($_SESSION['Error_messages']))
-        {
-            $Error_messages = $_SESSION['Error_messages'];
-            unset($_SESSION['Error_messages']);
-
-            foreach($Error_messages as $m)
-            {
-                $result[] = self::makeMessage($m, self::MESSAGE_TYPE_ERROR);
-            }
-        }
-        
-        // Process warning messages
-        if(isset($_SESSION['Warning_messages']))
-        {
-            $Warning_messages = $_SESSION['Warning_messages'];
-            unset($_SESSION['Warning_messages']);
-
-            foreach($Warning_messages as $m)
-            {
-                $result[] = self::makeMessage($m, self::MESSAGE_TYPE_WARNING);
-            }
-        }
-        
-        return $result;
-    }
-    
-    /**
-     * Makes message element
-     * 
-     * @param string $text
-     * @param string $type
-     * 
-     * @return HTML_string
-     */
-    private static function makeMessage($text = '', $type = self::MESSAGE_TYPE_SUCCESS)
-    {
-        return  '<div class="alert alert-' . $type . ' alert dismissable fade in" >'
-                . '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>'
-                . $text
-                . '</div>';
-    }
-    
     /**
      * Verify user status
      * 

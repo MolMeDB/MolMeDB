@@ -6,27 +6,26 @@
  */
 function find3DStructure(db, id)
 {
-    var id = document.getElementById(db).value;
     var field = document.getElementById("fileURL");
     var post_inp = document.getElementById("post_url");
     
     switch(db)
     {
         case "pdb":
-            field.setAttribute("value", "https://files.rcsb.org/ligands/view/" + id + "_model.sdf");
-            post_inp.setAttribute("value", "https://files.rcsb.org/ligands/view/" + id + "_model.sdf");
+            field.setAttribute("value", "PDB");
+            post_inp.setAttribute("value", "pdb");
             break;
         case "pubchem":
-            field.setAttribute("value", "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/" + id + "/record/SDF/?record_type=3d&response_type=display");
-            post_inp.setAttribute("value", "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/" + id + "/record/SDF/?record_type=3d&response_type=display");
+            field.setAttribute("value", "Pubchem");
+            post_inp.setAttribute("value", "pubchem");
             break;
         case "drugbank":
-            field.setAttribute("https://www.drugbank.ca/structures/small_molecule_drugs/" + id + ".mol");
-            post_inp.setAttribute("https://www.drugbank.ca/structures/small_molecule_drugs/" + id + ".mol");
+            field.setAttribute("value","Drugbank");
+            post_inp.setAttribute("value","drugbank");
             break;
-        case "chEBI":
-            field.setAttribute("http://www.ebi.ac.uk/chebi/saveStructure.do?defaultImage=true&chebiId=" + id + "&imageId=0");
-            post_inp.setAttribute("http://www.ebi.ac.uk/chebi/saveStructure.do?defaultImage=true&chebiId=" + id + "&imageId=0");
+        case "rdkit":
+            field.setAttribute("value","RDKit");
+            post_inp.setAttribute("value","rdkit");
             break;    
     }
 }

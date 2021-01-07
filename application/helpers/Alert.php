@@ -44,11 +44,11 @@ class Alert
 
         if(isset($_SESSION['success_messages']))
         {
-            $_SESSION['success_messages'][] = __($message);
+            $_SESSION['success_messages'][] = $message;
         }
         else
         {
-            $_SESSION['success_messages'] = array(__($message));
+            $_SESSION['success_messages'] = array($message);
         }
     }
 
@@ -66,11 +66,11 @@ class Alert
 
         if(isset($_SESSION['warning_messages']))
         {
-            $_SESSION['warning_messages'][] = __($message);
+            $_SESSION['warning_messages'][] = $message;
         }
         else
         {
-            $_SESSION['warning_messages'] = array(__($message));
+            $_SESSION['warning_messages'] = array($message);
         }
     }
 
@@ -88,11 +88,11 @@ class Alert
 
         if(isset($_SESSION['error_messages']))
         {
-            $_SESSION['error_messages'][] = __($message);
+            $_SESSION['error_messages'][] = $message;
         }
         else
         {
-            $_SESSION['error_messages'] = array(__($message));
+            $_SESSION['error_messages'] = array($message);
         }
     }
 
@@ -104,7 +104,7 @@ class Alert
     public function get_all()
     {
         $result = '';
-        $close = '<span class="alert-close" onclick="this.parentElement.style.display=\'none\'">&times;</span>';
+        $close = '<a href="#" class="close" data-dismiss="alert" aria-label="close">×</a>';
         
         if(isset($_SESSION['success_messages']))
         {
@@ -113,9 +113,9 @@ class Alert
             
             foreach($messages as $m)
             {
-                $result .= '<div class="alert-success">'
-                . $m
+                $result .= '<div class="alert alert-success dismissable fade in">'
                 . $close
+                . $m
                 . '</div>';
             }
         }
@@ -127,9 +127,9 @@ class Alert
             
             foreach($messages as $m)
             {
-                $result .= '<div class="alert-danger">'
-                . $m
+                $result .= '<div class="alert alert-danger dismissable fade in">'
                 . $close
+                . $m
                 . '</div>';
             }
         }
@@ -141,9 +141,9 @@ class Alert
             
             foreach($messages as $m)
             {
-                $result .= '<div class="alert-warning">'
-                . $m
+                $result .= '<div class="alert alert-warning dismissable fade in">'
                 . $close
+                . $m
                 . '</div>';
             }
         }

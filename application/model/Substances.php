@@ -21,12 +21,18 @@
  * @property integer $user_id
  * @property integer $validated
  * @property integer $prev_validation_state
+ * @property integer $waiting
+ * @property integer $invalid_structure_flag
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
  */
 class Substances extends Db
 {
+    /** INVALID STRUCTURE CONSTANTS */
+    const INVALID_STRUCTURE = 1;
+    const VALIDATED_STRUCTURE = 2;
+
     /**
      * Constructor
      */
@@ -78,6 +84,82 @@ class Substances extends Db
         }
         
         return $res;
+    }
+
+
+    /**
+     * Returns substances without interaction data
+     * 
+     * @return array
+     */
+    public function get_empty_substances()
+    {
+        $method_model = new Methods();
+        $method = $method_model->get_by_type(Methods::PUBCHEM_LOGP_TYPE);
+
+        if(!$method || !$method->id)
+        {
+            return [];
+        }
+
+        $result = [];
+
+        $d = $this->queryAll('
+            SELECT DISTINCT id 
+            FROM
+            (
+                SELECT s.id, i.id as iid, t.id as tid
+                FROM substances s
+                LEFT JOIN interaction i ON i.id_substance = s.id AND i.id_method != ?
+                LEFT JOIN transporters t ON t.id_substance = s.id
+                GROUP BY id
+            ) as t
+            WHERE t.iid IS NULL AND t.tid IS NULL
+        ', array($method->id));
+
+        foreach($d as $r)
+        {
+            $result[] = $r->id;
+        }
+
+        return $result;
+    }
+
+
+    /**
+     * Returns substance_ids which are labeled as nonduplicity
+     * 
+     * @return array
+     */
+    public function get_non_duplicities()
+    {
+        $result = [];
+
+        $d1 = $this->queryAll('
+            SELECT DISTINCT id_substance_2 as id
+            FROM validations
+            WHERE id_substance_1 = ? AND active = 0
+        ', array($this->id));
+
+        $d2 = $this->queryAll('
+            SELECT DISTINCT id_substance_1 as id
+            FROM validations
+            WHERE id_substance_2 = ? AND active = 0
+        ', array($this->id));
+
+        foreach($d1 as $r)
+        {
+            $result[] = $r->id;
+        }
+        foreach($d2 as $r)
+        {
+            if(!in_array($r->id, $result))
+            {
+                $result[] = $r->id;
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -605,7 +687,7 @@ class Substances extends Db
             $substance->save();
 		}	
     }
-    
+
     /**
      * Label given substance as possible duplicity for current object
      * 
@@ -641,6 +723,7 @@ class Substances extends Db
         // Label molecule as possible duplicity
         $this->prev_validation_state = $this->validated;
         $this->validated = Validator::POSSIBLE_DUPLICITY;
+        $this->waiting = 1;
         $this->save();
     }
 }

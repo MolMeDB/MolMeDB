@@ -10,7 +10,7 @@ class Scheduler_report
     const T_SUBSTANCE = 1;
 
     /** HEADER COLUMNS */
-    const FIRST_COL = 'Detail';
+    const FIRST_COL = 'Substance';
     const COL_REPORT = 'Error report';
 
     /** Holds info about current type */

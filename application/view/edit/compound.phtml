@@ -9,12 +9,14 @@
         <label>SMILES</label>
         <a style="cursor: pointer;" title="Canonize SMILES" class="glyphicon glyphicon-link" onclick="canonize_smiles('<?= $detail->SMILES ?>', 'SMILES')"></a>
         <input type="text" class="form-control" id="SMILES" name="SMILES" value="<?= $detail->SMILES ?>">
+        <label>Inchikey</label>
+        <input type="text" class="form-control" name="inchikey" id="inchikey" value="<?= $detail->inchikey ?>">
         <label>MW [Da]</label>
         <input type="text" class="form-control" name="MW" id="MW" value="<?= $detail->MW ?>">
-        <label>Volume [<span>&#8491;</span><sup>3</sup>]</label>
+        <!-- <label>Volume [<span>&#8491;</span><sup>3</sup>]</label>
         <input type="text" class="form-control" name="Volume" id="Volume" value="<?= $detail->Volume ?>">
         <label>Area [<span>&#8491;</span><sup>2</sup>]</label>
-        <input type="text" class="form-control" name="Area" id="Area" value="<?= $detail->Area ?>">
+        <input type="text" class="form-control" name="Area" id="Area" value="<?= $detail->Area ?>"> -->
         <label><b>LogP <label class="units">[1]</label></b></label>
         <input type="text" class="form-control" name="LogP" id="LogP" value="<?= $detail->LogP ?>">
 
@@ -52,8 +54,17 @@
                         <div class="dropdown">
                             <button type="button" class="dropbtn">Web-source</button>
                             <div class="dropdown-content">
-                                <?php if ($detail->pubchem != '') : ?>
+                                <?php if ($detail->pubchem) : ?>
                                     <a onclick="find3DStructure('pubchem', '<?= $detail->pubchem ?>')">PubChem</a>
+                                <?php endif ?>
+                                <?php if ($detail->drugbank) : ?>
+                                    <a onclick="find3DStructure('drugbank', '<?= $detail->pubchem ?>')">Drugbank</a>
+                                <?php endif ?>
+                                <?php if ($detail->SMILES) : ?>
+                                    <a onclick="find3DStructure('rdkit', '<?= $detail->pubchem ?>')">RDKit</a>
+                                <?php endif ?>
+                                <?php if ($detail->pdb) : ?>
+                                    <a onclick="find3DStructure('pdb', '<?= $detail->pubchem ?>')">PDB</a>
                                 <?php endif ?>
                             </div>
                         </div>
@@ -66,50 +77,130 @@
 </div>
 
 <div class="col-md-12 content">
-    <h3 style="text-align: center;"><b>Interactions</b></h3>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <td align="center"><b>Delete</b></td>
-                <td align="center"><b>Edit</b></td>
-                <td><b>ID</b></td>
-                <td><b>Dataset</b></td>
-                <td><b>Membrane</b></td>
-                <td><b>Method</b></td>
-                <td><b>T [°C]</b></td>
-                <td><b>Q</b></td>
-                <td><b>Reference</b></td>
-                <td><b>X_min</b></td>
-                <td><b>G_pen</b></td>
-                <td><b>G_wat</b></td>
-                <td><b>LogK</b></td>
-                <td><b>LogPerm</b></td>
-            </tr>
-        </thead>
-        <tbody>
-            <?php $i = 0;
-            foreach ($interactions_all as $int) : ?>
-                <tr>
-                    <td align="center"><span onclick="alert_window('Are you sure you want to delete a record (ID = <?= $int->id ?>)?', 'delete/interaction/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span></td>
-                    <td align="center"><span onclick="redirect('edit/interaction/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>')" style="text-align: center; color: green; cursor:pointer;" class="glyphicon glyphicon-edit"></span></td>
-                    <td><?= $int->id ?></td>
-                    <td style="text-align: center;"><a href="/edit/dataset/<?= $int->id_dataset ?>" target="_blank"><?= $int->id_dataset ?></a></td>
-                    <td><?= $int->membrane->name ?></td>
-                    <td><?= $int->method->name ?></td>
-                    <td><?= $int->temperature ?></td>
-                    <td><?= $int->charge ?></td>
-                    <td style="text-align: center;">
-                        <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $int->id_reference ? $int->id_reference : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $int->reference->citation ?></span></div>
-                    </td>
-                    <td><?= $int->Position ?></td>
-                    <td><?= $int->Penetration ?></td>
-                    <td><?= $int->Water ?></td>
-                    <td><?= $int->LogK ?></td>
-                    <td><?= $int->LogPerm ?></td>
-                </tr>
-            <?php endforeach ?>
-        </tbody>
-    </table>
+    <div class="btn-group btn-group-justified">
+        <div class="tab btn btn-primary active" data-target="tab_interactions">Interactions (<?= count($interactions_all) ?>)</div>
+        <div class="tab btn btn-primary" data-target="tab_transporters">Transporters (<?= count($transporters_all) ?>)</div>
+        <div class="tab btn btn-primary" data-target="tab_logs">Logs (<?= count($logs) ?>)</div>
+    </div>
+
+    <div class="tab-contents">
+        <div id="tab_interactions" class="tab_detail">
+            <h3 style="text-align: center;"><b>Interactions</b></h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <td align="center"><b>Delete</b></td>
+                        <td align="center"><b>Edit</b></td>
+                        <td><b>ID</b></td>
+                        <td><b>Dataset</b></td>
+                        <td><b>Membrane</b></td>
+                        <td><b>Method</b></td>
+                        <td><b>T [°C]</b></td>
+                        <td><b>Q</b></td>
+                        <td><b>Reference</b></td>
+                        <td><b>X_min</b></td>
+                        <td><b>G_pen</b></td>
+                        <td><b>G_wat</b></td>
+                        <td><b>LogK</b></td>
+                        <td><b>LogPerm</b></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $i = 0;
+                    foreach ($interactions_all as $int) : ?>
+                        <tr>
+                            <td align="center"><span onclick="alert_window('Are you sure you want to delete a record (ID = <?= $int->id ?>)?', 'delete/interaction/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span></td>
+                            <td align="center"><span onclick="redirect('edit/interaction/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>')" style="text-align: center; color: green; cursor:pointer;" class="glyphicon glyphicon-edit"></span></td>
+                            <td><?= $int->id ?></td>
+                            <td style="text-align: center;"><a href="/edit/dsInteractions/<?= $int->id_dataset ?>" target="_blank"><?= $int->id_dataset ?></a></td>
+                            <td><?= $int->membrane->name ?></td>
+                            <td><?= $int->method->name ?></td>
+                            <td><?= $int->temperature ?></td>
+                            <td><?= $int->charge ?></td>
+                            <td style="text-align: center;">
+                                <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $int->id_reference ? $int->id_reference : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $int->reference->citation ?></span></div>
+                            </td>
+                            <td><?= $int->Position ?></td>
+                            <td><?= $int->Penetration ?></td>
+                            <td><?= $int->Water ?></td>
+                            <td><?= $int->LogK ?></td>
+                            <td><?= $int->LogPerm ?></td>
+                        </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
+        <div style="display:none;" class="tab_detail" id="tab_transporters">
+            <h3 style="text-align: center;"><b>Transporters</b></h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <td align="center"><b>Delete</b></td>
+                        <td align="center"><b>Edit</b></td>
+                        <td><b>ID</b></td>
+                        <td><b>Dataset</b></td>
+                        <td><b>Uniprot ID</b></td>
+                        <td><b>Type</b></td>
+                        <td><b>pKm</b></td>
+                        <td><b>pEC<sub>50</sub>50</b></td>
+                        <td><b>pK<sub>i</sub></b></td>
+                        <td><b>pIC<sub>50</sub></b></td>
+                        <td><b>Primary reference</b></td>
+                        <td><b>Secondary reference</b></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $i = isset($i) ? $i : 0;
+                    foreach ($transporters_all as $t) : ?>
+                        <tr>
+                            <!-- <td align="center"><span onclick="alert_window('Are you sure you want to delete a record (ID = <?= $t->id ?>)?', 'delete/transporter/<?= $t->id ?>?redirection=edit/compound/<?= $detail->id ?>', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span></td> -->
+                            <!-- <td align="center"><span onclick="redirect('edit/transporter/<?= $t->id ?>?redirection=edit/compound/<?= $detail->id ?>')" style="text-align: center; color: green; cursor:pointer;" class="glyphicon glyphicon-edit"></span></td> -->
+                            <td></td>
+                            <td></td>
+                            <td><?= $t->id ?></td>
+                            <td style="text-align: center;"><a href="/edit/dsTransporters/<?= $t->id_dataset ?>" target="_blank"><?= $t->id_dataset ?></a></td>
+                            <td><?= $t->target->uniprot_id ?></td>
+                            <td><?= Transporters::get_type_from_shortcut($t->type) ?></td>
+                            <td><?= $t->Km ?></td>
+                            <td><?= $t->EC50 ?></td>
+                            <td><?= $t->Ki ?></td>
+                            <td><?= $t->IC50 ?></td>
+                            <td style="text-align: center;">
+                                <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $t->id_reference ? $t->id_reference : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $t->reference->citation ?></span></div>
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $t->dataset->id_reference ? $t->dataset->id_reference : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $t->dataset->reference->citation ?></span></div>
+                            </td>
+                        </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
+        <div style="display:none;" class="tab_detail" id="tab_logs">
+            <h3 style="text-align: center;"><b>Logs</b></h3>
+            <table class="table table-striped table-limited">
+                <thead>
+                    <tr>
+                        <td><b>Text</b></td>
+                        <td><b>Count</b></td>
+                        <td><b>Last update</b></td>
+                        <td><b>Author</b></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $i = isset($i) ? $i : 0;
+                    foreach ($logs as $log) : ?>
+                        <tr>
+                            <td><?= $log->error_text ?></td>
+                            <td><?= $log->count ?></td>
+                            <td><?= date('d.m.Y H:i:s', strtotime($log->last_update)) ?></td>
+                            <td><?= $log->id_user ? $log->user->name : '' ?></td>
+                        </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script src="js/links.js">
@@ -120,4 +211,22 @@
         var popup = document.getElementById("ref_popup_" + id);
         popup.classList.toggle("show");
     }
+
+    $(document).ready(function() {
+        $('.tab').each(function(i, element)
+        {
+            $(this).on('click', function()
+            {
+                var target_id = $(this).data('target');
+                var target = $('#' + target_id);
+
+                $('.tab_detail').hide();
+                $(target).show();
+
+                $('.tab').removeClass('active');
+
+                $(this).addClass('active');
+            });
+        });
+    });
 </script>

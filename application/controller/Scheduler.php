@@ -117,6 +117,12 @@ class SchedulerController extends Controller
         {
             $total++;
             $substance = new Substances($s_id);
+
+            if(!$substance->id)
+            {
+                continue;
+            }
+
             $molecules[] = [$substance->name];
             $substance->delete();
         }

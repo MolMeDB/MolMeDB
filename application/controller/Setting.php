@@ -187,6 +187,8 @@ class SettingController extends Controller
         $this->data['drugbank_pattern'] = isset($_POST[Configs::DB_DRUGBANK_PATTERN]) ? $_POST[Configs::DB_DRUGBANK_PATTERN] : $this->config->get(Configs::DB_DRUGBANK_PATTERN);
         $this->data['pdb_pattern'] = isset($_POST[Configs::DB_PDB_PATTERN]) ? $_POST[Configs::DB_PDB_PATTERN] : $this->config->get(Configs::DB_PDB_PATTERN);
         $this->data['pubchem_pattern'] = isset($_POST[Configs::DB_PUBCHEM_PATTERN]) ? $_POST[Configs::DB_PUBCHEM_PATTERN] : $this->config->get(Configs::DB_PUBCHEM_PATTERN);
+        $this->data['chembl_pattern'] = isset($_POST[Configs::DB_CHEMBL_PATTERN]) ? $_POST[Configs::DB_CHEMBL_PATTERN] : $this->config->get(Configs::DB_CHEMBL_PATTERN);
+        $this->data['chebi_pattern'] = isset($_POST[Configs::DB_CHEBI_PATTERN]) ? $_POST[Configs::DB_CHEBI_PATTERN] : $this->config->get(Configs::DB_CHEBI_PATTERN);
         $this->header['title'] = 'Settings';
         $this->view = 'settings/system';
     }

@@ -56,11 +56,11 @@ class SchedulerController extends Controller
             }
 
             // ---- Molecules data autofill ---- //
-            if($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 3)) // Run only once per hour and only at night
-            {
+            // if($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 3)) // Run only once per hour and only at night
+            // {
                 echo "Subtance validations is running. \n";
                 $this->substance_autofill_missing_data($time->get_hour() % 2);
-            }
+            // }
 
             // Checks interactions datasets
             if($time->is_hour(4) && $time->is_minute(1))
@@ -371,8 +371,13 @@ class SchedulerController extends Controller
         $rdkit = new Rdkit();
         $fileModel = new File();
         $unichem = new UniChem();
+        $pubchem_model = new Pubchem();
+        $chembl_model = new Chembl();
+        $pdb_model = new PDB();
+        $drugbank_model = new Drugbank();
 
         // Init log
+        $error_record = new Scheduler_errors();
         $scheduler_log = new Log_scheduler();
         $scheduler_log->type = Log_scheduler::T_SUBSTANCE_FILL;
         $scheduler_log->error_count = 0;
@@ -422,6 +427,9 @@ class SchedulerController extends Controller
         {
             try
             {
+                // Check name if contains some identifier
+                self::check_name_for_identifiers($s);
+
                 if($s->validated == Validator::VALIDATED)
                 {
                     $s->prev_validation_state = Validator::VALIDATED;
@@ -553,7 +561,7 @@ class SchedulerController extends Controller
                             $filled = false;
 
                             // Check duplicities
-                            if($pubchem = $s->pubchem ? $s->pubchem : $identifiers->pubchem)
+                            if($pubchem = $s->pubchem ? $s->pubchem : Upload_validator::get_attr_val(Upload_validator::PUBCHEM, $identifiers->pubchem))
                             {
                                 $filled = $pubchem !== $s->pubchem ? true : $filled;
 
@@ -593,7 +601,7 @@ class SchedulerController extends Controller
                                     throw new Exception($err_text);
                                 }
                             }
-                            if($drugbank = $s->drugbank ? $s->drugbank : $identifiers->drugbank)
+                            if($drugbank = $s->drugbank ? $s->drugbank : Upload_validator::get_attr_val(Upload_validator::DRUGBANK, $identifiers->drugbank))
                             {
                                 $filled = $drugbank !== $s->drugbank ? true : $filled;
 
@@ -633,7 +641,7 @@ class SchedulerController extends Controller
                                     throw new Exception($err_text);
                                 }
                             }
-                            if($chebi = $s->chEBI ? $s->chEBI : $identifiers->chebi)
+                            if($chebi = $s->chEBI ? $s->chEBI : Upload_validator::get_attr_val(Upload_validator::CHEBI_ID, $identifiers->chebi))
                             {
                                 $filled = $chebi !== $s->chEBI ? true : $filled;
 
@@ -673,7 +681,7 @@ class SchedulerController extends Controller
                                     throw new Exception($err_text);
                                 }
                             }
-                            if($chembl = $s->chEMBL ? $s->chEMBL : $identifiers->chembl)
+                            if($chembl = $s->chEMBL ? $s->chEMBL : Upload_validator::get_attr_val(Upload_validator::CHEMBL_ID, $identifiers->chembl))
                             {
                                 $filled = $chembl !== $s->chEMBL ? true : $filled;
 
@@ -713,7 +721,7 @@ class SchedulerController extends Controller
                                     throw new Exception($err_text);
                                 }
                             }
-                            if($pdb = $s->pdb ? $s->pdb : $identifiers->pdb)
+                            if($pdb = $s->pdb ? $s->pdb : Upload_validator::get_attr_val(Upload_validator::PDB, $identifiers->pdb))
                             {
                                 $filled = $pdb !== $s->pdb ? true : $filled;
 
@@ -794,6 +802,39 @@ class SchedulerController extends Controller
                 } 
                 /// END OF FINDING IDENTIFIERS
 
+                /// FILL NAME IF MISSING
+                // If instead of name is filled identifier, try to find name in another DB
+                if(Identifiers::is_identifier($s->name))
+                {
+                    $sources = array
+                    (
+                        "pubchem" => $pubchem_model
+                    );
+
+                    foreach($sources as $key => $source)
+                    {
+                        if($s->$key && $source->is_connected())
+                        {
+                            $data = $source->get_data($s->$key);
+
+                            if($data && $data->name)
+                            {
+                                $name = Upload_validator::get_attr_val(Upload_validator::NAME, $data->name);
+
+                                if($name && $name != "")
+                                {
+                                    $error_record->add($s->id, 'Name [' . $name . '] found on ' . $key . ' server.');
+                                    $s->name = $name;
+                                    $s->save();
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                /// END OF NAME FILL
+
                 // Try to find LogPs from another DBs
                 if($s->validated < Validator::LogP_FILLED)
                 {
@@ -815,7 +856,6 @@ class SchedulerController extends Controller
                     $report->add($s->identifier, $e->getMessage());
                 }
 
-                $error_record = new Scheduler_errors();
                 $error_record->add($s->id, $e->getMessage());
             }
         }
@@ -1125,6 +1165,10 @@ class SchedulerController extends Controller
                     ->in('id NOT', $ignore)
                     ->get_one();
 
+                $substance->pubchem = $remote_data->pubchem_id;
+                $substance->waiting = 1;
+                $substance->save();
+
                 if($exists->id)
                 {
                     $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pubchem_id = $remote_data->pubchem_id.";
@@ -1132,10 +1176,6 @@ class SchedulerController extends Controller
 
                     throw new Exception($err_text);
                 }
-
-                $substance->pubchem = $remote_data->pubchem_id;
-                $substance->waiting = 1;
-                $substance->save();
 
                 throw new Exception("Added pubchem_id. Waiting for validation.");
             }
@@ -1169,5 +1209,46 @@ class SchedulerController extends Controller
         $substance->save();
 
         throw new Exception("Cannot find SMILES.");
+    }
+
+    /**
+     * Checks, if identifier is not in name 
+     * If yes, then fill missing column
+     * 
+     * @param Substances $substance
+     */
+    private static function check_name_for_identifiers($substance)
+    {
+        $err = new Scheduler_errors();
+
+        $name = trim($substance->name);
+
+        // if(Upload_validator::check_identifier_format($name, Upload_validator::PUBCHEM, True) && !$substance->pubchem)
+        // {
+        //     $err->add($substance->id, 'Added pubchem_id in molecule name = ' . $name . '.');
+        //     $substance->pubchem = $name;
+        // }
+        // elseif(Upload_validator::check_identifier_format($name, Upload_validator::PDB, True) && !$substance->pdb)
+        // {
+        //     $err->add($substance->id, 'Added pdb_id in molecule name = ' . $name . '.');
+        //     $substance->pdb = $name;
+        // }
+        if(Upload_validator::check_identifier_format($name, Upload_validator::DRUGBANK, True) && !$substance->drugbank)
+        {
+            $err->add($substance->id, 'Added drugbank_id in molecule name = ' . $name . '.');
+            $substance->drugbank = $name;
+        }
+        elseif(Upload_validator::check_identifier_format($name, Upload_validator::CHEMBL_ID, True) && !$substance->chEMBL)
+        {
+            $err->add($substance->id, 'Added chembl_id in molecule name = ' . $name . '.');
+            $substance->chEMBL = $name;
+        }
+        // elseif(Upload_validator::check_identifier_format($name, Upload_validator::CHEBI_ID, True) && !$substance->chEBI)
+        // {
+        //     $err->add($substance->id, 'Added chebi_id in molecule name = ' . $name . '.');
+        //     $substance->chEBI = $name;
+        // }
+
+        $substance->save();
     }
 }

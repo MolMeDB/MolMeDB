@@ -85,6 +85,11 @@ class Scheduler_errors extends Db
             $diff = $diff->as_array();
         }
 
+        if(empty($diff) || !count($diff))
+        {
+            return;
+        }
+
         $log = new Scheduler_errors();
 
         $user_id = isset($_SESSION['user']) && isset($_SESSION['user']['id']) ? $_SESSION['user']['id'] : NULL;

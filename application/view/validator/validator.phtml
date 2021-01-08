@@ -81,7 +81,7 @@
     <div class='col-md-6'>
         <?php if($detail && count($detail)) : ?>
             <h2><?= html::anchor('mol/' . $detail[0]->identifier, $detail[0]->name, true) ?></h2>
-            <h4>Compound reports</h4>
+            <h4>Compound reports [state = <?= $detail[0]->validated ?>]</h4>
             <?php if($detail[0]->waiting && $detail[0]->validated !== Validator::POSSIBLE_DUPLICITY) : ?>
                 <button type='button' onclick='redirect("validator/validate_state/<?=$detail[0]->id ?>")' class='btn btn-sm btn-success'>Validate current state</button>
             <?php endif ?>

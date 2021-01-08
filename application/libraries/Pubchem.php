@@ -202,7 +202,7 @@ class Pubchem
 
                 return (object)array
                 (
-                    'pubchem_id'    => $data->CID,
+                    'pubchem_id'    => Upload_validator::get_attr_val(Upload_validator::PUBCHEM, $data->CID),
                     'SMILES'        => $smiles,
                     'name'          => $data->IUPACName,
                 );
@@ -250,7 +250,7 @@ class Pubchem
                 $smiles = $data->CanonicalSMILES ? $data->CanonicalSMILES : NULL;
                 $smiles = !$smiles && $data->IsomericSMILES ? $data->IsomericSMILES : $smiles;
 
-                return (object)array
+                return new Iterable_object(array
                 (
                     'pubchem_id'    => $data->CID,
                     'MW'            => $data->MolecularWeight,
@@ -258,7 +258,7 @@ class Pubchem
                     'inchikey'      => $data->InChIKey,
                     'name'          => $data->IUPACName,
                     'logP'          => $data->XLogP
-                );
+                ));
             }
 
             return NULL;

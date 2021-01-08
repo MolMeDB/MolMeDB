@@ -17,6 +17,8 @@ class Configs extends Db
     const DB_DRUGBANK_PATTERN = 'db_drugbank_pattern';
     const DB_PUBCHEM_PATTERN = 'db_pubchem_pattern';
     const DB_PDB_PATTERN = 'db_pdb_pattern';
+    const DB_CHEMBL_PATTERN = 'db_chembl_pattern';
+    const DB_CHEBI_PATTERN = 'db_chebi_pattern';
     
     // Scheduler attributes
     const S_ACTIVE = 'scheduler_active';
@@ -45,6 +47,8 @@ class Configs extends Db
         self::LAST_SMILES_UPDATE,
         self::DB_DRUGBANK_PATTERN,
         self::DB_PUBCHEM_PATTERN,
+        self::DB_CHEBI_PATTERN,
+        self::DB_CHEMBL_PATTERN,
         self::DB_PDB_PATTERN,
         self::S_ACTIVE,
         self::S_SMILES_VALIDATIONS,
@@ -68,6 +72,8 @@ class Configs extends Db
         self::DB_DRUGBANK_PATTERN,
         self::DB_PUBCHEM_PATTERN,
         self::DB_PDB_PATTERN,
+        self::DB_CHEBI_PATTERN,
+        self::DB_CHEMBL_PATTERN,
     );
     
     /**

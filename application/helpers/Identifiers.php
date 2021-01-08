@@ -4,7 +4,7 @@ class Identifiers
 {
 	CONST PREFIX = 'MM';
 	CONST min_len = 7;
-	CONST PATTERN = '/^MM{1}[0-9]+/';
+	CONST PATTERN = '/^MM{1}[0-9]+$/';
 	
 	/**
 	 * Generates new identifier
@@ -33,8 +33,7 @@ class Identifiers
 		else
 		{
 			return $identifier;
-		}
-		
+		}	
 	}
 
 	/**
@@ -76,4 +75,23 @@ class Identifiers
 
 		return preg_match(self::PATTERN, $identifier);
 	}
+
+	/**
+	 * Checks, if given string is known identifier form
+	 * 
+	 * @param string $string
+	 * 
+	 * @return boolean
+	 */
+	public static function is_identifier($string)
+	{
+		$string = trim($string);
+
+		return self::is_valid($string) || 
+			Upload_validator::check_identifier_format($string, Upload_validator::DRUGBANK, True) ||
+			Upload_validator::check_identifier_format($string, Upload_validator::PUBCHEM, True) ||
+			Upload_validator::check_identifier_format($string, Upload_validator::PDB, True) ||
+			Upload_validator::check_identifier_format($string, Upload_validator::CHEMBL_ID, True) || 
+			Upload_validator::check_identifier_format($string, Upload_validator::CHEBI_ID, True);
+		}
 }

@@ -8,6 +8,9 @@ class Upload_validator
     /** ROUND NUM DECIMALS */
     const ROUND_DEC = 2;
 
+    /** MAX LENGTH OF SUBSTANCE NAME */
+    const NAME_MAX_LEN = 70;
+
     /** Defines attributes */
     const NAME = 'Name';
     const PRIMARY_REFERENCE = 'Primary_reference';
@@ -296,6 +299,14 @@ class Upload_validator
             case self::SMILES:
                 return self::canonize_smiles($value);
 
+            // NAME CHECK
+            case self::NAME:
+                if(!$value || $value == "" || strlen($value) > self::NAME_MAX_LEN)
+                {
+                    return "";
+                }
+                return $value;
+
             // Type of transporter
             case self::TYPE:
                 if(!Transporters::is_valid_shortcut($value))
@@ -328,6 +339,24 @@ class Upload_validator
                 };
                 return $value;
 
+            // Check CHEMBL ID validity
+            case self::CHEMBL_ID:
+                $value = is_numeric($value) ? 'CHEMBL' . $value : $value;
+                if(!self::check_identifier_format($value, self::CHEMBL_ID))
+                {
+                    throw new Exception('Wrong CHEMBL ID format - ' . $value . '.');
+                };
+                return $value;
+
+            // Check Pubchem ID validity
+            case self::CHEBI_ID:
+                $value = ltrim($value, 'CHEBI:');
+                if(!self::check_identifier_format($value, self::CHEBI_ID))
+                {
+                    throw new Exception('Wrong CHEBI ID format - ' . $value . '.');
+                };
+                return $value;
+
             default:
                 return trim($value) != '' ? $value : NULL;
         }
@@ -341,7 +370,7 @@ class Upload_validator
      * 
      * @return boolean
      */
-    public static function check_identifier_format($val, $type)
+    public static function check_identifier_format($val, $type, $non_empty_patterns = False)
     {
         if(!in_array($type, self::$db_identifiers))
         {
@@ -371,11 +400,19 @@ class Upload_validator
             case self::PUBCHEM:
                 $pattern = $config->get(Configs::DB_PUBCHEM_PATTERN);
                 break;
+
+            case self::CHEMBL_ID:
+                $pattern = $config->get(Configs::DB_CHEMBL_PATTERN);
+                break;
+
+            case self::CHEBI_ID:
+                $pattern = $config->get(Configs::DB_CHEBI_PATTERN);
+                break;
         }
 
         if(!$pattern || $pattern == "")
         {
-            return True;
+            return !$non_empty_patterns;
         }
 
         return preg_match($pattern, $val);

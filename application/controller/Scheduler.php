@@ -469,8 +469,8 @@ class SchedulerController extends Controller
 
                     $canonized = $data->canonized_smiles;
                     $inchikey = $data->inchi;
-                    $MW = $data->MW;
-                    $logP = $data->LogP;
+                    $MW = Upload_validator::get_attr_val(Upload_validator::MW, $data->MW);
+                    $logP = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->LogP);
 
                     // Check duplicities
                     if($canonized)
@@ -986,7 +986,7 @@ class SchedulerController extends Controller
 
                     if($exists->id)
                     {
-                        $exists->LogK = $data->logP;
+                        $exists->LogK = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->logP);
                         $exists->save();
                     }
                     else
@@ -998,7 +998,7 @@ class SchedulerController extends Controller
                         $interaction->id_method = $method->id;
                         $interaction->id_dataset = $dataset->id;
                         $interaction->id_reference = $publication->id;
-                        $interaction->LogK = $data->logP;
+                        $interaction->LogK = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->logP);
                         $interaction->temperature = NULL;
                         $interaction->charge = NULL;
                         $interaction->user_id = NULL;

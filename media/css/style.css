@@ -1985,6 +1985,41 @@ div.validator-compare-table table td:first-child{
     font-weight: bold;
 }
 
+.popup-hover
+{
+    position: relative;
+    cursor:help;
+    margin-left: 5px;
+}
+
+.popup-hover p {
+    margin: 0 !important;
+}
+
+.popup-hover:hover > *
+{
+    display: block;
+}
+
+.popup-hover > *
+{
+    font-size: 11px;
+    font-family:'Courier New', Courier, monospace;
+    font-weight: bold;
+    position: absolute;
+    display: none;
+    top: -5px;
+    left: 20px;
+    padding: 5px;
+    background: #aaa;
+    color: white;
+    min-width: 200px;
+    max-width: 250px;
+    /* -webkit-box-shadow: 0px 0px 5px 1px rgba(0,0,0,0.45);
+    -moz-box-shadow: 0px 0px 5px 1px rgba(0,0,0,0.45);
+    box-shadow: 0px 0px 5px 1px rgba(0,0,0,0.45); */
+}
+
 .popup {
     position: relative;
     display: inline-block;

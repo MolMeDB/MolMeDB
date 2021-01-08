@@ -60,9 +60,13 @@
                                     <td><b>LogP</b></td>
                                     <td>
                                         <?php if ($substance->LogP == 0) : ?>
-                                            N/A
+                                            N/A 
                                         <?php else : ?>
-                                            <?= $substance->LogP ?>
+                                            <?= $substance->LogP ?> <span class="glyphicon glyphicon-question-sign popup-hover">
+                                                <div>
+                                                    <p>Value is obtained from the RDkit software.</p>
+                                                </div>
+                                            </span>
                                         <?php endif ?>
                                     </td>
                                 </tr>

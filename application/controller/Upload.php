@@ -1004,7 +1004,7 @@ class UploadController extends Controller
             if($new_uploaded < 1)
             {
                 $dataset->delete();
-                $this->addMessageWarning('No newly added interactions. Maybe, some errors occured or only old records was filled in. So, new dataset was not created.');
+                $this->addMessageWarning('No newly added interactions. Maybe, some errors occured or only old records was filled in. New dataset was not created.');
             }
 
             if($new_uploaded != $line)

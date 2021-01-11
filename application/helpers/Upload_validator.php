@@ -9,7 +9,7 @@ class Upload_validator
     const ROUND_DEC = 2;
 
     /** MAX LENGTH OF SUBSTANCE NAME */
-    const NAME_MAX_LEN = 70;
+    const NAME_MAX_LEN = 90;
 
     /** Defines attributes */
     const NAME = 'Name';
@@ -304,9 +304,9 @@ class Upload_validator
             case self::NAME:
                 if(!$value || $value == "" || strlen($value) > self::NAME_MAX_LEN)
                 {
-                    return "";
+                    return NULL;
                 }
-                return $value;
+                return ucfirst($value);
 
             // Type of transporter
             case self::TYPE:

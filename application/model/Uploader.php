@@ -119,8 +119,8 @@ class Uploader extends Db
 
 				// Save identifier and check names
 				$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
-				$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
-				$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
+				$substance->name = !$substance->name || trim($substance->name) == '' ? $substance->identifier : $substance->name;
+				$substance->uploadName = !$substance->uploadName || trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
 
 				$substance->save();
 			}
@@ -156,17 +156,21 @@ class Uploader extends Db
 			}
 
 			// Add altername record if not exists
-			$alterName = new AlterNames();
-
-			$exists = $alterName->where('name LIKE', $ligand)
-				->get_one();
-
-			if(!$exists->id)
+			if($ligand)
 			{
-				$alterName->name = $ligand;
-				$alterName->id_substance = $substance->id;
+				$alterName = new AlterNames();
 
-				$alterName->save();
+				$exists = $alterName->where('name LIKE', $ligand)
+					->debug()
+					->get_one();
+			
+				if(!$exists->id)
+				{
+					$alterName->name = $ligand;
+					$alterName->id_substance = $substance->id;
+
+					$alterName->save();
+				}
 			}
 
 			// try to find interaction
@@ -323,6 +327,16 @@ class Uploader extends Db
 
 		try
 		{
+			if(!$uniprot)
+			{
+				throw new Exception('Missing Uniprot_id value.');
+			}
+
+			if(!$target)
+			{
+				throw new Exception('Missing target value.');
+			}
+
 			if(!$IC50 && !$EC50 && !$KI && !$KM)
 			{
 				throw new Exception('Invalid interaction values.');

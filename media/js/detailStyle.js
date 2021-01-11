@@ -143,7 +143,7 @@ function loadTable(id)
                       '&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>', '&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', 
                       'LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub></label>]', 'LogPerm <br/><label class="units">[cm/s]</label>', 
                       'Theta<br/><label class="units">[°]</label>','Abs_wl<br/><label class="units">[nm]</label>', 'Fluo_wl<br/><label class="units">[nm]</label>',
-                      'QY<br/><label class="units"></label>', 'lt<br/><label class="units">[ns]</label>', 'Primary<br/> reference', 'Secondary<br/> reference', "Note"];
+                      'QY<br/><label class="units"></label>', 'lt<br/><label class="units">[ns]</label>', "Note", 'Primary<br/> reference', 'Secondary<br/> reference'];
     
     var methods = get_all_methods();
     var countMet = methods.length;
@@ -248,9 +248,9 @@ function loadTable(id)
             tr.appendChild(fluo_wl);
             tr.appendChild(QY);
             tr.appendChild(lt);
+            tr.appendChild(note);
             tr.appendChild(primary_ref);
             tr.appendChild(secondary_ref);
-            tr.appendChild(note);
 
             tbody.appendChild(tr);
         }
@@ -337,7 +337,6 @@ function make_textfield_td(content)
 {
     var td = document.createElement("td");
     var text = content;
-    var label = text;
     
     if(text == null)
     {
@@ -346,10 +345,17 @@ function make_textfield_td(content)
     
     if(text.length > 20)
     {
-        text = text.substring(0,15) + "...";
+        td.innerHTML = "<span class='popup-hover'>"  
+             + text.substring(0,15) + "..."
+             + "<div style='margin-left: -10px;'>"
+             + "<p>" + text + "</p>"
+             + "</div>"
+             + "</span>";
     }
-    
-    td.innerHTML = "<p title='" + label + "' class='attribute'>" + text + "</p>";
+    else
+    {
+        td.innerHTML = "<p class='attribute'>" + text + "</p>";
+    }
     
     return td;
 }

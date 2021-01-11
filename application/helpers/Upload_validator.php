@@ -103,6 +103,7 @@ class Upload_validator
     private static $valid_transporter_attrs = array
     (
         self::TARGET,
+        self::COMMENT,
         self::TYPE,
         self::KM,
         self::KM_ACC,

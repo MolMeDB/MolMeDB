@@ -21,5 +21,5 @@ $upgrade_sql = array
    "ALTER TABLE `config` CHANGE `value` `value` TEXT CHARACTER SET utf8 COLLATE utf8_czech_ci NULL;",
    // Remove all DB LOG_P VALUES - will be overwriten by rdkit service logP
    "UPDATE substances SET LogP = NULL;",
-   ""
+   "ALTER TABLE `transporters` ADD `note` TEXT CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL AFTER `type`;"
 );

@@ -314,7 +314,7 @@ class Uploader extends Db
 	 * @author Jakub Juracka
 	 */
 	public function insert_transporter($dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
-		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM, $IC50_acc = NULL, $EC50_acc = NULL, $KI_acc = NULL, $KM_acc = NULL)
+		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM, $IC50_acc = NULL, $EC50_acc = NULL, $KI_acc = NULL, $KM_acc = NULL, $note = NULL)
 
 	{
 		$substanceModel = new Substances();
@@ -427,7 +427,7 @@ class Uploader extends Db
 			$transporter = new Transporters();
 
 			// Check, if already exists
-			$transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $dataset->id_reference);
+			$transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $dataset->id_reference, $note);
 
 			// Check, if data can be filled
 			if($transporter->id)
@@ -467,6 +467,7 @@ class Uploader extends Db
 			$transporter->id_substance = $substance->id;
 			$transporter->id_target = $target_obj->id;
 			$transporter->type = $type;
+			$transporter->note = $note;
 			$transporter->Km = $KM ? $KM : $transporter->Km;
 			$transporter->Km_acc = $KM ? $KM_acc : NULL;
 			$transporter->Ki = $KI ? $KI : $transporter->Ki;

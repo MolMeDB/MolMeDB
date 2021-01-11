@@ -860,10 +860,29 @@ class SchedulerController extends Controller
             }
         }
 
-        // Make new record about scheduler run
-        $scheduler_log->error_count = $total_substances - $success;
-        $scheduler_log->success_count = $success;
-        $scheduler_log->save();
+        // check, if last scheduler report can be just updated
+        $scheduler_log = $scheduler_log
+            ->order_by("id", "desc")
+            ->get_one();
+
+        if($report->is_empty() && 
+            $scheduler_log->id && 
+            $scheduler_log->type == Log_scheduler::T_SUBSTANCE_FILL &&
+            $scheduler_log->error_count == ($total_substances - $success) &&
+            $scheduler_log->success == $success &&
+            !$scheduler_log->report_path)
+        {
+            // Update record
+            $scheduler_log->datetime = date('Y-m-d H:i:s');
+            $scheduler_log->save();
+        }
+        else
+        {
+            // Make new record about scheduler run
+            $scheduler_log->error_count = $total_substances - $success;
+            $scheduler_log->success_count = $success;
+            $scheduler_log->save();
+        }
 
         if(!$report->is_empty())
         {

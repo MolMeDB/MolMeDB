@@ -166,6 +166,7 @@
                                 <td>pIC<sub>50</sub></td>
                                 <td>Primary<br/>reference</td>
                                 <td>Secondary<br/>reference</td>
+                                <td>Note</td>
                             </thead>
                             <tbody>
                                 <?php foreach($transporters as $k => $t) : ?>
@@ -210,6 +211,20 @@
                                                 </div>
                                                 <?php endif ?>
                                             <?php endif ?>
+                                        </td>
+                                        <td>
+                                        <?php if ($t->note) : ?>
+                                            <?php if(strlen($t->note) > 20) : ?>
+                                            <span class="popup-hover">
+                                                <?= substr($t->note, 0, 15) ?>...
+                                                <div style="margin-left: -10px;">
+                                                    <p><?=$t->note?></p>
+                                                </div>
+                                            </span>
+                                            <?php else : ?>
+                                                <?=$t->note?>
+                                            <?php endif ?>
+                                        <?php endif ?>
                                         </td>
                                     </tr>
                                 <?php endforeach ?>

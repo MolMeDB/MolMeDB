@@ -56,11 +56,11 @@ class SchedulerController extends Controller
             }
 
             // ---- Molecules data autofill ---- //
-            // if($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 3)) // Run only once per hour and only at night
-            // {
+            if($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 3)) // Run only once per hour and only at night
+            {
                 echo "Subtance validations is running. \n";
                 $this->substance_autofill_missing_data($time->get_hour() % 2);
-            // }
+            }
 
             // Checks interactions datasets
             if($time->is_hour(4) && $time->is_minute(1))

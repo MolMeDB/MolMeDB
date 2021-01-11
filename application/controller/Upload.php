@@ -770,7 +770,7 @@ class UploadController extends Controller
                         self::get_value($detail, Upload_validator::EC50_ACC),
                         self::get_value($detail, Upload_validator::KI_ACC),
                         self::get_value($detail, Upload_validator::KM_ACC),
-                        self::get_value($detail, Upload_validator::COMMENT),
+                        self::get_value($detail, Upload_validator::COMMENT)
                     );
                 }
                 catch(UploadLineException $e)

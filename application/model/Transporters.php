@@ -8,10 +8,15 @@
  * @property integer $id_substance
  * @property integer $id_target
  * @property integer $type
+ * @property string $note
  * @property float $Km
+ * @property float $Km_acc
  * @property float $EC50
+ * @property float $EC50_acc
  * @property float $Ki
+ * @property float $Ki_acc
  * @property float $IC50
+ * @property float $IC50_acc
  * @property integer $id_reference
  * @property integer $id_user
  * @property datetime $create_datetime
@@ -137,85 +142,57 @@ class Transporters extends Db
      * @param integer $id_reference
      * @param integer $id_secondary_reference
      * @param integer $type
+     * @param string $note
      * 
      * @return Transporters
      */
-    public function search($id_substance, $id_target, $id_reference, $id_secondary_reference)
+    public function search($id_substance, $id_target, $id_reference, $id_secondary_reference, $note)
     {
+        $where = "WHERE t.id_substance = ? AND t.id_target = ?";
+        $params = array
+        (
+            $id_substance,
+            $id_target
+        );
+
         if($id_reference)
         {
-            if($id_secondary_reference)
-            {   
-                $t = $this->queryOne('
-                    SELECT t.id 
-                    FROM transporters t
-                    JOIN transporter_datasets td ON td.id = t.id_dataset
-                    WHERE t.id_substance = ? AND t.id_target = ? 
-                         AND t.id_reference = ? AND td.id_reference = ?
-                    LIMIT 1
-                    ', 
-                array
-                (
-                    $id_substance,
-                    $id_target,
-                    $id_reference,
-                    $id_secondary_reference
-                ));
-            }
-            else
-            {
-                $t = $this->queryOne('
-                    SELECT t.id 
-                    FROM transporters t
-                    JOIN transporter_datasets td ON td.id = t.id_dataset
-                    WHERE t.id_substance = ? AND t.id_target = ? 
-                        AND t.id_reference = ? AND td.id_reference IS NULL
-                    LIMIT 1
-                    ', 
-                array
-                (
-                    $id_substance,
-                    $id_target,
-                    $id_reference,
-                ));
-            }
+            $where .= " AND t.id_reference = ?";
+            $params[] = $id_reference;
         }
         else
         {
-            if($id_secondary_reference)
-            {   
-                $t = $this->queryOne('
-                    SELECT t.id 
-                    FROM transporters t
-                    JOIN transporter_datasets td ON td.id = t.id_dataset
-                    WHERE t.id_substance = ? AND t.id_target = ? 
-                        AND t.id_reference IS NULL AND td.id_reference = ?
-                    LIMIT 1
-                    ', 
-                array
-                (
-                    $id_substance,
-                    $id_target,
-                    $id_secondary_reference
-                ));
-            }
-            else
-            {
-                $t = $this->queryOne('
-                    SELECT t.id 
-                    FROM transporters t
-                    JOIN transporter_datasets td ON td.id = t.id_dataset
-                    WHERE t.id_substance = ? AND t.id_target = ? 
-                        AND t.id_reference IS NULL AND td.id_reference IS NULL
-                    LIMIT 1
-                ', array
-                (
-                    $id_substance,
-                    $id_target,
-                ));
-            }
+            $where .= " AND t.id_reference IS NULL";
+        }
+
+        if($id_secondary_reference)
+        {
+            $where .= " AND td.id_reference = ?";
+            $params[] = $id_secondary_reference;
+        }
+        else
+        {
+            $where .= " AND td.id_reference IS NULL";
+        }
+
+        if($note)
+        {
+            $where .= " AND t.note LIKE ?";
+            $params[] = $note;
+        }
+        else
+        {
+            $where .= " AND t.note IS NULL";
         }
         
+        $t = $this->queryOne("
+            SELECT t.id 
+            FROM transporters t
+            JOIN transporter_datasets td ON td.id = t.id_dataset
+            $where
+            LIMIT 1
+        ", $params);
+             
         return new Transporters($t->id);
     }
 

@@ -3,6 +3,14 @@
 class DetailController extends Controller 
 {
     /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
      * Show intro
      */
     public function intro()

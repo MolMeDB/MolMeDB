@@ -1,7 +1,7 @@
     <input hidden id="nameStructure" value="<?= $substance->identifier ?>">
     <textarea hidden id="2dInput" class="textin" onload="update()"><?= $substance->SMILES ?>;<?= $substance->name ?></textarea>
     <input hidden id="idSubstance" value="<?= $substance->id ?>">
-    <div class="row content">
+    <div class="content">
         <div>
             <p class="compoundTitle"><?= $substance->name ?></p>
             <?php if (isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>
@@ -43,6 +43,10 @@
                                     <td><?= $substance->SMILES ?>
                                 </tr>
                                 <tr>
+                                    <td><b>InChIKey</b></td>
+                                    <td><?= $substance->inchikey ?>
+                                </tr>
+                                <tr>
                                     <td><b>MW [Da]</b></td>
                                     <td>
                                         <?php if ($substance->MW == 0) : ?>
@@ -56,9 +60,13 @@
                                     <td><b>LogP</b></td>
                                     <td>
                                         <?php if ($substance->LogP == 0) : ?>
-                                            N/A
+                                            N/A 
                                         <?php else : ?>
-                                            <?= $substance->LogP ?>
+                                            <?= $substance->LogP ?> <span class="glyphicon glyphicon-question-sign popup-hover">
+                                                <div>
+                                                    <p>Value is obtained from the RDkit software.</p>
+                                                </div>
+                                            </span>
                                         <?php endif ?>
                                     </td>
                                 </tr>
@@ -158,6 +166,7 @@
                                 <td>pIC<sub>50</sub></td>
                                 <td>Primary<br/>reference</td>
                                 <td>Secondary<br/>reference</td>
+                                <td>Note</td>
                             </thead>
                             <tbody>
                                 <?php foreach($transporters as $k => $t) : ?>
@@ -165,10 +174,22 @@
                                         <td><b><?=$t->target->name?></b></td>
                                         <td><a target="_blank" href="https://www.uniprot.org/uniprot/<?=$t->target->uniprot_id?>"><?=$t->target->uniprot_id?></a></td>
                                         <td><?=$t->get_enum_type()?></td>
-                                        <td><?=$t->Km?></td>
-                                        <td><?=$t->EC50?></td>
-                                        <td><?=$t->Ki?></td>
-                                        <td><?=$t->IC50?></td>
+                                        <td>
+                                            <p class="attribute"><?=$t->Km?></p>
+                                            <p class="accuracy"><?=$t->Km && $t->Km_acc ? "+/- $t->Km_acc" : ''?></p>
+                                        </td>
+                                        <td>
+                                            <p class="attribute"><?=$t->EC50?></p>
+                                            <p class="accuracy"><?=$t->EC50 && $t->EC50_acc ? "+/- $t->EC50_acc" : ''?></p>
+                                        </td>
+                                        <td>
+                                            <p class="attribute"><?=$t->Ki?></p>
+                                            <p class="accuracy"><?=$t->Ki && $t->Ki_acc ? "+/- $t->Ki_acc" : ''?></p>
+                                        </td>
+                                        <td>
+                                            <p class="attribute"><?=$t->IC50?></p>
+                                            <p class="accuracy"><?=$t->IC50 && $t->IC50_acc ? "+/- $t->IC50_acc" : ''?></p>
+                                        </td>
                                         <td>
                                             <?php if ($t->reference) : ?>
                                                 <?php if(strlen($t->reference->citation) < 15): ?>
@@ -190,6 +211,20 @@
                                                 </div>
                                                 <?php endif ?>
                                             <?php endif ?>
+                                        </td>
+                                        <td>
+                                        <?php if ($t->note) : ?>
+                                            <?php if(strlen($t->note) > 20) : ?>
+                                            <span class="popup-hover">
+                                                <?= substr($t->note, 0, 15) ?>...
+                                                <div style="margin-left: -10px;">
+                                                    <p><?=$t->note?></p>
+                                                </div>
+                                            </span>
+                                            <?php else : ?>
+                                                <?=$t->note?>
+                                            <?php endif ?>
+                                        <?php endif ?>
                                         </td>
                                     </tr>
                                 <?php endforeach ?>

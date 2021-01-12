@@ -27,7 +27,7 @@ class Config
     {
         if(!$this->db->is_valid_attribute($attr))
         {
-            throw new Exception("$attr is not valid attribute name.");
+            throw new Exception("Invalid config attribute: $attr");
         }
 
         $id = $this->attr_exists($attr);

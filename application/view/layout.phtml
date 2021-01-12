@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html lang="cs-cz">
 	<head>
-		<base href="https://molmedb.upol.cz/<?=MEDIA_ROOT?>" />
+		<base href="<?= PROTOCOL . URL ?>/<?=MEDIA_ROOT?>" />
 		<meta charset="UTF-8" />
-		<?= GOOGLE_ANALYTICS ?>
 		<title><?= $title ?></title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 				<meta name="description" content="<?= $description ?>">
@@ -78,7 +77,7 @@
                 
                 <div class="body">
                     <notif id="alert-column">
-                        <?php foreach($nonsec_messages as $m) {echo($m);} ?>
+                        <?= $nonsec_messages?>
                     </notif>
                     <div class="modal-alert" id="modal_alert_link"></div>
                     <div class="overlay" id="fs-overlay">
@@ -117,6 +116,11 @@
                             <h4><b>How to cite:</b></h4>
                             <div style="font-size: 13px;">Juračka J., Šrejber M., Melíková M., Bazgier V., Berka K.: MolMeDB: Molecules on Membranes Database. Database, Volume 2019, 2019, baz078, https://doi.org/10.1093/database/baz078</div>
                         </div>
+                        <div class="flex-row follow-us" style="margin-top:20px;">
+                            <div>Follow us:</div>
+                            <a href="https://www.facebook.com/molmedb/" target="_blank"> <img src="/<?= MEDIA_ROOT ?>files/icons/facebook.png"></a>
+                            <a href="https://github.com/MolMeDB/MolMeDB" target="_blank"> <img src="/<?= MEDIA_ROOT ?>files/icons/github.png"></a>
+                        </div>
                     </div>
                     <div>
                         <div class="footer-finance">
@@ -132,7 +136,6 @@
                                 <li>
                                     ELIXIR-CZ (projects LM2015047 and LM2018131).
                                 </li>
-                                
                             </ul>
                             </div>
                             

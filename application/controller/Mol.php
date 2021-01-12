@@ -5,6 +5,14 @@
  */
 class MolController extends Controller 
 {
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
     public function parse($identifier = NULL) 
     {
         $energyModel = new Energy();
@@ -13,6 +21,17 @@ class MolController extends Controller
         $substanceModel = new Substances();
         $transporterModel = new Transporters();
         $transporter_dataset_model = new Transporter_datasets();
+        $link_model = new Substance_links();
+
+         // Get substance detail
+        // $substance = $substanceModel
+        //     ->where('identifier', $identifier)
+        //     ->get_one();
+
+        // $pubchem = new Drugbank();
+
+        // print_r($pubchem->get_3d_structure($substance));
+        // die;
         
         try
         {
@@ -20,6 +39,14 @@ class MolController extends Controller
             $substance = $substanceModel
                 ->where('identifier', $identifier)
                 ->get_one();
+
+            $by_link = false;
+
+            if(!$substance->id)
+            {
+                $substance = $link_model->get_substance_by_identifier($identifier);
+                $by_link = True;
+            }
 
             if(!$substance->id)
             {
@@ -49,6 +76,11 @@ class MolController extends Controller
                 ))
                 ->in('id_dataset', $dataset_ids)
                 ->get_all();
+
+            if($by_link)
+            {
+                $this->addMessageWarning('Your request has been redirected from record ' . $identifier);
+            }
         } 
         catch (Exception $ex) 
         {

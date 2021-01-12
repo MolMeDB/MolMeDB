@@ -92,7 +92,7 @@ class Http_request
 		$http_respond = trim( strip_tags( $http_respond ) );
 		$http_code = strval(curl_getinfo( $ch, CURLINFO_HTTP_CODE ));
 
-		if ($http_code[0] !== "4" && $http_code[0] !== 5) 
+		if ($http_code[0] !== "5" && $http_code[0] !== "0") 
 		{
 			return true;
 		} 
@@ -101,7 +101,7 @@ class Http_request
 			throw new Exception('Cannot connect to remote server.');
 		}
 
-		curl_close( $ch );
+		curl_close($ch);
 	}
 
 
@@ -115,7 +115,7 @@ class Http_request
 	*
 	* @author Jakub Juračka  
 	*/
-	public function request($uri = NULL, $method = self::METHOD_GET, $data = array(), $include_response_header = FALSE, $timeout = 10)
+	public function request($uri = NULL, $method = self::METHOD_GET, $data = array(), $include_response_header = FALSE, $timeout = 10, $json=TRUE)
 	{
 		$this->curl->include_response_headers($include_response_header);
 
@@ -155,7 +155,7 @@ class Http_request
 			throw new Exception($this->curl->get_error_msg());
 		}
 
-		return json_decode($result);
+		return $json ? json_decode($result) : $result;
 	}
         
 }

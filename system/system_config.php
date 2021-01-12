@@ -3,9 +3,9 @@
 require_once('config.php');
 require_once('version.php');
 require_once('system/exceptions.php');
-require_once('system/server.php');
 ini_set('memory_limit', '-1');
 
+require_once('system/server.php');
 
 class System_config
 {

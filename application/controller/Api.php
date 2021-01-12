@@ -64,6 +64,8 @@ class ApiController extends Controller
      */
     function __construct($endPoint = NULL, $function = NULL)
     {
+        parent::__construct();
+        
         // If not valid entry
         if(!$endPoint || !$function)
         {
@@ -169,7 +171,7 @@ class ApiController extends Controller
      * @param string $function
      * 
      * @throws Exception
-     * @return boolean
+     * @return array
      */
     private function check_validity_endpoint($class_name, $function)
     {

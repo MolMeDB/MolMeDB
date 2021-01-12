@@ -17,13 +17,26 @@ class Configs extends Db
     const DB_DRUGBANK_PATTERN = 'db_drugbank_pattern';
     const DB_PUBCHEM_PATTERN = 'db_pubchem_pattern';
     const DB_PDB_PATTERN = 'db_pdb_pattern';
+    const DB_CHEMBL_PATTERN = 'db_chembl_pattern';
+    const DB_CHEBI_PATTERN = 'db_chebi_pattern';
     
     // Scheduler attributes
+    const S_ACTIVE = 'scheduler_active';
     const S_SMILES_VALIDATIONS = 'scheduler_smiles_validations';
     const S_3D_STRUCTURE_AUTOFILL = 'scheduler_3D_structure_autofill';
     const S_DUPL_CHECK = 'scheduler_duplicity_check';  
     const S_FILL_MISSING_RDKIT = 'scheduler_fill_missing_rdkit';  
     const S_FILL_MISSING_REMOTE = 'scheduler_fill_missing_remote';  
+
+    // Email attributes
+    const EMAIL_ENABLED = "email_enabled";
+    const EMAIL = "email_server";
+    const EMAIL_SERVER_USERNAME = "email_server_username";
+    const EMAIL_SMTP_SERVER = "email_smtp_server";
+    const EMAIL_SMTP_PORT = "email_smtp_port";
+    const EMAIL_SMTP_USERNAME = "email_smtp_username";
+    const EMAIL_SMTP_PASSWORD = "email_smtp_password";
+    const EMAIL_ADMIN_EMAILS = 'email_admin_emails';
 
 
     /** Defines valid config attributes */
@@ -34,12 +47,23 @@ class Configs extends Db
         self::LAST_SMILES_UPDATE,
         self::DB_DRUGBANK_PATTERN,
         self::DB_PUBCHEM_PATTERN,
+        self::DB_CHEBI_PATTERN,
+        self::DB_CHEMBL_PATTERN,
         self::DB_PDB_PATTERN,
+        self::S_ACTIVE,
         self::S_SMILES_VALIDATIONS,
         self::S_3D_STRUCTURE_AUTOFILL,
         self::S_DUPL_CHECK,
         self::S_FILL_MISSING_RDKIT,
         self::S_FILL_MISSING_REMOTE,
+        self::EMAIL_ENABLED,
+        self::EMAIL,
+        self::EMAIL_SERVER_USERNAME,
+        self::EMAIL_SMTP_PORT,
+        self::EMAIL_SMTP_SERVER,
+        self::EMAIL_SMTP_USERNAME,
+        self::EMAIL_SMTP_PASSWORD,
+        self::EMAIL_ADMIN_EMAILS,
     );
 
     /** Defines, which values must be regexp */
@@ -48,6 +72,8 @@ class Configs extends Db
         self::DB_DRUGBANK_PATTERN,
         self::DB_PUBCHEM_PATTERN,
         self::DB_PDB_PATTERN,
+        self::DB_CHEBI_PATTERN,
+        self::DB_CHEMBL_PATTERN,
     );
     
     /**

@@ -71,15 +71,15 @@ function parse_transporters_file(file)
     var count = file[0].length;
     var tr = document.createElement("tr");
     tr.setAttribute("class", "types");
-    var types = ["Don't use", "Name", "Target", "Primary_reference", 
-                "Uniprot_id", "Type", "Km", "Ki", "IC50", "EC50", 'SMILES', "DrugBank_ID", "PubChem_ID", "PDB_ID",
-                "MW", 'LogP'];
+    var types = ["Don't use", "Name", "Target", "Note", "Primary_reference", 
+                "Uniprot_id", "Type", "Km", "Km_acc", "Ki", "Ki_acc", "IC50", "IC50_acc", "EC50", "EC50_acc", 'SMILES', "DrugBank_ID", "PubChem_ID", "PDB_ID",
+                "MW"];
     
     for(var i=0; i<count; i++){
         var td = document.createElement("td");
         var select = document.createElement("select");
         select.setAttribute("class", "form-control attr-chooser");
-        select.setAttribute("required", "true");
+        select.setAttribute("required", "true");    
         
         for(var j=0; j<types.length; j++){
             var option = document.createElement("option");
@@ -184,8 +184,8 @@ function parse_interaction_file(file)
     var count = file[0].length;
     var tr = document.createElement("tr");
     tr.setAttribute("class", "types");
-    var types = ["Don't use", "Name", "Primary_reference", "Note", "Q", "X_min", "X_min_acc", "G_pen", "G_pen_acc", "G_wat", "G_wat_acc", "LogK", "LogK_acc", "LogP", "LogPerm", "LogPerm_acc"
-        ,"theta", "theta_acc", "abs_wl", "abs_wl_acc", "fluo_wl", "fluo_wl_acc", "QY", "QY_acc", "lt", "lt_acc", "MW", "SMILES", "DrugBank_ID", "PubChem_ID", "PDB_ID", "Area", "Volume"];
+    var types = ["Don't use", "Name", "Primary_reference", "Note", "Q", "X_min", "X_min_acc", "G_pen", "G_pen_acc", "G_wat", "G_wat_acc", "LogK", "LogK_acc", "LogPerm", "LogPerm_acc"
+        ,"theta", "theta_acc", "abs_wl", "abs_wl_acc", "fluo_wl", "fluo_wl_acc", "QY", "QY_acc", "lt", "lt_acc", "MW", "SMILES", "DrugBank_ID", "PubChem_ID", "PDB_ID", "Chembl_id", "Chebi_id"];
     
     for(var i=0; i<count; i++){
         var td = document.createElement("td");

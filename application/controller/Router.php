@@ -8,6 +8,14 @@ class RouterController extends Controller
     protected $controller;
 
     /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
      * String to camelCaps
      * 
      * @param string $text
@@ -129,7 +137,7 @@ class RouterController extends Controller
 
         $this->data['title'] = $this->controller->header['title'];
         $this->data['description'] = $this->controller->header['description'];
-        $this->data['messages'] = self::returnMessages();
+        $this->data['messages'] = $this->alert->get_all();
         $this->view = 'layout';
     }
 

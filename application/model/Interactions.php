@@ -50,10 +50,18 @@ class Interactions extends Db
 	const VISIBLE = 1;
 	const INVISIBLE = 2;
 
-	/** VALIDATION CONSTS */
-	const NOT_VALIDATED = Validator::NOT_VALIDATED;
-	const VALID = Validator::VALID;
-	const INVALID = Validator::INVALID;
+	/**
+	 * Validator constants
+	 */
+	const NOT_VALIDATED = 0;
+	/** MISSING DATA AUTO-FILLED */
+	const STAGE_1 = 1;
+	/** CHECKED DUPLICITIES */
+	const STAGE_2 = 2;
+	/** LABELED AS POSSIBLE DUPLICITY */
+	const STAGE_3 = 3;
+	/** VALIDATED */
+	const VALIDATED = 4;
 	
 
 	private $enum_visibilities = array
@@ -116,6 +124,21 @@ class Interactions extends Db
 		}
 
 		return '';
+	}
+
+	/**
+	 * Updates interaction dataset id
+	 * 
+	 * @param int $from_id
+	 * @param int $to_id
+	 */
+	public function change_dataset_id($from_id, $to_id)
+	{
+		return $this->query('
+			UPDATE `interaction`
+			SET `id_dataset` = ?
+			WHERE `id_dataset` = ?
+		', array($to_id, $from_id));
 	}
 
 

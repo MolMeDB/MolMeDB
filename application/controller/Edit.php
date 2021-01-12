@@ -25,7 +25,6 @@ class EditController extends Controller
     const M_USERS = 7;
     const M_DATASET_TRANS = 8;
 
-
     /** MENU ENDPOINTS */
     private $menu_endpoints = array
     (
@@ -48,6 +47,7 @@ class EditController extends Controller
      */
     function __construct()
     {
+        parent::__construct();
         $this->verifyUser(True);
         $this->make_submenu();
     }
@@ -178,6 +178,8 @@ class EditController extends Controller
     public function compound($id, $spec_type = NULL)
     {
         $interactModel = new Interactions();
+        $transporters_model = new Transporters();
+        $scheduler_error = new Scheduler_errors();
 
         $detail = new Substances($id);
 
@@ -201,8 +203,96 @@ class EditController extends Controller
                 }
                 else 
                 {
-                    $fileURL = $_POST['fileURL'];
-                    $this->upload_3d_structure($fileURL, $detail, True);
+                    $type = $_POST['fileURL'];
+                    $content = NULL;
+
+                    switch($type)
+                    {
+                        case 'drugbank':
+                            $drugbank = new Drugbank();
+                            
+                            if(!$drugbank->is_connected())
+                            {
+                                throw new Exception('Cannot connect to drugbank server.');
+                            }
+
+                            if(!$detail->drugbank)
+                            {
+                                throw new Exception('Missing drugbank identifier.');
+                            }
+
+                            $content = $drugbank->get_3d_structure($detail);
+                            break;
+
+                        case 'pdb':
+                            $driver = new PDB();
+                            
+                            if(!$driver->is_connected())
+                            {
+                                throw new Exception('Cannot connect to the PDB server.');
+                            }
+
+                            if(!$detail->pdb)
+                            {
+                                throw new Exception('Missing pdb identifier.');
+                            }
+
+                            $content = $driver->get_3d_structure($detail);
+                            break;
+
+                        case 'pubchem':
+                            $driver = new Pubchem();
+                            
+                            if(!$driver->is_connected())
+                            {
+                                throw new Exception('Cannot connect to the pubchem server.');
+                            }
+
+                            if(!$detail->pubchem)
+                            {
+                                throw new Exception('Missing pubchem identifier.');
+                            }
+
+                            $content = $driver->get_3d_structure($detail);
+                            break;
+
+                        case 'rdkit':
+                            $driver = new Rdkit();
+                            
+                            if(!$driver->is_connected())
+                            {
+                                throw new Exception('Cannot connect to Rdkit server.');
+                            }
+
+                            if(!$detail->SMILES)
+                            {
+                                throw new Exception('Missing SMILES.');
+                            }
+
+                            $content = $driver->get_3d_structure($detail);
+                            break;
+
+                        default:
+                            throw new Exception('Invalid parameter.');
+                    }
+
+                    if(!$content)
+                    {
+                        throw new Exception('Cannot find 3D structure file.');
+                    }
+
+                    // Fill identifier, if missing
+                    if(!$detail->identifier)
+                    {
+                        $detail->identifier = Identifiers::generate_substance_identifier($detail->id);
+                    }
+
+                    $file_model = new File();
+
+                    $file_model->save_structure_file($detail->identifier, $content);
+                    $detail->invalid_structure_flag = NULL;
+
+                    $detail->save();
                 }
 
                 $this->addMessageSuccess('3D Structure was saved.');
@@ -214,26 +304,100 @@ class EditController extends Controller
 
             $this->redirect('edit/compound/' . $id);
         }
-        else if ($_POST) 
+        else if ($this->form->is_post()) 
         {
             // Edit substance
             try 
             {
+                $rdkit = new Rdkit();
+
+                $same = [];
+                $keys_check = array
+                (
+                    'pubchem',
+                    'drugbank',
+                    'pdb',
+                    'chEBI',
+                    'chEMBL',
+                    'SMILES',
+                    'inchikey',
+                    'name'
+                );
+
+                // Check, if new DB_ids are not in DB yet
+                foreach($keys_check as $k)
+                {
+                    if(!empty($_POST[$k]))
+                    {
+                        $exists = $detail->where(array
+                        (
+                            $k => $_POST[$k],
+                            'id !='   => $detail->id
+                        ))
+                        ->get_one();
+
+                        if($exists->id)
+                        {
+                            $same[$k] = $exists->id;
+                        }
+                    }
+                }
+
+                if(count($same))
+                {
+                    $this->alert->warning('Found some possible duplicites for '. implode(', ', array_keys($same))
+                        . ' values. Check validator ' . Html::anchor('validator/show/3/1/' . $detail->id, 'detail') . ' for more info.');
+
+                    foreach($same as $key => $subst_id)
+                    {
+                        $detail->add_duplicity($subst_id, "Same $key found.");
+                    }
+                }
+
                 $detail->name = $_POST['name'];
                 $detail->MW = $_POST['MW'];
                 $detail->SMILES = $_POST['SMILES'];
+                $detail->inchikey = $_POST['inchikey'];
                 $detail->LogP = $_POST['LogP'];
-                $detail->Area = $_POST['Area'];
-                $detail->Volume = $_POST['Volume'];
+                // $detail->Area = $_POST['Area'];
+                // $detail->Volume = $_POST['Volume'];
                 $detail->pdb = $_POST['pdb'];
                 $detail->pubchem = $_POST['pubchem'];
                 $detail->drugbank = $_POST['drugbank'];
                 $detail->chEBI = $_POST['chEBI'];
                 $detail->chEMBL = $_POST['chEMBL'];
+                $detail->validated = Validator::NOT_VALIDATED;
+
+                $diff = $detail->get_changes(True);
+
+                // Log changes
+                $scheduler_error->add_diff($detail->id, $diff);
+
+                // Autofill inchikey if missing
+                if(empty($_POST['inchikey']) && !empty($_POST['SMILES']) && $rdkit->is_connected())
+                {
+                    $data = $rdkit->get_general_info($_POST['SMILES']);
+
+                    if(!$data)
+                    {
+                        $this->alert->warning('Cannot load general data from rdkit. Please, check SMILES.');
+                    }
+                    elseif(!empty($data->canonized_smiles))
+                    {
+                        $detail->SMILES = $data->canonized_smiles;
+                        $this->alert->success('SMILES was automatically canonized.');
+                    }
+                    
+                    if($data && !empty($data->inchi))
+                    {
+                        $detail->inchikey = $data->inchi;
+                        $this->alert->success('Inchikey was automatically generated.');
+                    }
+                }
 
                 $detail->save();
 
-                $this->addMessageSuccess('Saved');
+                $this->addMessageSuccess('Saved. Will be re-validated in next scheduler run.');
                 $this->redirect('edit/compound/' . $detail->id);
             } 
             catch (Exception $ex) 
@@ -243,11 +407,22 @@ class EditController extends Controller
         }
 
         $assigned_interactions = $interactModel
-            ->where('id_substance', $id)
+            ->where('id_substance', $detail->id)
+            ->get_all();
+
+        $assigned_transporters = $transporters_model
+            ->where('id_substance', $detail->id)
+            ->get_all();
+
+        $logs = $scheduler_error
+            ->where('id_substance', $detail->id)
+            ->order_by("id", "DESC")
             ->get_all();
 
         $this->data['detail'] = $detail;
         $this->data['interactions_all'] = $assigned_interactions;
+        $this->data['transporters_all'] = $assigned_transporters;
+        $this->data['logs'] = $logs;
         $this->header['title'] = 'Edit compound';
 
         $this->view = 'edit/compound';
@@ -273,33 +448,70 @@ class EditController extends Controller
             $this->redirect($redir_path ? $redir_path : 'error');
         }
 
-        if($_POST)
+        if($this->form->is_post())
         {
             try 
             {
+                if($this->form->param->Position_acc && !$this->form->param->Position)
+                {
+                    throw new Exception('Invalid position value.');
+                }
+                if($this->form->param->Penetration_acc && !$this->form->param->Penetration)
+                {
+                    throw new Exception('Invalid Penetration value.');
+                }
+                if($this->form->param->Water_acc && !$this->form->param->Water)
+                {
+                    throw new Exception('Invalid Water value.');
+                }
+                if($this->form->param->LogPerm_acc && !$this->form->param->LogPerm)
+                {
+                    throw new Exception('Invalid LogPerm value.');
+                }
+                if($this->form->param->theta_acc && !$this->form->param->theta)
+                {
+                    throw new Exception('Invalid theta value.');
+                }
+                if($this->form->param->abs_wl_acc && !$this->form->param->abs_wl)
+                {
+                    throw new Exception('Invalid abs_wl value.');
+                }
+                if($this->form->param->fluo_wl_acc && !$this->form->param->fluo_wl)
+                {
+                    throw new Exception('Invalid fluo_wl value.');
+                }
+                if($this->form->param->QY_acc && !$this->form->param->QY)
+                {
+                    throw new Exception('Invalid QY value.');
+                }
+                if($this->form->param->lt_acc && !$this->form->param->lt)
+                {
+                    throw new Exception('Invalid lt value.');
+                }
+
                 // Edit interaction
-                $interaction->Position = $_POST['Position'];
-                $interaction->Position_acc = $_POST['Position_acc'];
-                $interaction->Penetration = $_POST['Penetration'];
-                $interaction->Penetration_acc = $_POST['Penetration_acc'];
-                $interaction->Water = $_POST['Water'];
-                $interaction->Water_acc = $_POST['Water_acc'];
-                $interaction->LogK = $_POST['LogK'];
-                $interaction->LogK_acc = $_POST['LogK_acc'];
-                $interaction->LogPerm = $_POST['LogPerm'];
-                $interaction->LogPerm_acc = $_POST['LogPerm_acc'];
-                $interaction->theta = $_POST['theta'];
-                $interaction->theta_acc = $_POST['theta_acc'];
-                $interaction->abs_wl = $_POST['abs_wl'];
-                $interaction->abs_wl_acc = $_POST['abs_wl_acc'];
-                $interaction->fluo_wl = $_POST['fluo_wl'];
-                $interaction->fluo_wl_acc = $_POST['fluo_wl_acc'];
-                $interaction->QY = $_POST['QY'];
-                $interaction->QY_acc = $_POST['QY_acc'];
-                $interaction->lt = $_POST['lt'];
-                $interaction->lt_acc = $_POST['lt_acc'];
-                $interaction->temperature = $_POST['Temperature'];
-                $interaction->charge = $_POST['Q'];
+                $interaction->Position = $this->form->param->Position;
+                $interaction->Position_acc = $this->form->param->Position_acc;
+                $interaction->Penetration = $this->form->param->Penetration;
+                $interaction->Penetration_acc = $this->form->param->Penetration_acc;
+                $interaction->Water = $this->form->param->Water;
+                $interaction->Water_acc = $this->form->param->Water_acc;
+                $interaction->LogK = $this->form->param->LogK;
+                $interaction->LogK_acc = $this->form->param->LogK_acc;
+                $interaction->LogPerm = $this->form->param->LogPerm;
+                $interaction->LogPerm_acc = $this->form->param->LogPerm_acc;
+                $interaction->theta = $this->form->param->theta;
+                $interaction->theta_acc = $this->form->param->theta_acc;
+                $interaction->abs_wl = $this->form->param->abs_wl;
+                $interaction->abs_wl_acc = $this->form->param->abs_wl_acc;
+                $interaction->fluo_wl = $this->form->param->fluo_wl;
+                $interaction->fluo_wl_acc = $this->form->param->fluo_wl_acc;
+                $interaction->QY = $this->form->param->QY;
+                $interaction->QY_acc = $this->form->param->QY_acc;
+                $interaction->lt = $this->form->param->lt;
+                $interaction->lt_acc = $this->form->param->lt_acc;
+                $interaction->temperature = $this->form->param->Temperature;
+                $interaction->charge = $this->form->param->Q;
 
                 $interaction->save();
 
@@ -328,12 +540,10 @@ class EditController extends Controller
      */
     private function upload_3d_structure($file, $substance, $fileURL = False)
     {
-        $target_file = MEDIA_ROOT . "files/3DStructures/" . $substance->identifier . ".mol";
-       
-        if (file_exists($target_file)) 
-        {
-            throw new Exception("Sorry, 3D structure file already exists.");
-        }
+        $file_model = new File();
+        $target_file = File::FOLDER_3DSTRUCTURES . $substance->identifier . ".mol";
+
+        $file_model->make_path(File::FOLDER_3DSTRUCTURES);
        
         if($fileURL)
         {
@@ -361,10 +571,11 @@ class EditController extends Controller
      * Edits dataset
      * 
      * @param integer $id ID of dataset
+     * @param integer $pagination
      * 
      * @author Jakub Juračka
      */
-    public function dsInteractions($id = NULL)
+    public function dsInteractions($id = NULL, $pagination = 1)
     {
         $dataset = new Datasets($id);
 
@@ -377,11 +588,11 @@ class EditController extends Controller
         // Is loaded dataset ? Then show detail
         $show_detail = $dataset->id ? True : False;
 
-        if ($_POST) 
+        if ($this->form->is_post()) 
         {
             try
             {
-                switch ($_POST['spec_type']) 
+                switch ($this->form->param->spec_type) 
                 {
                     case 'edit_rights':
                         try 
@@ -391,8 +602,8 @@ class EditController extends Controller
 
                             Db::beginTransaction();
 
-                            $id_entity = $_POST['id_entity'];
-                            $group = $_POST['group'];
+                            $id_entity = $this->form->param->id_entity;
+                            $group = $this->form->param->group;
 
                             $dataset->change_rights($id_entity, $group);
                             
@@ -526,12 +737,21 @@ class EditController extends Controller
         {
             $interaction_model = new Interactions();
 
+            $items = 100;
+
             $dataset_interactions = $interaction_model
                 ->where('id_dataset', $dataset->id)
+                ->limit($pagination, $items)
                 ->get_all();
+
+            $total = $interaction_model
+                ->where('id_dataset', $dataset->id)
+                ->count_all();
 
             $this->data['info'] = $dataset;
             $this->data['interaction_table'] = self::createInteractionTable($dataset_interactions, $dataset->id);
+            $this->data['total'] = $total;
+            $this->data['pagination'] = $pagination;
             $this->data['rights_users'] = $dataset->get_rights();
             $this->data['rights_groups'] = $dataset->get_rights(true);
         }
@@ -809,11 +1029,6 @@ class EditController extends Controller
     {
         $publication = new Publications($id);
 
-        if($publication->id)
-        {
-            $this->data['detail'] = $publication;
-        }
-
         if ($_POST) 
         {
             if(!$publication->id)
@@ -862,7 +1077,7 @@ class EditController extends Controller
                 $publication->issue = $_POST['issue'];
                 $publication->page = $_POST['page'];
                 $publication->year = $_POST['year'];
-                $publication->publicated_date = $_POST['publicated_date'];
+                $publication->publicated_date = isset($_POST['publicated_date']) && !empty($_POST['publicated_date']) ? date('Y-m-d', strtotime($_POST['publicated_date'])) : NULL;
                 $publication->user_id = $_SESSION['user']['id'];
 
                 $publication->set_empty_vals_to_null();
@@ -875,6 +1090,12 @@ class EditController extends Controller
             {
                 $this->addMessageError($ex->getMessage());
             }
+        }
+
+        if($publication->id)
+        {
+            $publication->publicated_date = $publication->publicated_date ? date('d-m-Y', strtotime($publication->publicated_date)) : NULL;
+            $this->data['detail'] = $publication;
         }
 
         $this->data['publications'] = $publication->get_all();
@@ -1255,7 +1476,7 @@ class EditController extends Controller
         }
 
         $table .= '</tbody></table>';
-
+        
         return $table;
     }
 

@@ -31,8 +31,6 @@ class Rdkit
         catch(Exception $e)
         {
             $this->STATUS = false;
-
-            throw new Exception('RDkit service is unreachable.');
         }
     }
 
@@ -83,4 +81,120 @@ class Rdkit
             return false;
         }
     }
+
+    /**
+     * For given SMILES returns InChIKey
+     * 
+     * @param string $smiles
+     * 
+     * @return $string
+     */
+    public function get_inchi_key($smiles)
+    {
+        if(!$this->STATUS)
+        {
+            return false;
+        }
+
+        $uri = 'makeInchi';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'smi' => $smiles
+        );
+
+        try
+        {
+            $response = $this->client->request($uri, $method, $params);
+
+            if(!empty($response) && isset($response[0]) && $response[0] != '')
+            {
+                return $response[0];
+            }
+
+            return False;
+        }
+        catch(Exception $e)
+        {
+            return false;
+        }
+    }
+
+    /**
+     * For given SMILES returns general info
+     * 
+     * @param string $smiles
+     * 
+     * @return $string
+     */
+    public function get_general_info($smiles)
+    {
+        if(!$this->STATUS)
+        {
+            return NULL;
+        }
+
+        $uri = 'general';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'smi' => $smiles
+        );
+
+        try
+        {
+            $response = $this->client->request($uri, $method, $params);
+
+            if(!empty($response))
+            {
+                return $response;
+            }
+
+            return NULL;
+        }
+        catch(Exception $e)
+        {
+            return NULL;
+        }
+    }
+
+    /**
+     * For given SMILES returns SDF content (3D structure)
+     * 
+     * @param Substances $substance
+     * 
+     * @return $string
+     */
+    public function get_3d_structure($substance)
+    {
+        if(!$this->STATUS || !$substance->SMILES)
+        {
+            return NULL;
+        }
+
+        $uri = '3dstructure/generate';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'smi' => $substance->SMILES
+        );
+
+        try
+        {
+            $response = $this->client->request($uri, $method, $params);
+
+            if(!empty($response) && isset($response[0]) && $response[0] != '')
+            {
+                return $response[0];
+            }
+
+            return NULL;
+        }
+        catch(Exception $e)
+        {
+            return NULL;
+        }
+    }
+
+
 }

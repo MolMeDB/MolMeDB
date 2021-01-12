@@ -138,8 +138,6 @@ class ApiComparator extends ApiController
 				'QY_acc' 		=> $int->QY_acc,
 				'id_reference'	=> $int->id_reference,
 				'reference'		=> $int->reference ? $int->reference->citation : NULL,
-				'id_secondary_reference'	=> $int->dataset ? $int->dataset->id_publication : NULL,
-				'secondary_reference'		=> $int->dataset && $int->dataset->publication ? $int->dataset->publication->citation : NULL,
 				'id_dataset'	=> $int->id_dataset,
 				'id_substance'	=> $int->id_substance,
 				'id_membrane'	=> $int->id_membrane,

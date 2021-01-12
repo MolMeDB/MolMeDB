@@ -4,6 +4,7 @@
  * Dataset model
  * 
  * @property integer $id
+ * @property integer $type
  * @property integer $visibility
  * @property string $name
  * @property integer $id_membrane
@@ -24,13 +25,24 @@ class Datasets extends Db
 {
     /** VISIBILITY CONSTANTS */
 	const VISIBLE = 1;
-	const INVISIBLE = 2;
+    const INVISIBLE = 2;
+    
+    /** TYPES */
+    const PUBCHEM = 1;
+    const CHEMBL = 2;
 
 	private $enum_visibilities = array
 	(
 		self::VISIBLE => 'Visible',
 		self::INVISIBLE => 'Invisible'
-	);
+    );
+    
+    /** Valid types */
+    private static $valid_types = array
+    (
+        self::PUBCHEM,
+        self::CHEMBL
+    );
 
     /** Foreign keys to other tables */
     public $has_one = array
@@ -51,12 +63,95 @@ class Datasets extends Db
     );
 
     /**
+     * Returns count of interactions assigned to the dataset
+     * 
+     * @param int $dataset_id
+     * 
+     * @return int
+     */
+    public function get_count_interactions($dataset_id = NULL)
+    {
+        if(!$dataset_id && !$this->id)
+        {
+            return NULL;
+        }
+
+        if(!$dataset_id)
+        {
+            $dataset_id = $this->id;
+        }
+
+        $total = $this->queryOne('
+            SELECT COUNT(id) as count
+            FROM interaction
+            WHERE id_dataset = ?
+        ', array($dataset_id))->count;
+
+        return $total ? $total : 0;
+    }
+
+
+    /**
+     * Get dataset by type
+     * 
+     * @param int $type
+     * 
+     * @return Datasets
+     */
+    public function get_by_type($type)
+    {
+        if(!in_array($type, self::$valid_types))
+        {
+            return new Iterable_object([]);
+        }
+
+        $obj = $this->where('type', $type)
+            ->get_one();
+
+        return $obj->id ? new Datasets($obj->id) : null;
+    }
+
+    /**
      * Constructor
      */
     function __construct($id = NULL)
     {
         $this->table = 'datasets';
         parent::__construct($id);
+    }
+
+    /**
+     * Get duplicate datasets
+     * 
+     * @return array - Returns dataset IDS grouped by duplicities
+     */
+    public function get_duplicites()
+    {
+        $dps = $this->queryAll('
+            SELECT id_membrane, id_method, id_publication, DATE(createDateTime) as date,id_user_upload, COUNT(id) count
+            FROM datasets
+            GROUP BY id_membrane, id_method, id_publication, date, id_user_upload
+            HAVING count > 1
+        ');
+
+        $res = array();
+
+        foreach($dps as $d)
+        {
+            $ids = $this->queryAll('
+                SELECT id
+                FROM datasets
+                WHERE id_membrane = ? AND id_publication = ? AND id_method = ? AND
+                    DATE(createDateTime) = ? AND id_user_upload = ?
+            ', array($d->id_membrane, $d->id_publication, $d->id_method, $d->date, $d->id_user_upload));
+
+            if(count($ids))
+            {
+                $res[] = $ids->as_array();
+            }
+        }
+
+        return $res;
     }
 
     /**
@@ -84,7 +179,32 @@ class Datasets extends Db
 		}
 
 		return '';
-	}  
+    }  
+    
+    /**
+     * Returns empty datasets
+     * 
+     * @return Iterable_object
+     */
+    public function get_empty_datasets()
+    {
+        $data = $this->queryAll('
+            SELECT id
+            FROM datasets
+            WHERE id NOT IN
+                (SELECT DISTINCT id_dataset
+                FROM interaction)
+        ');
+
+        $res = [];
+
+        foreach($data as $row)
+        {
+            $res[] = new Datasets($row->id);
+        }
+
+        return $res;
+    }
     
     
     /**

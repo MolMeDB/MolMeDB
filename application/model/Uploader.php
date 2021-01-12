@@ -73,7 +73,7 @@ class Uploader extends Db
     public function insert_interaction($dataset_id, $reference_id, $ligand, $uploadName,$MW,$position,$position_acc, $penetration, $penetration_acc, $water, $water_acc, 
                             $LogK, $LogK_acc, $Area,$Volume, $LogP, $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc, $fluo_wl, $fluo_wl_acc, 
                             $QY, $QY_acc, $lt, $lt_acc,
-                            $Q, $comment, $SMILES, $DrugBank, $PubChem, $PDB, $membrane, $method, $temperature)
+                            $Q, $comment, $SMILES, $DrugBank, $PubChem, $PDB, $CHEMBL, $CHEBI, $membrane, $method, $temperature)
     {
         $substanceModel = new Substances();
         $interactionModel = new Interactions();
@@ -94,7 +94,7 @@ class Uploader extends Db
 			}
 
 			// Checks if substance already exists
-			$substance = $substanceModel->exists($ligand, $SMILES, $PDB, $DrugBank, $PubChem);
+			$substance = $substanceModel->exists($ligand, $SMILES, $PDB, $DrugBank, $PubChem, $CHEBI, $CHEMBL);
 
 			// Protected insert 
 			if(!$substance->id)
@@ -110,15 +110,17 @@ class Uploader extends Db
 				$substance->pdb = $PDB;
 				$substance->pubchem = $PubChem;
 				$substance->drugbank = $DrugBank;
+				$substance->chEMBL = $CHEMBL;
+				$substance->chEBI = $CHEBI;
 				$substance->user_id = $user_id;
-				$substance->validated = 0;
+				$substance->validated = Validator::NOT_VALIDATED;
 				
 				$substance->save();
 
 				// Save identifier and check names
 				$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
-				$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
-				$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
+				$substance->name = !$substance->name || trim($substance->name) == '' ? $substance->identifier : $substance->name;
+				$substance->uploadName = !$substance->uploadName || trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
 
 				$substance->save();
 			}
@@ -133,6 +135,9 @@ class Uploader extends Db
 				$substance->pdb = $PDB ? $PDB : $substance->pdb;
 				$substance->pubchem = $PubChem ? $PubChem : $substance->pubchem;
 				$substance->drugbank = $DrugBank ? $DrugBank : $substance->drugbank;
+				$substance->chEMBL = $CHEMBL ? $CHEMBL : $substance->chEMBL;
+				$substance->chEBI = $CHEBI ? $CHEBI : $substance->chEBI;
+				$substance->validated = Validator::NOT_VALIDATED;
 
 				// If missing identifier, then update
 				if(!Identifiers::is_valid($substance->identifier))
@@ -151,17 +156,21 @@ class Uploader extends Db
 			}
 
 			// Add altername record if not exists
-			$alterName = new AlterNames();
-
-			$exists = $alterName->where('name LIKE', $ligand)
-				->get_one();
-
-			if(!$exists->id)
+			if($ligand)
 			{
-				$alterName->name = $ligand;
-				$alterName->id_substance = $substance->id;
+				$alterName = new AlterNames();
 
-				$alterName->save();
+				$exists = $alterName->where('name LIKE', $ligand)
+					->debug()
+					->get_one();
+			
+				if(!$exists->id)
+				{
+					$alterName->name = $ligand;
+					$alterName->id_substance = $substance->id;
+
+					$alterName->save();
+				}
 			}
 
 			// try to find interaction
@@ -171,7 +180,7 @@ class Uploader extends Db
 					'id_method'		=> $method->id,
 					'id_substance'	=> $substance->id,
 					'temperature'	=> $temperature,
-					'charge'		=> $Q,	
+					'charge'		=> $Q,
 					'id_reference'	=> $reference_id,
 					'comment LIKE' 	=> $comment
 				))
@@ -306,9 +315,11 @@ class Uploader extends Db
 	 * @param float $KI
 	 * @param float $KM
 	 * 
+	 * @author Jakub Juracka
 	 */
 	public function insert_transporter($dataset, $ligand, $SMILES, $MW, $log_p, $pdb, $pubchem, $drugbank, $uniprot,
-		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM)
+		$id_reference, $type, $target, $IC50, $EC50, $KI, $KM, $IC50_acc = NULL, $EC50_acc = NULL, $KI_acc = NULL, $KM_acc = NULL, $note = NULL)
+
 	{
 		$substanceModel = new Substances();
 		$smilesModel = new Smiles();
@@ -316,6 +327,16 @@ class Uploader extends Db
 
 		try
 		{
+			if(!$uniprot)
+			{
+				throw new Exception('Missing Uniprot_id value.');
+			}
+
+			if(!$target)
+			{
+				throw new Exception('Missing target value.');
+			}
+
 			if(!$IC50 && !$EC50 && !$KI && !$KM)
 			{
 				throw new Exception('Invalid interaction values.');
@@ -346,6 +367,7 @@ class Uploader extends Db
 				$substance->pubchem = $pubchem;
 				$substance->drugbank = $drugbank;
 				$substance->user_id = $user_id;
+				$substance->validated = Validator::NOT_VALIDATED;
 				
 				$substance->save();
 
@@ -367,6 +389,7 @@ class Uploader extends Db
 				$substance->pdb = $pdb ? $pdb : $substance->pdb;
 				$substance->pubchem = $pubchem ? $pubchem : $substance->pubchem;
 				$substance->drugbank = $drugbank ? $drugbank : $substance->drugbank;
+				$substance->validated = Validator::NOT_VALIDATED;
 
 				// If missing identifier, then update
 				if(!Identifiers::is_valid($substance->identifier))
@@ -385,24 +408,18 @@ class Uploader extends Db
 			}
 
 			// Add altername record if not exists
-			$alterName = new AlterNames();
-
-			if($ligand)
+			if($ligand && strlen($ligand) > 0)
 			{
+				$alterName = new AlterNames();
 				$exists = $alterName->where('name LIKE', $ligand)
 					->get_one();
-			}
-			else
-			{
-				$exists = NULL;
-			}
-			
-			if(!$exists)
-			{
-				$alterName->name = $ligand;
-				$alterName->id_substance = $substance->id;
 
-				$alterName->save();
+				if(!$exists)
+				{
+					$alterName->name = $ligand;
+					$alterName->id_substance = $substance->id;
+					$alterName->save();
+				}
 			}
 
 			// Check if target already exists
@@ -420,21 +437,11 @@ class Uploader extends Db
 				$target_obj->save();
 			}
 
-			// save new transporter
+			// Save new transporter
 			$transporter = new Transporters();
 
 			// Check, if already exists
-			// $transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $dataset->id_reference);
-
-			$transporter = $transporter->where(array
-				(
-					'id_substance' => $substance->id,
-					'id_target' => $target_obj->id,
-					'id_reference'	=> $id_reference
-				))
-				->get_one();
-
-			$transporter = new Transporters($transporter->id);
+			$transporter = $transporter->search($substance->id, $target_obj->id, $id_reference, $dataset->id_reference, $note);
 
 			// Check, if data can be filled
 			if($transporter->id)
@@ -443,28 +450,28 @@ class Uploader extends Db
 				{
 					if($transporter->Km && $KM !== $transporter->Km)
 					{
-						throw new Exception('For given reference already exists detail with different "Km" value. Please, check dataset ID:' . $transporter->dataset->id . '. Transporter ID:' . $transporter->id);
+						throw new Exception('For given reference already exists detail with different "Km" value. Please, check dataset ID:' . $transporter->dataset->id);
 					}
 				}
 				if($KI)
 				{
 					if($transporter->Ki && $KI !== $transporter->Ki)
 					{
-						throw new Exception('For given reference already exists detail with different "Ki" value. Please, check dataset ID:' . $transporter->dataset->id . '. Transporter ID:' . $transporter->id);
+						throw new Exception('For given reference already exists detail with different "Ki" value. Please, check dataset ID:' . $transporter->dataset->id);
 					}
 				}
 				if($EC50)
 				{
 					if($transporter->EC50 && $EC50 !== $transporter->EC50)
 					{
-						throw new Exception('For given reference already exists detail with different "EC50" value. Please, check dataset ID:' . $transporter->dataset->id . '. Transporter ID:' . $transporter->id);
+						throw new Exception('For given reference already exists detail with different "EC50" value. Please, check dataset ID:' . $transporter->dataset->id);
 					}
 				}
 				if($IC50)
 				{
 					if($transporter->IC50 && $IC50 !== $transporter->IC50)
 					{
-						throw new Exception('For given reference already exists detail with different "IC50" value. Please, check dataset ID:' . $transporter->dataset->id . '. Transporter ID:' . $transporter->id);
+						throw new Exception('For given reference already exists detail with different "IC50" value. Please, check dataset ID:' . $transporter->dataset->id);
 					}
 				}
 			}
@@ -474,13 +481,19 @@ class Uploader extends Db
 			$transporter->id_substance = $substance->id;
 			$transporter->id_target = $target_obj->id;
 			$transporter->type = $type;
+			$transporter->note = $note;
 			$transporter->Km = $KM ? $KM : $transporter->Km;
+			$transporter->Km_acc = $KM ? $KM_acc : NULL;
 			$transporter->Ki = $KI ? $KI : $transporter->Ki;
+			$transporter->Ki_acc = $KI ? $KI_acc : NULL;
 			$transporter->EC50 = $EC50 ? $EC50 : $transporter->EC50;
+			$transporter->EC50_acc = $EC50 ? $EC50_acc : NULL;
 			$transporter->IC50 = $IC50 ? $IC50 : $transporter->IC50;
+			$transporter->IC50_acc = $IC50 ? $IC50_acc : NULL;
+
 			$transporter->id_reference = $id_reference;
 			$transporter->id_user = $user_id;
-
+			
 			$transporter->save();
 		} 
 		catch(UploadLineException $e)
@@ -490,7 +503,6 @@ class Uploader extends Db
 		catch (Exception $ex) 
 		{
 			throw new UploadLineException($ligand . ' / ' . $ex->getMessage());
-		}
-
+    }
 	}
 }

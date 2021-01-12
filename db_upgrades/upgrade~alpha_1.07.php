@@ -21,5 +21,12 @@ $upgrade_sql = array
    "ALTER TABLE `config` CHANGE `value` `value` TEXT CHARACTER SET utf8 COLLATE utf8_czech_ci NULL;",
    // Remove all DB LOG_P VALUES - will be overwriten by rdkit service logP
    "UPDATE substances SET LogP = NULL;",
-   "ALTER TABLE `transporters` ADD `note` TEXT CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL AFTER `type`;"
+   "ALTER TABLE `transporters` ADD `note` TEXT CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL AFTER `type`;",
+   "INSERT INTO `config` (`id`, `attribute`, `value`) VALUES
+      (DEFAULT, 'db_chembl_pattern', '/^CHEMBL\\d+$/'),
+      (DEFAULT, 'db_chebi_pattern', '/^\\d+$/');",
+   "ALTER TABLE `validations` DROP FOREIGN KEY `validations_ibfk_1`;",
+   "ALTER TABLE `validations` ADD CONSTRAINT `validations_ibfk_1` FOREIGN KEY (`id_substance_1`) REFERENCES `substances`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;",
+   "ALTER TABLE `validations` DROP FOREIGN KEY `validations_ibfk_2`;",
+   "ALTER TABLE `validations` ADD CONSTRAINT `validations_ibfk_2` FOREIGN KEY (`id_substance_2`) REFERENCES `substances`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;"
 );

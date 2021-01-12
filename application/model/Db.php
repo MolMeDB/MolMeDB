@@ -325,8 +325,9 @@ class Db extends Iterable_object
         $query = '
             SELECT ' . $this->select_list . ' 
             FROM ' . $this->table .
-            ' ' . $this->where .
-            ' ' . $this->group_by
+            ' ' . $this->where . ' ' .
+            ' ' . $this->group_by .
+            $this->order_by
             . ' LIMIT 1';
 
         if($this->debug)

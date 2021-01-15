@@ -90,7 +90,6 @@ class Identifiers
 		return self::is_valid($string) || 
 			Upload_validator::check_identifier_format($string, Upload_validator::DRUGBANK, True) ||
 			Upload_validator::check_identifier_format($string, Upload_validator::PUBCHEM, True) ||
-			Upload_validator::check_identifier_format($string, Upload_validator::PDB, True) ||
 			Upload_validator::check_identifier_format($string, Upload_validator::CHEMBL_ID, True) || 
 			Upload_validator::check_identifier_format($string, Upload_validator::CHEBI_ID, True);
 		}

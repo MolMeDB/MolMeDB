@@ -23,6 +23,7 @@ class Db extends Iterable_object
     private $group_by = '';
     private $order_by = '';
     private $distinct = false;
+    private $join = '';
 
     private $debug = false;
 
@@ -251,6 +252,7 @@ class Db extends Iterable_object
             SELECT ' . ($this->distinct ? ' DISTINCT ' : '') . 
             $this->select_list . ' 
             FROM ' . $this->table .
+            ' ' . $this->join .
             ' ' . $this->where . ' ' .
             ' ' . $this->group_by .
             $this->order_by
@@ -272,7 +274,7 @@ class Db extends Iterable_object
     /**
      * COunt all rows from given table
      * 
-     * @return Iterable_object
+     * @return int
      */
     public function count_all()
     {
@@ -289,9 +291,13 @@ class Db extends Iterable_object
         // Prepare query
         $query = '
             SELECT COUNT(*) as count 
-            FROM ' . $this->table .
-            ' ' . $this->where . ' ' .
-            ' ' . $this->group_by;
+            FROM (
+                SELECT ' . $this->select_list .
+                ' FROM '. $this->table .
+                ' ' . $this->join .
+                ' ' . $this->where . ' ' .
+                ' ' . $this->group_by
+            . ') as tab';
 
         if($this->debug) // DEBUG
         {
@@ -325,6 +331,7 @@ class Db extends Iterable_object
         $query = '
             SELECT ' . $this->select_list . ' 
             FROM ' . $this->table .
+            ' ' . $this->join .
             ' ' . $this->where . ' ' .
             ' ' . $this->group_by .
             $this->order_by
@@ -357,6 +364,7 @@ class Db extends Iterable_object
         $this->group_by = '';
         $this->order_by = '';
         $this->distinct = false;
+        $this->join = '';
     }
 
     /**
@@ -435,6 +443,42 @@ class Db extends Iterable_object
         $select_list = rtrim($select_list, ',');
 
         $this->select_list = $select_list;
+
+        return $this;
+    }
+
+    /**
+     * JOIN for MYSQL QUERY BUILDER
+     * 
+     * @param string|array $string
+     */
+    public function join($string)
+    {
+        $join_str = '';
+
+        if(is_string($string))
+        {
+            $string = [$string];
+        }
+
+        foreach ($string as $val) 
+        {
+            $val = trim($val);
+
+            if(strtoupper(substr($val, 0, 4)) == 'JOIN' || 
+                strtoupper(substr($val, 0, 4)) == 'LEFT' || 
+                strtoupper(substr($val, 0, 5)) == 'RIGHT' || 
+                strtoupper(substr($val, 0, 7)) == 'NATURAL')
+            {
+                $join_str .= $val;
+            }
+            else
+            {
+                $join_str .= ' JOIN ' . $val;
+            }
+        }
+
+        $this->join .= $join_str;
 
         return $this;
     }

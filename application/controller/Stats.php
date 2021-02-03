@@ -23,15 +23,49 @@
     */
     public function show_all()
     {
-        $substanceModel = new Substances();
-        $interactionModel = new Interactions();
-        $membraneModel = new Membranes();
-        $methodModel = new Methods();
+        $stats = new Stats();
 
-        $this->data["total_membranes"] = $membraneModel->get_all_count();
-        $this->data["total_methods"] = $methodModel->get_all_count();
-        $this->data["total_substances"] = $substanceModel->get_all_count();
-        $this->data["total_interactions"] = $interactionModel->get_all_count();
+        $stat_interaction_reference = (object)$stats->get_interaction_stats_by_reference(20);
+
+        // $this->data['interactions'] = (object)array
+        // (
+        //     // 'adding' => (object)$stats->get_interaction_adding_stats(),
+        //     // 'adding' => (object)$stats->get_interaction_substances_adding_stats(),
+        //     'adding' => (object)$stats->get_all_interactions_adding_stats(),
+        //     'primary_reference' => (object)array
+        //     (
+        //         'data' => $stat_interaction_reference->data['primary_reference'],
+        //         'axisBreaks' => $stat_interaction_reference->axisBreaks['primary_reference']
+        //     ),
+        //     'secondary_reference' => (object)array
+        //     (
+        //         'data' => $stat_interaction_reference->data['secondary_reference'],
+        //         'axisBreaks' => $stat_interaction_reference->axisBreaks['secondary_reference']
+        //     ),
+        //     "passive" => (object)$stats->get_passive_interactions_adding_stats()
+        // );
+
+        // $this->data['substances'] = (object)array
+        // (
+        //     'adding' => (object)$stats->get_substances_adding_stats()
+        // );
+
+        $this->data['membranes'] = (object)$stats->get_membranes_stats(TRUE);
+
+        // $this->data['methods'] = (object)$stats->get_methods_stats();
+
+        // $this->data['identifiers'] = (object)$stats->get_identifiers_stats();
+
+        // $this->data['interactions_pa'] = (object)$stats->get_passive_active_int_substance_stats();
+
+        // print_r($this->data['interactions_pa']);
+        // die;
+
+        // $this->data['methods'] = (object)array
+        // (
+        //     // 'adding' => (object)$stats->get_methods_adding_stats()
+        // );
+       
         $this->data["detail"] = "";
         $this->header['title'] = 'Statistics';
         $this->view = 'stats';

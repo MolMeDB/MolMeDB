@@ -3,6 +3,7 @@
 	<head>
 		<base href="<?= PROTOCOL . URL ?>/<?=MEDIA_ROOT?>" />
 		<meta charset="UTF-8" />
+        <?= GOOGLE_ANALYTICS ?>
 		<title><?= $title ?></title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 				<meta name="description" content="<?= $description ?>">
@@ -17,12 +18,17 @@
                 <script src="js/MolMeDb.php?ver=<?=JS_VERSION?>"></script>
                 <script src="js/Chart.js?ver=<?=JS_VERSION?>"></script>
                 <script src="js/materialize.js"></script>
-                <script src="js/Chart.Bundle.js?ver=<?=JS_VERSION?>"></script>
+                <script src="js/Chart.bundle.js?ver=<?=JS_VERSION?>"></script>
                 <script src="js/depict.js" type="text/javascript"></script>
                 <script src="https://cdn.ckeditor.com/4.8.0/full/ckeditor.js"></script>
                 <script src="js/lineChart.js?ver=<?=JS_VERSION?>"></script>
                 <script src="js/interpolation.js"></script>
                 <script src="js/papaparse.js"></script>
+                <script src="js/amcharts64/core.js"></script>
+                <script src="js/amcharts64/charts.js"></script>
+                <script src="js/amcharts64/themes/material.js"></script>
+                <script src="js/amcharts64/lang/cs_CZ.js"></script>
+                <script src="fonts/amchart/notosans-sc.js"></script>
                 <link rel="stylesheet" href="css/style.css?ver=<?=CSS_VERSION?>" type="text/css"/>
                 <link rel="stylesheet" href="css/layout.css?ver=<?=CSS_VERSION?>" type="text/css"/>
                 <link rel="stylesheet" href="css/flexbox.css?ver=<?=CSS_VERSION?>" type="text/css"/>

@@ -1,252 +1,461 @@
-var interaction_ids = [];
-var substance_ids = [];
-var detail = $('#stats-list-detail');
-
-/**
- * Show detail for membrane/method stats
- */
-$('.stats-list-item').click(function()
+function makeLineChart(data, divID, parameters = {})
 {
-    var sublist = $('#stats-sublist');
-
-    // Remove class from list objects
-    $('.stats-list-item').each(function(index, obj) {
-        obj.classList.remove('list-active');
-    });
-
-    // Clear sublist
-    $(sublist).find('.stats-sublist-item').each(function(k, item)
+    if(!$("#" + divID))
     {
-        $(item).remove();
-    })
-
-    var data = $(this).data('spec');
-    var id = data.id;
-    var type = data.type; 
-    var api_endpoint = null;
-    var sublist_class = null;
-
-    if(type == 'membrane')
-    {
-        api_endpoint = 'stats/membrane_subcats';
-        sublist_class = 'method';
-    }
-    else if(type == 'method')
-    {
-        api_endpoint = 'stats/method_subcats';
-        sublist_class = 'membrane';
-    }
-
-    if(!api_endpoint)
-    {
-        add_message('Error during loading detail.', 'warning');
-    }
-
-    var data = ajax_request(api_endpoint, {id: id});
-
-    if(!data)
-    {
+        console.log('Div not found.');
         return;
     }
 
-    // Make sublist
-    $(data).each(function(k, row)
+    am4core.useTheme(am4themes_animated);
+
+    // Create chart instance
+    var chart = am4core.create(divID, am4charts.XYChart);
+
+    chart.data = data;
+
+    // Create axes
+    var xAxis = chart.xAxes.push(new am4charts.DateAxis());
+    xAxis.renderer.grid.template.location = 0;
+    xAxis.renderer.minGridDistance = 50;
+    // var xAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    // xAxis.dataFields.category = "citation";
+
+    var yAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    
+    if(parameters.axisBreaks)
     {
-        var div = document.createElement('div');
-        var name = document.createElement('div');
-        var count = document.createElement('div');
-
-        div.setAttribute('data-spec', '{"id_cat": "' + id + '", "id_subcat": "' + row.id + '"}');
-        div.classList.add('stats-sublist-item');
-        div.classList.add(sublist_class);
-
-        name.innerHTML = row.name;
-        count.innerHTML = row.count;
-
-        div.appendChild(name);
-        div.appendChild(count);
-
-        $(sublist).append(div);
-    });
-
-
-
-
-    $('.stats-sublist-item').click(async function()
-    {
-        // Remove class from list objects
-        $('.stats-sublist-item').each(function(index, obj) {
-            obj.classList.remove('sublist-active');
-        });
-
-        var data = $(this).data('spec');
-        var id_membrane;
-        var id_method;
-
-        if(this.classList.contains("membrane"))
+        for(var i = 0; i < parameters.axisBreaks.length; i++)
         {
-            id_membrane = data.id_subcat;
-            id_method = data.id_cat;
+            var ab = parameters.axisBreaks[i];
+
+            var axisBreak = yAxis.axisBreaks.create();
+            axisBreak.startValue=ab.startValue;
+            axisBreak.endValue=ab.endValue;
+            axisBreak.breakSize=ab.breakSize;
+
+            // var hoverState = axisBreak.states.create("hover");
+            // hoverState.properties.breakSize = 1;
+            // hoverState.properties.opacity = 0.1;
+            // hoverState.transitionDuration = 1500;
+
+            // axisBreak.defaultState.transitionDuration = 1000;
         }
-        else
-        {
-            id_membrane = data.id_cat;
-            id_method = data.id_subcat;
-        }
+    }
 
-        $(this).addClass('sublist-active');
-
-        // Show loader
-        var loader = document.createElement('div');
-        loader.classList.toggle('element-loader');
-        $(detail).html(loader);
-        await sleep(50);
-
-        var api_endpoint = 'stats/detail';
-
-        var data = ajax_request(api_endpoint, {id_membrane: id_membrane, id_method: id_method});
-
-        if(!data)
-        {
-            return;
-        }
-
-        // Make detail
-        $(detail).html("");
-
-        var membrane = document.createElement('div');
-        var method = document.createElement('div');
-        var interactions = document.createElement('div');
-        var substances = document.createElement('div');
-        var download_interactions = document.createElement('div');
-        var add_to_comparator_btn = document.createElement('div');
-
-        membrane.classList.add('stats-list-detail-btn');
-        method.classList.add('stats-list-detail-btn');
-        interactions.classList.add('stats-list-detail-btn');
-        substances.classList.add('stats-list-detail-btn');
-        download_interactions.classList.add('stats-list-detail-btn');
-        add_to_comparator_btn.classList.add('stats-list-detail-btn');
-
-        membrane.innerHTML = '<div>Membrane</div><div>' + data.membrane + '</div>';
-        method.innerHTML = '<div>Method</div><div>' + data.method + '</div>';
-        interactions.innerHTML = '<div>Total interactions</div><div>' + data.total_interactions + '</div>';
-        substances.innerHTML = '<div>Total substances</div><div>' + data.total_compounds + '</div>';
-        download_interactions.innerHTML = '<div>Download dataset</div><button id="download-dataset" class="stats-button">Download</button>';
-        add_to_comparator_btn.innerHTML = '<div>Add to comparator</div><button id="add-to-comparator" class="stats-button">Add</button>';
-
+    // Create series
+    function createSeries(field, name) {
+        var series = chart.series.push(new am4charts.LineSeries());
+        series.dataFields.valueY = field;
+        series.dataFields.dateX = "date";
+        series.name = name;
+        series.tooltipText = "[b]{valueY}[/]";
+        series.strokeWidth = 2;
         
-        $(detail).append(membrane);
-        $(detail).append(method);
-        $(detail).append(substances);
-        $(detail).append(interactions);
-        $(detail).append(download_interactions);
-        $(detail).append(add_to_comparator_btn);
+        series.smoothing = "monotoneX";
+        
+        var bullet = series.bullets.push(new am4charts.CircleBullet());
+        bullet.circle.stroke = am4core.color("#fff");
+        bullet.circle.strokeWidth = 2;
+        
+        return series;
+    }
 
-        interaction_ids = data.interaction_ids;
-        substance_ids = data.substance_ids;
+    for(var i = 0; i < parameters.series.length; i++)
+    {
+        var s = parameters.series[i];
+        createSeries(s.attribute, s.label);
+    }
 
-        // Data export
-        $('#download-dataset').click(async function()
+    chart.legend = new am4charts.Legend();
+    chart.cursor = new am4charts.XYCursor();
+}
+
+/**
+ * Membranes stats
+ * 
+ * @param target
+ * @param data
+ * @param axisBreaks
+ * 
+ */
+function make_membrane_total_column_chart(target, data, axisBreaks = null, maxValue = null)
+{
+    if(!$("#" + target))
+    {
+        console.log('Div not found.');
+        return;
+    }
+
+    am4core.useTheme(am4themes_animated);
+    // am4core.useTheme(am4themes_kelly);
+
+    var chart = am4core.create(target, am4charts.XYChart);
+
+    chart.data = data;
+
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "membrane";
+    categoryAxis.title.text = "Membranes";
+
+    // First value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.title.text = "Total";
+
+    if(maxValue)
+    {
+        valueAxis.min = 0;
+        valueAxis.max = maxValue;
+        valueAxis.strictMinMax = true;
+    }
+    // Second value axis
+    // var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+    // valueAxis2.title.text = "Total substances";
+    // valueAxis2.renderer.opposite = true;
+
+    // First series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.valueY = "count_interactions";
+    series.dataFields.categoryX = "membrane";
+    series.name = "Total interactions";
+    series.tooltipText = "{name}: [bold]{valueY}[/]";
+
+    // Second series
+    var series2 = chart.series.push(new am4charts.LineSeries());
+    series2.dataFields.valueY = "count_substances";
+    series2.dataFields.categoryX = "membrane";
+    series2.name = "Total substances";
+    series2.tooltipText = "{name}: [bold]{valueY}[/]";
+    series2.strokeWidth = 3;
+    series2.yAxis = valueAxis;
+
+    var bullet = series2.bullets.push(new am4charts.CircleBullet());
+    bullet.circle.stroke = am4core.color("#fff");
+    bullet.circle.strokeWidth = 1;
+
+    // Add simple vertical scrollbar
+    chart.scrollbarY = new am4core.Scrollbar();
+
+    // Add horizotal scrollbar with preview
+    var scrollbarX = new am4charts.XYChartScrollbar();
+    scrollbarX.series.push(series);
+    chart.scrollbarX = scrollbarX;
+
+    if(axisBreaks)
+    {
+        for(var i = 0; i < axisBreaks.interactions.length; i++)
         {
-            await show_overlay();
-            await set_overlay_text('Processing... 0 %');
+            var ab = axisBreaks.interactions[i];
 
-            var data = [];
-            var date = new Date();
-            // Set header
-            data[0] = ['Name', 'Identifier', 'Pubchem', 'Drugbank', 'SMILES', 'Method', 'Membrane','Q', 'Temperature', 'Note', 
-                'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-', 'LogPerm', 
-                'LogPerm_+/-', 'MW', 'Primary_reference', 'Secondary_reference'];
+            var axisBreak = valueAxis.axisBreaks.create();
+            axisBreak.startValue=ab.startValue;
+            axisBreak.endValue=ab.endValue;
+            axisBreak.breakSize=ab.breakSize;
+        }
 
-            // Divide into subqueries for php GET REQUEST LENGTH limitations
-            var per_request = 100;
-            var k = 1;
-            var actual_index = 0;
-            var interactions = [];
+        // for(var i = 0; i < axisBreaks.substances.length; i++)
+        // {
+        //     var ab = axisBreaks.substances[i];
 
-            while(actual_index < interaction_ids.length)
-            {
-                var ids = interaction_ids.slice(actual_index, per_request + actual_index);
-                var ajax_data = ajax_request('comparator/getInteraction', { id: ids.join() });
-                
-                actual_index = k*per_request;
-                var percents = parseInt((actual_index * 100) / interaction_ids.length);
+        //     var axisBreak = valueAxis2.axisBreaks.create();
+        //     axisBreak.startValue=ab.startValue;
+        //     axisBreak.endValue=ab.endValue;
+        //     axisBreak.breakSize=ab.breakSize;
 
-                percents = percents > 100 ? 100 : percents;
+        // }
+    }
 
-                await set_overlay_text('Processing... ' + percents + " %");
+    // Add legend
+    chart.legend = new am4charts.Legend();
 
-                if (!ajax_data) 
-                {
-                    hide_overlay();
-                    return;
-                }
+    // Add cursor
+    chart.cursor = new am4charts.XYCursor();
+}
 
-                interactions = interactions.concat(ajax_data);
+/**
+ * Methods stats
+ * 
+ * @param target
+ * @param data
+ * @param axisBreaks
+ * 
+ */
+function make_method_total_column_chart(target, data, axisBreaks = null, maxValue = null)
+{
+    if(!$("#" + target))
+    {
+        console.log('Div not found.');
+        return;
+    }
 
-                k++;
-            }
+    am4core.useTheme(am4themes_animated);
+    // am4core.useTheme(am4themes_kelly);
 
-            var row_count = interactions.length;
-            
-            for(var i = 0; i <row_count; i++)
-            {
-                var int = interactions[i];
-                
-                data[i+1] = [
-                    int.substance.name,
-                    int.substance.identifier,
-                    int.substance.pubchem,
-                    int.substance.drugbank,
-                    int.substance.SMILES,
-                    int.method,
-                    int.membrane,
-                    int.charge,
-                    int.temperature,
-                    int.comment,
-                    int.substance.LogP,
-                    int.Position,
-                    int.Position_acc,
-                    int.Penetration,
-                    int.Penetration_acc,
-                    int.Water,
-                    int.Water_acc,
-                    int.LogK,
-                    int.LogK_acc,
-                    int.LogPerm,
-                    int.LogPerm_acc,
-                    int.substance.MW,
-                    int.reference,
-                    int.secondary_reference,
-                ];
-            }
+    var chart = am4core.create(target, am4charts.XYChart);
 
-            
-            var d = date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
-            exportToCsv('Dataset' + '_' + d + '.csv', data);
+    chart.data = data;
 
-            hide_overlay();
-        });
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "method";
+    categoryAxis.title.text = "Methods";
 
+    // First value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.title.text = "Total";
 
-        // Add to comparator
-        $('#add-to-comparator').click(function()
+    if(maxValue)
+    {
+        valueAxis.min = 0;
+        valueAxis.max = maxValue;
+        valueAxis.strictMinMax = true;
+    }
+    // Second value axis
+    // var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+    // valueAxis2.title.text = "Total substances";
+    // valueAxis2.renderer.opposite = true;
+
+    // First series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.valueY = "count_interactions";
+    series.dataFields.categoryX = "method";
+    series.name = "Total interactions";
+    series.tooltipText = "{name}: [bold]{valueY}[/]";
+
+    // Second series
+    var series2 = chart.series.push(new am4charts.LineSeries());
+    series2.dataFields.valueY = "count_substances";
+    series2.dataFields.categoryX = "method";
+    series2.name = "Total substances";
+    series2.tooltipText = "{name}: [bold]{valueY}[/]";
+    series2.strokeWidth = 3;
+    series2.yAxis = valueAxis;
+
+    var bullet = series2.bullets.push(new am4charts.CircleBullet());
+    bullet.circle.stroke = am4core.color("#fff");
+    bullet.circle.strokeWidth = 1;
+
+    // Add simple vertical scrollbar
+    chart.scrollbarY = new am4core.Scrollbar();
+
+    // Add horizotal scrollbar with preview
+    var scrollbarX = new am4charts.XYChartScrollbar();
+    scrollbarX.series.push(series);
+    chart.scrollbarX = scrollbarX;
+
+    if(axisBreaks)
+    {
+        for(var i = 0; i < axisBreaks.interactions.length; i++)
         {
-            $(substance_ids).each(function(k, s)
-            {
-                add_to_comparator(s.id, s.name);
-            })
+            var ab = axisBreaks.interactions[i];
 
-            add_message("Successfully added (" + substance_ids.length + " compounds) to comaprator.");
-        });
+            var axisBreak = valueAxis.axisBreaks.create();
+            axisBreak.startValue=ab.startValue;
+            axisBreak.endValue=ab.endValue;
+            axisBreak.breakSize=ab.breakSize;
+        }
+
+        // for(var i = 0; i < axisBreaks.substances.length; i++)
+        // {
+        //     var ab = axisBreaks.substances[i];
+
+        //     var axisBreak = valueAxis2.axisBreaks.create();
+        //     axisBreak.startValue=ab.startValue;
+        //     axisBreak.endValue=ab.endValue;
+        //     axisBreak.breakSize=ab.breakSize;
+
+        // }
+    }
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    // Add cursor
+    chart.cursor = new am4charts.XYCursor();
+}
+
+/**
+ * Identifiers stats
+ * 
+ * @param target
+ * @param data
+ * @param axisBreaks
+ * 
+ */
+function make_identifiers_chart(target, data, axisBreak = null, maxValue = null)
+{
+    if(!$("#" + target))
+    {
+        console.log('Div not found.');
+        return;
+    }
+
+    am4core.useTheme(am4themes_animated);
+    // am4core.useTheme(am4themes_kelly);
+
+    var chart = am4core.create(target, am4charts.XYChart);
+
+    chart.data = data;
+
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "identifier";
+    categoryAxis.title.text = "External databases";
+
+    // First value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.title.text = "Total substances";
+
+    if(maxValue)
+    {
+        valueAxis.min = 0;
+        valueAxis.max = maxValue;
+        valueAxis.strictMinMax = true;
+    }
+    // Second value axis
+    // var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+    // valueAxis2.title.text = "Total substances";
+    // valueAxis2.renderer.opposite = true;
+
+    // First series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.valueY = "count";
+    series.dataFields.categoryX = "identifier";
+    series.name = "Total substances";
+    series.tooltipText = "{name}: [bold]{valueY}[/]";
+
+    // // Add simple vertical scrollbar
+    // chart.scrollbarY = new am4core.Scrollbar();
+
+    // // Add horizotal scrollbar with preview
+    // var scrollbarX = new am4charts.XYChartScrollbar();
+    // scrollbarX.series.push(series);
+    // chart.scrollbarX = scrollbarX;
+
+    if(axisBreak)
+    {
+        var ab = axisBreak[0];
+
+        var axisBreak = valueAxis.axisBreaks.create();
+        axisBreak.startValue=ab.startValue;
+        axisBreak.endValue=ab.endValue;
+        axisBreak.breakSize=ab.breakSize;
+    }
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    // Add cursor
+    chart.cursor = new am4charts.XYCursor();
+}
+
+function makeInteractionsPie(divID, data)
+{
+    am4core.useTheme(am4themes_animated);
+
+    var chart = am4core.create(divID, am4charts.PieChart);
+
+    chart.data = data;
+
+    // Add and configure Series
+    var pieSeries = chart.series.push(new am4charts.PieSeries());
+    pieSeries.dataFields.value = "count";
+    pieSeries.dataFields.category = "name";
+    pieSeries.slices.template.stroke = am4core.color("#fff");
+    pieSeries.slices.template.strokeWidth = 3;
+    pieSeries.slices.template.strokeOpacity = 1;
+
+    // This creates initial animation
+    pieSeries.hiddenState.properties.opacity = 1;
+    pieSeries.hiddenState.properties.endAngle = -90;
+    pieSeries.hiddenState.properties.startAngle = -90;
+}
+
+function makeColumnChart(data, divID, parameters = {})
+{
+    if(!$("#" + divID))
+    {
+        console.log('Div not found.');
+        return;
+    }
+
+    am4core.useTheme(am4themes_animated);
+
+    var chart = am4core.create(divID, am4charts.XYChart);
+    chart.hiddenState.properties.opacity = 0; // this creates initial fade-in
+
+    chart.data = data;
+
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.dataFields.category = "citation";
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    // valueAxis.min = 0;
+    // valueAxis.max = 24000;
+    // valueAxis.strictMinMax = true;
+    valueAxis.renderer.minGridDistance = 30;
+
+    if(parameters.axisBreaks)
+    {
+        for(var i = 0; i < parameters.axisBreaks.length; i++)
+        {
+            var ab = parameters.axisBreaks[i];
+
+            var axisBreak = valueAxis.axisBreaks.create();
+            axisBreak.startValue=ab.startValue;
+            axisBreak.endValue=ab.endValue;
+            axisBreak.breakSize=ab.breakSize;
+
+            var hoverState = axisBreak.states.create("hover");
+            hoverState.properties.breakSize = 1;
+            hoverState.properties.opacity = 0.1;
+            hoverState.transitionDuration = 1500;
+
+            axisBreak.defaultState.transitionDuration = 1000;
+        }
+    }
+    // axis break
+    // var axisBreak = valueAxis.axisBreaks.create();
+    // axisBreak.startValue = 2100;
+    // axisBreak.endValue = 22900;
+    // axisBreak.breakSize = 0.005;
+
+    // make break expand on hover
+    // var hoverState = axisBreak.states.create("hover");
+    // hoverState.properties.breakSize = 1;
+    // hoverState.properties.opacity = 0.1;
+    // hoverState.transitionDuration = 1500;
+
+    // axisBreak.defaultState.transitionDuration = 1000;
+    /*
+    // this is exactly the same, but with events
+    axisBreak.events.on("over", () => {
+    axisBreak.animate(
+        [{ property: "breakSize", to: 1 }, { property: "opacity", to: 0.1 }],
+        1500,
+        am4core.ease.sinOut
+    );
     });
+    axisBreak.events.on("out", () => {
+    axisBreak.animate(
+        [{ property: "breakSize", to: 0.005 }, { property: "opacity", to: 1 }],
+        1000,
+        am4core.ease.quadOut
+    );
+    });*/
 
-    $(this).addClass('list-active');
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.categoryX = "citation";
+    series.dataFields.valueY = "count";
+    series.columns.template.tooltipText = "{valueY.value}";
+    series.columns.template.tooltipY = 0;
 
-    $('.stats-sublist-item:first').click();
+    series.columns.template.strokeOpacity = 0;
+    
 
-});
-
-
-$('.stats-list-item:first').click();
+    // as by default columns of the same series are of the same color, we add adapter which takes colors from chart.colors color set
+    series.columns.template.adapter.add("fill", (fill, target) => {
+    return chart.colors.getIndex(target.dataItem.index);
+    });
+}

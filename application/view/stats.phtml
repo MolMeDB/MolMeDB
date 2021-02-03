@@ -1,64 +1,116 @@
 <h2 style="text-align: center; font-weight: bold;">Statistics</h2>
+<div id="interactionAddDiv" style="width: 100%; height: 500px;"></div> <br/>
+<!-- <div id="interactionPrimaryReferenceDiv" style="width: 45%; height: 300px;"></div> <br/>
+<div id="substanceAddDiv" style="width: 45%; height: 300px;"></div> <br/>
+<div id="membranesAddDiv" style="width: 45%; height: 300px;"></div> <br/>
+<div id="methodsAddDiv" style="width: 45%; height: 300px;"></div> <br/> -->
 
-<div class="stats-summary-grid">
-    <div class="stat-panel">
-        <div class='stat-panel-info'>
-            <div class='stat-panel-title'>
-                <?= $total_interactions ?>
-            </div>
-            <div class="stat-panel-description">
-                Total interactions
-            </div>
-        </div>
-        <div class='stat-panel-img'>
-            <img src="files/icons/interaction.png">
-        </div>
-    </div>
-    <div class="stat-panel">
-        <div class='stat-panel-info'>
-            <div class='stat-panel-title'>
-                <?= $total_substances ?>
-            </div>
-            <div class="stat-panel-description">
-                Total compounds
-            </div>
-        </div>
-        <div class='stat-panel-img'>
-            <img src="files/icons/molecule.png">
-        </div>
-    </div>
-    <div onclick="redirect('stats/membranes')" class="stat-panel enabled <?= !empty($active_membrane) ? 'stat-panel-active' : '' ?>">
-        <div class='stat-panel-info'>
-            <div class='stat-panel-title'>
-                <?= $total_membranes ?>
-            </div>
-            <div class="stat-panel-description">
-                Total membranes
-            </div>
-        </div>
-        <div class='stat-panel-img'>
-            <img style="margin-right: 10px;" src="files/icons/lipid.png">
-        </div>
-    </div>
-    <div onclick="redirect('stats/methods')" class="stat-panel enabled <?= !empty($active_method) ? 'stat-panel-active' : '' ?>">
-        <div class='stat-panel-info'>
-            <div class='stat-panel-title'>
-                <?= $total_methods ?>
-            </div>
-            <div class="stat-panel-description">
-                Total methods
-            </div>
-        </div>
-        <div class='stat-panel-img'>
-            <img style="margin-right: 10px" src="files/icons/microscope.png">
-        </div>
-    </div>
-</div>
+<script src="js/amcharts64/themes/animated.js"></script>
+<script src="js/stats.js"></script>
 
-<div class="stats-detail">
-    <?= $nonsec_detail ?>
-</div>
+<script>
+    // Chart for count of total interaction 
+    // var inter_adding_data = JSON.parse('<?= '' //json_encode($interactions->adding->data) ?>');
+    // var inter_adding_params = {
+    //     axisBreaks: JSON.parse('<?= '' //json_encode($interactions->adding->axisBreaks)?>'),
+    //     series: [ 
+    //         {
+    //             attribute: 'count_passive',
+    //             label: 'Total passive interactions'
+    //         },
+    //         {
+    //             attribute: 'count_active',
+    //             label: "Total active interactions"
+    //         }
+    //     ]
+    //     };
+    // makeLineChart(inter_adding_data, "interactionAddDiv", inter_adding_params)
+    // var inter_adding_data = JSON.parse('<?= '' //'' //json_encode($interactions->adding->data) ?>');
+    // var inter_adding_params = {
+    //     axisBreaks: JSON.parse('<?= '' //json_encode($interactions->adding->axisBreaks)?>'),
+    //     series: [ 
+    //         {
+    //             attribute: 'count_passive',
+    //             label: 'Total passive interactions'
+    //         },
+    //         {
+    //             attribute: 'count_active',
+    //             label: "Total active interactions"
+    //         }
+    //     ]
+    //     };
+    // makeLineChart(inter_adding_data, "interactionAddDiv", inter_adding_params)
+    // var inter_adding_data = JSON.parse('<?= '' //json_encode($interactions->adding->data) ?>');
+    // var inter_adding_params = {
+    //     axisBreaks: JSON.parse('<?= '' //json_encode($interactions->adding->axisBreaks)?>'),
+    //     series: [ 
+    //         {
+    //             attribute: 'count_interactions',
+    //             label: 'Total interactions'
+    //         },
+    //         {
+    //             attribute: 'count_substances',
+    //             label: "Total substances"
+    //         }
+    //     ]
+    //     };
+    // makeLineChart(inter_adding_data, "interactionAddDiv", inter_adding_params)
 
-<script src="js/stats.js">
+    // Chart for count of total interaction 
+    // var inter_adding_data = JSON.parse('<?= '' //json_encode($interactions->primary_reference->data) ?>');
+    // var inter_adding_params = {
+    //     axisBreaks: JSON.parse('<?= '' //json_encode($interactions->primary_reference->axisBreaks)?>'),
+    //     serie: 
+    //         {
+    //             attribute: 'count',
+    //             label: 'Interactions total by primary reference'
+    //         }
+    //     };
+    // makeColumnChart(inter_adding_data, "interactionPrimaryReferenceDiv", inter_adding_params)
 
+    // Chart for count of total substances
+    // var inter_adding_data = JSON.parse('<?= '' //json_encode($substances->adding->data) ?>');
+    // var inter_adding_params = {
+    //     axisBreaks: JSON.parse('<?= '' //json_encode($substances->adding->axisBreaks)?>'),
+    //     serie: 
+    //         {
+    //             attribute: 'count',
+    //             label: 'Substances total'
+    //         }
+    //     };
+    // makeLineChart(inter_adding_data, "substanceAddDiv", inter_adding_params)
+
+    // Chart for count of total membranes
+    var data = JSON.parse('<?= json_encode($membranes->data) ?>');
+    // var axisBreaks = {
+    //     // interactions: JSON.parse('<?= '' // json_encode($membranes->axisBreaks_interactions)?>'),
+    //     // substances: JSON.parse('<?= ''// json_encode($membranes->axisBreaks_substances)?>')
+    // }
+
+    make_membrane_total_column_chart('interactionAddDiv', data);
+
+    // // Chart for count of total methods
+    // var data = JSON.parse('<?= "" // json_encode($interactions_pa->data) ?>');
+
+    // makeInteractionsPie('interactionAddDiv', data);
+
+    // var data = JSON.parse('<?= ''//json_encode($methods->data) ?>');
+    // var axisBreaks = {
+    //     interactions: JSON.parse('<?= ''//json_encode($methods->axisBreaks_interactions)?>'),
+    //     // substances: JSON.parse('<?= ''//json_encode($membranes->axisBreaks_substances)?>')
+    // }
+
+    // make_method_total_column_chart('interactionAddDiv', data, axisBreaks, parseInt('<?=''//$methods->maxValue?>'));
+        
+    // // Chart for count of total methods
+    // var inter_adding_data = JSON.parse('<?= '' //json_encode($methods->adding->data) ?>');
+    // var inter_adding_params = {
+    //     axisBreaks: JSON.parse('<?= '' //json_encode($methods->adding->axisBreaks)?>'),
+    //     serie: 
+    //         {
+    //             attribute: 'count',
+    //             label: 'Methods total'
+    //         }
+    //     };
+    // makeLineChart(inter_adding_data, "methodsAddDiv", inter_adding_params)
 </script>

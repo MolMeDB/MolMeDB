@@ -2240,7 +2240,7 @@ p.attribute {
     grid-template-columns: 25% 25% 25% 25%;
     grid-template-rows: 100px;
 }
-
+/* 
 .stat-panel{
     transition: all .2s ease-in-out;
     padding: 20px;
@@ -2254,7 +2254,7 @@ p.attribute {
 .stat-panel-active{
     background-image: none;;
     background-color: #1a3264;
-}
+} */
 
 .enabled{
     -webkit-box-shadow: 0px 26px 35px -18px rgba(0,0,0,0.75);
@@ -2267,7 +2267,7 @@ p.attribute {
     z-index: 10;
     cursor: pointer;
 }
-
+/* 
 .stat-panel-info{
     display: flex;
     flex-direction: column;
@@ -2282,12 +2282,14 @@ p.attribute {
 .stat-panel-description{
     font-size: 13px;
     font-weight: bold;
-}
+} */
 
 .stat-panel-img{
     display: flex;
     flex-direction: row-reverse;
-    width: 40%;
+    width: 50px;
+    height: 90%;
+    max-width: 50px;
 }
 
 .stat-panel-img img{
@@ -2419,15 +2421,6 @@ p.attribute {
     color: black;   
 }
 
-.stats-title{
-    text-align: center;
-    font-weight: bold;
-    text-transform: uppercase;
-    cursor: default;
-    color: rgb(218, 218, 218);
-    padding-bottom: 5px;
-}
-
 /* SETTING FORM */
 .setting-form
 {
@@ -2478,6 +2471,7 @@ table.setting-form-table > tbody tr {
 .row{
     display: flex;
     flex-direction: row;
+    margin: 0;
 }
 
 .column

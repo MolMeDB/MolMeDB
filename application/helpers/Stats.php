@@ -29,6 +29,49 @@ class Stats extends Db
     }
 
     /**
+     * Returns total interactions (active + passive)
+     * 
+     * @return int
+     */
+    public function get_total_interactions()
+    {
+        return $this->interactionModel
+            ->count_all() + 
+            $this->transporterModel
+            ->count_all();
+    }
+
+    /**
+     * Returns total substances
+     * 
+     * @return int
+     */
+    public function get_total_substances()
+    {
+        return $this->substanceModel->count_all();
+    }
+
+    /**
+     * Returns total membranes
+     * 
+     * @return int
+     */
+    public function get_total_membranes()
+    {
+        return $this->membraneModel->count_all();
+    }
+
+    /**
+     * Returns total methods
+     * 
+     * @return int
+     */
+    public function get_total_methods()
+    {
+        return $this->methodModel->count_all();
+    }
+
+    /**
      * Returns data for interaction interval adding data
      * 
      * returns 2 types of results - passive and active interactions
@@ -587,8 +630,8 @@ class Stats extends Db
         {
             for($i = 0; $i < count($result); $i++)
             {
-                $result[$i]['count_interactions'] = $result[$i]['count_interactions'] > 0 ? log10($result[$i]['count_interactions']) : 0;
-                $result[$i]['count_substances'] = $result[$i]['count_substances'] > 0 ? log10($result[$i]['count_substances']) : 0;
+                $result[$i]['count_interactions'] = $result[$i]['count_interactions'] > 0 ? $result[$i]['count_interactions'] : 1;
+                $result[$i]['count_substances'] = $result[$i]['count_substances'] > 0 ? $result[$i]['count_substances'] : 1;
             }
         }
 
@@ -605,8 +648,6 @@ class Stats extends Db
         (
             "data" => $result,
             'axisBreaks_interactions' => $axis_breaks,
-            // 'axisBreaks_interactions' => $this->get_axis_breaks($result, array('count_interactions', 'count_substances'), 500, 0.5),
-            // 'axisBreaks_substances' => $this->get_axis_breaks($result, array('count_substances'))
         );
     }
 
@@ -615,7 +656,7 @@ class Stats extends Db
      * 
      * @return array
      */
-    public function get_methods_stats()
+    public function get_methods_stats($log_scale = FALSE)
     {
         $methods = $this->methodModel->select_list(array('id', 'name'))->get_all();
 
@@ -650,28 +691,28 @@ class Stats extends Db
             return $b['count_interactions'] - $a['count_interactions'];
         });
 
-        $axis_breaks = $this->get_axis_breaks($result, array('count_interactions')) + $this->get_axis_breaks($result, array('count_substances'));
-
-        // Add margin to max value
-        $l = intval(log10($maxValue));
-        $l -= 2;
-
-        if($l)
+        if($log_scale)
         {
-            $maxValue += pow(10, $l); 
+            for($i = 0; $i < count($result); $i++)
+            {
+                $result[$i]['count_interactions'] = $result[$i]['count_interactions'] > 0 ? $result[$i]['count_interactions'] : 1;
+                $result[$i]['count_substances'] = $result[$i]['count_substances'] > 0 ? $result[$i]['count_substances'] : 1;
+            }
+        }
+
+        if($log_scale)
+        {
+            $axis_breaks = null;
         }
         else
         {
-            $maxValue++;
+            $axis_breaks = $this->get_axis_breaks($result, array('count_interactions')) + $this->get_axis_breaks($result, array('count_substances'));
         }
 
         return array
         (
             "data" => $result,
             'axisBreaks_interactions' => $axis_breaks,
-            'maxValue' => $maxValue
-            // 'axisBreaks_interactions' => $this->get_axis_breaks($result, array('count_interactions', 'count_substances'), 500, 0.5),
-            // 'axisBreaks_substances' => $this->get_axis_breaks($result, array('count_substances'))
         );
     }
 

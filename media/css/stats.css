@@ -1,0 +1,98 @@
+.stats-total{
+    background-color: #fefefe;
+    padding: 20px;
+    border-radius: 15px;
+}
+
+
+.stats-title{
+    margin-bottom: 10px;
+    font-size: 30px;
+    color: #3a68bb;
+    font-weight: bold;
+}
+
+.stats-total-grid{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 10px;
+}
+
+.stats-total-grid-item{
+    display: flex;
+    height: 100px;
+    width: 220px;
+    justify-content: center;
+    background-color: #fff;
+    border-radius: 20px;
+    padding: 20px;
+    background-image: linear-gradient(to right, #4a82da, #3a68bb, #294f9c);
+    color: #fff;
+}
+
+.stats-total-grid-item-top{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    justify-content: space-between;
+}
+
+/* TITLE */
+.stats-total-grid-item-top > div:first-child > div:first-child{
+    text-transform: uppercase;
+    font-size: 12px;
+    color: rgba(255,255,255,0.8);
+}
+
+/* COUNT */
+.stats-total-grid-item-top > div:first-child > div:last-child{
+    font-size: 28px;
+    font-weight: bold;
+}
+
+/* picture */
+.stats-total-grid-item-top > div:last-child > img{
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.stats{
+    background-color: #eaeaea;
+    border-radius: 10px;
+    padding: 40px;
+}
+
+.stat-panel{
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 15px;
+}
+
+.stat-panel-title{
+    font-size: 18px;
+    color: #555;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stat-panel-subtitle{
+    font-size: 15px;
+    color: #aaa;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.stats-row{
+    display: flex;
+    flex-direction: row;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    justify-content: space-between;
+}
+
+.stats-column{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}

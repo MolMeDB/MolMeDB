@@ -314,6 +314,13 @@ class Stats extends Db
                     'createDateTime <=' => date('Y-m-01', strtotime('+1 month', $ts))
                 ))
                 ->order_by('createDateTime', 'ASC')
+                ->count_all()) + 
+                ($this->transporterModel
+                ->where(array
+                (
+                    'create_datetime <=' => date('Y-m-01', strtotime('+1 month', $ts))
+                ))
+                ->order_by('create_datetime', 'ASC')
                 ->count_all());
 
             $count_s = ($this->substanceModel

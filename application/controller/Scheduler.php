@@ -88,6 +88,13 @@ class SchedulerController extends Controller
                 $this->fill_substance_identifiers();
             }
 
+            // Once per day, update stats data
+            if($time->is_hour(1) && $time->is_minute(30))
+            {
+                echo "Updating stats data. \n";
+                $this->update_stats();
+            }
+
             echo "DONE \n";
         }
         catch(Exception $e)
@@ -113,6 +120,15 @@ class SchedulerController extends Controller
         }
 
         echo '-------------------------';
+    }
+
+    /**
+     * Updates stats data
+     */
+    private function update_stats()
+    {
+        $stats_model = new Statistics();
+        $stats_model->update_all();
     }
 
     /**

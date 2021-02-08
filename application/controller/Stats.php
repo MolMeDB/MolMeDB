@@ -17,44 +17,76 @@
         parent::__construct();
     }
 
+    /** DEFAULT ROUTE */
+    public function parse()
+    {
+        $this->show_all();
+    }
 
     /**
      * Shows summary stats
     */
     public function show_all()
     {
-        $stats = new Stats();
+        $stats = new Statistics();
+
+        $this->data['last_update'] = date('d-m-Y', strtotime($stats->get_last_update_date()));
 
         $this->data['interactions'] = (object)array
         (
-            'adding' => (object)$stats->get_interaction_substances_adding_stats(),
-            'total' => $stats->get_total_interactions()
+            'adding' => (object)$stats->get(Statistics::TYPE_INTER_ADD),
+            'total' => $stats->get(Statistics::TYPE_INTER_TOTAL)
         );
 
         $this->data['substances'] = (object)array
         (
-            'total' => $stats->get_total_substances()
+            'total' => $stats->get(Statistics::TYPE_SUBST_TOTAL)
         );
 
         $this->data['membranes'] = (object)array
         (
-            'stats' => (object)$stats->get_membranes_stats(True),
-            'total' => $stats->get_total_membranes()
+            'stats' => (object)$stats->get(Statistics::TYPE_MEMBRANES_DATA),
+            'total' => $stats->get(Statistics::TYPE_MEMBRANES_TOTAL)
         );
 
         $this->data['methods'] = (object)array
         (
-            'stats' => (object)$stats->get_methods_stats(True),
-            'total' => $stats->get_total_methods()
+            'stats' => (object)$stats->get(Statistics::TYPE_METHODS_DATA),
+            'total' => $stats->get(Statistics::TYPE_METHODS_TOTAL)
         );
 
-        $this->data['identifiers'] = (object)$stats->get_identifiers_stats();
+        $this->data['identifiers'] = (object)$stats->get(Statistics::TYPE_IDENTIFIERS);
 
-        $this->data['interactions_pa'] = (object)$stats->get_passive_active_int_substance_stats();
+        $this->data['interactions_pa'] = (object)$stats->get(Statistics::TYPE_INTER_PASSIVE_ACITVE);
+
+        $this->data['update_available'] = $this->session->user ? $this->session->user->admin : FALSE;
 
         $this->data["detail"] = "";
         $this->header['title'] = 'Statistics';
         $this->view = 'stats';
+    }
+
+    /**
+     * Updates all stats
+     */
+    public function update_all()
+    {
+        $stats_model = new Statistics();
+
+        try
+        {
+            $stats_model->beginTransaction();
+            $stats_model->update_all();
+            $stats_model->commitTransaction();
+
+            $this->addMessageSuccess('Stats were updated.');
+        }
+        catch(Exception $e)
+        {
+            $this->addMessageError($e->getMessage());
+        }
+
+        $this->redirect('stats');
     }
 
     /**

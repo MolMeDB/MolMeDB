@@ -81,6 +81,18 @@
     color: #555;
     font-weight: bold;
     margin-bottom: 5px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.stat-panel-title span{
+    cursor: pointer;
+    color: #b81616;
+}
+
+.stat-panel-title span:hover{
+    color: #d60000;
 }
 
 .stat-panel-subtitle{

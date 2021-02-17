@@ -65,17 +65,32 @@
     <div class="stats-rows">
         <div class="stats-row stats-row-1">
             <div class="stat-panel" style="width: 60%">
-                <div class="stat-panel-title">Growth curve</div>
+                <div class="stat-panel-title">
+                    Growth curve 
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
+                    <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php endif ?>
+                </div>
                 <div class="stat-panel-subtitle">Increase in the amount of data by date</div>
                 <div id="interactionAddDiv" class="stat-chart" style="width: 100%; height: 560px;"></div>
             </div>
             <div class="stats-column" style="width: 38%">
                 <div class="stat-panel">
-                    <div class="stat-panel-title">Proportion of substances interactions</div>
+                    <div class="stat-panel-title">
+                        Proportion of substances interactions
+                        <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_PASSIVE_ACITVE_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_INTER_PASSIVE_ACITVE_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download data"></span></a>
+                        <?php endif ?>
+                    </div>
                     <div id="interactionAddDiv2" style="width: 100%; height: 210px;"></div>
                 </div>
                 <div class="stat-panel">
-                    <div class="stat-panel-title">Links to external databases</div>
+                    <div class="stat-panel-title">
+                    Links to external databases
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_IDENTIFIERS_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_IDENTIFIERS_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download data"></span></a>
+                    <?php endif ?>
+                    </div>
                     <div id="interactionAddDiv3" class="stat-panel" style="width: 100%; height: 300px;"></div>
                 </div>
             </div>
@@ -83,7 +98,12 @@
 
         <div class="stats-row">
             <div class="stat-panel" style="width: 100%">
-                <div class="stat-panel-title">Methods</div>
+                <div class="stat-panel-title">
+                    Methods
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php endif ?>
+                </div>
                 <div class="stat-panel-subtitle">Amount of data</div>
                 <div id="methodDiv" class="stat-chart" style="width: 100%; height: 560px;"></div>
             </div>
@@ -91,7 +111,12 @@
 
         <div class="stats-row">
             <div class="stat-panel" style="width: 100%">
-                <div class="stat-panel-title">Membranes</div>
+                <div class="stat-panel-title">
+                    Membranes
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php endif ?>
+                </div>
                 <div class="stat-panel-subtitle">Amount of data</div>
                 <div id="membraneDiv" class="stat-chart" style="width: 100%; height: 560px;"></div>
             </div>
@@ -118,7 +143,7 @@
             }
         ]
     };
-    makeAddingLineChart(inter_adding_data, "interactionAddDiv", inter_adding_params)
+    makeAddingLineChart(inter_adding_data, "interactionAddDiv", inter_adding_params, "<?= $interactions->adding->max_value ?>")
 
     var data = JSON.parse('<?= json_encode($identifiers->data) ?>');
     var axisBreak = JSON.parse('<?= json_encode($identifiers->axisBreaks[0])?>');

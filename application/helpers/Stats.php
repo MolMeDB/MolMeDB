@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Library for handling with statisticall data
+ * Library for handling with statistical data
  * 
  * @author Jakub Juracka
  */

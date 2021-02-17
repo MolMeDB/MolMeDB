@@ -14,6 +14,9 @@ class File
 
     // 3dstructure folder
     const FOLDER_3DSTRUCTURES = MEDIA_ROOT . "files/3DStructures/";
+    
+    // 
+    const FOLDER_STATS_DOWNLOAD = MEDIA_ROOT . 'files/stats_download/';
 
     /**
      * Constructor
@@ -57,6 +60,19 @@ class File
         
         // Set default values
         $this->FILE = fopen($filePath, $type);
+        $this->origin_path = $filePath;
+        $this->name = substr($filePath, $last_slash + 1);
+    }
+
+    /**
+     * Closes file
+     */
+    public function close()
+    {
+        if($this->FILE)
+        {
+            fclose($this->FILE);
+        }
     }
 
     /**
@@ -250,5 +266,95 @@ class File
         }
 
         return $this->FILE;
+    }
+
+    /**
+     * Transform data array to CSV and make file
+     * 
+     * @return File
+     */
+    public function transform_to_CSV($data, $file_name = null)
+    {
+        if(!is_array($data) || !is_array($data[0]))
+        {
+            return null;
+        }
+
+        if(!$file_name)
+        {
+            $file_name = strtotime('now') . '.csv';
+        }
+
+        $result = [array_keys($data[0])] + $data;
+
+        $this->create(self::FOLDER_STATS_DOWNLOAD . $file_name);
+        $this->writeCSV($result);
+        $this->close();
+
+        return $this->origin_path;
+    }
+
+    /**
+     * Zip list of files
+     * 
+     * @param array|string $path
+     * 
+     * @return string
+     */
+    public function zip($path, $target, $delete_after = FALSE)
+    {
+        if(is_string($path))
+        {
+            $path = [$path];
+        }
+
+        if(!is_array($path))
+        {
+            throw new Exception('No files to zip.');
+        }
+        
+        $t = $path;
+
+        foreach($t as $key => $p)
+        {
+            if(!file_exists($p))
+            {
+                unset($path[$key]);
+            }
+        }
+
+        if(!count($path))
+        {
+            return null;
+        }
+
+        $zip = new ZipArchive();
+
+        // Delete old zip if exists
+        if(file_exists($target))
+        {
+            unlink($target);
+        }
+
+        if ($zip->open($target, ZIPARCHIVE::CREATE) != TRUE) 
+        {
+            throw new Exception("Could not open archive");
+        }
+            
+        foreach($path as $p)
+        {
+            $zip->addFile($p, basename($p));
+        }
+        
+        // close and save archive
+        $zip->close(); 
+
+        if($delete_after)
+        {
+            foreach($path as $p)
+            {
+                unlink($p);
+            }
+        }
     }
 }

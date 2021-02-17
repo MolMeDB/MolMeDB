@@ -7,7 +7,7 @@
  * @param {*} divID 
  * @param {*} parameters 
  */
-function makeAddingLineChart(data, divID, parameters = {})
+function makeAddingLineChart(data, divID, parameters = {}, maxValue = null)
 {
     if(!$("#" + divID))
     {
@@ -22,6 +22,9 @@ function makeAddingLineChart(data, divID, parameters = {})
 
     chart.data = data;
 
+    chart.zoomOutButton.align = "left";
+    chart.zoomOutButton.valign = "top";
+
     // Create axes
     var xAxis = chart.xAxes.push(new am4charts.DateAxis());
     xAxis.renderer.grid.template.location = 0;
@@ -30,6 +33,13 @@ function makeAddingLineChart(data, divID, parameters = {})
     // xAxis.dataFields.category = "citation";
 
     var yAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+    if(maxValue)
+    {
+        yAxis.min = 0;
+        yAxis.max = parseInt(maxValue);
+        yAxis.strictMinMax = true;
+    }
     
     if(parameters.axisBreaks)
     {
@@ -454,13 +464,18 @@ function makeInteractionsPie(divID, data)
     pieSeries.dataFields.value = "count";
     pieSeries.dataFields.category = "name";
     pieSeries.slices.template.stroke = am4core.color("#fff");
-    pieSeries.slices.template.strokeWidth = 3;
+    pieSeries.slices.template.strokeWidth = 1;
     pieSeries.slices.template.strokeOpacity = 1;
+    pieSeries.labels.template.disabled = true;
+    pieSeries.ticks.template.disabled = true;
 
     // This creates initial animation
     pieSeries.hiddenState.properties.opacity = 1;
     pieSeries.hiddenState.properties.endAngle = -90;
     pieSeries.hiddenState.properties.startAngle = -90;
+
+    // Add a legend
+    chart.legend = new am4charts.Legend();  
 }
 
 function makeColumnChart(data, divID, parameters = {})

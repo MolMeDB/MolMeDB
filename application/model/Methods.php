@@ -185,6 +185,31 @@ class Methods extends Db
 
 
     /**
+     * Returns empty methods
+     * 
+     * @return Iterable_object
+     */
+    public function get_empty_methods()
+    {
+        $data = $this->queryAll('
+            SELECT m.id
+            FROM methods m
+            LEFT JOIN interaction i ON i.id_method = m.id
+            WHERE i.id IS NULL
+        ');
+
+        $res = [];
+
+        foreach($data as $row)
+        {
+            $res[] = new Methods($row->id);
+        }
+
+        return $res;
+    }
+
+
+    /**
      * REST API function
      * Gets method for given params
      * 

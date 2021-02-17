@@ -54,6 +54,7 @@ class SchedulerController extends Controller
             echo "Emails sent. \n";
 
             // Delete substances without interactions
+            // 19:01
             if($this->debug_DES || ($time->is_minute(1) && $time->is_hour(19)))
             {
                 echo "Deleting empty substances. \n";
@@ -61,6 +62,7 @@ class SchedulerController extends Controller
             }
 
             // Checks interactions datasets
+            // 20:01
             if($this->debug_CID || ($time->is_hour(20) && $time->is_minute(1)))
             {
                 echo "Checking interaction datasets.\n";
@@ -75,13 +77,15 @@ class SchedulerController extends Controller
             }
 
             // ---- Molecules data autofill ---- //
-            if($this->debug_FMD || ($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 3))) // Run only once per hour and only at night
+            // 21:01 - 05:01
+            if($this->debug_FMD || ($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 6))) // Run only once per hour and only at night
             {
                 echo "Subtance validations is running. \n";
                 $this->substance_autofill_missing_data($time->get_hour() % 2);
             }
             
             // Once per day, try to find identifiers
+            // 05:01
             if($this->debug_FMD || ($time->is_minute(1) && $time->is_hour(5))) // Run only once per hour and only at night
             {
                 echo "`Filling missing identifiers` is running. \n";
@@ -89,10 +93,19 @@ class SchedulerController extends Controller
             }
 
             // Once per day, update stats data
+            // 01:30
             if($time->is_hour(1) && $time->is_minute(30))
             {
                 echo "Updating stats data. \n";
                 $this->update_stats();
+            }
+
+            // Delete empty membranes and methods
+            // 02:30
+            if($time->is_hour(2) && $time->is_minute(30))
+            {
+                echo "Deleting epmpty membranes/methods. \n";
+                $this->delete_empty_membranes_methods();
             }
 
             echo "DONE \n";
@@ -130,6 +143,61 @@ class SchedulerController extends Controller
         $stats_model = new Statistics();
         $stats_model->update_all();
     }
+
+    /**
+     * Deletes old membranes and methods
+     * 
+     * @author Jakub Juracka
+     */
+    public function delete_empty_membranes_methods()
+    {
+        $membrane_model = new Membranes();
+        $method_model = new Methods();
+
+        $empty_membranes = $membrane_model->get_empty_membranes();
+        $mepty_methods = $method_model->get_empty_methods();
+
+        $del_membranes = $del_methods = 0;
+
+        foreach($empty_membranes as $membrane)
+        {
+            try
+            {
+                $membrane->delete();
+                $del_membranes++;
+            }
+            catch(Exception $e)
+            {
+                echo "Error occured while deleting membrane [" . $membrane->name . "].\n";
+                echo $e->getMessage() . "\n";
+            }
+        }
+
+        foreach($mepty_methods as $method)
+        {
+            try
+            {
+                $method->delete();
+                $del_methods++;
+            }
+            catch(Exception $e)
+            {
+                echo "Error occured while deleting method [" . $method->name . "].\n";
+                echo $e->getMessage() . "\n";
+            }
+        }
+
+        if($del_membranes)
+        {
+            echo "Total $del_membranes membranes deleted.\n";
+        }
+
+        if($del_methods)
+        {
+            echo "Total $del_methods methods deleted.\n";
+        }
+    }
+
 
     /**
      * Delets substances without interactions

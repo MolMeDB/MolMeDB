@@ -98,6 +98,31 @@ class Membranes extends Db
     // }
     
     /**
+     * Returns empty membranes
+     * 
+     * @return Iterable_object
+     */
+    public function get_empty_membranes()
+    {
+        $data = $this->queryAll('
+            SELECT m.id
+            FROM membranes m
+            LEFT JOIN interaction i ON i.id_membrane = m.id
+            WHERE i.id IS NULL
+        ');
+
+        $res = [];
+
+        foreach($data as $row)
+        {
+            $res[] = new Membranes($row->id);
+        }
+
+        return $res;
+    }
+
+
+    /**
      * Loads whisper detail
      * 
      * @param string $q - QUERY

@@ -111,7 +111,7 @@ class Validator extends Db
                     GROUP BY id
                 ) t 
                 GROUP BY id
-                ORDER BY create_date_time DESC
+                ORDER BY create_date_time, waiting DESC
                 $limit_str
             ", array(self::VALIDATED, self::VALIDATED));
         }
@@ -137,7 +137,7 @@ class Validator extends Db
                     GROUP BY id
                 ) t 
                 GROUP BY id
-                ORDER BY create_date_time DESC
+                ORDER BY create_date_time, waiting DESC
                 $limit_str
             ", array($state, $state));
         }

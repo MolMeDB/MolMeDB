@@ -1,5 +1,5 @@
 <div class="browse-title">Datasets</div>
-<div id="RefList">
+<!-- <div id="RefList">
     <input type="text" class="search" placeholder="Search publications..." id="publSearch" />
     <ul class="list" id="publList">
       <?php foreach($publications as $p) : ?>
@@ -18,7 +18,67 @@
                     <?php endif ?>
         <?php endfor ?>
     </ul>
+</div> -->
+
+<div class="publication-list">
+    <input type="text" class="search" placeholder="Search publications..." id="publSearch" />
+    <table class="publications" id="publications">
+        <thead>
+            <th>Title</th>
+            <th>Authors</th>
+            <th>Year</th>
+            <th>PMID/DOI</th>
+            <th>Actions</th>
+        </thead>
+        <tbody>
+            <?php foreach($publications as $p) : ?>
+                <tr data-id="<?= $p->id ?>" data-pmid="<?= $p->pmid ?>" data-doi="<?= $p->doi ?>" class="active">
+                    <td>
+                        <?= $p->title_short ? $p->title_short : $p->citation_short?>
+                        <whisper class="whisper">
+                            <?= $p->citation ?>
+                        </whisper>
+                    </td>
+                    <td>
+                        <?= $p->authors_short ?>
+                        <div class="whisper">
+                            <?= $p->authors ?>
+                        </div>
+                    </td>
+                    <td><?= $p->year ?></td>
+                    <td>
+                        <?php if($p->pmid) : ?>
+                            <a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/<?= $p->pmid ?>"><?= $p->pmid ?></a>
+                        <?php elseif($p->doi) : ?>
+                            <a target="_blank" href="https://doi.org/<?= $p->doi ?>"><?= $p->doi_short ?></a>
+                            <div class="whisper">
+                                <?= $p->doi ?>
+                            </div>
+                        <?php endif ?>
+                    </td>
+                    <td>
+                        <button title='Show data' class="blue" onclick="" ><?= Html::image('icons/mol.png') ?></button>
+                        <button title='Export data' class="orange" onclick="" ><?= Html::image('icons/cloud.png') ?></button>
+                    </td>
+                </tr>
+            <?php endforeach ?>
+        </tbody>
+    </table>
+    <div class="table-suffix">
+        <div class="table-paginator" id="paginator">
+        </div>
+        <div class="table-items-total">
+            <element class="active">10</element>
+            <element>25</element>
+            <element>50</element>
+            <element>100</element>
+        </div>
+    </div>
 </div>
+
+<script src="js/publications.js?ver=<?= JS_VERSION ?>">
+
+</script>
 
 <div style="display:none" id="content"> 
         <?php if(isset($list)) : ?>
@@ -98,18 +158,14 @@
 
 
 <script>
-    var monkeyList = new List('RefList', {
-        valueNames: ['name'],
-        page: document.getElementById("IOP").value,
-        pagination: true
-    });
+    // var monkeyList = new List('RefList', {
+    //     valueNames: ['name'],
+    //     page: document.getElementById("IOP").value,
+    //     pagination: true
+    // });
 
-    $(document).ready(function()
-    {
-        showContent();
-    });
 
-    async function showContent()
+    async function showContents()
     {
         await show_overlay();
         await sleep(500);

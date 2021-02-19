@@ -156,32 +156,54 @@
         <table class="dataset-table">
             <thead>
                 <tr id='rights-group-<?=$group['id']?>'>
-                    <td>#</td>
-                    <td>Group</td>
-                    <td>Rights</td>
-                    <td>Edit</td>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($rights_groups as $group) : ?>
-                <tr>
-                    <td><?=$group['id']?></td>
-                    <td><?=$group['name']?></td>
-                    <td><?=$group['access']?></td>
-                    <?php if($group['access'] === "YES" && $group['name'] !== "ADMINS") :?>
-                        <td title='Remove rights' onclick="toggle_rights('<?=$info->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-remove"></span></td>
-                    <?php elseif($group['name'] === "ADMINS") : ?>
-                        <td></td>
-                    <?php else : ?>
-                        <td title='Add rights' onclick="toggle_rights('<?=$info->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-ok"></span></td>
-                    <?php endif ?>
-                </tr>
-                <?php endforeach ?>
-            </tbody>
-        </table>
-        
+                        <td>#</td>
+                        <td>Group</td>
+                        <td>Rights</td>
+                        <td>Edit</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($rights_groups as $group) : ?>
+                    <tr>
+                        <td><?=$group['id']?></td>
+                        <td><?=$group['name']?></td>
+                        <td><?=$group['access']?></td>
+                        <?php if($group['access'] === "YES" && $group['name'] !== "ADMINS") :?>
+                            <td title='Remove rights' onclick="toggle_rights('<?=$info->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-remove"></span></td>
+                        <?php elseif($group['name'] === "ADMINS") : ?>
+                            <td></td>
+                        <?php else : ?>
+                            <td title='Add rights' onclick="toggle_rights('<?=$info->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-ok"></span></td>
+                        <?php endif ?>
+                    </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
         </div>
     </div>
+    <?php if($total_duplicity): ?>
+    <div class="col-md-12">
+        <div class="col-md-5 o-card">
+            <h4><b>Validator</b></h4>
+            <table class="dataset-table">
+                <thead>
+                    <tr id='rights-group-<?=$group['id']?>'>
+                        <td>Info</td>
+                        <td>Action</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($rights_groups as $group) : ?>
+                    <tr>
+                        <td>Total unresolved duplicites: <?= $total_duplicity ?></td>
+                        <td><button onclick="redirect('validator/unlabel_duplicity/<?= $info->id ?>')" class="btn btn-sm btn-warning"> Set all as non-duplicity</button></td>
+                    </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php endif ?>
     <div class="col-md-12 o-card">
         <h4><b>Interactions</b></h4> 
         <h5 style="color:red;"><b>Warning! Some interactions may be missing in the current dataset if only older records were edited during upload.</b></h5>

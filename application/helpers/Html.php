@@ -127,8 +127,7 @@ class Html
     /**
      * Makes button html
      * 
-     * @param string $type
-     * @param string $title
+     * @param string $src - prefix: 'files/'
      * @param string $class
      */
     public static function image($src, $class = "")

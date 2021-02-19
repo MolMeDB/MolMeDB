@@ -1,0 +1,173 @@
+table.publications{
+    border-top-right-radius: 20px;
+    border-top-left-radius: 20px;
+    width: 100%;
+}
+
+/* TITLE */
+table.publications tbody > tr > td:nth-child(1)
+{
+    width: 45%;
+}
+/* AUTHORS */
+table.publications tbody > tr > td:nth-child(2)
+{
+    width: 25%;
+}
+/* YEAR */
+table.publications tbody > tr > td:nth-child(3)
+{
+    text-align: center;
+}
+/* DOI */
+table.publications tbody > tr > td:nth-child(4)
+{
+    text-align: center;
+}
+/* ACTIONS */
+table.publications tbody > tr > td:nth-child(5)
+{
+    display: flex;
+    justify-content: center;
+}
+
+table.publications button{
+    border: none;
+    margin: 2px;
+    padding: 2px 5px;
+}
+
+table.publications button img{
+    width: 15px;
+}
+
+
+table.publications button.blue{
+    background-color: #4a82da;
+    color: #fff;
+}
+
+table.publications button.orange{
+    background-color: orange;
+    color: #fff;
+}
+
+table.publications tbody > tr:nth-child(even){
+    background-color: #eee;
+}
+
+table.publications tbody > tr{
+    display: none;
+}
+
+table.publications tbody > tr > td{
+    padding: 5px 10px;
+    position: relative;
+}
+
+table.publications thead th:last-child{
+    border-top-right-radius: 15px;
+}
+
+table.publications thead th:first-child{
+    border-top-left-radius: 15px;
+}
+
+table.publications th {
+    padding: 10px 20px;
+    background-color: #002162;
+    color: white;
+    text-align: center;
+}
+
+table.publications tbody > tr > td:hover .whisper{
+    display: block;
+}
+
+.whisper{
+    display:  none;
+    position: absolute;
+    background-color: #fff;
+    overflow: auto;
+    padding: 10px;
+    left: 0px;
+    width: 100%;
+    z-index: 100;
+    border-top: 2px solid #4a82da;
+    border-left: 1px solid #4a82da;
+    border-radius: 5px;
+    -webkit-box-shadow: 10px 10px 32px -11px rgba(0,0,0,0.75);
+    -moz-box-shadow: 10px 10px 32px -11px rgba(0,0,0,0.75);
+    box-shadow: 10px 10px 32px -11px rgba(0,0,0,0.75);
+}
+
+.table-suffix{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding-top: 15px;
+    margin-bottom: 20px;
+}
+
+.table-paginator{
+    display: flex;
+    flex-direction: row;
+}
+
+.table-paginator element{
+    margin-right: 5px;
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.table-paginator element:hover{
+    border: 1px solid #002162;
+}
+
+.table-paginator element.active{
+    background-color: #002162;
+    color: #fff;
+}
+
+.table-paginator element.active:hover{
+    border: 1px solid #ddd;
+}
+
+.table-paginator element.inactive:hover{
+    border: 1px solid #ddd;
+}
+
+.table-paginator element.inactive{
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+.table-paginator element:first-child
+{
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+.table-paginator element:last-child
+{
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+.table-items-total{
+    display: flex;
+    flex-direction: row;
+}
+
+.table-items-total element{
+    margin-right: 5px;
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.table-items-total element.active{
+    background-color: #ca0000;
+    color: #fff;
+}

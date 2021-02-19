@@ -146,16 +146,13 @@ class BrowseController extends Controller
                     $this->redirect('error');
                 }
 
-                $this->data['reference_name'] = $publication->citation;
-                $this->data['list'] = $substanceModel->get_by_reference_id($reference_id, $pagination);
-                $this->data['count'] = $substanceModel->count_by_reference_id($reference_id);
-                $this->data['info'] = " <b> Results for: </b>" . $publication->reference;
-                $this->data['idRef'] = $reference_id;
+                $this->data['publictaion'] = $publication;
                 $this->data['pagination'] = $pagination;
                 $this->data['itemsOnPage'] = isset($_GET['IOP']) ? $_GET['IOP'] : 5;
             }
 
             $this->data['publications'] = $publicationModel->get_nonempty_refs();
+            $this->data['publications'] = self::transform_publications($this->data['publications']);
         }
         catch(Exception $e)
         {
@@ -167,6 +164,59 @@ class BrowseController extends Controller
         $this->data['uri'] = str_replace("?IOP=$itemsOnPage", '', $_SERVER['REQUEST_URI']) . '?IOP=';
         $this->header['title'] = 'Datasets';
         $this->view = 'browse/sets';
+    }
+
+
+    /**
+     * Publication list
+     * 
+     * @param Iterable_object $list
+     * 
+     * @return Iterable_object
+     */
+    private static function transform_publications($list)
+    {
+        $result = [];
+
+        foreach($list as $row)
+        {
+            $result[] = array
+            (
+                'id' => $row->id,
+                'citation' => $row->citation,
+                'citation_short' => self::get_substring($row->citation, 65),
+                'doi' => $row->doi,
+                'doi_short' => self::get_substring($row->doi, 15),
+                'pmid' => $row->pmid,
+                'title' => $row->title,
+                'title_short' => self::get_substring($row->title, 65),
+                'year' => $row->year,
+                'authors' => $row->authors,
+                'authors_short' => self::get_substring($row->authors, 35),
+            );
+        }
+
+        return new Iterable_object($result, TRUE);
+    }
+
+    /**
+     * 
+     */
+    private static function get_substring($string, $limit)
+    {
+        if(strlen($string) <= $limit)
+        {
+            return $string;
+        }
+
+        $end = strrpos(substr($string,0,$limit), " ");
+
+        if(!$end)
+        {
+            $end = $limit;
+        }
+
+        return substr($string, 0, $end) . '...';
     }
 }
 

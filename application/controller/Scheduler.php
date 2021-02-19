@@ -49,6 +49,9 @@ class SchedulerController extends Controller
                 return;
             }
 
+            $this->check_interaction_datasets();
+            die;
+
             // Send all unsent emails
             $this->send_emails();
             echo "Emails sent. \n";
@@ -272,15 +275,15 @@ class SchedulerController extends Controller
         // Same -> membrane/method/secondary reference/author + the same upload day
         $duplcs = $dataset_model->get_duplicites();
         $joioned = count($duplcs);
-        
+
         foreach($duplcs as $ids)
         {
-            $final_id = array_shift($ids)['id'];
+            $final_id = array_shift($ids);
 
             // For each dataset, change interaction dataset id
             foreach($ids as $dataset_id)
             {
-                $interaction_model->change_dataset_id($dataset_id['id'], $final_id);
+                $interaction_model->change_dataset_id($dataset_id, $final_id);
             }
         }
 

@@ -736,6 +736,7 @@ class EditController extends Controller
         if($dataset->id)
         {
             $interaction_model = new Interactions();
+            $validation = new Validator();
 
             $items = 100;
 
@@ -748,6 +749,7 @@ class EditController extends Controller
                 ->where('id_dataset', $dataset->id)
                 ->count_all();
 
+            $this->data['total_duplicity'] = $validation->get_inter_dataset_duplicity_count($dataset->id);
             $this->data['info'] = $dataset;
             $this->data['interaction_table'] = self::createInteractionTable($dataset_interactions, $dataset->id);
             $this->data['total'] = $total;

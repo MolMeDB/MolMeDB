@@ -5,36 +5,51 @@ table.publications{
 }
 
 /* TITLE */
-table.publications tbody > tr > td:nth-child(1)
-{
-    width: 45%;
-}
-/* AUTHORS */
-table.publications tbody > tr > td:nth-child(2)
+table.publications > tbody > tr > td:nth-child(1)
 {
     width: 25%;
 }
+/* AUTHORS */
+table.publications > tbody > tr > td:nth-child(2)
+{
+    width: 45%;
+}
 /* YEAR */
-table.publications tbody > tr > td:nth-child(3)
+table.publications > tbody > tr > td:nth-child(3)
 {
     text-align: center;
 }
 /* DOI */
-table.publications tbody > tr > td:nth-child(4)
+table.publications > tbody > tr > td:nth-child(4)
+{
+    text-align: center;
+}
+table.publications > tbody > tr > td:nth-child(5)
 {
     text-align: center;
 }
 /* ACTIONS */
-table.publications tbody > tr > td:nth-child(5)
+table.publications > tbody > tr > td:nth-child(6)
 {
-    display: flex;
+    /* display: flex;
     justify-content: center;
+    align-items: center;
+    vertical-align: baseline; */
 }
 
 table.publications button{
     border: none;
     margin: 2px;
     padding: 2px 5px;
+}
+
+table.publications button a {
+    color: #fff;
+}
+
+table.publications button a:hover {
+    color: #fff;
+    text-decoration: none;
 }
 
 table.publications button img{
@@ -52,24 +67,24 @@ table.publications button.orange{
     color: #fff;
 }
 
-table.publications tbody > tr:nth-child(even){
+table.publications > tbody > tr:nth-child(even){
     background-color: #eee;
 }
 
-table.publications tbody > tr{
+table.publications > tbody > tr{
     display: none;
 }
 
-table.publications tbody > tr > td{
+table.publications > tbody > tr > td{
     padding: 5px 10px;
     position: relative;
 }
 
-table.publications thead th:last-child{
+table.publications > thead th:last-child{
     border-top-right-radius: 15px;
 }
 
-table.publications thead th:first-child{
+table.publications > thead th:first-child{
     border-top-left-radius: 15px;
 }
 
@@ -78,9 +93,10 @@ table.publications th {
     background-color: #002162;
     color: white;
     text-align: center;
+    cursor: pointer;
 }
 
-table.publications tbody > tr > td:hover .whisper{
+table.publications > tbody > tr > td:hover .whisper{
     display: block;
 }
 
@@ -99,6 +115,23 @@ table.publications tbody > tr > td:hover .whisper{
     -webkit-box-shadow: 10px 10px 32px -11px rgba(0,0,0,0.75);
     -moz-box-shadow: 10px 10px 32px -11px rgba(0,0,0,0.75);
     box-shadow: 10px 10px 32px -11px rgba(0,0,0,0.75);
+}
+
+.whisper-large{
+    width:fit-content;
+}
+
+.pmid-whisper{
+    display:  flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.pmid-whisper > div{
+    display:flex; 
+    flex-direction:row; 
+    justify-content:flex-start;
 }
 
 .table-suffix{
@@ -171,3 +204,78 @@ table.publications tbody > tr > td:hover .whisper{
     background-color: #ca0000;
     color: #fff;
 }
+
+#hover-div{
+    position: relative;
+}
+
+#hover-div > div{
+    top: 35px;
+    width: 240px;
+    left: -75px;
+    font-size: 12px;;
+}
+
+#hover-div > div > table tr > td:nth-child(2)
+{
+    padding-left: 20px;
+    font-weight: bold;
+}
+
+
+@keyframes load {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 150px 150px;
+    }
+  }
+
+.loading-bar {
+    position: relative;
+    margin: 0 auto;
+    height: 8px;
+    width: 100%;
+  }
+
+span.loading {
+    display: block;
+    position: relative;
+    height: 100%;
+    width: 100%;
+    /* border-radius: 50px; */
+    background-image: linear-gradient(to bottom, #7398ff, #001c79 60%);
+    box-shadow: 
+      inset 0 2px 9px  rgba(255,255,255,0.3),
+      inset 0 -2px 6px rgba(0,0,0,0.4);
+    overflow: hidden;
+  }
+
+  span.loading:after{
+    content: "";
+    position: absolute;
+    top: 0px; left: 0; bottom: 0; right: 0;
+    background-image: linear-gradient(
+    -45deg, 
+    rgba(255, 255, 255, .2) 25%, 
+    transparent 25%, 
+    transparent 50%, 
+    rgba(255, 255, 255, .2) 50%, 
+    rgba(255, 255, 255, .2) 75%, 
+    transparent 75%, 
+    transparent
+    );
+    z-index: 1;
+    background-size: 50px 50px;
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+    overflow: hidden;
+}
+
+.loading-bar > span:after, .animate > span > span { 
+    animation: load 1s infinite;
+    animation-delay: 0;
+  }

@@ -49,7 +49,7 @@ class SchedulerController extends Controller
                 return;
             }
 
-            $this->check_interaction_datasets();
+            $this->substance_autofill_missing_data();
             die;
 
             // Send all unsent emails
@@ -73,6 +73,7 @@ class SchedulerController extends Controller
             }
 
             // Checks transporter datasets - NOW INACTIVATED
+            // 20:10
             if($this->debug_CTD || (FALSE && $time->is_hour(20) && $time->is_minute(10)))
             {
                 $this->check_transporter_datasets();
@@ -86,14 +87,6 @@ class SchedulerController extends Controller
                 echo "Subtance validations is running. \n";
                 $this->substance_autofill_missing_data($time->get_hour() % 2);
             }
-            
-            // Once per day, try to find identifiers
-            // 05:01
-            if($this->debug_FMD || ($time->is_minute(1) && $time->is_hour(5))) // Run only once per hour and only at night
-            {
-                echo "`Filling missing identifiers` is running. \n";
-                $this->fill_substance_identifiers();
-            }
 
             // Once per day, update stats data
             // 01:30
@@ -103,12 +96,30 @@ class SchedulerController extends Controller
                 $this->update_stats();
             }
 
+            // Once per day, update stats data
+            // 01:35
+            if($time->is_hour(1) && $time->is_minute(35))
+            {
+                echo "Updating publications data. \n";
+                $this->update_publications();
+                echo "Deleting empty publications. \n";
+                $this->delete_empty_publications();
+            }
+
             // Delete empty membranes and methods
             // 02:30
             if($time->is_hour(2) && $time->is_minute(30))
             {
                 echo "Deleting epmpty membranes/methods. \n";
                 $this->delete_empty_membranes_methods();
+            }
+
+            // Once per day, try to find identifiers
+            // 05:01
+            if($this->debug_FMD || ($time->is_minute(1) && $time->is_hour(5))) // Run only once per hour and only at night
+            {
+                echo "`Filling missing identifiers` is running. \n";
+                $this->fill_substance_identifiers();
             }
 
             echo "DONE \n";
@@ -145,6 +156,34 @@ class SchedulerController extends Controller
     {
         $stats_model = new Statistics();
         $stats_model->update_all();
+    }
+
+    /**
+     * Updates publications
+     */
+    private function update_publications()
+    {
+        $publication_model = new Publications();
+        $all_publications = $publication_model->get_all();
+
+        foreach($all_publications as $p)
+        {
+            $p->update_ref_stats();
+        }
+    }
+
+    /**
+     * Deletes empty publications
+     */
+    private function delete_empty_publications()
+    {
+        $publication_model = new Publications();
+        $empty_publications = $publication_model->get_empty_publications();
+
+        foreach($empty_publications as $p)
+        {
+            $p->delete();
+        }
     }
 
     /**
@@ -789,18 +828,21 @@ class SchedulerController extends Controller
             $substances = $substance_model->where(array
                 (
                     '(',
-                    'prev_validation_state IS NULL',
-                    'waiting IS NULL',
+                        '(',
+                        'prev_validation_state IS NULL',
+                        'waiting IS NULL',
+                        ')',
+                        'OR',
+                        '(',
+                        'waiting IS NULL',
+                        'validated != ' => Validator::VALIDATED,
+                        ")",
+                        'OR',
+                        '(',
+                        'invalid_structure_flag' => Substances::INVALID_STRUCTURE,
+                        ')',
                     ')',
-                    'OR',
-                    '(',
-                    'waiting IS NULL',
-                    'validated != ' => Validator::VALIDATED,
-                    ")",
-                    'OR',
-                    '(',
-                    'invalid_structure_flag' => Substances::INVALID_STRUCTURE,
-                    ')'
+                    'validated !=' => Validator::NOT_VALIDATED,
                 ))
                 ->limit(1000)
                 ->get_all();

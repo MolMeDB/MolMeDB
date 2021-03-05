@@ -132,7 +132,10 @@ class BrowseController extends Controller
         $publicationModel = new Publications();
         $substanceModel = new Substances();
 
-        $itemsOnPage = isset($_GET['IOP']) ? $_GET['IOP'] : 5;
+        if(!$pagination)
+        {
+            $pagination = 1;
+        }
 
         try
         {
@@ -146,9 +149,46 @@ class BrowseController extends Controller
                     $this->redirect('error');
                 }
 
-                $this->data['publictaion'] = $publication;
+                $this->data['publication'] = $publication;
                 $this->data['pagination'] = $pagination;
-                $this->data['itemsOnPage'] = isset($_GET['IOP']) ? $_GET['IOP'] : 5;
+                $this->data['list'] = $substanceModel
+                    ->select_list('substances.*')
+                    ->distinct()
+                    ->join(' LEFT JOIN interaction i ON i.id_substance = substances.id ')
+                    ->join(' LEFT JOIN datasets d ON d.id = i.id_dataset ')
+                    ->join(' LEFT JOIN transporters t ON t.id_substance = substances.id ')
+                    ->join(' LEFT JOIN transporter_datasets td ON td.id = t.id_dataset ')
+                    ->where(array
+                    (
+                        'i.id_reference' => $publication->id,
+                        'OR',
+                        'd.id_publication' => $publication->id,
+                        'OR',
+                        't.id_reference' => $publication->id,
+                        'OR',
+                        'td.id_reference' => $publication->id,
+                    ))
+                    ->limit($pagination, 10)
+                    ->get_all();
+
+                $this->data['list_total'] = $substanceModel
+                ->select_list('substances.*')
+                ->distinct()
+                ->join(' LEFT JOIN interaction i ON i.id_substance = substances.id ')
+                ->join(' LEFT JOIN datasets d ON d.id = i.id_dataset ')
+                ->join(' LEFT JOIN transporters t ON t.id_substance = substances.id ')
+                ->join(' LEFT JOIN transporter_datasets td ON td.id = t.id_dataset ')
+                ->where(array
+                (
+                    'i.id_reference' => $publication->id,
+                    'OR',
+                    'd.id_publication' => $publication->id,
+                    'OR',
+                    't.id_reference' => $publication->id,
+                    'OR',
+                    'td.id_reference' => $publication->id,
+                ))
+                ->count_all();
             }
 
             $this->data['publications'] = $publicationModel->get_nonempty_refs();
@@ -160,8 +200,6 @@ class BrowseController extends Controller
             $this->redirect('error');
         }
 
-        $this->data['itemsOnPage'] = $itemsOnPage;
-        $this->data['uri'] = str_replace("?IOP=$itemsOnPage", '', $_SERVER['REQUEST_URI']) . '?IOP=';
         $this->header['title'] = 'Datasets';
         $this->view = 'browse/sets';
     }
@@ -180,19 +218,25 @@ class BrowseController extends Controller
 
         foreach($list as $row)
         {
+            $row = new Publications($row->id);
+
             $result[] = array
             (
                 'id' => $row->id,
                 'citation' => $row->citation,
-                'citation_short' => self::get_substring($row->citation, 65),
+                'citation_short' => self::get_substring($row->citation, 120),
                 'doi' => $row->doi,
                 'doi_short' => self::get_substring($row->doi, 15),
                 'pmid' => $row->pmid,
                 'title' => $row->title,
-                'title_short' => self::get_substring($row->title, 65),
+                'title_short' => self::get_substring($row->title, 120),
                 'year' => $row->year,
+                'journal' => $row->journal,
                 'authors' => $row->authors,
-                'authors_short' => self::get_substring($row->authors, 35),
+                'authors_short' => self::get_substring($row->authors, 60),
+                'total_passive_interactions' => $row->total_passive_interactions,
+                'total_active_interactions' => $row->total_active_interactions,
+                'total_substances'          => $row->total_substances
             );
         }
 

@@ -1,31 +1,12 @@
 <div class="browse-title">Datasets</div>
-<!-- <div id="RefList">
-    <input type="text" class="search" placeholder="Search publications..." id="publSearch" />
-    <ul class="list" id="publList">
-      <?php foreach($publications as $p) : ?>
-        <a href="/browse/sets/<?=$p->id?>/1?IOP=<?=$itemsOnPage?>"><li><p class="name"><?=$p->citation?></p></li></a>
-      <?php endforeach ?>
-    </ul>
-    <ul class="pagination"></ul>
-    <input hidden value="<?=$itemsOnPage?>" id="IOP">
-    
-    <ul class="pagination pagination-sm pagination-dataset-list" >
-        <?php for ($i=5; $i<21; $i=$i+5) : ?>
-                    <?php if($i == $itemsOnPage): ?>
-                        <li class="active"id="activePag"><a href="<?=$uri . $i?>"><?=$i?></a></li>
-                    <?php else : ?>
-                        <li><a href="<?=$uri . $i ?>"><?=$i?></a></li>
-                    <?php endif ?>
-        <?php endfor ?>
-    </ul>
-</div> -->
-
+<script src="js/jquery-sortElements.js"></script>
 <div class="publication-list">
-    <input type="text" class="search" placeholder="Search publications..." id="publSearch" />
+    <input type="text" class="search" placeholder="Search..." id="publSearch" />
     <table class="publications" id="publications">
         <thead>
-            <th>Title</th>
             <th>Authors</th>
+            <th>Title</th>
+            <th>Journal</th>
             <th>Year</th>
             <th>PMID/DOI</th>
             <th>Actions</th>
@@ -34,36 +15,70 @@
             <?php foreach($publications as $p) : ?>
                 <tr data-id="<?= $p->id ?>" data-pmid="<?= $p->pmid ?>" data-doi="<?= $p->doi ?>" class="active">
                     <td>
+                        <?php if($p->authors) : ?>
+                        <?= $p->authors_short ?>
+                        <div class="whisper">
+                            <?= $p->authors ?>
+                        </div>
+                        <?php endif ?>
+                    </td>
+                    <td>
                         <?= $p->title_short ? $p->title_short : $p->citation_short?>
                         <whisper class="whisper">
                             <?= $p->citation ?>
                         </whisper>
                     </td>
-                    <td>
-                        <?= $p->authors_short ?>
-                        <div class="whisper">
-                            <?= $p->authors ?>
-                        </div>
-                    </td>
+                    <td><?= $p->journal ?></td>
                     <td><?= $p->year ?></td>
                     <td>
                         <?php if($p->pmid) : ?>
-                            <a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/<?= $p->pmid ?>"><?= $p->pmid ?></a>
+                            <?= $p->pmid ?>
                         <?php elseif($p->doi) : ?>
-                            <a target="_blank" href="https://doi.org/<?= $p->doi ?>"><?= $p->doi_short ?></a>
-                            <div class="whisper">
-                                <?= $p->doi ?>
+                            <?= $p->doi_short ?>
+                        <?php endif ?>
+                        <?php if($p->pmid || $p->doi) : ?>
+                        <div class="whisper whisper-large">
+                            <div class="pmid-whisper">
+                                <?php if($p->pmid) : ?>
+                                <div>
+                                    <button class='orange'><a target="_blank" href="https://pubmed.ncbi.nlm.nih.gov/<?= $p->pmid ?>">Pubmed</a></button>
+                                    <button class='blue'><a target="_blank" href="https://europepmc.org/article/MED/<?= $p->pmid ?>">EuropePMC</a></button>
+                                </div>
+                                <?php endif ?>
+                                <?php if($p->doi) : ?>
+                                <div>DOI: <a target="_blank" href="https://doi.org/<?= $p->doi ?>"><?= $p->doi ?></a></div>
+                                <?php endif ?>
                             </div>
+                        </div>
                         <?php endif ?>
                     </td>
-                    <td>
-                        <button title='Show data' class="blue" onclick="" ><?= Html::image('icons/mol.png') ?></button>
+                    <td id="hover-div">
+                        <button title='Show data' class="blue" onclick="show_loader(); show_compounds('<?= $p->id?>');" ><?= Html::image('icons/mol.png') ?></button>
                         <button title='Export data' class="orange" onclick="" ><?= Html::image('icons/cloud.png') ?></button>
+                        <div class="whisper">
+                            <table>
+                                <tr>
+                                    <td>Total substances:</td>
+                                    <td><?= $p->total_substances ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Total passive interactions:</td>
+                                    <td><?= $p->total_passive_interactions ?></td>
+                                </tr>
+                                <tr>
+                                    <td>Total active interactions:</td>
+                                    <td><?= $p->total_active_interactions ?></td>
+                                </tr>
+                            </table>
+                        </div>
                     </td>
                 </tr>
             <?php endforeach ?>
         </tbody>
     </table>
+    <div class="loading-bar animate" id="loading-bar">
+    <span class="loading"></span>
+    </div>
     <div class="table-suffix">
         <div class="table-paginator" id="paginator">
         </div>
@@ -83,14 +98,14 @@
 <div style="display:none" id="content"> 
         <?php if(isset($list)) : ?>
             <div class="search-info">
-                <h3><?= $reference_name ?></h3>
+                <h3><?= $publication->title ? $publication->title : $publication->citation ?></h3>
             </div>
         <div class="comp-addAll">
-            <button type="button" onclick="download_dataset_byRef('<?=$idRef?>')" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
-            <button type="button" onclick="addSetToComparator('set', '<?=$idRef?>')" class="btn btn-warning btn-sm pull-right" style="margin-bottom: 5px;">Add all compounds to the comparator </button>
+            <button type="button" onclick="download_dataset_byRef('<?=$publication->id?>')" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
+            <button type="button" onclick="addSetToComparator('set', '<?=$publication->id?>')" class="btn btn-warning btn-sm pull-right" style="margin-bottom: 5px;">Add all compounds to the comparator </button>
             <button class="btn btn-sm btn-primary pull-right btn-add" id="btn-addALL">Add list to the comparator </button>
         </div>
-            <ul class="search-ul">
+            <ul class="search-ul" id="search-list">
                     <?php foreach ($list as $substance) : ?>
                     <li>
                             <div class="title">
@@ -101,9 +116,6 @@
                             </div>
                             <div class="info">
                                 <div class="info-text">
-                                    <?php if(isset($substance->altername) && $substance->altername != '') : ?>
-                                    <div><label><b>Alternative name:</b></label> <?= $substance->altername ?> </div>
-                                     <?php endif ?>
                                     <?php if($substance->MW != 0) : ?>
                                     <div><label><b>Molecular weight:</b></label> <?= $substance->MW ?> <br/></div>
                                     <?php else : ?>
@@ -141,38 +153,25 @@
                     <?php endforeach ?>
                 </ul>
         <div class="text-center">   
-            <ul class="pagination pagination-lg"id="paginator" >
+            <ul class="pagination pagination-lg" id="paginator_comp" >
+            <?php $count = $list_total ?>
               <?php for ($i=1; $i<($count/10)+1; $i++) : ?>
                 <?php if($i == $pagination): ?>
-                    <li class="active"id="activePag"><a href="/browse/sets/<?=$idRef?>/<?=$i?>?IOP=<?=$itemsOnPage?>"><?=$i?></a></li>
+                    <li class="active"id="activePag"><a href="/browse/sets/<?=$publication->id?>/<?=$i?>"><?=$i?></a></li>
                 <?php else : ?>
-                    <li><a href="/browse/sets/<?=$idRef?>/<?=$i?>?IOP=<?=$itemsOnPage?>"><?=$i?></a></li>
+                    <li><a href="/browse/sets/<?=$publication->id?>/<?=$i?>"><?=$i?></a></li>
                 <?php endif ?>
               <?php endfor ?>
             </ul>
-            <script>verifyPagination('<?=$count?>');</script>
+            <script>
+            $(document).ready(function()
+            {
+                verifyPagination('paginator_comp');
+            });
+            </script>
         </div>
         <?php endif ?>
     </div>
-
-
-
-<script>
-    // var monkeyList = new List('RefList', {
-    //     valueNames: ['name'],
-    //     page: document.getElementById("IOP").value,
-    //     pagination: true
-    // });
-
-
-    async function showContents()
-    {
-        await show_overlay();
-        await sleep(500);
-        document.getElementById('content').setAttribute('style', 'display:flex;');
-        await hide_overlay();
-    }
-</script>
 
 <script src="js/searchEngine.js?<?=JS_VERSION?>" >
 </script>

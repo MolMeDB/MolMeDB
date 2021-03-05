@@ -49,19 +49,26 @@ class File
     /**
      * Creates new file instance
      */
-    public function create($filePath, $type = 'w')
+    public function create($filePath = NULL, $type = 'w')
     {
-        // Get path
-        $last_slash = strrpos($filePath, '/');
-        $dir_path = substr($filePath, 0, $last_slash);
+        if($filePath)
+        {
+            // Get path
+            $last_slash = strrpos($filePath, '/');
+            $dir_path = substr($filePath, 0, $last_slash);
 
-        // check path
-        $this->make_path($dir_path);
-        
+            // check path
+            $this->make_path($dir_path);
+        }
+        else // Make temporary file
+        {
+            $filePath = 'php://output';
+        }
+
         // Set default values
         $this->FILE = fopen($filePath, $type);
         $this->origin_path = $filePath;
-        $this->name = substr($filePath, $last_slash + 1);
+        $this->name = $filePath ? substr($filePath, $last_slash + 1) : null;
     }
 
     /**
@@ -271,11 +278,11 @@ class File
     /**
      * Transform data array to CSV and make file
      * 
-     * @return File
+     * @return string|null
      */
-    public function transform_to_CSV($data, $file_name = null)
+    public function transform_to_CSV($data, $file_name = null, $temp_file = FALSE)
     {
-        if(!is_array($data) || !is_array($data[0]))
+        if(!$data || !is_array($data) || !is_array($data[0]))
         {
             return null;
         }
@@ -287,8 +294,23 @@ class File
 
         $result = [array_keys($data[0])] + $data;
 
-        $this->create(self::FOLDER_STATS_DOWNLOAD . $file_name);
+        if($temp_file)
+        {
+            $this->create();
+            ob_clean();
+        }
+        else
+        {
+            $this->create(self::FOLDER_STATS_DOWNLOAD . $file_name);
+        }
+
         $this->writeCSV($result);
+
+        if($temp_file)
+        {
+            ob_flush();
+        }
+        
         $this->close();
 
         return $this->origin_path;
@@ -301,7 +323,7 @@ class File
      * 
      * @return string
      */
-    public function zip($path, $target, $delete_after = FALSE)
+    public function zip($path, $target, $delete_after = FALSE, $temp_file = FALSE)
     {
         if(is_string($path))
         {
@@ -336,6 +358,11 @@ class File
             unlink($target);
         }
 
+        if($temp_file)
+        {
+            $target = 'php://output';
+        }
+
         if ($zip->open($target, ZIPARCHIVE::CREATE) != TRUE) 
         {
             throw new Exception("Could not open archive");
@@ -345,9 +372,6 @@ class File
         {
             $zip->addFile($p, basename($p));
         }
-        
-        // close and save archive
-        $zip->close(); 
 
         if($delete_after)
         {
@@ -356,5 +380,10 @@ class File
                 unlink($p);
             }
         }
+
+        // close and save archive
+        $zip->close(); 
+
+        return $target;
     }
 }

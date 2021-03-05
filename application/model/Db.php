@@ -292,7 +292,7 @@ class Db extends Iterable_object
         $query = '
             SELECT COUNT(*) as count 
             FROM (
-                SELECT ' . $this->select_list .
+                SELECT ' . ($this->distinct ? ' DISTINCT ' : '') . $this->select_list .
                 ' FROM '. $this->table .
                 ' ' . $this->join .
                 ' ' . $this->where . ' ' .
@@ -478,7 +478,7 @@ class Db extends Iterable_object
             }
         }
 
-        $this->join .= $join_str;
+        $this->join .= " $join_str ";
 
         return $this;
     }

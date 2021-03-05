@@ -5,8 +5,8 @@ var page = 1;
 // Table 
 var table = $('#publications');
 // rows
-var all_rows = $(table).find('tbody > tr');
-var rows = $(table).find('tbody > tr.active');
+var all_rows = $(table).find('> tbody > tr');
+var rows = $(table).find('> tbody > tr.active');
 // Total rows
 var total_rows = 0;
 // Table total items
@@ -14,9 +14,76 @@ var total_items_elements = $('.table-items-total > element');
 var total_items_element_active = $('.table-items-total > element.active');
 var table_paginator = $('#paginator');
 var input = $('#publSearch');
+var loader = $('#loading-bar');
+
+$(table).find('th')
+    .each(function(){
+
+        var th = $(this),
+            thIndex = th.index(),
+            inverse = false;
+
+        if(thIndex == 5)
+        {
+            return;
+        }
+
+        th.click(function(){
+            table.find('> tbody > tr > td').filter(function(){
+                return $(this).index() === thIndex;
+
+            }).sortElements(function(a, b){
+
+                if( $.text([a]).toLowerCase() == $.text([b]).toLowerCase() )
+                    return 0;
+
+                return $.text([a]).toLowerCase() > $.text([b]).toLowerCase() ?
+                    inverse ? -1 : 1
+                    : inverse ? 1 : -1;
+
+            }, function(){
+                return this.parentNode; 
+            });
+
+            inverse = !inverse;
+            filter_table();
+        });
+    });
+
+async function show_loader()
+{
+    $(loader).show();
+    return await sleep(1000);
+}
+
+function hide_loader()
+{
+    $(loader).hide();
+}
+
+function show_compounds(id)
+{
+    redirect('browse/sets/' + id);
+}
+
+async function showContents()
+{
+    if(!$('#search-list').children().length)
+    {
+        return;
+    }
+
+    document.getElementById('content').setAttribute('style', 'display:flex;');
+}
 
 $(document).ready(function()
 {
+    onReady();
+});
+
+async function onReady()
+{
+    await show_loader();
     getLimit();
     showContent();
     add_paginator();
@@ -39,8 +106,10 @@ $(document).ready(function()
     }
 
     // Search
-    $(input).on('keyup', function(v)
+    $(input).on('keyup', async function(v)
     {
+        await show_loader();
+
         var v = $(input).val();
         v = v.toLowerCase();
 
@@ -51,6 +120,7 @@ $(document).ready(function()
             update_rows();
             add_paginator();
             filter_table();
+            hide_loader();
             return;
         }
 
@@ -70,8 +140,13 @@ $(document).ready(function()
         update_rows();
         add_paginator();
         filter_table();
+
+        hide_loader();
     });
-});
+
+    showContents();
+    hide_loader();
+}
 
 // Get limit
 function getLimit()
@@ -177,8 +252,9 @@ function add_paginator()
     }
 }
 
-function change_pagination()
+async function change_pagination()
 {
+    await show_loader();
     var p = $(this).html();
 
     if(!p)
@@ -189,6 +265,7 @@ function change_pagination()
     page = parseInt(p);
     filter_table();
     add_paginator();
+    hide_loader();
 }
 
 function make_page_item(html = null, active=false)
@@ -201,7 +278,14 @@ function make_page_item(html = null, active=false)
     }
 
     el.innerHTML = html;
-    $(el).on('click', change_pagination);
+    if(html == '...' || html == null)
+    {
+        $(el).addClass('inactive');
+    }
+    else
+    {
+        $(el).on('click', change_pagination);
+    }
 
     return el;
 }
@@ -209,12 +293,14 @@ function make_page_item(html = null, active=false)
 // Filter table
 function filter_table()
 {
-    $(table).find('tbody > tr').hide();
+    var rows = $(table).find('> tbody > tr.active');
+    $(table).find('> tbody > tr').hide();
 
     var from = (page-1)*limit;
     var to = from + limit;
     to = to > total_rows ? total_rows : to;
 
+    
     for(var i = from; i < to; i++)
     {
         $(rows[i]).show();

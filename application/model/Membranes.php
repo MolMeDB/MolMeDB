@@ -15,6 +15,8 @@
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
+ * @property Enum_type_links $enum_type_link
+ * 
  */
 class Membranes extends Db
 {   
@@ -56,70 +58,169 @@ class Membranes extends Db
     {
         $this->table = 'membranes';
         parent::__construct($id);
-    }
 
-    /**
-     * Returns membrane category
-     * 
-     * @param integer $id
-     * 
-     * @return Iterable
-     */
-    public function get_category($id = NULL)
-    {
-        if(!$id)
+        if($this->id)
         {
-                $id = $this->id;
-        }
+            $et_id = $this->queryOne('
+                SELECT id_enum_type_link as id
+                FROM membrane_enum_type_links
+                WHERE id_membrane = ?
+            ', array($this->id))->id;
 
-        return $this->queryOne('
-            SELECT m.*, cat.name as category, subcat.name as subcategory
-            FROM membranes m
-            LEFT JOIN cat_mem_mem cm ON cm.mem_id = m.id
-            LEFT JOIN cat_membranes cat ON cat.id = cm.cat_id
-            LEFT JOIN cat_subcat_membranes subcat ON subcat.id = cm.subcat_id
-            WHERE m.id = ?',
-                array($id));
+            $this->enum_type = new Enum_type_links($et_id);
+        }
     }
-    
-    // public function search($data, $pagination)
-    // {
-    //     $data = '%' . $data . '%';
-    //     return $this->queryAll('
-    //      SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
-    //      FROM substances as s 
-    //      JOIN interaction as i ON s.idSubstance = i.idSubstance 
-    //      WHERE i.idMembrane IN (SELECT idMembrane 
-    //                                       FROM membranes as m 
-    //                                       WHERE m.name LIKE ?)
-    //            AND i.visibility = 1
-    //      ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
-    //      LIMIT ?,?', array($data, ($pagination-1)*10,10));
-    // }
-    
+
     /**
-     * Returns empty membranes
+     * Returns membranes linked to given category
+     * 
+     * @param int $enum_type_link_id
      * 
      * @return Iterable_object
      */
-    public function get_empty_membranes()
+    public function get_linked_membranes($enum_type_link_id)
     {
-        $data = $this->queryAll('
-            SELECT m.id
+        return $this->queryAll('
+            SELECT m.*
             FROM membranes m
-            LEFT JOIN interaction i ON i.id_membrane = m.id
-            WHERE i.id IS NULL
-        ');
+            JOIN membrane_enum_type_links l ON l.id_membrane = m.id AND l.id_enum_type_link = ?
+        ', array($enum_type_link_id));
+    }
 
-        $res = [];
-
-        foreach($data as $row)
+    /**
+     * Returns enum_type_link for given membrane
+     * 
+     * @return Enum_type_links
+     */
+    public function get_category_link()
+    {
+        if(!$this->id)
         {
-            $res[] = new Membranes($row->id);
+            return null;
         }
 
-        return $res;
+        $row = $this->queryOne('
+            SELECT etl.*
+            FROM membrane_enum_type_links ml
+            JOIN enum_type_links etl ON etl.id = ml.id_enum_type_link AND ml.id_membrane = ?
+        ', array($this->id));
+
+        return new Enum_type_links($row->id);
     }
+
+    /**
+     * Set enum_type_link for given membrane
+     * 
+     */
+    public function set_category_link($link_id)
+    {
+        if(!$this->id || !$link_id)
+        {
+            throw new Exception('Invalid instance.');
+        }
+
+        return $this->query('
+            INSERT INTO `membrane_enum_type_links` VALUES(?,?);
+        ', array($link_id, $this->id));
+    }
+
+    /**
+     * Returns membranes without links
+     */
+    public function get_membranes_without_links()
+    {
+        return $this->queryAll('
+            SELECT m.*
+            FROM membranes m
+            LEFT JOIN membrane_enum_type_links metl ON metl.id_membrane = m.id
+            WHERE metl.id_enum_type_link IS NULL
+            ORDER BY name
+        ');
+    }
+
+    /**
+     * Unlink category
+     */
+    public function unlink_category($id = NULL)
+    {
+        if(!$id && $this->id)
+        {
+            $id = $this->id;
+        }
+
+        return $this->query('
+            DELETE FROM `membrane_enum_type_links`
+            WHERE `id_membrane` = ?
+        ', array($id));
+    }
+
+
+    /**
+     * 
+     */
+
+    // /**
+    //  * Returns membrane category
+    //  * 
+    //  * @param integer $id
+    //  * 
+    //  * @return Iterable
+    //  */
+    // public function get_category($id = NULL)
+    // {
+    //     if(!$id)
+    //     {
+    //             $id = $this->id;
+    //     }
+
+    //     return $this->queryOne('
+    //         SELECT m.*, cat.name as category, subcat.name as subcategory
+    //         FROM membranes m
+    //         LEFT JOIN cat_mem_mem cm ON cm.mem_id = m.id
+    //         LEFT JOIN cat_membranes cat ON cat.id = cm.cat_id
+    //         LEFT JOIN cat_subcat_membranes subcat ON subcat.id = cm.subcat_id
+    //         WHERE m.id = ?',
+    //             array($id));
+    // }
+    
+    // // public function search($data, $pagination)
+    // // {
+    // //     $data = '%' . $data . '%';
+    // //     return $this->queryAll('
+    // //      SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
+    // //      FROM substances as s 
+    // //      JOIN interaction as i ON s.idSubstance = i.idSubstance 
+    // //      WHERE i.idMembrane IN (SELECT idMembrane 
+    // //                                       FROM membranes as m 
+    // //                                       WHERE m.name LIKE ?)
+    // //            AND i.visibility = 1
+    // //      ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
+    // //      LIMIT ?,?', array($data, ($pagination-1)*10,10));
+    // // }
+    
+    // /**
+    //  * Returns empty membranes
+    //  * 
+    //  * @return Iterable_object
+    //  */
+    // public function get_empty_membranes()
+    // {
+    //     $data = $this->queryAll('
+    //         SELECT m.id
+    //         FROM membranes m
+    //         LEFT JOIN interaction i ON i.id_membrane = m.id
+    //         WHERE i.id IS NULL
+    //     ');
+
+    //     $res = [];
+
+    //     foreach($data as $row)
+    //     {
+    //         $res[] = new Membranes($row->id);
+    //     }
+
+    //     return $res;
+    // }
 
 
     /**
@@ -236,102 +337,102 @@ class Membranes extends Db
         }
     }
 
-    /**
-     * Inserts membrane category
-     * 
-     * @param integer $cat - Category ID
-     * @param integer $subcat - Subcategory ID
-     * 
-     */
-    public function save_membrane_category($cat, $subcat)
-    {    
-        if(!$this->id)
-        {
-            throw new Exception('Wrong membrane instance.');
-        }
+    // /**
+    //  * Inserts membrane category
+    //  * 
+    //  * @param integer $cat - Category ID
+    //  * @param integer $subcat - Subcategory ID
+    //  * 
+    //  */
+    // public function save_membrane_category($cat, $subcat)
+    // {    
+    //     if(!$this->id)
+    //     {
+    //         throw new Exception('Wrong membrane instance.');
+    //     }
 
-        return $this->insert('cat_mem_mem', array
-        (
-            'cat_id' => $cat, 
-            'subcat_id' => $subcat, 
-            "mem_id" => $this->id
-        ));
-    }
+    //     return $this->insert('cat_mem_mem', array
+    //     (
+    //         'cat_id' => $cat, 
+    //         'subcat_id' => $subcat, 
+    //         "mem_id" => $this->id
+    //     ));
+    // }
     
-    /**
-     * Gets all membrane categories
-     * 
-     * @return Iterable
-     */
-    public function get_all_categories()
-    {
-        return $this->queryAll('SELECT * FROM cat_membranes ORDER BY name');
-    }
+    // /**
+    //  * Gets all membrane categories
+    //  * 
+    //  * @return Iterable
+    //  */
+    // public function get_all_categories()
+    // {
+    //     return $this->queryAll('SELECT * FROM cat_membranes ORDER BY name');
+    // }
     
-    /**
-     * Gets all membrane subcategories
-     * 
-     * @return Iterable
-     */
-    public function get_all_subcategories()
-    {
-        return $this->queryAll('SELECT id, name FROM cat_subcat_membranes');
-    }
+    // /**
+    //  * Gets all membrane subcategories
+    //  * 
+    //  * @return Iterable
+    //  */
+    // public function get_all_subcategories()
+    // {
+    //     return $this->queryAll('SELECT id, name FROM cat_subcat_membranes');
+    // }
     
-    /**
-     * Gets membranes for given categories
-     * 
-     * @param integer $cat_id Category ID
-     * @param integer $subcat_id Subcategory ID      
-     */
-    public function get_membranes_by_categories($cat_id, $subcat_id)
-    {
-        return $this->queryAll('
-            SELECT mem_id as id, m.name as name
-            FROM cat_mem_mem
-            JOIN membranes as m ON mem_id = m.id
-            WHERE cat_id = ? AND subcat_id = ?', 
-            array
-            (
-                $cat_id, 
-                $subcat_id
-            ));
-    }
+    // /**
+    //  * Gets membranes for given categories
+    //  * 
+    //  * @param integer $cat_id Category ID
+    //  * @param integer $subcat_id Subcategory ID      
+    //  */
+    // public function get_membranes_by_categories($cat_id, $subcat_id)
+    // {
+    //     return $this->queryAll('
+    //         SELECT mem_id as id, m.name as name
+    //         FROM cat_mem_mem
+    //         JOIN membranes as m ON mem_id = m.id
+    //         WHERE cat_id = ? AND subcat_id = ?', 
+    //         array
+    //         (
+    //             $cat_id, 
+    //             $subcat_id
+    //         ));
+    // }
     
-    public function get_membrane_category($idMembrane)
-    {
-            return $this->queryAll('
-                SELECT cat_id, subcat_id
-                FROM cat_mem_mem
-                WHERE mem_id = ?
-                LIMIT 1', array($idMembrane));
-    }
+    // public function get_membrane_category($idMembrane)
+    // {
+    //         return $this->queryAll('
+    //             SELECT cat_id, subcat_id
+    //             FROM cat_mem_mem
+    //             WHERE mem_id = ?
+    //             LIMIT 1', array($idMembrane));
+    // }
     
-    /**
-     * Edit membrane category
-     * 
-     * @param integer $idCat - category id
-     * @param integer $idSubcat - subcategory id
-     * 
-     */
-    public function editCategory($idCat, $idSubcat)
-    {
-        if(!$this)
-        {
-            throw new Exception('Wrong instance.');
-        }
+    // /**
+    //  * Edit membrane category
+    //  * 
+    //  * @param integer $idCat - category id
+    //  * @param integer $idSubcat - subcategory id
+    //  * 
+    //  */
+    // public function editCategory($idCat, $idSubcat)
+    // {
+    //     if(!$this)
+    //     {
+    //         throw new Exception('Wrong instance.');
+    //     }
 
-        // Delete old record
-        $this->query('DELETE FROM `cat_mem_mem` WHERE `mem_id` = ?', array($this->id));
+    //     // Delete old record
+    //     $this->query('DELETE FROM `cat_mem_mem` WHERE `mem_id` = ?', array($this->id));
         
-        // Save new record
-        return $this->insert('cat_mem_mem', array
-        (
-            'cat_id'    => $idCat,
-            'subcat_id' => $idSubcat,
-            'mem_id'    => $this->id
-        ));
-    }
+    //     // Save new record
+    //     return $this->insert('cat_mem_mem', array
+    //     (
+    //         'cat_id'    => $idCat,
+    //         'subcat_id' => $idSubcat,
+    //         'mem_id'    => $this->id
+    //     ));
+    // }
     
 
     /**

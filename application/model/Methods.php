@@ -208,6 +208,74 @@ class Methods extends Db
         return $res;
     }
 
+    /**
+     * Returns enum_type_link for given method
+     * 
+     * @return Enum_type_links
+     */
+    public function get_category_link()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        $row = $this->queryOne('
+            SELECT etl.*
+            FROM method_enum_type_links ml
+            JOIN enum_type_links etl ON etl.id = ml.id_enum_type_link AND ml.id_method = ?
+        ', array($this->id));
+
+        return new Enum_type_links($row->id);
+    }
+
+    /**
+     * Set enum_type_link for given method
+     * 
+     */
+    public function set_category_link($link_id)
+    {
+        if(!$this->id || !$link_id)
+        {
+            throw new Exception('Invalid instance.');
+        }
+
+        return $this->query('
+            INSERT INTO `method_enum_type_links` VALUES(?,?);
+        ', array($link_id, $this->id));
+    }
+
+
+    /**
+     * Returns methods without links
+     */
+    public function get_methods_without_links()
+    {
+        return $this->queryAll('
+            SELECT m.*
+            FROM methods m
+            LEFT JOIN method_enum_type_links metl ON metl.id_method = m.id
+            WHERE metl.id_enum_type_link IS NULL
+            ORDER BY name
+        ');
+    }
+
+    /**
+     * Unlink category
+     */
+    public function unlink_category($id = NULL)
+    {
+        if(!$id && $this->id)
+        {
+            $id = $this->id;
+        }
+
+        return $this->query('
+            DELETE FROM `method_enum_type_links`
+            WHERE `id_method` = ?
+        ', array($id));
+    }
+
 
     /**
      * REST API function

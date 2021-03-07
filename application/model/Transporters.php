@@ -294,6 +294,4 @@ class Transporters extends Db
 
         return array_search($shortcut, self::$upload_shortcuts);
     }
-
-
-}
+}   

@@ -1,0 +1,167 @@
+.tree-view ul {
+    padding-left: 30px;
+    position: relative;
+}
+
+.tree-view{
+    user-select: none; /* standard syntax */
+    -webkit-user-select: none; /* webkit (safari, chrome) browsers */
+    -moz-user-select: none; /* mozilla browsers */
+    -khtml-user-select: none; /* webkit (konqueror) browsers */
+    -ms-user-select: none; /* IE10+ */
+}
+
+.tree-view ul {
+    border-left: 1px dotted black;
+    margin-left: 7px;
+}
+
+.tree-view li.drag-target {
+    background-color: #ccc;
+}
+
+.tree-view li {
+    padding-bottom: 3px;
+    cursor: move;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.tree-view li > div.text
+{
+    margin-right: 5px;
+}
+
+.tree-view li.active > div.text, .tree-view li.active::before
+{
+    text-decoration: underline;
+    color: #8a04d8;
+}
+
+.tree-view li:hover > div.text{
+    text-decoration: underline;
+}
+
+.tree-view li > div.actions {
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.tree-view li > div.actions > span {
+    margin-right: 5px;
+}
+
+.tree-view li > div.actions > span:hover {
+    color: red;
+}
+
+.tree-view li.item {
+    font-style: italic;
+}
+
+.tree-view li > div.actions
+{
+    display: none;
+}
+
+.tree-view li:hover > div.actions
+{
+    display: block;
+}
+
+.tree-view li.item::before, .tree-view li.folder::before, .tree-view li.folder-open::before {
+    position: relative;
+    top: 1px;
+    display: inline-block;
+    font-family: 'Glyphicons Halflings';
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    padding-right: 8px;
+}
+
+.tree-view li.folder::before{
+    content: "\e117";
+}
+
+.tree-view li.folder-open::before{
+    content: "\e118";
+}
+
+.tree-view li > span.glyphicon{
+    margin-right: 5px;
+}
+
+.tree-view, .tree-view ul
+{
+    list-style-type: none;
+}
+
+
+.enum-items{
+    user-select: none; /* standard syntax */
+    -webkit-user-select: none; /* webkit (safari, chrome) browsers */
+    -moz-user-select: none; /* mozilla browsers */
+    -khtml-user-select: none; /* webkit (konqueror) browsers */
+    -ms-user-select: none; /* IE10+ */
+    background-color: #eee;
+    color: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    -webkit-box-shadow: 0px 0px 53px -1px rgba(0,0,0,0.75);
+    -moz-box-shadow: 0px 0px 53px -1px rgba(0,0,0,0.75);
+    box-shadow: 0px 0px 53px -1px rgba(0,0,0,0.75);
+    position: fixed;
+    top: calc(50% - 225px);
+    right: 30px;
+    max-width: 40%;
+}
+
+.enum-items > dtitle {
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: rgb(28, 63, 140);
+    border-bottom: 5px solid #fff;
+}
+
+.enum-items dsubtitle {
+    font-weight: bold;
+    background-color: rgb(2, 65, 201);
+    color: #fff;
+    padding: 2px 5px;
+}
+
+.enum-items > dlist {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 5px 15px;
+    height: 550px;
+    overflow-y: auto;
+}
+
+.enum-items dcontent{
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.enum-items dli {
+    padding: 3px 5px;
+    cursor: pointer;
+    border-bottom: 1px solid black;
+    margin: 2px; 
+}
+
+.enum-items dli:hover{
+    background-color: cornflowerblue;
+    color: #fff;
+}

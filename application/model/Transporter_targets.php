@@ -66,4 +66,74 @@ class Transporter_targets extends Db
             LIMIT 10
         ', array($query, $query, Transporter_datasets::VISIBLE), False);
     }
+
+
+    
+    /**
+     * Returns enum_type_link for given transporter_targets
+     * 
+     * @return Enum_type_links
+     */
+    public function get_category_link()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        $row = $this->queryOne('
+            SELECT etl.*
+            FROM transporter_target_enum_type_links ml
+            JOIN enum_type_links etl ON etl.id = ml.id_enum_type_link AND ml.id_transporter_targets = ?
+        ', array($this->id));
+
+        return new Enum_type_links($row->id);
+    }
+
+    /**
+     * Set enum_type_link for given transporter_targets
+     * 
+     */
+    public function set_category_link($link_id)
+    {
+        if(!$this->id || !$link_id)
+        {
+            throw new Exception('Invalid instance.');
+        }
+
+        return $this->query('
+            INSERT INTO `transporter_target_enum_type_links` VALUES(?,?);
+        ', array($link_id, $this->id));
+    }
+
+
+    /**
+     * Returns methods without links
+     */
+    public function get_targets_without_links()
+    {
+        return $this->queryAll('
+            SELECT tt.*
+            FROM transporter_targets tt
+            LEFT JOIN transporter_target_enum_type_links metl ON metl.id_transporter_target = tt.id
+            WHERE metl.id_enum_type_link IS NULL
+            ORDER BY name
+        ');
+    }
+
+    /**
+     * Unlink category
+     */
+    public function unlink_category($id = NULL)
+    {
+        if(!$id && $this->id)
+        {
+            $id = $this->id;
+        }
+
+        return $this->query('
+            DELETE FROM `transporter_target_enum_type_links`
+            WHERE `id_transporter_target` = ?
+        ', array($id));
+    }
 }

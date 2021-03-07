@@ -19,10 +19,14 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
     private $debug = False;
 
     const T_HAS_ONE = 1;
+    const T_HAS_MANY = 2;
+    const T_HAS_MANY_AND_BELONGS_TO = 3;
 
     private $valid_link_types = array
     (
-        self::T_HAS_ONE => 'has_one'
+        self::T_HAS_ONE => 'has_one',
+        self::T_HAS_MANY => 'has_many',
+        self::T_HAS_MANY_AND_BELONGS_TO => 'has_many_and_belongs_to',
     );
 
     /**
@@ -62,6 +66,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
      */
     private function get_links()
     {
+        $db = new Db();
         $r = new ReflectionClass($this);
         $props = $r->getProperties();
 
@@ -106,7 +111,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
 
                         $key = $val;
 
-                        $new_key = str_replace('id_', "", $val);
+                        $new_key = ltrim($val, 'id_');
 
                         $class_name = ucwords($new_key . 's');
                     }
@@ -121,6 +126,76 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                         $this->$new_key = new $class_name($this->$key);
                     }
                 
+                }
+            }
+            // HAS MANY AND BELONGS TO parsing
+            else if($type == $this->valid_link_types[self::T_HAS_MANY_AND_BELONGS_TO])
+            {
+                foreach($values as $table => $values)
+                {
+                    // IS STRUCTURE VALID ?
+                    if(!is_array($values) || !isset($values['var']) || !isset($values['class']) || 
+                        !isset($values['own']) || !isset($values['remote']))
+                    {
+                        continue;
+                    }
+
+                    $class_name = $values['class'];
+                    $new_key = $values['var'];
+                    $remote_key = $values['remote'];
+                    $own_key = $values['own'];
+
+                    // Not valid input, set value to NULL
+                    if (!class_exists($class_name) || !$this->id) 
+                    {
+                        $this->$new_key = NULL;
+                        continue;
+                    } 
+                    
+                    // Get data from M:N table
+                    $rows = $db->queryAll("
+                        SELECT $remote_key as id
+                        FROM $table
+                        WHERE $own_key = '$this->id'
+                    ");
+
+                    $ids = [];
+
+                    foreach($rows as $r)
+                    {
+                        $ids[] = $r->id;
+                    }
+
+                    $new_class = new $class_name();
+                    $this->$new_key = $new_class->in('id', $ids)->get_all();
+                }
+            }
+            // HAS MANY parsing
+            else if($type == $this->valid_link_types[self::T_HAS_MANY])
+            {
+                foreach($values as $table => $values)
+                {
+                    // IS STRUCTURE VALID ?
+                    if(!is_array($values) || !isset($values['var']) || !isset($values['class']) || 
+                        !isset($values['own']))
+                    {
+                        continue;
+                    }
+
+                    $class_name = $values['class'];
+                    $new_key = $values['var'];
+                    $own_key = $values['own'];
+
+
+                    // Not valid input, set value to NULL
+                    if (!class_exists($class_name) || !$this->id) 
+                    {
+                        $this->$new_key = NULL;
+                        continue;
+                    } 
+                    
+                    $new_class = new $class_name();
+                    $this->$new_key = $new_class->where($own_key, $this->id)->get_all();
                 }
             }
         }

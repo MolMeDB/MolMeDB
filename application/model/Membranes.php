@@ -78,7 +78,7 @@ class Membranes extends Db
      * 
      * @return Iterable_object
      */
-    public function get_linked_membranes($enum_type_link_id)
+    public function get_linked_data($enum_type_link_id)
     {
         return $this->queryAll('
             SELECT m.*
@@ -154,75 +154,38 @@ class Membranes extends Db
         ', array($id));
     }
 
-
     /**
+     * Returns membranes with categories
      * 
+     * @return Iterable_object
      */
+    public function get_active_categories()
+    {
+        $result = [];
 
-    // /**
-    //  * Returns membrane category
-    //  * 
-    //  * @param integer $id
-    //  * 
-    //  * @return Iterable
-    //  */
-    // public function get_category($id = NULL)
-    // {
-    //     if(!$id)
-    //     {
-    //             $id = $this->id;
-    //     }
+        $data = $this->queryAll('
+            SELECT m.id, et_cat.name as category, et_subcat.name as subcategory
+            FROM membranes m
+            LEFT JOIN membrane_enum_type_links metl ON metl.id_membrane = m.id
+            LEFT JOIN enum_type_links etl ON etl.id = metl.id_enum_type_link
+            LEFT JOIN enum_types et_cat ON et_cat.id = etl.id_enum_type_parent
+            LEFT JOIN enum_types et_subcat ON et_subcat.id = etl.id_enum_type
+        ');
 
-    //     return $this->queryOne('
-    //         SELECT m.*, cat.name as category, subcat.name as subcategory
-    //         FROM membranes m
-    //         LEFT JOIN cat_mem_mem cm ON cm.mem_id = m.id
-    //         LEFT JOIN cat_membranes cat ON cat.id = cm.cat_id
-    //         LEFT JOIN cat_subcat_membranes subcat ON subcat.id = cm.subcat_id
-    //         WHERE m.id = ?',
-    //             array($id));
-    // }
-    
-    // // public function search($data, $pagination)
-    // // {
-    // //     $data = '%' . $data . '%';
-    // //     return $this->queryAll('
-    // //      SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
-    // //      FROM substances as s 
-    // //      JOIN interaction as i ON s.idSubstance = i.idSubstance 
-    // //      WHERE i.idMembrane IN (SELECT idMembrane 
-    // //                                       FROM membranes as m 
-    // //                                       WHERE m.name LIKE ?)
-    // //            AND i.visibility = 1
-    // //      ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
-    // //      LIMIT ?,?', array($data, ($pagination-1)*10,10));
-    // // }
-    
-    // /**
-    //  * Returns empty membranes
-    //  * 
-    //  * @return Iterable_object
-    //  */
-    // public function get_empty_membranes()
-    // {
-    //     $data = $this->queryAll('
-    //         SELECT m.id
-    //         FROM membranes m
-    //         LEFT JOIN interaction i ON i.id_membrane = m.id
-    //         WHERE i.id IS NULL
-    //     ');
+        foreach($data as $row)
+        {
+            $result[$row->id] = array
+            (
+                'category' => $row->category,
+                'subcategory' => $row->subcategory
+            );
+        }
 
-    //     $res = [];
-
-    //     foreach($data as $row)
-    //     {
-    //         $res[] = new Membranes($row->id);
-    //     }
-
-    //     return $res;
-    // }
+        return new Iterable_object($result, TRUE);
+    }
 
 
+   
     /**
      * Loads whisper detail
      * 
@@ -337,139 +300,4 @@ class Membranes extends Db
         }
     }
 
-    // /**
-    //  * Inserts membrane category
-    //  * 
-    //  * @param integer $cat - Category ID
-    //  * @param integer $subcat - Subcategory ID
-    //  * 
-    //  */
-    // public function save_membrane_category($cat, $subcat)
-    // {    
-    //     if(!$this->id)
-    //     {
-    //         throw new Exception('Wrong membrane instance.');
-    //     }
-
-    //     return $this->insert('cat_mem_mem', array
-    //     (
-    //         'cat_id' => $cat, 
-    //         'subcat_id' => $subcat, 
-    //         "mem_id" => $this->id
-    //     ));
-    // }
-    
-    // /**
-    //  * Gets all membrane categories
-    //  * 
-    //  * @return Iterable
-    //  */
-    // public function get_all_categories()
-    // {
-    //     return $this->queryAll('SELECT * FROM cat_membranes ORDER BY name');
-    // }
-    
-    // /**
-    //  * Gets all membrane subcategories
-    //  * 
-    //  * @return Iterable
-    //  */
-    // public function get_all_subcategories()
-    // {
-    //     return $this->queryAll('SELECT id, name FROM cat_subcat_membranes');
-    // }
-    
-    // /**
-    //  * Gets membranes for given categories
-    //  * 
-    //  * @param integer $cat_id Category ID
-    //  * @param integer $subcat_id Subcategory ID      
-    //  */
-    // public function get_membranes_by_categories($cat_id, $subcat_id)
-    // {
-    //     return $this->queryAll('
-    //         SELECT mem_id as id, m.name as name
-    //         FROM cat_mem_mem
-    //         JOIN membranes as m ON mem_id = m.id
-    //         WHERE cat_id = ? AND subcat_id = ?', 
-    //         array
-    //         (
-    //             $cat_id, 
-    //             $subcat_id
-    //         ));
-    // }
-    
-    // public function get_membrane_category($idMembrane)
-    // {
-    //         return $this->queryAll('
-    //             SELECT cat_id, subcat_id
-    //             FROM cat_mem_mem
-    //             WHERE mem_id = ?
-    //             LIMIT 1', array($idMembrane));
-    // }
-    
-    // /**
-    //  * Edit membrane category
-    //  * 
-    //  * @param integer $idCat - category id
-    //  * @param integer $idSubcat - subcategory id
-    //  * 
-    //  */
-    // public function editCategory($idCat, $idSubcat)
-    // {
-    //     if(!$this)
-    //     {
-    //         throw new Exception('Wrong instance.');
-    //     }
-
-    //     // Delete old record
-    //     $this->query('DELETE FROM `cat_mem_mem` WHERE `mem_id` = ?', array($this->id));
-        
-    //     // Save new record
-    //     return $this->insert('cat_mem_mem', array
-    //     (
-    //         'cat_id'    => $idCat,
-    //         'subcat_id' => $idSubcat,
-    //         'mem_id'    => $this->id
-    //     ));
-    // }
-    
-
-    /**
-     * Returns membranes for given params
-     * 
-     * @param array $substances_ids
-     * @param array $methods_ids
-     * 
-     * @return array
-     */
-    // public function get_membranes_by_params($substances_ids = array(), $methods_ids = array())
-    // {
-    //      if(empty($substances_ids) && empty($methods_ids))
-    //      {
-    //         return $this->queryAll('SELECT id, name FROM membranes ORDER BY name');
-    //      }
-         
-    //      if(empty($methods_ids))
-    //      {
-    //         return $this->queryAll('
-    //             SELECT DISTINCT m.id, m.name
-    //             FROM interaction i
-    //             JOIN membranes m ON (m.id = i.id_membrane)
-    //             WHERE i.id_substance IN (' . implode(',', $substances_ids) . ')');
-    //      }
-         
-    //      if(empty($substances_ids))
-    //      {
-    //         return array();
-    //      }
-         
-    //      return $this->queryAll('
-    //         SELECT DISTINCT m.id, m.name
-    //         FROM interaction i
-    //         JOIN membranes m ON (m.id = i.id_membrane)
-    //         WHERE i.id_substance IN (' . implode(',', $substances_ids) . ')
-    //         AND i.id_method IN (' . implode(',', $methods_ids) . ')' 
-    //         );
-    // }
 }

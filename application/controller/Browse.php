@@ -13,59 +13,6 @@ class BrowseController extends Controller
         parent::__construct();
     }
 
-    /**
-     * Compounds browser
-     * DEPRECATED
-     * 
-     * @author Jakub Juračka
-     */
-    // public function compounds()
-    // {
-    //     $methodModel = new Methods();
-    //     $membraneModel = new Membranes();
-    //     $substanceModel = new Substances();
-
-    //     try
-    //     {
-    //         $methods = $methodModel->get_all();
-    //         $membranes = $membraneModel->get_all();
-
-    //         $viewMem = $viewMet = array();
-
-    //         // Apply filter
-    //         if ($_POST) 
-    //         {
-    //             $viewMem = $_POST['membranes'];
-    //             $viewMet = $_POST['methods'];
-
-    //             $this->data['compounds'] = $substanceModel->get_by_membrane_method($viewMem, $viewMet);
-    //         } 
-    //         else
-    //         { // if not send, show all
-    //             $this->data['compounds'] = $substanceModel
-    //                 ->select_list(array
-    //                 (
-    //                     'id',
-    //                     'name',
-    //                     'identifier'
-    //                 ))
-    //                 ->get_all();
-    //         }
-    //     }
-    //     catch (Exception $e)
-    //     {
-    //         $this->addMessageError($e->getMessage());
-    //         $this->redirect('error');
-    //     }
-
-    //     $this->data['active_membranes'] = $viewMem;
-    //     $this->data['active_methods'] = $viewMet;
-    //     $this->data['membranes'] = $membranes;
-    //     $this->data['methods'] = $methods;
-    //     $this->view = 'browseCompounds';
-    //     $this->header['title'] = 'Compounds';
-    // }
-
 
     /**
      * Membranes browser
@@ -75,20 +22,15 @@ class BrowseController extends Controller
     public function membranes()
     {
         $membraneModel = new Membranes();
+        $enum_type_model = new Enum_types();
 
         try
         {
             // Get all membranes
-            $membranes = $membraneModel->get_all();
-            $active_categories = array();
+            $membranes = $membraneModel->order_by('name')->get_all();
+            $categories = $enum_type_model->get_categories(Enum_types::TYPE_MEMBRANE_CATS);
+            $active_categories = $membraneModel->get_active_categories();
 
-            // Load membrane categories
-            foreach ($membranes as $m) 
-            {
-                $active_categories[$m->id] = $m->get_category();
-            }
-
-            $this->data['categories'] = $membraneModel->get_all_categories();
         }
         catch(Exception $e)
         {
@@ -98,6 +40,7 @@ class BrowseController extends Controller
 
         $this->data['membranes'] = $membranes;
         $this->data['active_categories'] = $active_categories;
+        $this->data['categories'] = json_encode($categories);
         $this->header['title'] = 'Membranes';
         $this->view = 'browse/membranes';
     }
@@ -110,11 +53,16 @@ class BrowseController extends Controller
     public function methods()
     {
         $methodModel = new Methods();
+        $enum_type_model = new Enum_types();
 
         // Get all methods
-        $methods = $methodModel->get_all();
+        $methods = $methodModel->order_by('name', 'ASC')->get_all();
+        $categories = $enum_type_model->get_categories(Enum_types::TYPE_METHOD_CATS);
+        $active_categories = $methodModel->get_active_categories();
 
         $this->data['methods'] = $methods;
+        $this->data['active_categories'] = $active_categories;
+        $this->data['categories'] = json_encode($categories);
         $this->header['title'] = 'Methods';
         $this->view = 'browse/methods';
     }

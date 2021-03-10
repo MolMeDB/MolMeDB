@@ -160,4 +160,135 @@ class Enum_types extends Db
         
         return count($exists);
     }
+
+    /**
+     * Returns categories for given type
+     * 
+     * @param int $type
+     * 
+     * @return array
+     */
+    public function get_categories($type)
+    {
+        if(!self::is_type_valid($type))
+        {
+            return [];
+        }
+
+        function get_inner_categories($link_id, $fixed = false)
+        {
+            $link = new Enum_type_links($link_id);
+            $res = [];
+
+            $items = $link->where(array
+                (
+                    'id_parent_link' => $link_id
+                ))
+                ->join('enum_types et ON et.id = enum_type_links.id_enum_type')
+                ->select_list('enum_type_links.id as id, et.name as name, et.type as type')
+                ->get_all();
+
+            foreach($items as $i)
+            {
+                $ch = get_inner_categories($i->id);
+
+                // Get membrane/methods.... 
+                $ms = [];
+
+                if($i->type == Enum_types::TYPE_MEMBRANE_CATS)
+                {
+                    $model = new Membranes();
+                    // $total = $model->count_all();
+                }
+                elseif($i->type == Enum_types::TYPE_METHOD_CATS)
+                {
+                    $model = new Methods();
+                    // $total = $model->count_all();
+                }
+                elseif($i->type == Enum_types::TYPE_TRANSPORTER_CATS)
+                {
+                    $model = new Transporters();
+                    // $total = $model->count_all();
+                }
+
+                if(isset($model))
+                {
+                    $ms = $model->get_linked_data($i->id);
+                }
+
+                $d = array
+                (
+                    'name' => $i->name,
+                    'id_element' => $i->id,
+                    'fixed' => $fixed,
+                    'children' => []
+                );
+
+                if(count($ch))
+                {
+                    $d['children'] = $ch;
+                }
+
+                if(count($ms))
+                {
+                    foreach($ms as $m)
+                    {
+                        $d['children'][] = array
+                        (
+                            'name' => $m->name,
+                            'id_element' => $m->id,
+                            'value' => 1
+                        );  
+                    }
+                }
+
+                $res[] = $d;
+            }
+
+            return $res;
+        }
+
+        // Get init ids
+        $e = $this->queryOne('
+                SELECT DISTINCT etl.id, et.name 
+                FROM enum_type_links etl
+                JOIN enum_types et ON et.id = etl.id_enum_type 
+                WHERE id_enum_type = ? AND id_enum_type = id_enum_type_parent
+            ', array($type));
+
+        $result = get_inner_categories($e->id, True);
+
+        // function add_values($data)
+        // {
+        //     if(!count($data))
+        //     {
+        //         return $data;
+        //     }
+
+        //     $val = round(100 / count($data), 2);
+            
+        //     $res = [];
+
+        //     foreach($data as $d)
+        //     {
+        //         $d['value'] = $val;
+        //         if(count($d['children']))
+        //         {
+        //             $d['children'] = add_values($d['children']);
+        //         }
+        //         else
+        //         {
+        //             unset($d['children']);
+        //         }
+        //         $res[] = $d;
+        //     }
+
+        //     return $res;
+        // }
+
+        // // Add values to the categories
+        // $result = add_values($result);
+
+        return $result;
+    }
 }

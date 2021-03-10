@@ -62,6 +62,22 @@ class Methods extends Db
     
 
     /**
+     * Returns methods linked to given category
+     * 
+     * @param int $enum_type_link_id
+     * 
+     * @return Iterable_object
+     */
+    public function get_linked_data($enum_type_link_id)
+    {
+        return $this->queryAll('
+            SELECT m.*
+            FROM methods m
+            JOIN method_enum_type_links l ON l.id_method = m.id AND l.id_enum_type_link = ?
+        ', array($enum_type_link_id));
+    }
+
+    /**
      * Loads search whisper for API response
      * 
      * @param string $q - QUERY
@@ -274,6 +290,36 @@ class Methods extends Db
             DELETE FROM `method_enum_type_links`
             WHERE `id_method` = ?
         ', array($id));
+    }
+
+    /**
+     * Returns membranes with categories
+     * 
+     * @return Iterable_object
+     */
+    public function get_active_categories()
+    {
+        $result = [];
+
+        $data = $this->queryAll('
+            SELECT m.id, et_cat.name as category, et_subcat.name as subcategory
+            FROM methods m
+            LEFT JOIN method_enum_type_links metl ON metl.id_method = m.id
+            LEFT JOIN enum_type_links etl ON etl.id = metl.id_enum_type_link
+            LEFT JOIN enum_types et_cat ON et_cat.id = etl.id_enum_type_parent
+            LEFT JOIN enum_types et_subcat ON et_subcat.id = etl.id_enum_type
+        ');
+
+        foreach($data as $row)
+        {
+            $result[$row->id] = array
+            (
+                'category' => $row->category,
+                'subcategory' => $row->subcategory
+            );
+        }
+
+        return new Iterable_object($result, TRUE);
     }
 
 

@@ -68,6 +68,74 @@ class Publications extends Db
     }
 
     /**
+     * Returns assigned substances
+     * 
+     * @param int $pagination
+     * 
+     * @return Iterable_object
+     */
+    public function get_assigned_substances($pagination)
+    {
+        if($pagination < 1)
+        {
+            $pagination = 1;
+        }
+
+       return $this->queryAll('
+            SELECT DISTINCT *
+            FROM
+            (
+                SELECT DISTINCT s.*
+                FROM interaction i 
+                JOIN datasets d ON d.id = i.id_dataset
+                JOIN publications p ON (p.id = d.id_publication OR p.id = i.id_reference) AND p.id = ?
+                JOIN substances s ON s.id = i.id_substance
+                
+                UNION
+
+                SELECT DISTINCT s.*
+                FROM transporters t
+                JOIN transporter_datasets td ON td.id = t.id_dataset
+                JOIN publications p ON (p.id = td.id_reference OR p.id = t.id_reference) AND p.id = ?
+                JOIN substances s ON s.id = t.id_substance
+            ) as t
+            LIMIT ?,10
+        ', array($this->id, $this->id, ($pagination-1)*10));
+    }
+
+    /**
+     * Counts assigned substances
+     * 
+     * @return int
+     */
+    public function count_assigned_substances()
+    {
+        return $this->queryOne('
+            SELECT COUNT(*) as count
+            FROM
+            (SELECT DISTINCT *
+            FROM
+                (
+                    SELECT DISTINCT s.*
+                    FROM interaction i 
+                    JOIN datasets d ON d.id = i.id_dataset
+                    JOIN publications p ON (p.id = d.id_publication OR p.id = i.id_reference) AND p.id = ?
+                    JOIN substances s ON s.id = i.id_substance
+                    
+                    UNION
+
+                    SELECT DISTINCT s.*
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    JOIN publications p ON (p.id = td.id_reference OR p.id = t.id_reference) AND p.id = ?
+                    JOIN substances s ON s.id = t.id_substance
+                ) as t
+            ) as t2
+            ', array($this->id, $this->id))->count;
+    }
+
+
+    /**
      * Returns only references with assigned some interaction
      * 
      * @return Iterable

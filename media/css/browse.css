@@ -210,7 +210,7 @@ table.publications > tbody > tr > td:hover .whisper{
 }
 
 #hover-div > div{
-    top: 35px;
+    /* top: 35px; */
     width: 240px;
     left: -75px;
     font-size: 12px;;

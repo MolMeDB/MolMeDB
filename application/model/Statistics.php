@@ -44,6 +44,9 @@ class Statistics extends Db
     const TYPE_INTER_PASSIVE_ACITVE = 9;
     const TYPE_INTER_PASSIVE_ACITVE_FILE = File::FOLDER_STATS_DOWNLOAD . 'active_passive_interactions.zip';
 
+    /** STATS TYPE - ACTIVE INTERACTIONS STATS */
+    const TYPE_INTER_ACTIVE = 10;
+
 
     public static function exists_stat_file($type)
     {
@@ -70,6 +73,7 @@ class Statistics extends Db
      */
     private static $valid_types = array
     (
+        self::TYPE_INTER_ACTIVE,
         self::TYPE_INTER_ADD,
         self::TYPE_MEMBRANES_DATA,
         self::TYPE_METHODS_DATA,
@@ -96,7 +100,8 @@ class Statistics extends Db
         self::TYPE_MEMBRANES_DATA,
         self::TYPE_METHODS_DATA,
         self::TYPE_IDENTIFIERS,
-        self::TYPE_INTER_PASSIVE_ACITVE
+        self::TYPE_INTER_PASSIVE_ACITVE,
+        self::TYPE_INTER_ACTIVE
     );
 
     /**
@@ -265,6 +270,10 @@ class Statistics extends Db
                 $obj->content =self::get_methods_stats(TRUE);
                 break;
 
+            case self::TYPE_INTER_ACTIVE:
+                $obj->content = self::get_active_interactions_stats();
+                break;
+
             default:
                 return null;
         }
@@ -354,6 +363,7 @@ class Statistics extends Db
 
             $result[] = array
             (
+                'id' => $m->id,
                 'method' => $m->name,
                 'count_interactions' => $count_interactions,
                 'count_substances' => $count_substances
@@ -417,6 +427,7 @@ class Statistics extends Db
 
             $result[] = array
             (
+                'id' => $mem->id,
                 'membrane' => $mem->name,
                 'count_interactions' => $count_active,
                 'count_substances' => $count_substances
@@ -704,33 +715,41 @@ class Statistics extends Db
             SELECT s.name, s.identifier, s.SMILES, s.inchikey, s.MW, s.LogP, s.pubchem, s.drugbank, s.pdb, s.chEMBL,
                 mem.name as membrane, met.name as method, i.temperature, i.charge, i.comment as note, i.Position as X_min,
                 i.Position_acc as X_min_acc, i.Penetration as G_pen, i.Penetration_acc as G_pen_acc, i.Water as G_wat, i.Water_acc as G_wat_acc,
-                i.LogK, i.LogK_acc, i.LogPerm, i.LogPerm_acc, i.theta, i.theta_acc, i.abs_wl, i.abs_wl_acc, i.fluo_wl, i.fluo_wl_acc, i.QY, i.QY_acc, i.lt, i.lt_acc
+                i.LogK, i.LogK_acc, i.LogPerm, i.LogPerm_acc, i.theta, i.theta_acc, i.abs_wl, i.abs_wl_acc, i.fluo_wl, i.fluo_wl_acc, i.QY, i.QY_acc, i.lt, i.lt_acc,
+                p1.citation as primary_reference, p2.citation as secondary_reference
             FROM substances s 
             JOIN interaction i ON i.id_substance = s.id
             JOIN membranes mem ON mem.id = i.id_membrane
             JOIN methods met ON met.id = i.id_method
+            JOIN datasets d ON d.id = i.id_dataset
+            LEFT JOIN publications p1 ON p1.id = i.id_reference
+            LEFT JOIN publications p2 ON p2.id = d.id_publication
         ', array(), FALSE);
 
         $trans_data = $substanceModel->queryAll('
             SELECT s.name, s.identifier, s.SMILES, s.inchikey, s.MW, s.LogP, s.pubchem, s.drugbank, s.pdb, s.chEMBL,
                 tt.name as target, tt.uniprot_id as uniprot, t.type, t.note, t.Km, t.Km_acc, t.EC50, t.EC50_acc, t.Ki, t.Ki_acc,
-                t.IC50, t.IC50_acc
+                t.IC50, t.IC50_acc, p1.citation as primary_reference, p2.citation as secondary_reference
             FROM substances s 
             JOIN transporters t ON t.id_substance = s.id
             JOIN transporter_targets tt ON tt.id = t.id_target
+            JOIN transporter_datasets td ON td.id = t.id_dataset
+            LEFT JOIN publications p1 ON p1.id = t.id_reference
+            LEFT JOIN publications p2 ON p2.id = td.id_reference
         ',array(), FALSE);
 
         $substances = $substanceModel
             ->select_list('identifier, name, SMILES, inchikey, LogP, MW, pubchem, pdb, chEMBL, drugbank')
-            ->get_all()->as_array();
+            ->get_all()
+            ->as_array();
 
         $paths = array
         (
-            $file->transform_to_CSV($trans_data, 'active.csv'),
-            $file->transform_to_CSV($inter_data, 'passive.csv'),
+            $file->transform_to_CSV($trans_data, 'transporters.csv'),
+            $file->transform_to_CSV($inter_data, 'passive_interactions.csv'),
             $file->transform_to_CSV($substances, 'substances.csv')
         );
-
+        
         $file->zip($paths, self::TYPE_INTER_ADD_FILE, TRUE);
 
         return self::TYPE_INTER_ADD_FILE;
@@ -752,27 +771,33 @@ class Statistics extends Db
         $pass_interactions = $this->queryAll('
             SELECT name, identifier, SMILES, inchikey, MW, LogP, pubchem, drugbank, pdb, chEMBL,
                 membrane, method, temperature, charge, note,  X_min, X_min_acc,  G_pen,  G_pen_acc,  G_wat, G_wat_acc,
-                LogK, LogK_acc, LogPerm, LogPerm_acc, theta, theta_acc, abs_wl, abs_wl_acc, fluo_wl, fluo_wl_acc, QY, QY_acc, lt, lt_acc
+                LogK, LogK_acc, LogPerm, LogPerm_acc, theta, theta_acc, abs_wl, abs_wl_acc, fluo_wl, fluo_wl_acc, QY, QY_acc, lt, lt_acc, primary_reference, secondary_reference
             FROM 
             (
                 SELECT s.*, mem.name as membrane, met.name as method, i.temperature, i.charge, i.comment as note, i.Position as X_min,
                     i.Position_acc as X_min_acc, i.Penetration as G_pen, i.Penetration_acc as G_pen_acc, i.Water as G_wat, i.Water_acc as G_wat_acc,
                     i.LogK, i.LogK_acc, i.LogPerm, i.LogPerm_acc, i.theta, i.theta_acc, i.abs_wl, i.abs_wl_acc, i.fluo_wl, i.fluo_wl_acc, i.QY, i.QY_acc, i.lt, i.lt_acc,
-                    i.id as iid
+                    i.id as iid, p1.citation as primary_reference, p2.citation as secondary_reference
                 FROM substances s 
                 JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ?
                 JOIN membranes mem ON mem.id = i.id_membrane
                 JOIN methods met ON met.id = i.id_method
+                JOIN datasets d ON d.id = i.id_dataset
+                LEFT JOIN publications p1 ON p1.id = i.id_reference
+                LEFT JOIN publications p2 ON p2.id = d.id_publication
             ) as tab
         ', array($pubchem_membrane->id, $pubchem_method->id))->as_array();
 
         $active_interactions = $this->queryAll('
             SELECT s.name, s.identifier, s.SMILES, s.inchikey, s.MW, s.LogP, s.pubchem, s.drugbank, s.pdb, s.chEMBL,
                 tt.name as target, tt.uniprot_id as uniprot, t.type, t.note, t.Km, t.Km_acc, t.EC50, t.EC50_acc, t.Ki, t.Ki_acc,
-                t.IC50, t.IC50_acc
+                t.IC50, t.IC50_acc, p1.citation as primary_reference, p2.citation as secondary_reference
             FROM substances s 
             JOIN transporters t ON t.id_substance = s.id
             JOIN transporter_targets tt ON tt.id = t.id_target
+            JOIN transporter_datasets td ON td.id = t.id_dataset
+            LEFT JOIN publications p1 ON p1.id = t.id_reference
+            LEFT JOIN publications p2 ON p2.id = td.id_reference
         ')->as_array();
 
         $paths = array
@@ -784,6 +809,17 @@ class Statistics extends Db
         $file->zip($paths, self::TYPE_INTER_PASSIVE_ACITVE_FILE, TRUE);
 
         return self::TYPE_INTER_PASSIVE_ACITVE_FILE;
+    }
+
+    /**
+     * Returns...
+     * 
+     * @return array
+     */
+    private static function get_active_interactions_stats()
+    {
+        $et = new Enum_types();
+        return $et->get_categories(Enum_types::TYPE_TRANSPORTER_CATS);
     }
 
 

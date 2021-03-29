@@ -16,7 +16,12 @@ class File
     const FOLDER_3DSTRUCTURES = MEDIA_ROOT . "files/3DStructures/";
     
     // 
-    const FOLDER_STATS_DOWNLOAD = MEDIA_ROOT . 'files/stats_download/';
+    const FOLDER_STATS_DOWNLOAD = MEDIA_ROOT . 'files/download/stats/';
+
+    const FOLDER_PUBLICATION_DOWNLOAD = MEDIA_ROOT . 'files/download/publication/';
+    const FOLDER_MEMBRANE_DOWNLOAD = MEDIA_ROOT . 'files/download/membrane/';
+    const FOLDER_METHOD_DOWNLOAD = MEDIA_ROOT . 'files/download/method/';
+    const FOLDER_TRANSPORTER_DOWNLOAD = MEDIA_ROOT . 'files/download/transporter/';
 
     /**
      * Constructor
@@ -60,9 +65,9 @@ class File
             // check path
             $this->make_path($dir_path);
         }
-        else // Make temporary file
+        else
         {
-            $filePath = 'php://output';
+            throw new Exception('Invalid file path.');
         }
 
         // Set default values
@@ -280,7 +285,7 @@ class File
      * 
      * @return string|null
      */
-    public function transform_to_CSV($data, $file_name = null, $temp_file = FALSE)
+    public function transform_to_CSV($data, $file_name, $prefix = self::FOLDER_STATS_DOWNLOAD)
     {
         if(!$data || !is_array($data) || !is_array($data[0]))
         {
@@ -292,25 +297,12 @@ class File
             $file_name = strtotime('now') . '.csv';
         }
 
-        $result = [array_keys($data[0])] + $data;
+        array_unshift($data, array_keys($data[0]));
 
-        if($temp_file)
-        {
-            $this->create();
-            ob_clean();
-        }
-        else
-        {
-            $this->create(self::FOLDER_STATS_DOWNLOAD . $file_name);
-        }
+        $this->create($prefix . $file_name);
 
-        $this->writeCSV($result);
+        $this->writeCSV($data);
 
-        if($temp_file)
-        {
-            ob_flush();
-        }
-        
         $this->close();
 
         return $this->origin_path;
@@ -323,7 +315,7 @@ class File
      * 
      * @return string
      */
-    public function zip($path, $target, $delete_after = FALSE, $temp_file = FALSE)
+    public function zip($path, $target, $delete_after = FALSE)
     {
         if(is_string($path))
         {
@@ -341,6 +333,7 @@ class File
         {
             if(!file_exists($p))
             {
+                // echo 'not_exists';
                 unset($path[$key]);
             }
         }
@@ -358,11 +351,6 @@ class File
             unlink($target);
         }
 
-        if($temp_file)
-        {
-            $target = 'php://output';
-        }
-
         if ($zip->open($target, ZIPARCHIVE::CREATE) != TRUE) 
         {
             throw new Exception("Could not open archive");
@@ -373,6 +361,9 @@ class File
             $zip->addFile($p, basename($p));
         }
 
+        // close and save archive
+        $zip->close(); 
+
         if($delete_after)
         {
             foreach($path as $p)
@@ -380,9 +371,6 @@ class File
                 unlink($p);
             }
         }
-
-        // close and save archive
-        $zip->close(); 
 
         return $target;
     }

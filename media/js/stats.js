@@ -51,13 +51,6 @@ function makeAddingLineChart(data, divID, parameters = {}, maxValue = null)
             axisBreak.startValue=ab.startValue;
             axisBreak.endValue=ab.endValue;
             axisBreak.breakSize=ab.breakSize;
-
-            // var hoverState = axisBreak.states.create("hover");
-            // hoverState.properties.breakSize = 1;
-            // hoverState.properties.opacity = 0.1;
-            // hoverState.transitionDuration = 1500;
-
-            // axisBreak.defaultState.transitionDuration = 1000;
         }
     }
 
@@ -184,6 +177,7 @@ function make_membrane_total_column_chart(target, data, axisBreaks = null, maxVa
     var chart = am4core.create(target, am4charts.XYChart);
 
     chart.data = data;
+    // chart.cursor.maxTooltipDistance = -1;
 
     // Create axes
     var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
@@ -226,9 +220,12 @@ function make_membrane_total_column_chart(target, data, axisBreaks = null, maxVa
     // First series
     var series = chart.series.push(new am4charts.ColumnSeries());
     series.dataFields.valueY = "count_interactions";
+    series.dataFields.id = "id";
     series.dataFields.categoryX = "membrane";
     series.name = "Total interactions";
-    series.tooltipText = "{name}: [bold]{valueY}[/]";
+    series.tooltipHTML = "<div class='column justify-content-center align-items-center'><div>{name}: <b>{valueY}</div></b><button class='btn btn-sm btn-warning' onclick='redirect(\"browse/membranes?target={id}\");'>Membrane detail</button></div>";
+    series.tooltip.label.interactionsEnabled = true;
+    series.tooltip.pointerOrientation = "vertical";
 
     // Second series
     var series2 = chart.series.push(new am4charts.LineSeries());
@@ -323,8 +320,11 @@ function make_method_total_column_chart(target, data, axisBreaks = null, maxValu
     var series = chart.series.push(new am4charts.ColumnSeries());
     series.dataFields.valueY = "count_interactions";
     series.dataFields.categoryX = "method";
+    series.dataFields.id = "id";
     series.name = "Total interactions";
-    series.tooltipText = "{name}: [bold]{valueY}[/]";
+    series.tooltipHTML = "<div class='column justify-content-center align-items-center'><div>{name}: <b>{valueY}</div></b><button class='btn btn-sm btn-warning' onclick='redirect(\"browse/methods?target={id}\");'>Method detail</button></div>";
+    series.tooltip.label.interactionsEnabled = true;
+    series.tooltip.pointerOrientation = "vertical";
 
     // Second series
     var series2 = chart.series.push(new am4charts.LineSeries());
@@ -522,35 +522,7 @@ function makeColumnChart(data, divID, parameters = {})
             axisBreak.defaultState.transitionDuration = 1000;
         }
     }
-    // axis break
-    // var axisBreak = valueAxis.axisBreaks.create();
-    // axisBreak.startValue = 2100;
-    // axisBreak.endValue = 22900;
-    // axisBreak.breakSize = 0.005;
 
-    // make break expand on hover
-    // var hoverState = axisBreak.states.create("hover");
-    // hoverState.properties.breakSize = 1;
-    // hoverState.properties.opacity = 0.1;
-    // hoverState.transitionDuration = 1500;
-
-    // axisBreak.defaultState.transitionDuration = 1000;
-    /*
-    // this is exactly the same, but with events
-    axisBreak.events.on("over", () => {
-    axisBreak.animate(
-        [{ property: "breakSize", to: 1 }, { property: "opacity", to: 0.1 }],
-        1500,
-        am4core.ease.sinOut
-    );
-    });
-    axisBreak.events.on("out", () => {
-    axisBreak.animate(
-        [{ property: "breakSize", to: 0.005 }, { property: "opacity", to: 1 }],
-        1000,
-        am4core.ease.quadOut
-    );
-    });*/
 
     var series = chart.series.push(new am4charts.ColumnSeries());
     series.dataFields.categoryX = "citation";
@@ -565,4 +537,98 @@ function makeColumnChart(data, divID, parameters = {})
     series.columns.template.adapter.add("fill", (fill, target) => {
     return chart.colors.getIndex(target.dataItem.index);
     });
+}
+
+function show_sunburst(data, target_id, clickable = false)
+{
+    am4core.ready(function() {
+        // Themes begin
+        am4core.useTheme(am4themes_animated);
+        // Themes end
+    
+        // create chart
+        var chart = am4core.create(target_id, am4plugins_sunburst.Sunburst);
+        chart.padding(0,0,0,0);
+        chart.radius = am4core.percent(98);
+    
+        chart.data = data;
+    
+        chart.colors.step = 2;
+        chart.fontSize = 11;
+        chart.innerRadius = am4core.percent(10);
+        chart.cursor = 'pointer';
+    
+        // define data fields
+        chart.dataFields.value = "value";
+        chart.dataFields.name = "name";
+        chart.dataFields.children = "children";
+    
+    
+        var level0SeriesTemplate = new am4plugins_sunburst.SunburstSeries();
+        level0SeriesTemplate.hiddenInLegend = false;
+        chart.seriesTemplates.setKey("0", level0SeriesTemplate)
+        level0SeriesTemplate.labels.template.text = "{category}";
+        level0SeriesTemplate.slices.template.tooltipText = "[bold]{category}[/]: {value} interactions";
+    
+        // this makes labels to be hidden if they don't fit
+        level0SeriesTemplate.labels.template.truncate = true;
+        level0SeriesTemplate.labels.template.hideOversized = true;
+
+        // cursor
+        level0SeriesTemplate.slices.template.cursorOverStyle = am4core.MouseCursorStyle.pointer;
+    
+        level0SeriesTemplate.labels.template.adapter.add("rotation", function(rotation, target) {
+            target.maxWidth = target.dataItem.slice.radius - target.dataItem.slice.innerRadius - 10;
+            target.maxHeight = Math.abs(target.dataItem.slice.arc * (target.dataItem.slice.innerRadius + target.dataItem.slice.radius) / 2 * am4core.math.RADIANS);
+    
+            return rotation;
+        });
+
+        
+        if(clickable)
+        {
+            level0SeriesTemplate.slices.template.events.on('hit', function(ev)
+            {
+                var el_id = ev.target.dataItem.sunburstDataItem._dataContext.id_element;
+                var last = ev.target.dataItem.sunburstDataItem._dataContext.last;
+
+                last = last ? 1 : 0;
+
+                if(!el_id)
+                {
+                    console.log("Element id not found");
+                    return false;
+                }
+
+                redirect('browse/transporters/' + el_id + '/' + last);
+            });
+        }
+    
+        var level1SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("1", level1SeriesTemplate)
+        level1SeriesTemplate.fillOpacity = 0.75;
+        level1SeriesTemplate.hiddenInLegend = true;
+        // level1SeriesTemplate.labels.template.text = "{category}";
+    
+        var level2SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("2", level2SeriesTemplate)
+        level2SeriesTemplate.fillOpacity = 0.5;
+        level2SeriesTemplate.hiddenInLegend = true;
+        // level2SeriesTemplate.labels.template.text = "{category}";
+        level2SeriesTemplate.labels.template.fill = am4core.color("#000");
+
+        var level3SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("3", level3SeriesTemplate)
+        level3SeriesTemplate.fillOpacity = 0.75;
+        level3SeriesTemplate.hiddenInLegend = true;
+
+        var level4SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("4", level4SeriesTemplate)
+        level4SeriesTemplate.fillOpacity = 0.75;
+        level4SeriesTemplate.hiddenInLegend = true;
+        // level1SeriesTemplate.labels.template.text = "{category}";
+    
+        chart.legend = new am4charts.Legend();
+
+    }); 
 }

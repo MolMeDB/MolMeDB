@@ -14,16 +14,15 @@ class SettingController extends Controller
         $this->verifyUser(true);
     }
 
+    /** MENU SECTIONS */
+    const MENU_SYSTEM = 'system';
+    const MENU_ENUM_TYPES = 'enum_types';
+
     /**
      * System settings
      */
     public function system()
     {
-        // $re = new Regexp();
-        
-        // echo $re->is_valid_regexp('/^1...$/') ? 1 : 0;
-        // die;
-
         // Email setting forge
         $email_templ_model = new Email_template();
 
@@ -186,8 +185,6 @@ class SettingController extends Controller
             }
         }
 
-        $enum_type_model = new Enum_types();
-
         $this->data['email_forge'] = $forge->form();
         $this->data['rdkit'] = isset($_POST[Configs::RDKIT_URI]) ? $_POST[Configs::RDKIT_URI] : $this->config->get(Configs::RDKIT_URI);
         $this->data['europePMC'] = isset($_POST[Configs::EUROPEPMC_URI]) ? $_POST[Configs::EUROPEPMC_URI] : $this->config->get(Configs::EUROPEPMC_URI);
@@ -196,10 +193,102 @@ class SettingController extends Controller
         $this->data['pubchem_pattern'] = isset($_POST[Configs::DB_PUBCHEM_PATTERN]) ? $_POST[Configs::DB_PUBCHEM_PATTERN] : $this->config->get(Configs::DB_PUBCHEM_PATTERN);
         $this->data['chembl_pattern'] = isset($_POST[Configs::DB_CHEMBL_PATTERN]) ? $_POST[Configs::DB_CHEMBL_PATTERN] : $this->config->get(Configs::DB_CHEMBL_PATTERN);
         $this->data['chebi_pattern'] = isset($_POST[Configs::DB_CHEBI_PATTERN]) ? $_POST[Configs::DB_CHEBI_PATTERN] : $this->config->get(Configs::DB_CHEBI_PATTERN);
-        $this->data['enum_types'] = self::generate_tree($enum_type_model->get_structure());
-        $this->data['items'] = self::get_free_items();
+        $this->data['navigator'] = self::createNavigator(self::MENU_SYSTEM);
         $this->header['title'] = 'Settings';
         $this->view = 'settings/system';
+    }
+
+    /**
+     * Enum type settings
+     * 
+     * 
+     */
+    public function enum_types()
+    {
+        $enum_type_model = new Enum_types();
+
+        $this->data['enum_types'] = self::generate_tree($enum_type_model->get_structure());
+        $this->data['items'] = self::get_free_items();
+
+        $this->data['navigator'] = self::createNavigator(self::MENU_ENUM_TYPES);
+        $this->header['title'] = 'Settings';
+        $this->view = 'settings/enum_types';
+    }
+
+    /**
+     * Creates navigator for editor
+     * 
+     * @param string $active
+     * @param string $active_submenu
+     * 
+     * @return HTML
+     */
+    public function createNavigator($active, $active_submenu = NULL)
+    {
+        // Editor sections
+        $sections = array
+        (
+            array
+            (
+                'type'  => self::MENU_SYSTEM,
+                'name' => 'System',
+                'glyphicon' => 'align-left',
+                'ref' => self::MENU_SYSTEM
+            ),
+            array
+            (
+                'type'  => self::MENU_ENUM_TYPES,
+                'name' => 'Enum types',
+                'glyphicon' => 'folder-open',
+                'ref' => self::MENU_ENUM_TYPES
+            ),
+        );
+
+        $navigator = '<div class="btn-group btn-group-justified">';
+        $subnavigator = '<div class="btn-group btn-group-justified">';
+        
+        foreach($sections as $s)
+        {
+            $navigator .= '<a href="/setting/' . $s['ref'] . '" class="btn btn-primary ';
+            if($active === $s['type'])
+            {
+                $navigator .= 'active';
+            }
+
+            $navigator .= '"> <span class="glyphicon glyphicon-' . $s['glyphicon'] . '"></span>  ' . $s['name'] . '</a>';
+        }
+
+        // Exists subnavigator options?
+        if(isset($this->submenu[$active]))
+        {
+            foreach($this->submenu[$active] as $type => $section)
+            {
+                $subnavigator .= '<a href="/setting/' . $section['ref'] . '" class="btn btn-primary ';
+                if ($active_submenu === $type) 
+                {
+                    $subnavigator .= 'active';
+                }
+                if(isset($section['glyphicon']))
+                {
+                    $subnavigator .= '"> <span class="glyphicon glyphicon-' . $section['glyphicon'] . '"></span>  ' . $section['title'] . '</a>';
+                }
+                else
+                {
+                    $subnavigator .= '"> ' . $section['title'] . '</a>';
+                }
+
+            }
+
+            $subnavigator .= '</div>';
+        }
+        else
+        {
+            $subnavigator = '';
+        }
+
+        $navigator .= '</div>';
+
+        return $navigator . $subnavigator;
     }
 
 
@@ -221,7 +310,7 @@ class SettingController extends Controller
             '</dsubtitle>' .
             '<dcontent class="unlabeled">';
 
-        $empty_membranes = $membrane_model->get_membranes_without_links();
+        $empty_membranes = $membrane_model->get_all_without_links();
 
         foreach($empty_membranes as $mem)
         {
@@ -237,7 +326,7 @@ class SettingController extends Controller
             '<dsubtitle>Methods <span class="glyphicon glyphicon-refresh" onclick="redirect(\'setting/update_category_items/' . Enum_types::TYPE_METHOD_CATS . '\');"></span>' 
             . '</dsubtitle><dcontent class="unlabeled">';
 
-        $empty_methods = $method_model->get_methods_without_links();
+        $empty_methods = $method_model->get_all_without_links();
 
         foreach($empty_methods as $met)
         {
@@ -253,7 +342,7 @@ class SettingController extends Controller
             '<dsubtitle>Transporter targets <span class="glyphicon glyphicon-refresh" onclick="redirect(\'setting/update_category_items/' . Enum_types::TYPE_TRANSPORTER_CATS . '\');"></span>' .
             '</dsubtitle><dcontent class="unlabeled">';
 
-        $empty_targets = $tt_model->get_targets_without_links();
+        $empty_targets = $tt_model->get_all_without_links();
 
         foreach($empty_targets as $t)
         {
@@ -297,17 +386,17 @@ class SettingController extends Controller
             if($type == Enum_types::TYPE_MEMBRANE_CATS)
             {
                 $mem_model = new Membranes();
-                $unlinked = $mem_model->get_membranes_without_links();
+                $unlinked = $mem_model->get_all_without_links();
             }
             else if($type == Enum_types::TYPE_METHOD_CATS)
             {
                 $met_model = new Methods();
-                $unlinked = $met_model->get_methods_without_links();
+                $unlinked = $met_model->get_all_without_links();
             }
             else if($type == Enum_types::TYPE_TRANSPORTER_CATS)
             {
                 $tt_model = new Transporter_targets();
-                $unlinked = $tt_model->get_targets_without_links();
+                $unlinked = $tt_model->get_all_without_links();
             }
 
             if(!count($unlinked))
@@ -620,170 +709,6 @@ class SettingController extends Controller
     const MOVE_ITEM = 2;
 
     /**
-     * Moves enum type
-     * 
-     * @POST
-     */
-    public function move_enum_type()
-    {
-        if(!$this->form->is_post())
-        {
-            $this->redirect('setting/system');
-        }
-
-        $enum_type = new Enum_types();
-        
-        $source_id = trim($this->form->param->source_link_id);
-        $target_id = trim($this->form->param->target_link_id);
-        $item_type = intval($this->form->param->item_type);
-        $item_id = intval($this->form->param->item_id);
-
-        $source_link = new Enum_type_links($source_id);
-        $target_link = new Enum_type_links($target_id);
-
-        $type = NULL;
-
-        if($source_link->id && $target_link->id)
-        {
-            $type = self::MOVE_CAT;
-        }
-        elseif($item_id && $item_type && $target_link->id && Enum_types::is_type_valid($item_type) && $target_link->enum_type->type == $item_type)
-        {
-            $type = self::MOVE_ITEM;
-        }
-        else
-        {
-            $this->alert->error('Invalid form params.');
-            $this->redirect('setting/system');
-        }
-
-        try
-        {
-            $enum_type->beginTransaction();
-
-            if($type === self::MOVE_CAT)
-            {
-                // Must have same type
-                if($source_link->enum_type->type && ($source_link->enum_type->type !== $target_link->enum_type->type))
-                {
-                    throw new Exception('Items must be in the same group.');
-                }
-
-                // Cannot move top categories
-                if(!$source_link->id_parent_link)
-                {
-                    throw new Exception("Cannot move base category.");
-                }
-
-                // Check if category already exists
-                $exist = $source_link->where(array
-                    (
-                        'id_enum_type' => $source_link->id_enum_type,
-                        'id_enum_type_parent' => $target_link->id_enum_type,
-                        'id_parent_link' => $target_link->id
-                    ))
-                    ->get_one();
-
-                if($exist->id && $exist->id === $source_link->id)
-                {
-                    throw new Exception('Nothing to move.');
-                }
-
-                if($exist->id)
-                {
-                    $children = $source_link->get_direct_children_links();
-
-                    foreach($children as $ch)
-                    {
-                        $ch = new Enum_type_links($ch->id);
-                        $ch->id_parent_link = $exist->id;
-                        $ch->save();
-                    }
-
-                    // Move special type elements
-                    $source_link->move_items($exist->id);
-
-                    // Finaly delete empty branch
-                    $source_link->delete();
-                }
-                else
-                {
-                    $source_link->id_enum_type_parent = $target_link->id_enum_type;
-                    $source_link->id_parent_link = $target_link->id;
-
-                    $source_link->save();
-                }
-
-                $this->alert->success('Enum type moved.');
-            }
-            else if($type === self::MOVE_ITEM)
-            {
-                if($item_type === Enum_types::TYPE_MEMBRANE_CATS)
-                {
-                    $membrane = new Membranes($item_id);
-
-                    if(!$membrane->id)
-                    {
-                        throw new Exception('Invalid membrane.');
-                    }
-
-                    // Delete old link if exists
-                    $membrane->unlink_category();
-
-                    // Create new link
-                    $membrane->set_category_link($target_link->id);
-                }
-                else if($item_type === Enum_types::TYPE_METHOD_CATS)
-                {
-                    $method = new Methods($item_id);
-
-                    if(!$method->id)
-                    {
-                        throw new Exception('Invalid method.');
-                    }
-
-                    // Delete old link if exists
-                    $method->unlink_category();
-
-                    // Create new link
-                    $method->set_category_link($target_link->id);
-                }
-                else if($item_type === Enum_types::TYPE_TRANSPORTER_CATS)
-                {
-                    $transporter = new Transporter_targets($item_id);
-
-                    if(!$transporter->id)
-                    {
-                        throw new Exception('Invalid transporter.');
-                    }
-
-                    // Delete old link if exists
-                    $transporter->unlink_category();
-
-                    // Create new link
-                    $transporter->set_category_link($target_link->id);
-                }
-                else
-                {
-                    throw new Exception('Invalid item type.');
-                }
-
-                $this->alert->success('Item moved.');
-            }
-            
-            $enum_type->commitTransaction();
-            
-        }
-        catch(Exception $e)
-        {
-            $this->alert->error($e);
-            $enum_type->rollbackTransaction();
-        }
-
-        $this->redirect('setting/system');
-    }
-
-    /**
      * Deletes enum type
      * 
      * @POST
@@ -869,69 +794,6 @@ class SettingController extends Controller
         {
             $this->alert->error($e);
             $enum_type->rollbackTransaction();
-        }
-
-        $this->redirect('setting/system');
-    }
-
-    /**
-     * Unlink item
-     * 
-     * @POST
-     */
-    public function unlink_item()
-    {
-        if(!$this->form->is_post())
-        {
-            $this->redirect('setting/system');
-        }
-
-        $id = $this->form->param->id;
-        $type = $this->form->param->type;
-
-        $et = new Enum_types();
-
-        if(!Enum_types::is_type_valid($type))
-        {
-            $this->alert->error('Invalid form params.');
-            $this->redirect('setting/system');
-        }
-
-        try
-        {
-            $et->beginTransaction();
-            
-            if($type == Enum_types::TYPE_MEMBRANE_CATS)
-            {
-                $el = new Membranes($id);
-            }
-            else if($type == Enum_types::TYPE_METHOD_CATS)
-            {
-                $el = new Methods($id);
-            }
-            else if($type == Enum_types::TYPE_TRANSPORTER_CATS)
-            {
-                $el = new Transporter_targets($id);
-            }
-            else 
-            {
-                throw new Exception('Invalid type.');
-            }
-
-            if(!$el->id)
-            {
-                throw new Exception('Invalid id.');
-            }
-
-            $el->unlink_category();
-
-            $et->commitTransaction();
-            $this->alert->success('Item was unlinked.');
-        }
-        catch(Exception $e)
-        {
-            $this->alert->error($e);
-            $et->rollbackTransaction();
         }
 
         $this->redirect('setting/system');

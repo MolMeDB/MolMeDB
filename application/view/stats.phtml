@@ -99,6 +99,19 @@
         <div class="stats-row">
             <div class="stat-panel" style="width: 100%">
                 <div class="stat-panel-title">
+                    Transporter interactions
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php endif ?>
+                </div>
+                <div class="stat-panel-subtitle">Amount of data</div>
+                <div id="inter_activeDiv" class="stat-chart" style="width: 100%; height: 850px;"></div>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-panel" style="width: 100%">
+                <div class="stat-panel-title">
                     Methods
                     <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
                         <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
@@ -128,6 +141,9 @@
 <script src="js/stats.js"></script>
 
 <script>
+    var data = JSON.parse('<?= json_encode($interactions->active) ?>');
+    show_sunburst(data, 'inter_activeDiv');
+
     $(".main-page").css('padding', '0');
     var inter_adding_data = JSON.parse('<?= json_encode($interactions->adding->data) ?>');
     var inter_adding_params = {
@@ -155,17 +171,19 @@
     var axisBreaks = {
         interactions: JSON.parse('<?= json_encode($membranes->stats->axisBreaks_interactions)?>')
     }
-
     make_membrane_total_column_chart('membraneDiv', data);
 
-    // Chart for count of total methods
+    
     var data = JSON.parse('<?= json_encode($interactions_pa->data) ?>');
     makeInteractionsPie('interactionAddDiv2', data);
 
+    // Chart for count of total methods
     var data = JSON.parse('<?= json_encode($methods->stats->data) ?>');
     var axisBreaks = {
         interactions: JSON.parse('<?= json_encode($methods->stats->axisBreaks_interactions)?>')
     }
 
     make_method_total_column_chart('methodDiv', data, axisBreaks);
+
+    
 </script>

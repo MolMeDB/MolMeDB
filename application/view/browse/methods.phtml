@@ -1,26 +1,11 @@
 <div id='chartdiv' style="height: 600px;"></div>
 
-<script src="js/browse.js?ver=<?=JS_VERSION?>"></script>
-<script>
-    var data = JSON.parse('<?= $nonsec_categories ?>');
-    show_sunburst(data, "chartdiv");
-</script>
-
 <div class="browse-contents">
     <div id="material-list">
         <div class="browse-list-title">
             Methods
         </div>
-        <?php foreach ($methods as $k => $m) : ?>
-        <div class="browse-list-item">
-            <img src="files/icons/chevron-right.svg" style="width: 8px">
-            <?php if ($k==0) : ?>
-                <a class="list-item active" id="target_<?=$m->id?>" href="#tab<?=$m->id?>"><?=$m->name?></a>
-            <?php else : ?>
-                <a class="list-item" id="target_<?=$m->id?>" href="#tab<?=$m->id?>"><?=$m->name?></a>
-            <?php endif ?>
-        </div>
-        <?php endforeach ?>
+        <?= $nonsec_side_list ?>
     </div>
 
     <div class="tab-contents">
@@ -38,13 +23,24 @@
             </div>
             <div class="content"><?=$m->description?></div>
             <div class="content"><?=$m->references?></div>
-            <button type="button" onclick="addSetToComparator('method', '<?=$m->id?>')" style="margin-top: 15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button>
+            <div class="content">
+                <button type="button" onclick="addSetToComparator('method', '<?=$m->id?>')" style="margin-top: 15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button>
+                <button type="button" onclick="redirect('export/method/<?= $m->id ?>')" style="margin-top: 15px; margin-right: 10px;" class="btn btn-danger btn-sm pull-right">Download data </button>
+            </div>
         </div>
         <?php endforeach ?>
     </div>
 </div>
 
+<script src="js/browse.js?ver=<?=JS_VERSION?>"></script>
 <script>
+    var data = JSON.parse('<?= $nonsec_categories ?>');
+    show_sunburst(data, "chartdiv");
+</script>
+
+<script>
+    var remote_active = '<?= isset($_GET['target']) ? '#target_' . $_GET['target'] : '' ?>';
+
     $(document).ready(function() {
 		$('#material-list').each(function() {
             var $active, $content, $links = $(this).find('a');
@@ -72,5 +68,10 @@
                 e.preventDefault();
             });
     });
+
+    if(remote_active)
+    {
+        $(remote_active).click();
+    }
 });
 </script>

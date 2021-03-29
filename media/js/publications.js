@@ -127,8 +127,19 @@ async function onReady()
         $(all_rows).removeClass('active');
 
         $(all_rows).each(function(i,e){
-            var whisper = $(e).find('whisper')[0];
-            var text = $(whisper).html();
+            var text = '';
+
+            $(e).find('whisper').each(function(i,e)
+            {
+                text = text + $(e).html();
+            });
+
+            $(e).find('.pmid-whisper').each(function(i,e)
+            {
+                var par = $(e).parent();
+                text = text + $(par).html();
+            });
+
             text = text.toLowerCase();
 
             if(text.includes(v))

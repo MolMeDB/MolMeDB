@@ -5,12 +5,7 @@
         <div class="browse-list-title">
             Membranes
         </div>
-        <?php foreach($membranes as $m) : ?>
-        <div class="browse-list-item">
-            <img src="files/icons/chevron-right.svg" style="width: 8px">
-            <a class="list-item" id="target_<?=$m->id?>" href="#tab<?=$m->id?>"><?=$m->name?></a>
-        </div>
-        <?php endforeach ?>
+        <?= $nonsec_side_list ?>
     </div>
     
     <div class="tab-contents">
@@ -18,7 +13,7 @@
         <div id="tab<?=$m->id?>">
             <div class="membraneName">
                 <div>
-                    <h2><?=$m->name?></h2>
+                    <h2><?=$m->name?></h2>  
                 </div>
                 <div class="membraneCategory">
                     <div class="categoryName"><?=$active_categories[$m->id]->category?></div>
@@ -28,7 +23,8 @@
             </div>
             <div class="content"><?=$m->description?></div>
             <div class="content"><?=$m->references?></div>
-            <button type="button" onclick="addSetToComparator('membrane', '<?=$m->id ?>')" style="margin-top: -15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button>
+            <button type="button" onclick="addSetToComparator('membrane', '<?=$m->id ?>')" style="margin-top: 15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button>
+            <button type="button" onclick="redirect('export/membrane/<?= $m->id ?>')" style="margin-top: 15px; margin-right: 10px;" class="btn btn-danger btn-sm pull-right">Download data </button>
         </div>
         <?php endforeach ?>
     </div>
@@ -41,6 +37,8 @@
 </script>
 
 <script>
+    var remote_active = '<?= isset($_GET['target']) ? '#target_' . $_GET['target'] : '' ?>';
+
     $(document).ready(function() {
 		$('#material-list').each(function() {
             var $active, $content, $links = $(this).find('a');
@@ -68,5 +66,10 @@
                 e.preventDefault();
             });
     });
+
+    if(remote_active)
+    {
+        $(remote_active).click();
+    }
 });
 </script>

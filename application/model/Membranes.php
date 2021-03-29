@@ -127,7 +127,7 @@ class Membranes extends Db
     /**
      * Returns membranes without links
      */
-    public function get_membranes_without_links()
+    public function get_all_without_links()
     {
         return $this->queryAll('
             SELECT m.*
@@ -185,7 +185,6 @@ class Membranes extends Db
     }
 
 
-   
     /**
      * Loads whisper detail
      * 
@@ -298,6 +297,31 @@ class Membranes extends Db
                 ORDER BY name ASC
             ');
         }
+    }
+
+    /**
+     * Returns all membrane interactions
+     * 
+     * @return Iterable_object
+     * 
+     * @author Jakub Juracka
+     */
+    public function get_interactions()
+    {
+        return $this->queryAll('
+            SELECT DISTINCT s.name, s.identifier, s.SMILES, s.inchikey, s.MW, s.LogP, s.pubchem, s.drugbank, s.pdb, s.chEMBL,
+                mem.name as membrane, met.name as method, i.temperature, i.charge, i.comment as note, i.Position as X_min,
+                i.Position_acc as X_min_acc, i.Penetration as G_pen, i.Penetration_acc as G_pen_acc, i.Water as G_wat, i.Water_acc as G_wat_acc,
+                i.LogK, i.LogK_acc, i.LogPerm, i.LogPerm_acc, i.theta, i.theta_acc, i.abs_wl, i.abs_wl_acc, i.fluo_wl, i.fluo_wl_acc, i.QY, i.QY_acc, i.lt, i.lt_acc,
+                p1.citation as primary_reference, p2.citation as secondary_reference
+            FROM substances s 
+            JOIN interaction i ON i.id_substance = s.id
+            JOIN membranes mem ON mem.id = i.id_membrane AND mem.id = ?
+            JOIN methods met ON met.id = i.id_method
+            JOIN datasets d ON d.id = i.id_dataset
+            LEFT JOIN publications p1 ON p1.id = i.id_reference
+            LEFT JOIN publications p2 ON p2.id = d.id_publication
+        ', array($this->id));
     }
 
 }

@@ -1328,6 +1328,11 @@ input.parserInput{
     margin-top: 12px;
 }
 
+#material-list > .list-section > label
+{
+    color:rgba(12, 60, 255, 0.7)
+}
+
 .browse-list-title{
     padding: 10px;
     display: flex;
@@ -1337,25 +1342,34 @@ input.parserInput{
     font-weight: bold;
     border-bottom: 2px solid #4a82da;
     margin-bottom: 10px;
+    cursor:initial;
+}
+
+.list-section{
+    padding: 0 0 0 10px;
+    margin-bottom: 5px;
+    border-left: 1px dotted black;
+    font-weight: bold;
+    border-top-left-radius: 10px;;
 }
 
 .browse-list-item{
     width: auto;
-    padding: 3px 10px;
+    padding: 3px 10px 3px 0;
     display: flex;
 }
 
 
 .browse-list-item a.list-item{
-    padding-left: 10px;
-    font-size: 16px;
+    padding: 0 10px;
+    font-size: 14px;
     color: #aeaeae !important;
 }
 
 .browse-list-item a.active{
     color: #294f9c !important;
     font-weight: bold;
-    border-bottom: none;
+    border-bottom: 2px solid;
     text-decoration: none;
 }
 

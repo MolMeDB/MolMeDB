@@ -54,7 +54,7 @@
                     </td>
                     <td id="hover-div">
                         <button title='Show data' class="blue" onclick="show_loader(); show_compounds('<?= $p->id?>');" ><?= Html::image('icons/mol.png') ?></button>
-                        <button title='Export data' class="orange" onclick="" ><?= Html::image('icons/cloud.png') ?></button>
+                        <button title='Export data' class="orange" onclick="redirect('export/publication/<?=$p->id?>');" ><?= Html::image('icons/cloud.png') ?></button>
                         <div class="whisper">
                             <table>
                                 <tr>

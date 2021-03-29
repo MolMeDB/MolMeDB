@@ -39,23 +39,16 @@ function show_sunburst(data, target_id)
     
             return rotation;
         })
-    
-    
-        var level1SeriesTemplate = level0SeriesTemplate.clone();
-        chart.seriesTemplates.setKey("1", level1SeriesTemplate)
-        level1SeriesTemplate.fillOpacity = 0.75;
-        level1SeriesTemplate.hiddenInLegend = true;
-        // level1SeriesTemplate.labels.template.text = "{category}";
-    
-        var level2SeriesTemplate = level0SeriesTemplate.clone();
-        chart.seriesTemplates.setKey("2", level2SeriesTemplate)
-        level2SeriesTemplate.fillOpacity = 0.5;
-        level2SeriesTemplate.hiddenInLegend = true;
-        // level2SeriesTemplate.labels.template.text = "{category}";
-        level2SeriesTemplate.labels.template.fill = am4core.color("#000");
-        level2SeriesTemplate.slices.template.events.on('hit', function(ev)
+
+        level0SeriesTemplate.slices.template.events.on('hit', function(ev)
         {
             var el_id = ev.target.dataItem.sunburstDataItem._dataContext.id_element;
+            var last = ev.target.dataItem.sunburstDataItem._dataContext.last;
+
+            if(!last)
+            {
+                return;
+            }
             
             if(!el_id)
             {
@@ -71,11 +64,23 @@ function show_sunburst(data, target_id)
                 console.log('Target not found.');
                 return;
             }
-            console.log(el_id);
 
             $(target).click();
         });
     
+    
+        var level1SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("1", level1SeriesTemplate)
+        level1SeriesTemplate.fillOpacity = 0.75;
+        level1SeriesTemplate.hiddenInLegend = true;
+        // level1SeriesTemplate.labels.template.text = "{category}";
+    
+        var level2SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("2", level2SeriesTemplate)
+        level2SeriesTemplate.fillOpacity = 0.5;
+        level2SeriesTemplate.hiddenInLegend = true;
+        // level2SeriesTemplate.labels.template.text = "{category}";
+        level2SeriesTemplate.labels.template.fill = am4core.color("#000");
         chart.legend = new am4charts.Legend();
     
     }); 

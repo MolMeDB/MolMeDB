@@ -29,13 +29,15 @@
     public function show_all()
     {
         $stats = new Statistics();
+        $et = new Enum_types();
 
         $this->data['last_update'] = date('d-m-Y', strtotime($stats->get_last_update_date()));
 
         $this->data['interactions'] = (object)array
         (
             'adding' => (object)$stats->get(Statistics::TYPE_INTER_ADD),
-            'total' => $stats->get(Statistics::TYPE_INTER_TOTAL)
+            'total' => $stats->get(Statistics::TYPE_INTER_TOTAL),
+            'active' => $stats->get(Statistics::TYPE_INTER_ACTIVE)
         );
 
         $this->data['substances'] = (object)array

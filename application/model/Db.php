@@ -195,7 +195,7 @@ class Db extends Iterable_object
      * 
      * @return array|object
      */
-    protected function queryAll($query, $parameters = array(), $as_object = True)
+    public function queryAll($query, $parameters = array(), $as_object = True)
     {
         $return = self::$connection->prepare($query);
         $return->execute($parameters);

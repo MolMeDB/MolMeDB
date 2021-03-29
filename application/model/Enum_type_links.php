@@ -133,6 +133,11 @@ class Enum_type_links extends Db
      */
     public function get_items()
     {
+        if(!$this)
+        {
+            return new Iterable_object();
+        }
+
         if($this->enum_type->type == Enum_types::TYPE_MEMBRANE_CATS)
         {
             $table = 'membrane';

@@ -822,7 +822,6 @@ class SettingController extends Controller
                 . '<div class="text">' . $item->name . "</div>"
                 . '<div class="actions">'
                     . '<span class="glyphicon glyphicon-tasks add-folder" title="Add category"></span>'
-                    . '<span class="glyphicon glyphicon-plus add-item" title="Add item"></span>'
                     . ($deletable ? '<span class="glyphicon glyphicon-trash delete" title="Delete"></span>' : '')
                     . ($deletable ? '<span class="glyphicon glyphicon-pencil edit" title="Edit label"></span>' : '')
                     . '<span class="glyphicon glyphicon-tag edit-regexp" title="Edit regexp">' . $item->regexp .  '</span>'

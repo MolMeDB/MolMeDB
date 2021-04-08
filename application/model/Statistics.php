@@ -46,6 +46,9 @@ class Statistics extends Db
 
     /** STATS TYPE - ACTIVE INTERACTIONS STATS */
     const TYPE_INTER_ACTIVE = 10;
+    
+    /** STATS TYPE - REFERENCES STATS */
+    const TYPE_REFERENCES = 11;
 
 
     public static function exists_stat_file($type)
@@ -83,6 +86,7 @@ class Statistics extends Db
         self::TYPE_SUBST_TOTAL,
         self::TYPE_METHODS_TOTAL,
         self::TYPE_MEMBRANES_TOTAL,
+        self::TYPE_REFERENCES
     );
 
     /** HOLDS INFO ABOUT TYPE */

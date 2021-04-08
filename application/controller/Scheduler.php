@@ -49,9 +49,6 @@ class SchedulerController extends Controller
                 return;
             }
 
-            $this->substance_autofill_missing_data();
-            die;
-
             // Send all unsent emails
             $this->send_emails();
             echo "Emails sent. \n";

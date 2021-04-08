@@ -24,7 +24,7 @@ $upgrade_sql = array
    // Delete old category tables
    "DROP TABLE `cat_membranes`, `cat_mem_mem`, `cat_subcat_membranes`;",
    "CREATE TABLE `membrane_enum_type_links` ( `id_enum_type` INT NOT NULL , `id_membrane` INT NOT NULL ) ENGINE = InnoDB;",
-   "ALTER TABLE `membrane_enum_type_links` ADD FOREIGN KEY (`id_enum_type`) REFERENCES `enum_type_links`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
+   "ALTER TABLE `membrane_enum_type_links` ADD FOREIGN KEY (`id_enum_type_link`) REFERENCES `enum_type_links`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
    "ALTER TABLE `membrane_enum_type_links` ADD FOREIGN KEY (`id_membrane`) REFERENCES `membranes`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
    "ALTER TABLE `membrane_enum_type_links` ADD UNIQUE (`id_membrane`);",
 

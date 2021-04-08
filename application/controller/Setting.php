@@ -372,7 +372,7 @@ class SettingController extends Controller
         if(!Enum_types::is_type_valid($type))
         {
             $this->alert->error('Invalid type.');
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         } 
 
         $etl = new Enum_type_links();
@@ -459,7 +459,7 @@ class SettingController extends Controller
             $etl->rollbackTransaction();
         }
 
-        $this->redirect('setting/system');
+        $this->redirect('setting/' . self::MENU_ENUM_TYPES);
     }
 
 
@@ -474,7 +474,7 @@ class SettingController extends Controller
     {
         if(!$this->form->is_post())
         {
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         $enum_type = new Enum_types();
@@ -486,7 +486,7 @@ class SettingController extends Controller
         if(!$new_name || !$parent_link->id || !$parent)
         {
             $this->alert->error('Invalid form params.');
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         $new_names = [];
@@ -574,7 +574,7 @@ class SettingController extends Controller
             $enum_type->rollbackTransaction();
         }
 
-        $this->redirect('setting/system');
+        $this->redirect('setting/' . self::MENU_ENUM_TYPES);
     }
 
     /**
@@ -586,7 +586,7 @@ class SettingController extends Controller
     {
         if(!$this->form->is_post())
         {
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         $enum_type = new Enum_types();
@@ -598,7 +598,7 @@ class SettingController extends Controller
         if(!$new_name || !$enum_type->id)
         {
             $this->alert->error('Invalid form params.');
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         try
@@ -652,7 +652,7 @@ class SettingController extends Controller
             $enum_type->rollbackTransaction();
         }
 
-        $this->redirect('setting/system');
+        $this->redirect('setting/' . self::MENU_ENUM_TYPES);
     }
 
     /**
@@ -664,7 +664,7 @@ class SettingController extends Controller
     {
         if(!$this->form->is_post())
         {
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         $regexp = trim($this->form->param->regexp);
@@ -677,13 +677,13 @@ class SettingController extends Controller
         if(!$link->id)
         {
             $this->alert->error('Invalid form params.');
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         if($regexp && !Regexp::is_valid_regexp($regexp))
         {
             $this->alert->error('Invalid regexp form.');
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         try
@@ -702,7 +702,7 @@ class SettingController extends Controller
             $link->rollbackTransaction();
         }
 
-        $this->redirect('setting/system');
+        $this->redirect('setting/' . self::MENU_ENUM_TYPES);
     }
 
     const MOVE_CAT = 1;
@@ -717,7 +717,7 @@ class SettingController extends Controller
     {
         if(!$this->form->is_post())
         {
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         $link_id = $this->form->param->link_id;
@@ -727,7 +727,7 @@ class SettingController extends Controller
         if(!$link->id || !$link->parent_link || !$link->parent_link->id)
         {
             $this->alert->error('Invalid form params.');
-            $this->redirect('setting/system');
+            $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         }
 
         try
@@ -796,7 +796,7 @@ class SettingController extends Controller
             $enum_type->rollbackTransaction();
         }
 
-        $this->redirect('setting/system');
+        $this->redirect('setting/' . self::MENU_ENUM_TYPES);
     }
 
     /**

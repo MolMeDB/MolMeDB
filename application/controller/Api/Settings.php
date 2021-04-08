@@ -124,9 +124,17 @@ class ApiSettings extends ApiController
                     ))
                     ->get_one();
 
-                if($exist->id && $exist->id === $source_link->id)
+                if($exist->id && $exist->id == $source_link->id)
                 {
                     throw new Exception('Nothing to move.');
+                }
+
+                // Check if source is not parent of target
+                $children = $source_link->get_all_children(null, true);
+
+                if(in_array($target_link->id_enum_type, $children))
+                {
+                    throw new Exception('Cannot move into children.');
                 }
 
                 if($exist->id)

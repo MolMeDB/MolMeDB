@@ -131,8 +131,6 @@ function handleDrop(e) {
 
             var r = ajax_request('settings/move_enum_type', params, "POST");
 
-            console.log(r);
-
             if(r == false)
             {
                 alert('Cannot move folder, please try again.');
@@ -180,7 +178,13 @@ function handleDrop(e) {
                 return;
             }
 
-            var el = $(source).clone(true);
+            // var el = $(source).clone(true);
+            var el = document.createElement("li");
+            $(el).data('id', $(source).data('id'));
+            $(el).data('type', $(source).data('type'));
+            $(el).attr('draggable', 'true');
+            $(el).html($(source).html());
+
             $(el).css('opacity', '1');
 
             $(t[0]).append(el);

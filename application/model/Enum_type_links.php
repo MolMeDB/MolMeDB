@@ -127,13 +127,51 @@ class Enum_type_links extends Db
     }
 
     /**
+     * Returns all children of given enum_type_link
+     * 
+     * @param int $enum_type_link
+     * @param bool $recursive
+     * 
+     * @return object|array [enum_type_ids]
+     */
+    public function get_all_children($enum_type_link_id = null, $recursive = false)
+    {
+        if(!$enum_type_link_id && $this->id)
+        {
+            $enum_type_link_id = $this->id;
+        }
+
+        $etl = new Enum_type_links($enum_type_link_id);
+
+        if(!$etl->id)
+        {
+            throw new Exception('Invalid enum type link id.');
+        }
+
+        $children = $etl->get_direct_children_links();
+        $result = [];
+
+        foreach($children as $ch)
+        {
+            $result[$ch->id_enum_type] = $ch->id_enum_type;
+            
+            if($recursive)
+            {
+                $result = $result + $etl->get_all_children($ch->id, $recursive);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Returns items
      * 
      * @return Iterable_object
      */
     public function get_items()
     {
-        if(!$this)
+        if(!$this->id)
         {
             return new Iterable_object();
         }

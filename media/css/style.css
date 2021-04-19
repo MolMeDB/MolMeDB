@@ -1328,6 +1328,11 @@ input.parserInput{
     margin-top: 12px;
 }
 
+#material-list > .list-section > label
+{
+    color:rgba(12, 60, 255, 0.7)
+}
+
 .browse-list-title{
     padding: 10px;
     display: flex;
@@ -1337,25 +1342,34 @@ input.parserInput{
     font-weight: bold;
     border-bottom: 2px solid #4a82da;
     margin-bottom: 10px;
+    cursor:initial;
+}
+
+.list-section{
+    padding: 0 0 0 10px;
+    margin-bottom: 5px;
+    border-left: 1px dotted black;
+    font-weight: bold;
+    border-top-left-radius: 10px;;
 }
 
 .browse-list-item{
     width: auto;
-    padding: 3px 10px;
+    padding: 3px 10px 3px 0;
     display: flex;
 }
 
 
 .browse-list-item a.list-item{
-    padding-left: 10px;
-    font-size: 16px;
+    padding: 0 10px;
+    font-size: 14px;
     color: #aeaeae !important;
 }
 
 .browse-list-item a.active{
     color: #294f9c !important;
     font-weight: bold;
-    border-bottom: none;
+    border-bottom: 2px solid;
     text-decoration: none;
 }
 
@@ -2240,7 +2254,7 @@ p.attribute {
     grid-template-columns: 25% 25% 25% 25%;
     grid-template-rows: 100px;
 }
-
+/* 
 .stat-panel{
     transition: all .2s ease-in-out;
     padding: 20px;
@@ -2254,7 +2268,7 @@ p.attribute {
 .stat-panel-active{
     background-image: none;;
     background-color: #1a3264;
-}
+} */
 
 .enabled{
     -webkit-box-shadow: 0px 26px 35px -18px rgba(0,0,0,0.75);
@@ -2267,7 +2281,7 @@ p.attribute {
     z-index: 10;
     cursor: pointer;
 }
-
+/* 
 .stat-panel-info{
     display: flex;
     flex-direction: column;
@@ -2282,12 +2296,14 @@ p.attribute {
 .stat-panel-description{
     font-size: 13px;
     font-weight: bold;
-}
+} */
 
 .stat-panel-img{
     display: flex;
     flex-direction: row-reverse;
-    width: 40%;
+    width: 50px;
+    height: 90%;
+    max-width: 50px;
 }
 
 .stat-panel-img img{
@@ -2419,15 +2435,6 @@ p.attribute {
     color: black;   
 }
 
-.stats-title{
-    text-align: center;
-    font-weight: bold;
-    text-transform: uppercase;
-    cursor: default;
-    color: rgb(218, 218, 218);
-    padding-bottom: 5px;
-}
-
 /* SETTING FORM */
 .setting-form
 {
@@ -2478,6 +2485,7 @@ table.setting-form-table > tbody tr {
 .row{
     display: flex;
     flex-direction: row;
+    margin: 0;
 }
 
 .column

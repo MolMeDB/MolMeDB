@@ -10,7 +10,7 @@ class Html
     /** HTML TYPES with defined default media root directory */
     private static $JS = 'js';
     private static $CSS = 'css';
-    private static $IMG = 'files/pictures';
+    private static $IMG = 'files/';
 
     /**
      * Returns IMG element in string
@@ -122,6 +122,17 @@ class Html
     public static function button($type, $title, $class = "")
     {
         return "<button style='margin-top: 10px;' type='$type' class='$class btn btn-sm'>$title</button>";
+    }
+
+    /**
+     * Makes button html
+     * 
+     * @param string $src - prefix: 'files/'
+     * @param string $class
+     */
+    public static function image($src, $class = "")
+    {
+        return "<img class='$class' src='" . self::$IMG . $src . "'>";
     }
 
 

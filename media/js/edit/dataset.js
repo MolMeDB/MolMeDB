@@ -430,54 +430,97 @@ function edit_basic_transporter_info(edit_btn)
     div.appendChild(form);
 }
 
-function modal_editor(id_row)
+function modal_editor(id_row, active_interactions = false)
 {
-    var values = [];
-    
-    values = ajax_request("comparator/getInteraction", {id: id_row});
-
-    if(!values)
+    if(active_interactions)
     {
-        return;
-    }
+        var values = [];
+        
+        values = ajax_request("comparator/getActiveInteraction", {id: id_row});
 
-    // Fill the form
-    $('#id_interaction').val(id_row);
-    $('#substance_name').val(values.substance.name);
-    $('#SMILES').val(values.substance.SMILES);
-    $('#charge').val(values.charge);
-    $('#LogP').val(values.substance.LogP);
-    $('#temperature').val(values.temperature);
-    $('#pubchem').val(values.substance.pubchem);
-    $('#pdb').val(values.substance.pdb);
-    $('#drugbank').val(values.substance.drugbank);
-    $('#chEMBL').val(values.substance.chEMBL);
-    $('#chEBI').val(values.substance.chEBI);
-    $('#Position').val(values.Position);
-    $('#LogK').val(values.LogK);
-    $('#Water').val(values.Water);
-    $('#Penetration').val(values.Penetration);
-    $('#LogPerm').val(values.LogPerm);
-    $('#Position_acc').val(values.Position_acc);
-    $('#Water_acc').val(values.Water_acc);
-    $('#LogK_acc').val(values.LogK_acc);
-    $('#Penetration_acc').val(values.Penetration_acc);
-    $('#LogPerm_acc').val(values.LogPerm_acc);
-    $('#theta').val(values.theta);
-    $('#abs_wl').val(values.abs_wl);
-    $('#fluo_wl').val(values.fluo_wl);
-    $('#QY').val(values.QY);
-    $('#lt').val(values.lt);
-    $('#theta_acc').val(values.theta_acc);
-    $('#abs_wl_acc').val(values.abs_wl_acc);
-    $('#fluo_wl_acc').val(values.fluo_wl_acc);
-    $('#QY_acc').val(values.QY_acc);
-    $('#lt_acc').val(values.lt_acc);
-    $('#membrane_name').html(values.membrane_name);
-    $('#method_name').html(values.method_name);
-    $('#reference').html(values.reference);
-    $('#last_update').html(values.last_update);
-    $('#uploaded').html(values.uploaded);
+        if(!values)
+        {
+            return;
+        }
+
+        // Fill the form
+        $('#id_interaction').val(id_row);
+        $('#substance_name').val(values.substance.name);
+        $('#SMILES').val(values.substance.SMILES);
+        $('#LogP').val(values.substance.LogP);
+        $('#pubchem').val(values.substance.pubchem);
+        $('#pdb').val(values.substance.pdb);
+        $('#drugbank').val(values.substance.drugbank);
+        $('#chEMBL').val(values.substance.chEMBL);
+        $('#chEBI').val(values.substance.chEBI);
+        $('#Km').val(values.Km);
+        $('#Km_acc').val(values.Km_acc);
+        $('#EC50').val(values.EC50);
+        $('#EC50_acc').val(values.EC50_acc);
+        $('#Ki').val(values.Ki);
+        $('#Ki_acc').val(values.Ki_acc);
+        $('#IC50').val(values.IC50);
+        $('#IC50_acc').val(values.IC50_acc);
+        $('#reference').html(values.reference);
+        $('#uploaded').html(values.uploaded);
+
+        $('#note').val(values.comment);
+
+        $('#type option').removeAttr('selected');
+        $('#type option[value="' + values.type + '"]').attr("selected", "selected");
+
+        $('#target option').removeAttr('selected');
+        $('#target option[value="' + values.target_id + '"]').attr("selected", "selected");
+    }
+    else
+    {
+        var values = [];
+        
+        values = ajax_request("comparator/getInteraction", {id: id_row});
+
+        if(!values)
+        {
+            return;
+        }
+
+        // Fill the form
+        $('#id_interaction').val(id_row);
+        $('#substance_name').val(values.substance.name);
+        $('#SMILES').val(values.substance.SMILES);
+        $('#charge').val(values.charge);
+        $('#LogP').val(values.substance.LogP);
+        $('#temperature').val(values.temperature);
+        $('#pubchem').val(values.substance.pubchem);
+        $('#pdb').val(values.substance.pdb);
+        $('#drugbank').val(values.substance.drugbank);
+        $('#chEMBL').val(values.substance.chEMBL);
+        $('#chEBI').val(values.substance.chEBI);
+        $('#Position').val(values.Position);
+        $('#LogK').val(values.LogK);
+        $('#Water').val(values.Water);
+        $('#Penetration').val(values.Penetration);
+        $('#LogPerm').val(values.LogPerm);
+        $('#Position_acc').val(values.Position_acc);
+        $('#Water_acc').val(values.Water_acc);
+        $('#LogK_acc').val(values.LogK_acc);
+        $('#Penetration_acc').val(values.Penetration_acc);
+        $('#LogPerm_acc').val(values.LogPerm_acc);
+        $('#theta').val(values.theta);
+        $('#abs_wl').val(values.abs_wl);
+        $('#fluo_wl').val(values.fluo_wl);
+        $('#QY').val(values.QY);
+        $('#lt').val(values.lt);
+        $('#theta_acc').val(values.theta_acc);
+        $('#abs_wl_acc').val(values.abs_wl_acc);
+        $('#fluo_wl_acc').val(values.fluo_wl_acc);
+        $('#QY_acc').val(values.QY_acc);
+        $('#lt_acc').val(values.lt_acc);
+        $('#membrane_name').html(values.membrane_name);
+        $('#method_name').html(values.method_name);
+        $('#reference').html(values.reference);
+        $('#last_update').html(values.last_update);
+        $('#uploaded').html(values.uploaded);
+    }
 
     modal.style.display = "block";
 }

@@ -1,0 +1,91 @@
+<h3>Transporters</h3>
+<div id='chartdiv' style="height: 900px;"></div>
+
+<div  id="content"> 
+        <?php if(isset($list)) : ?>
+            <div class="search-info">
+                <h3><?= $is_last ? $element->name : $element->enum_type->name ?> (<?= $total ?> substances)</h3>
+            </div>
+        <div class="comp-addAll">
+            <button type="button" onclick="redirect('export/transporter_data/<?= $element->id?>/<?=  $is_last ? 1 : 0?>');" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
+            <!-- <button type="button" onclick="addSetToComparator('set', '<?=$publication->id?>')" class="btn btn-warning btn-sm pull-right" style="margin-bottom: 5px;">Add all compounds to the comparator </button> -->
+            <button class="btn btn-sm btn-primary pull-right btn-add" id="btn-addALL">Add list to the comparator </button>
+        </div>
+            <ul class="search-ul" id="search-list">
+                    <?php foreach ($list as $substance) : ?>
+                    <li>
+                            <div class="title">
+                                <a href="/mol/<?= $substance->identifier?>"><?= $substance->name ?></a>
+                                <button title="Add to comparator" id="<?= $substance->id ?>" type="button" class="btn btn-sm btn-primary btn-add">
+                                    <span id="<?= $substance->name ?>" class="glyphicon glyphicon-plus"></span>
+                                </button>
+                            </div>
+                            <div class="info">
+                                <div class="info-text">
+                                    <?php if($substance->MW != 0) : ?>
+                                    <div><label><b>Molecular weight:</b></label> <?= $substance->MW ?> <br/></div>
+                                    <?php else : ?>
+                                    <div><label><b>Molecular weight:</b></label> N/A <br/></div>
+                                    <?php endif ?>
+                                    <div><label><b>SMILES:</b></label> <?= $substance->SMILES ?> <br/></div>
+                                </div>
+                                <div class="search-2DStructure" id="structure<?= $substance->id ?>"><script> update('<?= $substance->SMILES ?>', 'structure<?= $substance->id ?>');</script></div>
+                            </div>
+							<div class="flex-row space-between">
+								<div class="references">
+									<?php if($substance->pdb != '') : ?>
+									<div class="ref"> <a href="https://www.rcsb.org/ligand/<?= $substance->pdb ?>" target="_blank">PDB </a></div>
+									<?php endif ?>
+									<?php if($substance->pubchem != '') : ?>
+									<div class="ref"> <a target="_blank" href="https://pubchem.ncbi.nlm.nih.gov/compound/<?= $substance->pubchem ?>">PubChem </a></div>
+									<?php endif ?>
+									<?php if($substance->chEBI != '') : ?>
+									<div class="ref"> <a target="_blank" href="http://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:<?= $substance->chEBI ?>">chEBI </a></div>
+									<?php endif ?>
+									<?php if($substance->chEMBL != '') : ?>
+									<div class="ref"> <a target="_blank" href="https://www.ebi.ac.uk/chembl/compound/inspect/<?= $substance->chEMBL ?>">chEMBL </a></div>
+									<?php endif ?>
+									<?php if($substance->drugbank != '') : ?>
+									<div class="ref"> <a target="_blank" href="https://www.drugbank.ca/drugs/<?= $substance->drugbank ?>">DrugBank </a></div>
+									<?php endif ?>
+								</div>
+								<div>
+									<?php if(isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>
+										<a class="extend"  href="/edit/compound/<?=$substance->id?>/<?=$substance->name?>">Edit</a>
+									<?php endif ?>
+								</div>
+							</div>
+                    </li>
+                    <?php endforeach ?>
+                </ul>
+        <div class="text-center">   
+            <ul class="pagination pagination-lg" id="paginator_comp" >
+            <?php $count = $total ?>
+              <?php for ($i=1; $i<($count/10)+1; $i++) : ?>
+                <?php if($i == $pagination): ?>
+                    <li class="active"id="activePag"><a href="/browse/transporters/<?=$element->id?>/<?= $is_last ? 1 : 0?>/<?=$i?>"><?=$i?></a></li>
+                <?php else : ?>
+                    <li><a href="/browse/transporters/<?=$element->id?>/<?= $is_last ? 1 : 0?>/<?=$i?>"><?=$i?></a></li>
+                <?php endif ?>
+              <?php endfor ?>
+            </ul>
+            <script>
+            $(document).ready(function()
+            {
+                verifyPagination('paginator_comp');
+            });
+            </script>
+        </div>
+        <?php endif ?>
+    </div>
+
+<script src="js/searchEngine.js?<?=JS_VERSION?>" >
+</script>
+
+
+<script src="js/amcharts64/themes/animated.js"></script>
+<script src="js/stats.js"></script>
+<script>
+    var data = JSON.parse('<?= json_encode($chart_data) ?>');
+    show_sunburst(data, "chartdiv", true);
+</script>

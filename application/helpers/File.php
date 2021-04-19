@@ -14,6 +14,14 @@ class File
 
     // 3dstructure folder
     const FOLDER_3DSTRUCTURES = MEDIA_ROOT . "files/3DStructures/";
+    
+    // 
+    const FOLDER_STATS_DOWNLOAD = MEDIA_ROOT . 'files/download/stats/';
+
+    const FOLDER_PUBLICATION_DOWNLOAD = MEDIA_ROOT . 'files/download/publication/';
+    const FOLDER_MEMBRANE_DOWNLOAD = MEDIA_ROOT . 'files/download/membrane/';
+    const FOLDER_METHOD_DOWNLOAD = MEDIA_ROOT . 'files/download/method/';
+    const FOLDER_TRANSPORTER_DOWNLOAD = MEDIA_ROOT . 'files/download/transporter/';
 
     /**
      * Constructor
@@ -46,17 +54,37 @@ class File
     /**
      * Creates new file instance
      */
-    public function create($filePath, $type = 'w')
+    public function create($filePath = NULL, $type = 'w')
     {
-        // Get path
-        $last_slash = strrpos($filePath, '/');
-        $dir_path = substr($filePath, 0, $last_slash);
+        if($filePath)
+        {
+            // Get path
+            $last_slash = strrpos($filePath, '/');
+            $dir_path = substr($filePath, 0, $last_slash);
 
-        // check path
-        $this->make_path($dir_path);
-        
+            // check path
+            $this->make_path($dir_path);
+        }
+        else
+        {
+            throw new Exception('Invalid file path.');
+        }
+
         // Set default values
         $this->FILE = fopen($filePath, $type);
+        $this->origin_path = $filePath;
+        $this->name = $filePath ? substr($filePath, $last_slash + 1) : null;
+    }
+
+    /**
+     * Closes file
+     */
+    public function close()
+    {
+        if($this->FILE)
+        {
+            fclose($this->FILE);
+        }
     }
 
     /**
@@ -250,5 +278,100 @@ class File
         }
 
         return $this->FILE;
+    }
+
+    /**
+     * Transform data array to CSV and make file
+     * 
+     * @return string|null
+     */
+    public function transform_to_CSV($data, $file_name, $prefix = self::FOLDER_STATS_DOWNLOAD)
+    {
+        if(!$data || !is_array($data) || !is_array($data[0]))
+        {
+            return null;
+        }
+
+        if(!$file_name)
+        {
+            $file_name = strtotime('now') . '.csv';
+        }
+
+        array_unshift($data, array_keys($data[0]));
+
+        $this->create($prefix . $file_name);
+
+        $this->writeCSV($data);
+
+        $this->close();
+
+        return $this->origin_path;
+    }
+
+    /**
+     * Zip list of files
+     * 
+     * @param array|string $path
+     * 
+     * @return string
+     */
+    public function zip($path, $target, $delete_after = FALSE)
+    {
+        if(is_string($path))
+        {
+            $path = [$path];
+        }
+
+        if(!is_array($path))
+        {
+            throw new Exception('No files to zip.');
+        }
+        
+        $t = $path;
+
+        foreach($t as $key => $p)
+        {
+            if(!file_exists($p))
+            {
+                // echo 'not_exists';
+                unset($path[$key]);
+            }
+        }
+
+        if(!count($path))
+        {
+            return null;
+        }
+
+        $zip = new ZipArchive();
+
+        // Delete old zip if exists
+        if(file_exists($target))
+        {
+            unlink($target);
+        }
+
+        if ($zip->open($target, ZIPARCHIVE::CREATE) != TRUE) 
+        {
+            throw new Exception("Could not open archive");
+        }
+            
+        foreach($path as $p)
+        {
+            $zip->addFile($p, basename($p));
+        }
+
+        // close and save archive
+        $zip->close(); 
+
+        if($delete_after)
+        {
+            foreach($path as $p)
+            {
+                unlink($p);
+            }
+        }
+
+        return $target;
     }
 }

@@ -906,13 +906,18 @@ function flush_comparator_list()
  * Verify paginations under the search lists
  * 
  */
-function verifyPagination()
+function verifyPagination(id_paginator)
 {
-    var paginator = document.getElementById("paginator");
+    if(!id_paginator)
+    {
+        id_paginator = 'paginator';
+    }
+
+    var paginator = document.getElementById(id_paginator);
     var childs = paginator.children;
     var count = childs.length;
     var active;
-    
+
     if(count < 6) return;
     
     for(var i=0; i<count; i++)

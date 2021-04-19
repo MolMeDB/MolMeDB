@@ -111,7 +111,7 @@ class Validator extends Db
                     GROUP BY id
                 ) t 
                 GROUP BY id
-                ORDER BY create_date_time DESC
+                ORDER BY create_date_time, waiting DESC
                 $limit_str
             ", array(self::VALIDATED, self::VALIDATED));
         }
@@ -137,7 +137,7 @@ class Validator extends Db
                     GROUP BY id
                 ) t 
                 GROUP BY id
-                ORDER BY create_date_time DESC
+                ORDER BY create_date_time, waiting DESC
                 $limit_str
             ", array($state, $state));
         }
@@ -192,7 +192,47 @@ class Validator extends Db
         {
             throw new Exception('Cannot join energy values. Maybe both has same combination membrane-method.');
         }
-    } 
+    }
+    
+    /**
+     * 
+     */
+    public function get_inter_dataset_duplicity($dataset_id)
+    {
+        return $this->queryAll('
+            SELECT *
+            FROM validations
+            WHERE id_substance_1 IN (
+                SELECT DISTINCT i.id_substance
+                FROM interaction i
+                JOIN datasets d ON d.id = i.id_dataset AND d.id = ?
+                ) AND id_substance_2 IN (
+                SELECT DISTINCT i.id_substance
+                FROM interaction i
+                JOIN datasets d ON d.id = i.id_dataset AND d.id = ?
+                ) AND active = 1
+        ', array($dataset_id, $dataset_id));
+    }
+
+    /**
+     * 
+     */
+    public function get_inter_dataset_duplicity_count($dataset_id)
+    {
+        return $this->queryOne('
+            SELECT COUNT(*) as count
+            FROM validations
+            WHERE id_substance_1 IN (
+                SELECT DISTINCT i.id_substance
+                FROM interaction i
+                JOIN datasets d ON d.id = i.id_dataset AND d.id = ?
+                ) AND id_substance_2 IN (
+                SELECT DISTINCT i.id_substance
+                FROM interaction i
+                JOIN datasets d ON d.id = i.id_dataset AND d.id = ?
+                ) AND active = 1
+        ', array($dataset_id, $dataset_id))->count;
+    }
 
     /**
      * Joins alternames  

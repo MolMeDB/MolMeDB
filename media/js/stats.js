@@ -1,252 +1,634 @@
-var interaction_ids = [];
-var substance_ids = [];
-var detail = $('#stats-list-detail');
 
 /**
- * Show detail for membrane/method stats
+ * Creates chart for adding data
+ * 
+ * 
+ * @param {*} data 
+ * @param {*} divID 
+ * @param {*} parameters 
  */
-$('.stats-list-item').click(function()
+function makeAddingLineChart(data, divID, parameters = {}, maxValue = null)
 {
-    var sublist = $('#stats-sublist');
-
-    // Remove class from list objects
-    $('.stats-list-item').each(function(index, obj) {
-        obj.classList.remove('list-active');
-    });
-
-    // Clear sublist
-    $(sublist).find('.stats-sublist-item').each(function(k, item)
+    if(!$("#" + divID))
     {
-        $(item).remove();
-    })
-
-    var data = $(this).data('spec');
-    var id = data.id;
-    var type = data.type; 
-    var api_endpoint = null;
-    var sublist_class = null;
-
-    if(type == 'membrane')
-    {
-        api_endpoint = 'stats/membrane_subcats';
-        sublist_class = 'method';
-    }
-    else if(type == 'method')
-    {
-        api_endpoint = 'stats/method_subcats';
-        sublist_class = 'membrane';
-    }
-
-    if(!api_endpoint)
-    {
-        add_message('Error during loading detail.', 'warning');
-    }
-
-    var data = ajax_request(api_endpoint, {id: id});
-
-    if(!data)
-    {
+        console.log('Div not found.');
         return;
     }
 
-    // Make sublist
-    $(data).each(function(k, row)
+    am4core.useTheme(am4themes_animated);
+
+    // Create chart instance
+    var chart = am4core.create(divID, am4charts.XYChart);
+
+    chart.data = data;
+
+    chart.zoomOutButton.align = "left";
+    chart.zoomOutButton.valign = "top";
+
+    // Create axes
+    var xAxis = chart.xAxes.push(new am4charts.DateAxis());
+    xAxis.renderer.grid.template.location = 0;
+    xAxis.renderer.minGridDistance = 50;
+    // var xAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    // xAxis.dataFields.category = "citation";
+
+    var yAxis = chart.yAxes.push(new am4charts.ValueAxis());
+
+    if(maxValue)
     {
-        var div = document.createElement('div');
-        var name = document.createElement('div');
-        var count = document.createElement('div');
+        yAxis.min = 0;
+        yAxis.max = parseInt(maxValue);
+        yAxis.strictMinMax = true;
+    }
+    
+    if(parameters.axisBreaks)
+    {
+        for(var i = 0; i < parameters.axisBreaks.length; i++)
+        {
+            var ab = parameters.axisBreaks[i];
 
-        div.setAttribute('data-spec', '{"id_cat": "' + id + '", "id_subcat": "' + row.id + '"}');
-        div.classList.add('stats-sublist-item');
-        div.classList.add(sublist_class);
+            var axisBreak = yAxis.axisBreaks.create();
+            axisBreak.startValue=ab.startValue;
+            axisBreak.endValue=ab.endValue;
+            axisBreak.breakSize=ab.breakSize;
+        }
+    }
 
-        name.innerHTML = row.name;
-        count.innerHTML = row.count;
+    // Create series
+    function createSeries(field, name) {
+        var series = chart.series.push(new am4charts.LineSeries());
+        series.dataFields.valueY = field;
+        series.dataFields.dateX = "date";
+        series.name = name;
+        series.tooltipText = "[b]{valueY}[/]";
+        series.strokeWidth = 2;
+        
+        series.smoothing = "monotoneX";
+        
+        var bullet = series.bullets.push(new am4charts.CircleBullet());
+        bullet.circle.stroke = am4core.color("#fff");
+        bullet.circle.strokeWidth = 2;
+        
+        return series;
+    }
 
-        div.appendChild(name);
-        div.appendChild(count);
+    for(var i = 0; i < parameters.series.length; i++)
+    {
+        var s = parameters.series[i];
+        createSeries(s.attribute, s.label);
+    }
 
-        $(sublist).append(div);
+    chart.legend = new am4charts.Legend();
+    chart.cursor = new am4charts.XYCursor();
+}
+
+
+function makeLineChart(data, divID, parameters = {})
+{
+    if(!$("#" + divID))
+    {
+        console.log('Div not found.');
+        return;
+    }
+
+    am4core.useTheme(am4themes_animated);
+
+    // Create chart instance
+    var chart = am4core.create(divID, am4charts.XYChart);
+
+    chart.data = data;
+
+    // Create axes
+    var xAxis = chart.xAxes.push(new am4charts.DateAxis());
+    xAxis.renderer.grid.template.location = 0;
+    xAxis.renderer.minGridDistance = 50;
+    // var xAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    // xAxis.dataFields.category = "citation";
+
+    var yAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    
+    if(parameters.axisBreaks)
+    {
+        for(var i = 0; i < parameters.axisBreaks.length; i++)
+        {
+            var ab = parameters.axisBreaks[i];
+
+            var axisBreak = yAxis.axisBreaks.create();
+            axisBreak.startValue=ab.startValue;
+            axisBreak.endValue=ab.endValue;
+            axisBreak.breakSize=ab.breakSize;
+
+            // var hoverState = axisBreak.states.create("hover");
+            // hoverState.properties.breakSize = 1;
+            // hoverState.properties.opacity = 0.1;
+            // hoverState.transitionDuration = 1500;
+
+            // axisBreak.defaultState.transitionDuration = 1000;
+        }
+    }
+
+    // Create series
+    function createSeries(field, name) {
+        var series = chart.series.push(new am4charts.LineSeries());
+        series.dataFields.valueY = field;
+        series.dataFields.dateX = "date";
+        series.name = name;
+        series.tooltipText = "[b]{valueY}[/]";
+        series.strokeWidth = 2;
+        
+        series.smoothing = "monotoneX";
+        
+        var bullet = series.bullets.push(new am4charts.CircleBullet());
+        bullet.circle.stroke = am4core.color("#fff");
+        bullet.circle.strokeWidth = 2;
+        
+        return series;
+    }
+
+    for(var i = 0; i < parameters.series.length; i++)
+    {
+        var s = parameters.series[i];
+        createSeries(s.attribute, s.label);
+    }
+
+    chart.legend = new am4charts.Legend();
+    chart.cursor = new am4charts.XYCursor();
+}
+
+/**
+ * Membranes stats
+ * 
+ * @param target
+ * @param data
+ * @param axisBreaks
+ * 
+ */
+function make_membrane_total_column_chart(target, data, axisBreaks = null, maxValue = null)
+{
+    if(!$("#" + target))
+    {
+        console.log('Div not found.');
+        return;
+    }
+
+    am4core.useTheme(am4themes_animated);
+    // am4core.useTheme(am4themes_kelly);
+
+    var chart = am4core.create(target, am4charts.XYChart);
+
+    chart.data = data;
+    // chart.cursor.maxTooltipDistance = -1;
+
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "membrane";
+    categoryAxis.title.text = "Membranes";
+    categoryAxis.renderer.minGridDistance = 10;
+
+    // First value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.title.text = "Total";
+    valueAxis.logarithmic = true;
+
+    var label = categoryAxis.renderer.labels.template;
+    // label.truncate = true;
+    label.maxWidth = 150;
+    label.tooltipText = "{category}";
+
+    categoryAxis.events.on("sizechanged", function(ev) {
+        var axis = ev.target;
+        var cellWidth = axis.pixelWidth / (axis.endIndex - axis.startIndex);
+        if (cellWidth < axis.renderer.labels.template.maxWidth) {
+            axis.renderer.labels.template.rotation = -90;
+            axis.renderer.labels.template.horizontalCenter = "right";
+            axis.renderer.labels.template.verticalCenter = "middle";
+        }
+        else {
+            axis.renderer.labels.template.rotation = 0;
+            axis.renderer.labels.template.horizontalCenter = "middle";
+            axis.renderer.labels.template.verticalCenter = "top";
+        }
     });
 
-
-
-
-    $('.stats-sublist-item').click(async function()
+    if(maxValue)
     {
-        // Remove class from list objects
-        $('.stats-sublist-item').each(function(index, obj) {
-            obj.classList.remove('sublist-active');
+        valueAxis.min = 0;
+        valueAxis.max = maxValue;
+        valueAxis.strictMinMax = true;
+    }
+
+    // First series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.valueY = "count_interactions";
+    series.dataFields.id = "id";
+    series.dataFields.categoryX = "membrane";
+    series.name = "Total interactions";
+    series.tooltipHTML = "<div class='column justify-content-center align-items-center'><div>{name}: <b>{valueY}</div></b><button class='btn btn-sm btn-warning' onclick='redirect(\"browse/membranes?target={id}\");'>Membrane detail</button></div>";
+    series.tooltip.label.interactionsEnabled = true;
+    series.tooltip.pointerOrientation = "vertical";
+
+    // Second series
+    var series2 = chart.series.push(new am4charts.LineSeries());
+    series2.dataFields.valueY = "count_substances";
+    series2.dataFields.categoryX = "membrane";
+    series2.name = "Total substances";
+    series2.tooltipText = "{name}: [bold]{valueY}[/]";
+    series2.strokeWidth = 3;
+    series2.yAxis = valueAxis;
+
+    var bullet = series2.bullets.push(new am4charts.CircleBullet());
+    bullet.circle.stroke = am4core.color("#fff");
+    bullet.circle.strokeWidth = 1;
+
+    // Add simple vertical scrollbar
+    chart.scrollbarY = new am4core.Scrollbar();
+
+    // Add horizotal scrollbar with preview
+    var scrollbarX = new am4charts.XYChartScrollbar();
+    scrollbarX.series.push(series);
+    chart.scrollbarX = scrollbarX;
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    // Add cursor
+    chart.cursor = new am4charts.XYCursor();
+}
+
+/**
+ * Methods stats
+ * 
+ * @param target
+ * @param data
+ * @param axisBreaks
+ * 
+ */
+function make_method_total_column_chart(target, data, axisBreaks = null, maxValue = null)
+{
+    if(!$("#" + target))
+    {
+        console.log('Div not found.');
+        return;
+    }
+
+    am4core.useTheme(am4themes_animated);
+    // am4core.useTheme(am4themes_kelly);
+
+    var chart = am4core.create(target, am4charts.XYChart);
+
+    chart.data = data;
+
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.dataFields.category = "method";
+    categoryAxis.title.text = "Methods";
+    categoryAxis.renderer.minGridDistance = 10;
+
+    var label = categoryAxis.renderer.labels.template;
+    // label.truncate = true;
+    label.maxWidth = 150;
+    label.tooltipText = "{category}";
+
+    categoryAxis.events.on("sizechanged", function(ev) {
+        var axis = ev.target;
+        var cellWidth = axis.pixelWidth / (axis.endIndex - axis.startIndex);
+        if (cellWidth < axis.renderer.labels.template.maxWidth) {
+            axis.renderer.labels.template.rotation = -90;
+            axis.renderer.labels.template.horizontalCenter = "right";
+            axis.renderer.labels.template.verticalCenter = "middle";
+        }
+        else {
+            axis.renderer.labels.template.rotation = 0;
+            axis.renderer.labels.template.horizontalCenter = "middle";
+            axis.renderer.labels.template.verticalCenter = "top";
+        }
+    });
+
+    // First value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    valueAxis.title.text = "Total";
+    valueAxis.logarithmic = true;
+
+    if(maxValue)
+    {
+        valueAxis.min = 0;
+        valueAxis.max = maxValue;
+        valueAxis.strictMinMax = true;
+    }
+
+    // First series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.valueY = "count_interactions";
+    series.dataFields.categoryX = "method";
+    series.dataFields.id = "id";
+    series.name = "Total interactions";
+    series.tooltipHTML = "<div class='column justify-content-center align-items-center'><div>{name}: <b>{valueY}</div></b><button class='btn btn-sm btn-warning' onclick='redirect(\"browse/methods?target={id}\");'>Method detail</button></div>";
+    series.tooltip.label.interactionsEnabled = true;
+    series.tooltip.pointerOrientation = "vertical";
+
+    // Second series
+    var series2 = chart.series.push(new am4charts.LineSeries());
+    series2.dataFields.valueY = "count_substances";
+    series2.dataFields.categoryX = "method";
+    series2.name = "Total substances";
+    series2.tooltipText = "{name}: [bold]{valueY}[/]";
+    series2.strokeWidth = 3;
+    series2.yAxis = valueAxis;
+
+    var bullet = series2.bullets.push(new am4charts.CircleBullet());
+    bullet.circle.stroke = am4core.color("#fff");
+    bullet.circle.strokeWidth = 1;
+
+    // Add simple vertical scrollbar
+    chart.scrollbarY = new am4core.Scrollbar();
+
+    // Add horizotal scrollbar with preview
+    var scrollbarX = new am4charts.XYChartScrollbar();
+    scrollbarX.series.push(series);
+    chart.scrollbarX = scrollbarX;
+
+    // Add legend
+    chart.legend = new am4charts.Legend();
+
+    // Add cursor
+    chart.cursor = new am4charts.XYCursor();
+}
+
+/**
+ * Identifiers stats
+ * 
+ * @param target
+ * @param data
+ * @param axisBreaks
+ * 
+ */
+function make_identifiers_chart(target, data, axisBreak = null, maxValue = null)
+{
+    if(!$("#" + target))
+    {
+        console.log('Div not found.');
+        return;
+    }
+
+    am4core.useTheme(am4themes_animated);
+    // am4core.useTheme(am4themes_kelly);
+
+    var chart = am4core.create(target, am4charts.XYChart);
+
+    chart.data = data;
+
+    // Create axes
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.renderer.minGridDistance = 30; 
+    categoryAxis.dataFields.category = "identifier";
+    categoryAxis.title.text = "External databases";
+
+    var label = categoryAxis.renderer.labels.template;
+    label.truncate = true;
+    label.maxWidth = 200;
+    label.tooltipText = "{category}";
+
+    categoryAxis.events.on("sizechanged", function(ev) {
+        var axis = ev.target;
+          var cellWidth = axis.pixelWidth / (axis.endIndex - axis.startIndex);
+          if (cellWidth < axis.renderer.labels.template.maxWidth) {
+            axis.renderer.labels.template.rotation = -45;
+            axis.renderer.labels.template.horizontalCenter = "right";
+            axis.renderer.labels.template.verticalCenter = "middle";
+          }
+          else {
+            axis.renderer.labels.template.rotation = 0;
+            axis.renderer.labels.template.horizontalCenter = "middle";
+            axis.renderer.labels.template.verticalCenter = "top";
+          }
         });
 
-        var data = $(this).data('spec');
-        var id_membrane;
-        var id_method;
+    // First value axis
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    // valueAxis.title.text = "Total substances";
 
-        if(this.classList.contains("membrane"))
+    if(maxValue)
+    {
+        valueAxis.min = 0;
+        valueAxis.max = maxValue;
+        valueAxis.strictMinMax = true;
+    }
+    // Second value axis
+    // var valueAxis2 = chart.yAxes.push(new am4charts.ValueAxis());
+    // valueAxis2.title.text = "Total substances";
+    // valueAxis2.renderer.opposite = true;
+
+    // First series
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.valueY = "count";
+    series.dataFields.categoryX = "identifier";
+    series.name = "Total substances";
+    series.tooltipText = "{name}: [bold]{valueY}[/]";
+
+    // // Add simple vertical scrollbar
+    // chart.scrollbarY = new am4core.Scrollbar();
+
+    // // Add horizotal scrollbar with preview
+    // var scrollbarX = new am4charts.XYChartScrollbar();
+    // scrollbarX.series.push(series);
+    // chart.scrollbarX = scrollbarX;
+
+    if(axisBreak)
+    {
+        var ab = axisBreak;
+
+        var axisBreak = valueAxis.axisBreaks.create();
+        axisBreak.startValue=ab.startValue;
+        axisBreak.endValue=ab.endValue;
+        axisBreak.breakSize=ab.breakSize;
+    }
+
+    // Add legend
+    // chart.legend = new am4charts.Legend();
+
+    // Add cursor
+    chart.cursor = new am4charts.XYCursor();
+}
+
+function makeInteractionsPie(divID, data)
+{
+    am4core.useTheme(am4themes_animated);
+
+    var chart = am4core.create(divID, am4charts.PieChart);
+
+    chart.data = data;
+
+    // Add and configure Series
+    var pieSeries = chart.series.push(new am4charts.PieSeries());
+    pieSeries.dataFields.value = "count";
+    pieSeries.dataFields.category = "name";
+    pieSeries.slices.template.stroke = am4core.color("#fff");
+    pieSeries.slices.template.strokeWidth = 1;
+    pieSeries.slices.template.strokeOpacity = 1;
+    pieSeries.labels.template.disabled = true;
+    pieSeries.ticks.template.disabled = true;
+
+    // This creates initial animation
+    pieSeries.hiddenState.properties.opacity = 1;
+    pieSeries.hiddenState.properties.endAngle = -90;
+    pieSeries.hiddenState.properties.startAngle = -90;
+
+    // Add a legend
+    chart.legend = new am4charts.Legend();  
+}
+
+function makeColumnChart(data, divID, parameters = {})
+{
+    if(!$("#" + divID))
+    {
+        console.log('Div not found.');
+        return;
+    }
+
+    am4core.useTheme(am4themes_animated);
+
+    var chart = am4core.create(divID, am4charts.XYChart);
+    chart.hiddenState.properties.opacity = 0; // this creates initial fade-in
+
+    chart.data = data;
+
+    var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+    categoryAxis.renderer.grid.template.location = 0;
+    categoryAxis.dataFields.category = "citation";
+
+    var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
+    // valueAxis.min = 0;
+    // valueAxis.max = 24000;
+    // valueAxis.strictMinMax = true;
+    valueAxis.renderer.minGridDistance = 30;
+
+    if(parameters.axisBreaks)
+    {
+        for(var i = 0; i < parameters.axisBreaks.length; i++)
         {
-            id_membrane = data.id_subcat;
-            id_method = data.id_cat;
+            var ab = parameters.axisBreaks[i];
+
+            var axisBreak = valueAxis.axisBreaks.create();
+            axisBreak.startValue=ab.startValue;
+            axisBreak.endValue=ab.endValue;
+            axisBreak.breakSize=ab.breakSize;
+
+            var hoverState = axisBreak.states.create("hover");
+            hoverState.properties.breakSize = 1;
+            hoverState.properties.opacity = 0.1;
+            hoverState.transitionDuration = 1500;
+
+            axisBreak.defaultState.transitionDuration = 1000;
         }
-        else
-        {
-            id_membrane = data.id_cat;
-            id_method = data.id_subcat;
-        }
+    }
 
-        $(this).addClass('sublist-active');
 
-        // Show loader
-        var loader = document.createElement('div');
-        loader.classList.toggle('element-loader');
-        $(detail).html(loader);
-        await sleep(50);
+    var series = chart.series.push(new am4charts.ColumnSeries());
+    series.dataFields.categoryX = "citation";
+    series.dataFields.valueY = "count";
+    series.columns.template.tooltipText = "{valueY.value}";
+    series.columns.template.tooltipY = 0;
 
-        var api_endpoint = 'stats/detail';
+    series.columns.template.strokeOpacity = 0;
+    
 
-        var data = ajax_request(api_endpoint, {id_membrane: id_membrane, id_method: id_method});
+    // as by default columns of the same series are of the same color, we add adapter which takes colors from chart.colors color set
+    series.columns.template.adapter.add("fill", (fill, target) => {
+    return chart.colors.getIndex(target.dataItem.index);
+    });
+}
 
-        if(!data)
-        {
-            return;
-        }
+function show_sunburst(data, target_id, clickable = false)
+{
+    am4core.ready(function() {
+        // Themes begin
+        am4core.useTheme(am4themes_animated);
+        // Themes end
+    
+        // create chart
+        var chart = am4core.create(target_id, am4plugins_sunburst.Sunburst);
+        chart.padding(0,0,0,0);
+        chart.radius = am4core.percent(98);
+    
+        chart.data = data;
+    
+        chart.colors.step = 2;
+        chart.fontSize = 11;
+        chart.innerRadius = am4core.percent(10);
+        chart.cursor = 'pointer';
+    
+        // define data fields
+        chart.dataFields.value = "value";
+        chart.dataFields.name = "name";
+        chart.dataFields.children = "children";
+    
+    
+        var level0SeriesTemplate = new am4plugins_sunburst.SunburstSeries();
+        level0SeriesTemplate.hiddenInLegend = false;
+        chart.seriesTemplates.setKey("0", level0SeriesTemplate)
+        level0SeriesTemplate.labels.template.text = "{category}";
+        level0SeriesTemplate.slices.template.tooltipText = "[bold]{category}[/]: {value} interactions";
+    
+        // this makes labels to be hidden if they don't fit
+        level0SeriesTemplate.labels.template.truncate = true;
+        level0SeriesTemplate.labels.template.hideOversized = true;
 
-        // Make detail
-        $(detail).html("");
-
-        var membrane = document.createElement('div');
-        var method = document.createElement('div');
-        var interactions = document.createElement('div');
-        var substances = document.createElement('div');
-        var download_interactions = document.createElement('div');
-        var add_to_comparator_btn = document.createElement('div');
-
-        membrane.classList.add('stats-list-detail-btn');
-        method.classList.add('stats-list-detail-btn');
-        interactions.classList.add('stats-list-detail-btn');
-        substances.classList.add('stats-list-detail-btn');
-        download_interactions.classList.add('stats-list-detail-btn');
-        add_to_comparator_btn.classList.add('stats-list-detail-btn');
-
-        membrane.innerHTML = '<div>Membrane</div><div>' + data.membrane + '</div>';
-        method.innerHTML = '<div>Method</div><div>' + data.method + '</div>';
-        interactions.innerHTML = '<div>Total interactions</div><div>' + data.total_interactions + '</div>';
-        substances.innerHTML = '<div>Total substances</div><div>' + data.total_compounds + '</div>';
-        download_interactions.innerHTML = '<div>Download dataset</div><button id="download-dataset" class="stats-button">Download</button>';
-        add_to_comparator_btn.innerHTML = '<div>Add to comparator</div><button id="add-to-comparator" class="stats-button">Add</button>';
+        // cursor
+        level0SeriesTemplate.slices.template.cursorOverStyle = am4core.MouseCursorStyle.pointer;
+    
+        level0SeriesTemplate.labels.template.adapter.add("rotation", function(rotation, target) {
+            target.maxWidth = target.dataItem.slice.radius - target.dataItem.slice.innerRadius - 10;
+            target.maxHeight = Math.abs(target.dataItem.slice.arc * (target.dataItem.slice.innerRadius + target.dataItem.slice.radius) / 2 * am4core.math.RADIANS);
+    
+            return rotation;
+        });
 
         
-        $(detail).append(membrane);
-        $(detail).append(method);
-        $(detail).append(substances);
-        $(detail).append(interactions);
-        $(detail).append(download_interactions);
-        $(detail).append(add_to_comparator_btn);
-
-        interaction_ids = data.interaction_ids;
-        substance_ids = data.substance_ids;
-
-        // Data export
-        $('#download-dataset').click(async function()
+        if(clickable)
         {
-            await show_overlay();
-            await set_overlay_text('Processing... 0 %');
-
-            var data = [];
-            var date = new Date();
-            // Set header
-            data[0] = ['Name', 'Identifier', 'Pubchem', 'Drugbank', 'SMILES', 'Method', 'Membrane','Q', 'Temperature', 'Note', 
-                'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-', 'LogPerm', 
-                'LogPerm_+/-', 'MW', 'Primary_reference', 'Secondary_reference'];
-
-            // Divide into subqueries for php GET REQUEST LENGTH limitations
-            var per_request = 100;
-            var k = 1;
-            var actual_index = 0;
-            var interactions = [];
-
-            while(actual_index < interaction_ids.length)
+            level0SeriesTemplate.slices.template.events.on('hit', function(ev)
             {
-                var ids = interaction_ids.slice(actual_index, per_request + actual_index);
-                var ajax_data = ajax_request('comparator/getInteraction', { id: ids.join() });
-                
-                actual_index = k*per_request;
-                var percents = parseInt((actual_index * 100) / interaction_ids.length);
+                var el_id = ev.target.dataItem.sunburstDataItem._dataContext.id_element;
+                var last = ev.target.dataItem.sunburstDataItem._dataContext.last;
 
-                percents = percents > 100 ? 100 : percents;
+                last = last ? 1 : 0;
 
-                await set_overlay_text('Processing... ' + percents + " %");
-
-                if (!ajax_data) 
+                if(!el_id)
                 {
-                    hide_overlay();
-                    return;
+                    console.log("Element id not found");
+                    return false;
                 }
 
-                interactions = interactions.concat(ajax_data);
+                redirect('browse/transporters/' + el_id + '/' + last);
+            });
+        }
+    
+        var level1SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("1", level1SeriesTemplate)
+        level1SeriesTemplate.fillOpacity = 0.75;
+        level1SeriesTemplate.hiddenInLegend = true;
+        // level1SeriesTemplate.labels.template.text = "{category}";
+    
+        var level2SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("2", level2SeriesTemplate)
+        level2SeriesTemplate.fillOpacity = 0.5;
+        level2SeriesTemplate.hiddenInLegend = true;
+        // level2SeriesTemplate.labels.template.text = "{category}";
+        level2SeriesTemplate.labels.template.fill = am4core.color("#000");
 
-                k++;
-            }
+        var level3SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("3", level3SeriesTemplate)
+        level3SeriesTemplate.fillOpacity = 0.75;
+        level3SeriesTemplate.hiddenInLegend = true;
 
-            var row_count = interactions.length;
-            
-            for(var i = 0; i <row_count; i++)
-            {
-                var int = interactions[i];
-                
-                data[i+1] = [
-                    int.substance.name,
-                    int.substance.identifier,
-                    int.substance.pubchem,
-                    int.substance.drugbank,
-                    int.substance.SMILES,
-                    int.method,
-                    int.membrane,
-                    int.charge,
-                    int.temperature,
-                    int.comment,
-                    int.substance.LogP,
-                    int.Position,
-                    int.Position_acc,
-                    int.Penetration,
-                    int.Penetration_acc,
-                    int.Water,
-                    int.Water_acc,
-                    int.LogK,
-                    int.LogK_acc,
-                    int.LogPerm,
-                    int.LogPerm_acc,
-                    int.substance.MW,
-                    int.reference,
-                    int.secondary_reference,
-                ];
-            }
+        var level4SeriesTemplate = level0SeriesTemplate.clone();
+        chart.seriesTemplates.setKey("4", level4SeriesTemplate)
+        level4SeriesTemplate.fillOpacity = 0.75;
+        level4SeriesTemplate.hiddenInLegend = true;
+        // level1SeriesTemplate.labels.template.text = "{category}";
+    
+        chart.legend = new am4charts.Legend();
 
-            
-            var d = date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
-            exportToCsv('Dataset' + '_' + d + '.csv', data);
-
-            hide_overlay();
-        });
-
-
-        // Add to comparator
-        $('#add-to-comparator').click(function()
-        {
-            $(substance_ids).each(function(k, s)
-            {
-                add_to_comparator(s.id, s.name);
-            })
-
-            add_message("Successfully added (" + substance_ids.length + " compounds) to comaprator.");
-        });
-    });
-
-    $(this).addClass('list-active');
-
-    $('.stats-sublist-item:first').click();
-
-});
-
-
-$('.stats-list-item:first').click();
+    }); 
+}

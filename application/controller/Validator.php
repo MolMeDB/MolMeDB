@@ -253,6 +253,48 @@ class ValidatorController extends Controller
     }
 
     /**
+     * Unlabel interaction dataset duplicities
+     * 
+     * @param int $dataset_id
+     * 
+     * @author Jakub Juracka
+     */
+    public function unlabel_duplicity($dataset_id)
+    {
+        $dataset = new Datasets($dataset_id);
+
+        if(!$dataset->id)
+        {
+            $this->addMessageError('Invalid dataset.');
+            $this->redirect('edit/dsInteractions');
+        }
+
+        $validator = new Validator();
+
+        try
+        {
+            $data = $validator->get_inter_dataset_duplicity($dataset->id);
+            $dataset->beginTransaction();
+
+            foreach($data as $row)
+            {
+                $this->disjoin($row->id_substance_1, $row->id_substance_2);
+            }
+
+            $dataset->commitTransaction();
+            $this->alert->success('Done');
+        }
+        catch(Exception $e)
+        {
+            $dataset->rollbackTransaction();
+            $this->alert->error($e->getMessage());
+        }  
+
+        $this->redirect('edit/dsInteractions/' . $dataset->id);
+    }
+
+
+    /**
      * Disjoin 2 possible duplicity molecules
      * 
      * @param int $substance_id_1
@@ -262,17 +304,28 @@ class ValidatorController extends Controller
      */
     public function disjoin($substance_id_1, $substance_id_2)
     {
+        $enabled_redirection = debug_backtrace()[1]['function'] === 'parse' ? TRUE : FALSE;
+
         $substance_1 = new Substances($substance_id_1);
         $substance_2 = new Substances($substance_id_2);
 
         if(!$substance_1->id || !$substance_2->id)
         {
-            $this->alert->error('Invalid arguments.');
+            if($enabled_redirection)
+            {
+                $this->alert->error('Invalid arguments.');
+                $this->redirect('validator');
+            }
+            else
+            {
+                throw new Exception('Invalid arguments.');
+            }
         }
 
         try
         {
-            $substance_1->beginTransaction();
+            if($enabled_redirection)
+                $substance_1->beginTransaction();
 
             $validator_model = new Validator();
             $rows = $validator_model->where(array
@@ -336,7 +389,10 @@ class ValidatorController extends Controller
 
             if(!count($s1_vals))
             {
-                $this->alert->warning('Substance ' . $substance_1->name . " [$substance_1->identifier] will be revalidated in next scheduler run.");
+                if($enabled_redirection)
+                {
+                    $this->alert->warning('Substance ' . $substance_1->name . " [$substance_1->identifier] will be revalidated in next scheduler run.");
+                }
                 $substance_1->validated = Validator::NOT_VALIDATED;
                 $substance_1->waiting = NULL;
                 $substance_1->save();
@@ -344,21 +400,38 @@ class ValidatorController extends Controller
 
             if(!count($s2_vals))
             {
-                $this->alert->warning('Substance ' . $substance_2->name . " [$substance_2->identifier] will be revalidated in next scheduler run.");
+                if($enabled_redirection)
+                {
+                    $this->alert->warning('Substance ' . $substance_2->name . " [$substance_2->identifier] will be revalidated in next scheduler run.");
+                }
                 $substance_2->validated = Validator::NOT_VALIDATED;
                 $substance_2->waiting = NULL;
                 $substance_2->save();
             }
 
-            $substance_1->commitTransaction();
-            $this->alert->success('Relation between ' . $substance_1->name . ' and ' . $substance_2->name . ' was labeled as nonduplicity.');
+           
+            if($enabled_redirection)
+            {
+                $substance_1->commitTransaction();
+                $this->alert->success('Relation between ' . $substance_1->name . ' and ' . $substance_2->name . ' was labeled as nonduplicity.');
+            }
         }
         catch(Exception $e)
         {   
-            $substance_1->rollbackTransaction();
-            $this->alert->error($e);
+            if($enabled_redirection)
+            {
+                $substance_1->rollbackTransaction();
+                $this->alert->error($e);
+            }
+            else
+            {
+                throw new Exception($e);
+            }
         }
 
-        $this->redirect('validator/3/1/' . $substance_1->id);
+        if($enabled_redirection)
+        {
+            $this->redirect('validator/3/1/' . $substance_1->id);
+        }
     }
 }

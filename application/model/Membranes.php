@@ -15,6 +15,8 @@
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
+ * @property Enum_type_links $enum_type_link
+ * 
  */
 class Membranes extends Db
 {   
@@ -56,47 +58,133 @@ class Membranes extends Db
     {
         $this->table = 'membranes';
         parent::__construct($id);
+
+        if($this->id)
+        {
+            $et_id = $this->queryOne('
+                SELECT id_enum_type_link as id
+                FROM membrane_enum_type_links
+                WHERE id_membrane = ?
+            ', array($this->id))->id;
+
+            $this->enum_type = new Enum_type_links($et_id);
+        }
     }
 
     /**
-     * Returns membrane category
+     * Returns membranes linked to given category
      * 
-     * @param integer $id
+     * @param int $enum_type_link_id
      * 
-     * @return Iterable
+     * @return Iterable_object
      */
-    public function get_category($id = NULL)
+    public function get_linked_data($enum_type_link_id)
     {
-        if(!$id)
+        return $this->queryAll('
+            SELECT m.*
+            FROM membranes m
+            JOIN membrane_enum_type_links l ON l.id_membrane = m.id AND l.id_enum_type_link = ?
+        ', array($enum_type_link_id));
+    }
+
+    /**
+     * Returns enum_type_link for given membrane
+     * 
+     * @return Enum_type_links
+     */
+    public function get_category_link()
+    {
+        if(!$this->id)
         {
-                $id = $this->id;
+            return null;
         }
 
-        return $this->queryOne('
-            SELECT m.*, cat.name as category, subcat.name as subcategory
-            FROM membranes m
-            LEFT JOIN cat_mem_mem cm ON cm.mem_id = m.id
-            LEFT JOIN cat_membranes cat ON cat.id = cm.cat_id
-            LEFT JOIN cat_subcat_membranes subcat ON subcat.id = cm.subcat_id
-            WHERE m.id = ?',
-                array($id));
+        $row = $this->queryOne('
+            SELECT etl.*
+            FROM membrane_enum_type_links ml
+            JOIN enum_type_links etl ON etl.id = ml.id_enum_type_link AND ml.id_membrane = ?
+        ', array($this->id));
+
+        return new Enum_type_links($row->id);
     }
-    
-    // public function search($data, $pagination)
-    // {
-    //     $data = '%' . $data . '%';
-    //     return $this->queryAll('
-    //      SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
-    //      FROM substances as s 
-    //      JOIN interaction as i ON s.idSubstance = i.idSubstance 
-    //      WHERE i.idMembrane IN (SELECT idMembrane 
-    //                                       FROM membranes as m 
-    //                                       WHERE m.name LIKE ?)
-    //            AND i.visibility = 1
-    //      ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
-    //      LIMIT ?,?', array($data, ($pagination-1)*10,10));
-    // }
-    
+
+    /**
+     * Set enum_type_link for given membrane
+     * 
+     */
+    public function set_category_link($link_id)
+    {
+        if(!$this->id || !$link_id)
+        {
+            throw new Exception('Invalid instance.');
+        }
+
+        return $this->query('
+            INSERT INTO `membrane_enum_type_links` VALUES(?,?);
+        ', array($link_id, $this->id));
+    }
+
+    /**
+     * Returns membranes without links
+     */
+    public function get_all_without_links()
+    {
+        return $this->queryAll('
+            SELECT m.*
+            FROM membranes m
+            LEFT JOIN membrane_enum_type_links metl ON metl.id_membrane = m.id
+            WHERE metl.id_enum_type_link IS NULL
+            ORDER BY name
+        ');
+    }
+
+    /**
+     * Unlink category
+     */
+    public function unlink_category($id = NULL)
+    {
+        if(!$id && $this->id)
+        {
+            $id = $this->id;
+        }
+
+        return $this->query('
+            DELETE FROM `membrane_enum_type_links`
+            WHERE `id_membrane` = ?
+        ', array($id));
+    }
+
+    /**
+     * Returns membranes with categories
+     * 
+     * @return Iterable_object
+     */
+    public function get_active_categories()
+    {
+        $result = [];
+
+        $data = $this->queryAll('
+            SELECT m.id, et_cat.name as category, et_subcat.name as subcategory
+            FROM membranes m
+            LEFT JOIN membrane_enum_type_links metl ON metl.id_membrane = m.id
+            LEFT JOIN enum_type_links etl ON etl.id = metl.id_enum_type_link
+            LEFT JOIN enum_types et_cat ON et_cat.id = etl.id_enum_type_parent
+            LEFT JOIN enum_types et_subcat ON et_subcat.id = etl.id_enum_type
+        ');
+
+        foreach($data as $row)
+        {
+            $result[$row->id] = array
+            (
+                'category' => $row->category,
+                'subcategory' => $row->subcategory
+            );
+        }
+
+        return new Iterable_object($result, TRUE);
+    }
+
+
     /**
      * Loads whisper detail
      * 
@@ -212,138 +300,28 @@ class Membranes extends Db
     }
 
     /**
-     * Inserts membrane category
+     * Returns all membrane interactions
      * 
-     * @param integer $cat - Category ID
-     * @param integer $subcat - Subcategory ID
+     * @return Iterable_object
      * 
+     * @author Jakub Juracka
      */
-    public function save_membrane_category($cat, $subcat)
-    {    
-        if(!$this->id)
-        {
-            throw new Exception('Wrong membrane instance.');
-        }
-
-        return $this->insert('cat_mem_mem', array
-        (
-            'cat_id' => $cat, 
-            'subcat_id' => $subcat, 
-            "mem_id" => $this->id
-        ));
-    }
-    
-    /**
-     * Gets all membrane categories
-     * 
-     * @return Iterable
-     */
-    public function get_all_categories()
-    {
-        return $this->queryAll('SELECT * FROM cat_membranes ORDER BY name');
-    }
-    
-    /**
-     * Gets all membrane subcategories
-     * 
-     * @return Iterable
-     */
-    public function get_all_subcategories()
-    {
-        return $this->queryAll('SELECT id, name FROM cat_subcat_membranes');
-    }
-    
-    /**
-     * Gets membranes for given categories
-     * 
-     * @param integer $cat_id Category ID
-     * @param integer $subcat_id Subcategory ID      
-     */
-    public function get_membranes_by_categories($cat_id, $subcat_id)
+    public function get_interactions()
     {
         return $this->queryAll('
-            SELECT mem_id as id, m.name as name
-            FROM cat_mem_mem
-            JOIN membranes as m ON mem_id = m.id
-            WHERE cat_id = ? AND subcat_id = ?', 
-            array
-            (
-                $cat_id, 
-                $subcat_id
-            ));
+            SELECT DISTINCT s.name, s.identifier, s.SMILES, s.inchikey, s.MW, s.LogP, s.pubchem, s.drugbank, s.pdb, s.chEMBL,
+                mem.name as membrane, met.name as method, i.temperature, i.charge, i.comment as note, i.Position as X_min,
+                i.Position_acc as X_min_acc, i.Penetration as G_pen, i.Penetration_acc as G_pen_acc, i.Water as G_wat, i.Water_acc as G_wat_acc,
+                i.LogK, i.LogK_acc, i.LogPerm, i.LogPerm_acc, i.theta, i.theta_acc, i.abs_wl, i.abs_wl_acc, i.fluo_wl, i.fluo_wl_acc, i.QY, i.QY_acc, i.lt, i.lt_acc,
+                p1.citation as primary_reference, p2.citation as secondary_reference
+            FROM substances s 
+            JOIN interaction i ON i.id_substance = s.id
+            JOIN membranes mem ON mem.id = i.id_membrane AND mem.id = ?
+            JOIN methods met ON met.id = i.id_method
+            JOIN datasets d ON d.id = i.id_dataset
+            LEFT JOIN publications p1 ON p1.id = i.id_reference
+            LEFT JOIN publications p2 ON p2.id = d.id_publication
+        ', array($this->id));
     }
-    
-    public function get_membrane_category($idMembrane)
-    {
-            return $this->queryAll('
-                SELECT cat_id, subcat_id
-                FROM cat_mem_mem
-                WHERE mem_id = ?
-                LIMIT 1', array($idMembrane));
-    }
-    
-    /**
-     * Edit membrane category
-     * 
-     * @param integer $idCat - category id
-     * @param integer $idSubcat - subcategory id
-     * 
-     */
-    public function editCategory($idCat, $idSubcat)
-    {
-        if(!$this)
-        {
-            throw new Exception('Wrong instance.');
-        }
 
-        // Delete old record
-        $this->query('DELETE FROM `cat_mem_mem` WHERE `mem_id` = ?', array($this->id));
-        
-        // Save new record
-        return $this->insert('cat_mem_mem', array
-        (
-            'cat_id'    => $idCat,
-            'subcat_id' => $idSubcat,
-            'mem_id'    => $this->id
-        ));
-    }
-    
-
-    /**
-     * Returns membranes for given params
-     * 
-     * @param array $substances_ids
-     * @param array $methods_ids
-     * 
-     * @return array
-     */
-    // public function get_membranes_by_params($substances_ids = array(), $methods_ids = array())
-    // {
-    //      if(empty($substances_ids) && empty($methods_ids))
-    //      {
-    //         return $this->queryAll('SELECT id, name FROM membranes ORDER BY name');
-    //      }
-         
-    //      if(empty($methods_ids))
-    //      {
-    //         return $this->queryAll('
-    //             SELECT DISTINCT m.id, m.name
-    //             FROM interaction i
-    //             JOIN membranes m ON (m.id = i.id_membrane)
-    //             WHERE i.id_substance IN (' . implode(',', $substances_ids) . ')');
-    //      }
-         
-    //      if(empty($substances_ids))
-    //      {
-    //         return array();
-    //      }
-         
-    //      return $this->queryAll('
-    //         SELECT DISTINCT m.id, m.name
-    //         FROM interaction i
-    //         JOIN membranes m ON (m.id = i.id_membrane)
-    //         WHERE i.id_substance IN (' . implode(',', $substances_ids) . ')
-    //         AND i.id_method IN (' . implode(',', $methods_ids) . ')' 
-    //         );
-    // }
 }

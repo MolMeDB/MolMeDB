@@ -54,6 +54,7 @@ class SchedulerController extends Controller
             echo "Emails sent. \n";
 
             // Delete substances without interactions
+            // 19:01
             if($this->debug_DES || ($time->is_minute(1) && $time->is_hour(19)))
             {
                 echo "Deleting empty substances. \n";
@@ -61,6 +62,7 @@ class SchedulerController extends Controller
             }
 
             // Checks interactions datasets
+            // 20:01
             if($this->debug_CID || ($time->is_hour(20) && $time->is_minute(1)))
             {
                 echo "Checking interaction datasets.\n";
@@ -68,6 +70,7 @@ class SchedulerController extends Controller
             }
 
             // Checks transporter datasets - NOW INACTIVATED
+            // 20:10
             if($this->debug_CTD || (FALSE && $time->is_hour(20) && $time->is_minute(10)))
             {
                 $this->check_transporter_datasets();
@@ -75,13 +78,41 @@ class SchedulerController extends Controller
             }
 
             // ---- Molecules data autofill ---- //
-            if($this->debug_FMD || ($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 3))) // Run only once per hour and only at night
+            // 21:01 - 05:01
+            if($this->debug_FMD || ($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 6))) // Run only once per hour and only at night
             {
                 echo "Subtance validations is running. \n";
                 $this->substance_autofill_missing_data($time->get_hour() % 2);
             }
-            
+
+            // Once per day, update stats data
+            // 01:30
+            if($time->is_hour(1) && $time->is_minute(30))
+            {
+                echo "Updating stats data. \n";
+                $this->update_stats();
+            }
+
+            // Once per day, update stats data
+            // 01:35
+            if($time->is_hour(1) && $time->is_minute(35))
+            {
+                echo "Updating publications data. \n";
+                $this->update_publications();
+                echo "Deleting empty publications. \n";
+                $this->delete_empty_publications();
+            }
+
+            // Delete empty membranes and methods
+            // 02:30
+            if($time->is_hour(2) && $time->is_minute(30))
+            {
+                echo "Deleting epmpty membranes/methods. \n";
+                $this->delete_empty_membranes_methods();
+            }
+
             // Once per day, try to find identifiers
+            // 05:01
             if($this->debug_FMD || ($time->is_minute(1) && $time->is_hour(5))) // Run only once per hour and only at night
             {
                 echo "`Filling missing identifiers` is running. \n";
@@ -114,6 +145,98 @@ class SchedulerController extends Controller
 
         echo '-------------------------';
     }
+
+    /**
+     * Updates stats data
+     */
+    private function update_stats()
+    {
+        $stats_model = new Statistics();
+        $stats_model->update_all();
+    }
+
+    /**
+     * Updates publications
+     */
+    private function update_publications()
+    {
+        $publication_model = new Publications();
+        $all_publications = $publication_model->get_all();
+
+        foreach($all_publications as $p)
+        {
+            $p->update_ref_stats();
+        }
+    }
+
+    /**
+     * Deletes empty publications
+     */
+    private function delete_empty_publications()
+    {
+        $publication_model = new Publications();
+        $empty_publications = $publication_model->get_empty_publications();
+
+        foreach($empty_publications as $p)
+        {
+            $p->delete();
+        }
+    }
+
+    /**
+     * Deletes old membranes and methods
+     * 
+     * @author Jakub Juracka
+     */
+    public function delete_empty_membranes_methods()
+    {
+        $membrane_model = new Membranes();
+        $method_model = new Methods();
+
+        $empty_membranes = $membrane_model->get_empty_membranes();
+        $mepty_methods = $method_model->get_empty_methods();
+
+        $del_membranes = $del_methods = 0;
+
+        foreach($empty_membranes as $membrane)
+        {
+            try
+            {
+                $membrane->delete();
+                $del_membranes++;
+            }
+            catch(Exception $e)
+            {
+                echo "Error occured while deleting membrane [" . $membrane->name . "].\n";
+                echo $e->getMessage() . "\n";
+            }
+        }
+
+        foreach($mepty_methods as $method)
+        {
+            try
+            {
+                $method->delete();
+                $del_methods++;
+            }
+            catch(Exception $e)
+            {
+                echo "Error occured while deleting method [" . $method->name . "].\n";
+                echo $e->getMessage() . "\n";
+            }
+        }
+
+        if($del_membranes)
+        {
+            echo "Total $del_membranes membranes deleted.\n";
+        }
+
+        if($del_methods)
+        {
+            echo "Total $del_methods methods deleted.\n";
+        }
+    }
+
 
     /**
      * Delets substances without interactions
@@ -188,15 +311,15 @@ class SchedulerController extends Controller
         // Same -> membrane/method/secondary reference/author + the same upload day
         $duplcs = $dataset_model->get_duplicites();
         $joioned = count($duplcs);
-        
+
         foreach($duplcs as $ids)
         {
-            $final_id = array_shift($ids)['id'];
+            $final_id = array_shift($ids);
 
             // For each dataset, change interaction dataset id
             foreach($ids as $dataset_id)
             {
-                $interaction_model->change_dataset_id($dataset_id['id'], $final_id);
+                $interaction_model->change_dataset_id($dataset_id, $final_id);
             }
         }
 
@@ -702,18 +825,21 @@ class SchedulerController extends Controller
             $substances = $substance_model->where(array
                 (
                     '(',
-                    'prev_validation_state IS NULL',
-                    'waiting IS NULL',
+                        '(',
+                        'prev_validation_state IS NULL',
+                        'waiting IS NULL',
+                        ')',
+                        'OR',
+                        '(',
+                        'waiting IS NULL',
+                        'validated != ' => Validator::VALIDATED,
+                        ")",
+                        'OR',
+                        '(',
+                        'invalid_structure_flag' => Substances::INVALID_STRUCTURE,
+                        ')',
                     ')',
-                    'OR',
-                    '(',
-                    'waiting IS NULL',
-                    'validated != ' => Validator::VALIDATED,
-                    ")",
-                    'OR',
-                    '(',
-                    'invalid_structure_flag' => Substances::INVALID_STRUCTURE,
-                    ')'
+                    'validated !=' => Validator::NOT_VALIDATED,
                 ))
                 ->limit(1000)
                 ->get_all();

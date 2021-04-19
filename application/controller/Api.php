@@ -29,6 +29,7 @@ class ApiController extends Controller
     const PUBLICATION = 'publications';
     const S_ENGINE = 'searchEngine';
     const SMILES = 'smiles';
+    const SETTINGS = 'settings';
     const STATS = 'stats';
     const UPLOADER = 'uploader';
 
@@ -42,6 +43,7 @@ class ApiController extends Controller
         self::MEMBRANES,
         self::METHODS,
         self::S_ENGINE,
+        self::SETTINGS,
         self::SMILES,
         self::STATS,
         self::PUBLICATION,

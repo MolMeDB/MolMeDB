@@ -13,10 +13,6 @@
         <input type="text" class="form-control" name="inchikey" id="inchikey" value="<?= $detail->inchikey ?>">
         <label>MW [Da]</label>
         <input type="text" class="form-control" name="MW" id="MW" value="<?= $detail->MW ?>">
-        <!-- <label>Volume [<span>&#8491;</span><sup>3</sup>]</label>
-        <input type="text" class="form-control" name="Volume" id="Volume" value="<?= $detail->Volume ?>">
-        <label>Area [<span>&#8491;</span><sup>2</sup>]</label>
-        <input type="text" class="form-control" name="Area" id="Area" value="<?= $detail->Area ?>"> -->
         <label><b>LogP <label class="units">[1]</label></b></label>
         <input type="text" class="form-control" name="LogP" id="LogP" value="<?= $detail->LogP ?>">
 
@@ -30,7 +26,6 @@
         <input type="text" class="form-control" name="chEBI" id="chEBI" value="<?= $detail->chEBI ?>">
         <label>ChEMBL</label>
         <input type="text" class="form-control" name="chEMBL" id="chEMBL" value="<?= $detail->chEMBL ?>"><br />
-        <!-- <button type="button" class="btn btn-sm btn-success" onclick="loadMissingData()">Load missing data</button> -->
         <button type="submit" class="btn btn-info pull-right">Save</button><br /><br />
     </form>
 </div>
@@ -153,14 +148,12 @@
                     <?php $i = isset($i) ? $i : 0;
                     foreach ($transporters_all as $t) : ?>
                         <tr>
-                            <!-- <td align="center"><span onclick="alert_window('Are you sure you want to delete a record (ID = <?= $t->id ?>)?', 'delete/transporter/<?= $t->id ?>?redirection=edit/compound/<?= $detail->id ?>', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span></td> -->
-                            <!-- <td align="center"><span onclick="redirect('edit/transporter/<?= $t->id ?>?redirection=edit/compound/<?= $detail->id ?>')" style="text-align: center; color: green; cursor:pointer;" class="glyphicon glyphicon-edit"></span></td> -->
-                            <td></td>
-                            <td></td>
+                            <td align="center"><span onclick="alert_window('Are you sure you want to delete a record (ID = <?= $t->id ?>)?', 'delete/transporter/<?= DeleteController::T_DETAIL ?>/<?= $t->id ?>?redirection=edit/compound/<?= $detail->id ?>', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span></td>
+                            <td align="center"><span onclick="redirect('edit/active_interaction/<?= $t->id ?>?redirection=edit/compound/<?= $detail->id ?>')" style="text-align: center; color: green; cursor:pointer;" class="glyphicon glyphicon-edit"></span></td>
                             <td><?= $t->id ?></td>
                             <td style="text-align: center;"><a href="/edit/dsTransporters/<?= $t->id_dataset ?>" target="_blank"><?= $t->id_dataset ?></a></td>
                             <td><?= $t->target->uniprot_id ?></td>
-                            <td><?= Transporters::get_type_from_shortcut($t->type) ?></td>
+                            <td><?= $t->get_enum_type() ?></td>
                             <td><?= $t->Km ?></td>
                             <td><?= $t->EC50 ?></td>
                             <td><?= $t->Ki ?></td>

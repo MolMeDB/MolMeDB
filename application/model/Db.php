@@ -49,6 +49,23 @@ class Db extends Iterable_object
         }
     }
 
+    /**
+     * Static constructor
+     * 
+     * @return Db
+     */
+    public static function instance()
+    {
+        $class_name = get_called_class();
+
+        if(class_exists($class_name))
+        {
+            return new $class_name();
+        }
+
+        return null;
+    }
+
     /** Function for connection to the DB
      * 
      * @param string host 

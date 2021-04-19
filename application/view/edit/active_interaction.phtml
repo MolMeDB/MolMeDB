@@ -1,0 +1,43 @@
+<h3>Transporter interaction editor [<?= $detail->id ?>] </h3>
+<ul>
+    <li>Substance: <?= $detail->substance->name ?></li>
+    <li>Type: <?= $detail->get_enum_type() ?></li>
+    <li>Target: <?= $detail->target->name ?></li>
+</ul>
+<form method="post">
+    <div class="col-md-12">
+        <div class="col-md-6">
+            <label><b>Type</b></label>
+            <select class="form-control" name="type" id="type">
+                <?php foreach(Transporters::get_all_enum_types() as $i => $label): ?>
+                    <option value="<?=$i?>" <?= $i == $detail->type ? 'selected' : '' ?>><?=$label?></option>
+                <?php endforeach ?>
+            </select>
+            <label><b>Km<sub></sub> </b></label>
+            <input type="number" step="0.001" class="form-control" name="Km" value="<?= $detail->Km ?>">
+            <label><b>Ki<sub></sub></b></label>
+            <input type="number" step="0.001" class="form-control" name="Ki" value="<?= $detail->Ki ?>">
+            <label><b>EC50<sub></sub></b></label>
+            <input type="number" step="0.001" class="form-control" name="EC50" value="<?= $detail->EC50 ?>">
+            <label><b>IC50<sub></sub> </b></label>
+            <input type="number" step="0.001" class="form-control" name="IC50" value="<?= $detail->IC50 ?>">
+        </div>
+        <div class="col-md-6">
+        <label><b>Target</b></label>
+            <select class="form-control" name="target" id="target">
+                <?php foreach($nonsec_targets as $t) : ?>
+                    <option value="<?=$t->id?>" <?= $t->id == $detail->id_target ? 'selected' : '' ?>><?= $t->name ?></option>
+                <?php endforeach ?>
+            </select>
+            <label><b>Km<sub>acc</sub> </b></label>
+            <input type="number" step="0.001" class="form-control" name="Km_acc" value="<?= $detail->Km_acc ?>">
+            <label><b>Ki<sub>acc</sub></b></label>
+            <input type="number" step="0.001" class="form-control" name="Ki_acc" value="<?= $detail->Ki_acc ?>">
+            <label><b>EC50<sub>acc</sub></b></label>
+            <input type="number" step="0.001" class="form-control" name="EC50_acc" value="<?= $detail->EC50_acc ?>">
+            <label><b>IC50<sub>acc</sub> </b></label>
+            <input type="number" step="0.001" class="form-control" name="IC50_acc" value="<?= $detail->IC50_acc ?>">
+        </div>
+    </div>
+    <button type="submit" class="btn btn-info pull-right">Save</button>
+</form>

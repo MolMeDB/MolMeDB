@@ -155,6 +155,60 @@ class ApiComparator extends ApiController
 		return $this->answer($result);
     }
     
+    /**
+	 * Gets active interaction by ID
+	 * 
+	 * @GET
+	 * @param id Array|integer
+	 */
+    public function getActiveInteraction($id)
+    {
+		$ids = explode(",", $id);
+
+		$result = array();
+
+		foreach($ids as $interaction_id)
+		{
+			$interaction_id = intval($interaction_id);
+
+			$int = new Transporters($interaction_id);
+
+			if(!$int->id)
+			{
+				continue;
+			}
+
+			$result[] = array
+			(
+				'id'			=> $int->id,
+				'substance'		=> $int->substance ? $int->substance->as_array() : NULL,
+				'comment'		=> $int->note ? $int->note : NULL,
+				'type'			=> $int->type,
+				'target_id' 	=> $int->id_target,
+				'target'		=> $int->target->as_array(),
+				'Km'			=> $int->Km,
+				'Km_acc'		=> $int->Km_acc,
+				'EC50'			=> $int->EC50,
+				'EC50_acc'		=> $int->EC50_acc,
+				'Ki'			=> $int->Ki,
+				'Ki_acc'		=> $int->Ki_acc,
+				'IC50'			=> $int->IC50,
+				'IC50_acc'		=> $int->IC50_acc,
+				'id_reference'	=> $int->id_reference,
+				'reference'		=> $int->reference ? $int->reference->citation : NULL,
+				'id_dataset'	=> $int->id_dataset,
+				'id_substance'	=> $int->id_substance,
+				'uploaded'		=> $int->create_datetime
+			);
+		}
+
+		if(count($result)  === 1)
+		{
+			$result = $result[0];
+		}
+		return $this->answer($result);
+    }
+    
 	/**
 	 * Returns interaction ids and charges for given params
 	 * 

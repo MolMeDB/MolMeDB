@@ -220,7 +220,7 @@
                 <li><a href="/edit/dsInteractions/<?= $info->id ?>/<?= $i ?>"><?= $i ?></a></li>
                 <?php endif ?>
             <?php endfor ?>
-            <script>verifyPagination('<?=$total?>');</script>
+            <script>verifyPagination('paginator');</script>
             </ul>
         </div>
     <?php endif ?>
@@ -298,16 +298,16 @@
                     <table class="dataset-table">
                         <tbody>
                             <tr>
-                                <td><b>Membrane</b></td>
-                                <td id="membrane_name"></td>
+                                <td><b>Membrane:</b></td>
+                                <td id="membrane_name"><?=$info->membrane->name ?></td>
                             </tr>
                             <tr>
-                                <td><b>Method</b></td>
-                                <td id="method_name"></td>
+                                <td><b>Method:</b></td>
+                                <td id="method_name"><?=$info->method->name ?></td>
                             </tr>
                             <tr>
-                                <td><b>Publication</b></td>
-                                <td id="reference"></td>
+                                <td><b>Publication:</b></td>
+                                <td id="reference"><?=$info->publication->citation ?></td>
                             </tr>
                             <tr>
                                 <td><b>Last update: </b></td>

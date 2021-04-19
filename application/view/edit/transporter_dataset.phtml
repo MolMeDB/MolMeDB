@@ -129,12 +129,8 @@
                         <input class="form-control" name="substance_name" id="substance_name">
                         <span><b>SMILES</b></span>
                         <input class="form-control" name="SMILES" id="SMILES">
-                        <span><b>Charge</b></span>
-                        <input class="form-control" name="charge" id="charge">
                         <span><b>LogP</b></span>
                         <input class="form-control" name="LogP" id="LogP">
-                        <span><b>Temperature</b></span>
-                        <input class="form-control" name="temperature" id="temperature">
                     </div>
                     <div class="col-md-6">
                         <span><b>Pubchem ID</b></span>
@@ -146,33 +142,32 @@
                         <span><b>chEBI ID</b></span><input class="form-control" name="chEBI" id="chEBI">
                     </div>
                     <div class="col-md-12 line"></div>
-                    <div class="col-md-3">
-                        <span><b>X_min</b></span><input class="form-control" name="Position" id="Position">
-                        <span><b>LogK</b></span><input class="form-control" name="LogK" id="LogK">
-                        <span><b>G_wat</b></span><input class="form-control" name="Water" id="Water">
-                        <span><b>G_pen</b></span><input class="form-control" name="Penetration" id="Penetration">
-                        <span><b>LogPerm</b></span><input class="form-control" name="LogPerm" id="LogPerm">
+                    <div class="col-md-6">
+                        <span><b>Type</b></span>
+                        <select class="form-control" name="type" id="type">
+                            <?php foreach(Transporters::get_all_enum_types() as $i => $label): ?>
+                                <option value="<?=$i?>"><?=$label?></option>
+                            <?php endforeach ?>
+                        </select>
+                        <span><b>Target</b></span>
+                        <select class="form-control" name="target" id="target">
+                            <?php foreach($nonsec_targets as $t) : ?>
+                                <option value="<?=$t->id?>"><?= $t->name ?></option>
+                            <?php endforeach ?>                                
+                        </select>
+                        <span><b>Note</b></span><input class="form-control" name="note" id="note">
                     </div>
                     <div class="col-md-3">
-                            <span><b>X_min_acc</b></span><input class="form-control" name="Position_acc" id="Position_acc">
-                        <span><b>LogK_acc</b></span><input class="form-control" name="LogK_acc" id="LogK_acc">
-                        <span><b>G_wat_acc</b></span><input class="form-control" name="Water_acc" id="Water_acc">
-                        <span><b>G_pen_acc</b></span><input class="form-control" name="Penetration_acc" id="Penetration_acc">
-                        <span><b>LogPerm_acc</b></span><input class="form-control" name="LogPerm_acc" id="LogPerm_acc">
+                        <span><b>Km</b></span><input class="form-control" name="Km" id="Km">
+                        <span><b>EC50</b></span><input class="form-control" name="EC50" id="EC50">
+                        <span><b>Ki</b></span><input class="form-control" name="Ki" id="Ki">
+                        <span><b>IC50</b></span><input class="form-control" name="IC50" id="IC50">
                     </div>
                     <div class="col-md-3">
-                            <span><b>Theta</b></span><input class="form-control" name="theta" id="theta">
-                        <span><b>Abs_wl</b></span><input class="form-control" name="abs_wl" id="abs_wl">
-                        <span><b>Fluo_wl</b></span><input class="form-control" name="fluo_wl" id="fluo_wl">
-                        <span><b>QY</b></span><input class="form-control" name="QY" id="QY">
-                        <span><b>lt</b></span><input class="form-control" name="lt" id="lt">
-                    </div>
-                    <div class="col-md-3">
-                            <span><b>Theta_acc</b></span><input class="form-control" name="theta_acc" id="theta_acc">
-                        <span><b>Abs_wl_acc</b></span><input class="form-control" name="abs_wl_acc" id="abs_wl_acc">
-                        <span><b>Fluo_wl_acc</b></span><input class="form-control" name="fluo_wl_acc" id="fluo_wl_acc">
-                        <span><b>QY_acc</b></span><input class="form-control" name="QY_acc" id="QY_acc">
-                        <span><b>lt_acc</b></span><input class="form-control" name="lt_acc" id="lt_acc">
+                        <span><b>Km_acc</b></span><input class="form-control" name="Km_acc" id="Km_acc">
+                        <span><b>EC50_acc</b></span><input class="form-control" name="EC50_acc" id="EC50_acc">
+                        <span><b>Ki_acc</b></span><input class="form-control" name="Ki_acc" id="Ki_acc">
+                        <span><b>IC50_acc</b></span><input class="form-control" name="IC50_acc" id="IC50_acc">
                     </div>
                 </div>
                 <button type="submit" class="btn btn-lg btn-success pull-right">Save</button>
@@ -180,20 +175,8 @@
                     <table class="dataset-table">
                         <tbody>
                             <tr>
-                                <td><b>Membrane</b></td>
-                                <td id="membrane_name"></td>
-                            </tr>
-                            <tr>
-                                <td><b>Method</b></td>
-                                <td id="method_name"></td>
-                            </tr>
-                            <tr>
                                 <td><b>Publication</b></td>
                                 <td id="reference"></td>
-                            </tr>
-                            <tr>
-                                <td><b>Last update: </b></td>
-                                <td id="last_update"></td>
                             </tr>
                             <tr>
                                 <td><b>Uploaded: </b></td>

@@ -161,7 +161,6 @@ class Uploader extends Db
 				$alterName = new AlterNames();
 
 				$exists = $alterName->where('name LIKE', $ligand)
-					->debug()
 					->get_one();
 			
 				if(!$exists->id)

@@ -532,6 +532,86 @@ class EditController extends Controller
     }
 
     /**
+     * Edits active interaction
+     * 
+     * @param integer $id ID of interaction
+     */
+    public function active_interaction($id)
+    {
+        // Redirection path
+        $redir_path = isset($_GET['redirection']) ? $_GET['redirection'] : NULL;
+        
+        $interaction = new Transporters($id);
+
+        if(!$interaction->id)
+        {
+            $this->addMessageError('Interaction was not found.');
+            $this->redirect($redir_path ? $redir_path : 'error');
+        }
+
+        if($this->form->is_post())
+        {
+            try 
+            {
+                $target = new Transporter_targets($this->form->param->target);
+
+                if($this->form->param->Km_acc && !$this->form->param->Km)
+                {
+                    throw new Exception('Invalid Km value.');
+                }
+                if($this->form->param->Ki_acc && !$this->form->param->Ki)
+                {
+                    throw new Exception('Invalid Ki value.');
+                }
+                if($this->form->param->IC50_acc && !$this->form->param->IC50)
+                {
+                    throw new Exception('Invalid IC50 value.');
+                }
+                if($this->form->param->EC50_acc && !$this->form->param->EC50)
+                {
+                    throw new Exception('Invalid EC50 value.');
+                }
+                if(!Transporters::is_valid_type($this->form->param->type))
+                {
+                    throw new Exception('Invalid type value.');
+                }
+                if(!$target->id)
+                {
+                    throw new Exception('Invalid target value.');
+                }
+
+                // Edit interaction
+                $interaction->type = $this->form->param->type;
+                $interaction->id_target = $this->form->param->target;
+                $interaction->Km = $this->form->param->Km;
+                $interaction->Km_acc = $this->form->param->Km_acc;
+                $interaction->Ki = $this->form->param->Ki;
+                $interaction->Ki_acc = $this->form->param->Ki_acc;
+                $interaction->EC50 = $this->form->param->EC50;
+                $interaction->EC50_acc = $this->form->param->EC50_acc;
+                $interaction->IC50 = $this->form->param->IC50;
+                $interaction->IC50_acc = $this->form->param->IC50_acc;
+
+                $interaction->save();
+
+                $this->addMessageSuccess('Saved');
+
+                $this->redirect($redir_path ? $redir_path : 'edit/compound/' . $interaction->substance->id);
+            } 
+            catch (Exception $ex) 
+            {
+                $this->addMessageError('Error: ' . $ex->getMessage());
+                $this->redirect('edit/active_interaction/' . $interaction->id);
+            }
+        }
+
+        $this->data['detail'] = $interaction;
+        $this->data['targets'] = Transporter_targets::instance()->order_by('name')->get_all();
+        $this->header['title'] = "Interaction [$interaction->id] editor";
+        $this->view = 'edit/active_interaction';
+    }
+
+    /**
      * File uploader - CHECK VALIDITY!
      * 
      * @param string $file
@@ -625,17 +705,17 @@ class EditController extends Controller
 
                             Db::beginTransaction();
 
-                            if(intval($_POST['id_dataset']) !== intval($dataset->id))
+                            if(intval($this->form->param->id_dataset) !== intval($dataset->id))
                             {
                                 throw new Exception('Wrong dataset instance.');
                             }
 
                             // Update data
-                            $dataset->name = $_POST['dataset_name'];
-                            $dataset->id_membrane = $_POST['dataset_membrane'];
-                            $dataset->id_method = $_POST['dataset_method'];
-                            $dataset->id_publication = $_POST['dataset_publication'];
-                            $dataset->visibility = $_POST['visibility'];
+                            $dataset->name = $this->form->param->dataset_name;
+                            $dataset->id_membrane = $this->form->param->dataset_membrane;
+                            $dataset->id_method = $this->form->param->dataset_method;
+                            $dataset->id_publication = $this->form->param->dataset_publication;
+                            $dataset->visibility = $this->form->param->visibility;
                             
                             $dataset->save();
                             
@@ -656,7 +736,7 @@ class EditController extends Controller
                         
                         try 
                         {
-                            $interaction = new Interactions($_POST['id_interaction']);
+                            $interaction = new Interactions($this->form->param->id_interaction);
                             $substance = new Substances($interaction->id_substance);
 
                             if(!$interaction->id)
@@ -672,40 +752,40 @@ class EditController extends Controller
                             Db::beginTransaction();
 
                             // Edit substance
-                            $substance->name = $_POST['substance_name'];
-                            $substance->SMILES = $_POST['SMILES'];
-                            $substance->LogP = $_POST['LogP'];
-                            $substance->pubchem = $_POST['pubchem'];
-                            $substance->pdb = $_POST['pdb'];
-                            $substance->chEBI = $_POST['chEBI'];
-                            $substance->chEMBL = $_POST['chEMBL'];
-                            $substance->drugbank = $_POST['drugbank'];
+                            $substance->name = $this->form->param->substance_name;
+                            $substance->SMILES = $this->form->param->SMILES;
+                            $substance->LogP = $this->form->param->LogP;
+                            $substance->pubchem = $this->form->param->pubchem;
+                            $substance->pdb = $this->form->param->pdb;
+                            $substance->chEBI = $this->form->param->chEBI;
+                            $substance->chEMBL = $this->form->param->chEMBL;
+                            $substance->drugbank = $this->form->param->drugbank;
 
                             $substance->save();
 
                             // Edit interaction
-                            $interaction->Position = $_POST['Position'];
-                            $interaction->Position_acc = $_POST['Position_acc'];
-                            $interaction->Penetration = $_POST['Penetration'];
-                            $interaction->Penetration_acc = $_POST['Penetration_acc'];
-                            $interaction->Water = $_POST['Water'];
-                            $interaction->Water_acc = $_POST['Water_acc'];
-                            $interaction->LogK = $_POST['LogK'];
-                            $interaction->LogK_acc = $_POST['LogK_acc'];
-                            $interaction->LogPerm = $_POST['LogPerm'];
-                            $interaction->LogPerm_acc = $_POST['LogPerm_acc'];
-                            $interaction->theta = $_POST['theta'];
-                            $interaction->theta_acc = $_POST['theta_acc'];
-                            $interaction->abs_wl = $_POST['abs_wl'];
-                            $interaction->abs_wl_acc = $_POST['abs_wl_acc'];
-                            $interaction->fluo_wl = $_POST['fluo_wl'];
-                            $interaction->fluo_wl_acc = $_POST['fluo_wl_acc'];
-                            $interaction->QY = $_POST['QY'];
-                            $interaction->QY_acc = $_POST['QY_acc'];
-                            $interaction->lt = $_POST['lt'];
-                            $interaction->lt_acc = $_POST['lt_acc'];
-                            $interaction->temperature = $_POST['temperature'];
-                            $interaction->charge = $_POST['charge'];
+                            $interaction->Position = $this->form->param->Position;
+                            $interaction->Position_acc = $this->form->param->Position_acc;
+                            $interaction->Penetration = $this->form->param->Penetration;
+                            $interaction->Penetration_acc = $this->form->param->Penetration_acc;
+                            $interaction->Water = $this->form->param->Water;
+                            $interaction->Water_acc = $this->form->param->Water_acc;
+                            $interaction->LogK = $this->form->param->LogK;
+                            $interaction->LogK_acc = $this->form->param->LogK_acc;
+                            $interaction->LogPerm = $this->form->param->LogPerm;
+                            $interaction->LogPerm_acc = $this->form->param->LogPerm_acc;
+                            $interaction->theta = $this->form->param->theta;
+                            $interaction->theta_acc = $this->form->param->theta_acc;
+                            $interaction->abs_wl = $this->form->param->abs_wl;
+                            $interaction->abs_wl_acc = $this->form->param->abs_wl_acc;
+                            $interaction->fluo_wl = $this->form->param->fluo_wl;
+                            $interaction->fluo_wl_acc = $this->form->param->fluo_wl_acc;
+                            $interaction->QY = $this->form->param->QY;
+                            $interaction->QY_acc = $this->form->param->QY_acc;
+                            $interaction->lt = $this->form->param->lt;
+                            $interaction->lt_acc = $this->form->param->lt_acc;
+                            $interaction->temperature = $this->form->param->temperature;
+                            $interaction->charge = $this->form->param->charge;
 
                             $interaction->save();
 
@@ -723,12 +803,12 @@ class EditController extends Controller
                         break;
                 }
 
-                $this->redirect('edit/dsInteractions/' . intval($id));
+                $this->redirect('edit/dsInteractions/' . intval($id) . '/' . $pagination);
             }
             catch(Exception $e)
             {
                 $this->addMessageError($e->getMessage());
-                $this->redirect('edit/v/' . intval($id));
+                $this->redirect('edit/dsInteractions/' . intval($id) . '/' . $pagination);
             }
         }
 
@@ -736,6 +816,7 @@ class EditController extends Controller
         if($dataset->id)
         {
             $interaction_model = new Interactions();
+            $validation = new Validator();
 
             $items = 100;
 
@@ -748,6 +829,7 @@ class EditController extends Controller
                 ->where('id_dataset', $dataset->id)
                 ->count_all();
 
+            $this->data['total_duplicity'] = $validation->get_inter_dataset_duplicity_count($dataset->id);
             $this->data['info'] = $dataset;
             $this->data['interaction_table'] = self::createInteractionTable($dataset_interactions, $dataset->id);
             $this->data['total'] = $total;
@@ -786,11 +868,11 @@ class EditController extends Controller
         // Is loaded dataset ? Then show detail
         $show_detail = $dataset->id ? True : False;
 
-        if ($_POST) 
+        if ($this->form->is_post()) 
         {
             try
             {
-                switch ($_POST['spec_type']) 
+                switch ($this->form->param->spec_type) 
                 {
                     case 'edit_rights':
                         // try 
@@ -800,8 +882,8 @@ class EditController extends Controller
 
                         //     Db::beginTransaction();
 
-                        //     $id_entity = $_POST['id_entity'];
-                        //     $group = $_POST['group'];
+                        //     $id_entity = $this->form->param->id_entity;
+                        //     $group = $this->form->param->group;
 
                         //     $dataset->change_rights($id_entity, $group);
                             
@@ -824,15 +906,15 @@ class EditController extends Controller
 
                             Db::beginTransaction();
 
-                            if(intval($_POST['id_dataset']) !== intval($dataset->id))
+                            if(intval($this->form->param->id_dataset) !== intval($dataset->id))
                             {
                                 throw new Exception('Wrong dataset instance.');
                             }
 
                             // Update data
-                            $dataset->name = $_POST['dataset_name'];
-                            $dataset->id_reference = $_POST['dataset_publication'];
-                            $dataset->visibility = $_POST['visibility'];
+                            $dataset->name = $this->form->param->dataset_name;
+                            $dataset->id_reference = $this->form->param->dataset_publication;
+                            $dataset->visibility = $this->form->param->visibility;
                             
                             $dataset->save();
                             
@@ -847,73 +929,62 @@ class EditController extends Controller
                         }
                         break;
 
-                    // case 'edit_interaction':
-                    //     // Check access rights
-                    //     $this->verifyUser(true, 'edit_dataset', array('id_dataset' => $id, "url" => "edit/dataset/$id"));
+                    case 'edit_interaction':
+                        // Check access rights
+                        $this->verifyUser(true, 'edit_dataset', array('id_dataset' => $id, "url" => "edit/dataset/$id"));
                         
-                    //     try 
-                    //     {
-                    //         $interaction = new Interactions($_POST['id_interaction']);
-                    //         $substance = new Substances($interaction->id_substance);
+                        try 
+                        {
+                            $interaction = new Transporters($this->form->param->id_interaction);
+                            $substance = new Substances($interaction->id_substance);
 
-                    //         if(!$interaction->id)
-                    //         {
-                    //             throw new Exception('Interaction was not found.');
-                    //         }
+                            if(!$interaction->id)
+                            {
+                                throw new Exception('Interaction was not found.');
+                            }
 
-                    //         if(!$substance->id)
-                    //         {
-                    //             throw new Exception('Substance was not found.');
-                    //         }
+                            if(!$substance->id)
+                            {
+                                throw new Exception('Substance was not found.');
+                            }
 
-                    //         Db::beginTransaction();
+                            Db::beginTransaction();
 
-                    //         // Edit substance
-                    //         $substance->name = $_POST['substance_name'];
-                    //         $substance->SMILES = $_POST['SMILES'];
-                    //         $substance->LogP = $_POST['LogP'];
-                    //         $substance->pubchem = $_POST['pubchem'];
-                    //         $substance->pdb = $_POST['pdb'];
-                    //         $substance->chEBI = $_POST['chEBI'];
-                    //         $substance->chEMBL = $_POST['chEMBL'];
-                    //         $substance->drugbank = $_POST['drugbank'];
+                            // Edit substance
+                            $substance->name = $this->form->param->substance_name;
+                            $substance->SMILES = $this->form->param->SMILES;
+                            $substance->LogP = $this->form->param->LogP;
+                            $substance->pubchem = $this->form->param->pubchem;
+                            $substance->pdb = $this->form->param->pdb;
+                            $substance->chEBI = $this->form->param->chEBI;
+                            $substance->chEMBL = $this->form->param->chEMBL;
+                            $substance->drugbank = $this->form->param->drugbank;
 
-                    //         $substance->save();
+                            $substance->save();
 
-                    //         // Edit interaction
-                    //         $interaction->Position = $_POST['Position'];
-                    //         $interaction->Position_acc = $_POST['Position_acc'];
-                    //         $interaction->Penetration = $_POST['Penetration'];
-                    //         $interaction->Penetration_acc = $_POST['Penetration_acc'];
-                    //         $interaction->Water = $_POST['Water'];
-                    //         $interaction->Water_acc = $_POST['Water_acc'];
-                    //         $interaction->LogK = $_POST['LogK'];
-                    //         $interaction->LogK_acc = $_POST['LogK_acc'];
-                    //         $interaction->LogPerm = $_POST['LogPerm'];
-                    //         $interaction->LogPerm_acc = $_POST['LogPerm_acc'];
-                    //         $interaction->theta = $_POST['theta'];
-                    //         $interaction->theta_acc = $_POST['theta_acc'];
-                    //         $interaction->abs_wl = $_POST['abs_wl'];
-                    //         $interaction->abs_wl_acc = $_POST['abs_wl_acc'];
-                    //         $interaction->fluo_wl = $_POST['fluo_wl'];
-                    //         $interaction->fluo_wl_acc = $_POST['fluo_wl_acc'];
-                    //         $interaction->QY = $_POST['QY'];
-                    //         $interaction->QY_acc = $_POST['QY_acc'];
-                    //         $interaction->lt = $_POST['lt'];
-                    //         $interaction->lt_acc = $_POST['lt_acc'];
-                    //         $interaction->temperature = $_POST['temperature'];
-                    //         $interaction->charge = $_POST['charge'];
+                            // Edit interaction
+                            $interaction->type = $this->form->param->type;
+                            $interaction->id_target = $this->form->param->target;
+                            $interaction->note = $this->form->param->note;
+                            $interaction->Km = $this->form->param->Km;
+                            $interaction->Km_acc = $this->form->param->Km_acc;
+                            $interaction->Ki = $this->form->param->Ki;
+                            $interaction->Ki_acc = $this->form->param->Ki_acc;
+                            $interaction->EC50 = $this->form->param->EC50;
+                            $interaction->EC50_acc = $this->form->param->EC50_acc;
+                            $interaction->IC50 = $this->form->param->IC50;
+                            $interaction->IC50_acc = $this->form->param->IC50_acc;
 
-                    //         $interaction->save();
+                            $interaction->save();
 
-                    //         Db::commitTransaction();
-                    //         $this->addMessageSuccess($substance->name . " was successfully updated!");
-                    //     } catch (Exception $ex) 
-                    //     {
-                    //         Db::rollbackTransaction();
-                    //         $this->addMessageError($ex->getMessage());
-                    //     }
-                    //     break;
+                            Db::commitTransaction();
+                            $this->addMessageSuccess($substance->name . " was successfully updated!");
+                        } catch (Exception $ex) 
+                        {
+                            Db::rollbackTransaction();
+                            $this->addMessageError($ex->getMessage());
+                        }
+                        break;
 
                     default:
                         throw new Exception('Wrong request type.');
@@ -933,6 +1004,7 @@ class EditController extends Controller
         if($dataset->id)
         {
             $transporters_model = new Transporters();
+            $target_model = new Transporter_targets();
 
             $dataset_transporters = $transporters_model
                 ->where('id_dataset', $dataset->id)
@@ -940,6 +1012,7 @@ class EditController extends Controller
 
             $this->data['info'] = $dataset;
             $this->data['transporters_table'] = self::createTransportersTable($dataset_transporters, $dataset->id);
+            $this->data['targets'] = $target_model->order_by('name', 'ASC')->get_all();
             // $this->data['rights_users'] = $dataset->get_rights();
             // $this->data['rights_groups'] = $dataset->get_rights(true);
         }
@@ -1492,7 +1565,7 @@ class EditController extends Controller
     {
         $thead = array
         (
-            // 'edit' => 'Edit', 'delete' => 'Delete',
+            'edit' => 'Edit', 'delete' => 'Delete',
             'id' => 'ID', 'name' => 'Molecule', 'target' => 'Target', 'LogP' => 'LogP',
             'type' => "Type", "Km" => "Km", "Ki" => "Ki", 'EC50' => 'EC50', 'IC50' => "IC50", 'id_reference' => "Reference_id"
         );
@@ -1541,7 +1614,7 @@ class EditController extends Controller
                     if ($hidden[$key] == 0)
                         continue;
                 if ($v == 'Edit')
-                    $table .= '<td onclick="modal_editor(\'' . $i->id . '\')"><span class="glyphicon glyphicon-pencil"></span></td>';
+                    $table .= '<td onclick="modal_editor(\'' . $i->id . '\', \'true\')"><span class="glyphicon glyphicon-pencil"></span></td>';
 
                 else if ($v == 'Delete')
                     $table .= '<td onclick="delete_transporter(\'' . $id_dataset . '\',\'' . $i->id . '\')"><span style="color:red;" class="glyphicon glyphicon-remove"></span></td>';

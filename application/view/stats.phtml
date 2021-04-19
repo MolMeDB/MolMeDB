@@ -1,64 +1,189 @@
-<h2 style="text-align: center; font-weight: bold;">Statistics</h2>
+<div class="stats">
+    <div class="stats-total">
+        <div class="stats-title">
+            Statistics
+        </div>
+        <div class="stats-last-date">
+            Last update: <?= $last_update ?>
+            <?php if(isset($update_available) && $update_available) : ?>
+                <a href="/stats/update_all"> <span class="glyphicon glyphicon-refresh" style="cursor:pointer;"></span></a>
+            <?php endif ?>
+        </div>
+        
+        <div class="stats-total-grid">
+            <div class="stats-total-grid-item">
+                <div class="stats-total-grid-item-top">
+                    <div>
+                        <div>Total interactions</div>
+                        <div><?= $interactions->total ?></div>
+                    </div>
+                    <div>
+                        <?= Html::image('icons/interaction.png', "stat-panel-img") ?>
+                    </div>
+                </div>
 
-<div class="stats-summary-grid">
-    <div class="stat-panel">
-        <div class='stat-panel-info'>
-            <div class='stat-panel-title'>
-                <?= $total_interactions ?>
             </div>
-            <div class="stat-panel-description">
-                Total interactions
+            <div class="stats-total-grid-item">
+                <div class="stats-total-grid-item-top">
+                    <div>
+                        <div>Total substances</div>
+                        <div><?= $substances->total ?></div>
+                    </div>
+                    <div>
+                        <?= Html::image('icons/molecule.png', "stat-panel-img") ?>
+                    </div>
+                </div>
+
             </div>
-        </div>
-        <div class='stat-panel-img'>
-            <img src="files/icons/interaction.png">
+            <div class="stats-total-grid-item">
+                <div class="stats-total-grid-item-top">
+                    <div>
+                        <div>Total membranes</div>
+                        <div><?= $membranes->total ?></div>
+                    </div>
+                    <div>
+                        <?= Html::image('icons/lipid.png', "stat-panel-img") ?>
+                    </div>
+                </div>
+
+            </div>
+            <div class="stats-total-grid-item">
+                <div class="stats-total-grid-item-top">
+                    <div>
+                        <div>Total methods</div>
+                        <div><?= $methods->total ?></div>
+                    </div>
+                    <div>
+                        <?= Html::image('icons/microscope.png', "stat-panel-img") ?>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
-    <div class="stat-panel">
-        <div class='stat-panel-info'>
-            <div class='stat-panel-title'>
-                <?= $total_substances ?>
+
+    <div class="stats-rows">
+        <div class="stats-row stats-row-1">
+            <div class="stat-panel" style="width: 60%">
+                <div class="stat-panel-title">
+                    Growth curve 
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
+                    <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php endif ?>
+                </div>
+                <div class="stat-panel-subtitle">Increase in the amount of data by date</div>
+                <div id="interactionAddDiv" class="stat-chart" style="width: 100%; height: 560px;"></div>
             </div>
-            <div class="stat-panel-description">
-                Total compounds
+            <div class="stats-column" style="width: 38%">
+                <div class="stat-panel">
+                    <div class="stat-panel-title">
+                        Proportion of substances interactions
+                        <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_PASSIVE_ACITVE_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_INTER_PASSIVE_ACITVE_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download data"></span></a>
+                        <?php endif ?>
+                    </div>
+                    <div id="interactionAddDiv2" style="width: 100%; height: 210px;"></div>
+                </div>
+                <div class="stat-panel">
+                    <div class="stat-panel-title">
+                    Links to external databases
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_IDENTIFIERS_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_IDENTIFIERS_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download data"></span></a>
+                    <?php endif ?>
+                    </div>
+                    <div id="interactionAddDiv3" class="stat-panel" style="width: 100%; height: 300px;"></div>
+                </div>
             </div>
         </div>
-        <div class='stat-panel-img'>
-            <img src="files/icons/molecule.png">
-        </div>
-    </div>
-    <div onclick="redirect('stats/membranes')" class="stat-panel enabled <?= !empty($active_membrane) ? 'stat-panel-active' : '' ?>">
-        <div class='stat-panel-info'>
-            <div class='stat-panel-title'>
-                <?= $total_membranes ?>
-            </div>
-            <div class="stat-panel-description">
-                Total membranes
-            </div>
-        </div>
-        <div class='stat-panel-img'>
-            <img style="margin-right: 10px;" src="files/icons/lipid.png">
-        </div>
-    </div>
-    <div onclick="redirect('stats/methods')" class="stat-panel enabled <?= !empty($active_method) ? 'stat-panel-active' : '' ?>">
-        <div class='stat-panel-info'>
-            <div class='stat-panel-title'>
-                <?= $total_methods ?>
-            </div>
-            <div class="stat-panel-description">
-                Total methods
+
+        <div class="stats-row">
+            <div class="stat-panel" style="width: 100%">
+                <div class="stat-panel-title">
+                    Transporter interactions
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php endif ?>
+                </div>
+                <div class="stat-panel-subtitle">Amount of data</div>
+                <div id="inter_activeDiv" class="stat-chart" style="width: 100%; height: 850px;"></div>
             </div>
         </div>
-        <div class='stat-panel-img'>
-            <img style="margin-right: 10px" src="files/icons/microscope.png">
+
+        <div class="stats-row">
+            <div class="stat-panel" style="width: 100%">
+                <div class="stat-panel-title">
+                    Methods
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php endif ?>
+                </div>
+                <div class="stat-panel-subtitle">Amount of data</div>
+                <div id="methodDiv" class="stat-chart" style="width: 100%; height: 560px;"></div>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-panel" style="width: 100%">
+                <div class="stat-panel-title">
+                    Membranes
+                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
+                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php endif ?>
+                </div>
+                <div class="stat-panel-subtitle">Amount of data</div>
+                <div id="membraneDiv" class="stat-chart" style="width: 100%; height: 560px;"></div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="stats-detail">
-    <?= $nonsec_detail ?>
-</div>
+<script src="js/amcharts64/themes/animated.js"></script>
+<script src="js/stats.js"></script>
 
-<script src="js/stats.js">
+<script>
+    var data = JSON.parse('<?= json_encode($interactions->active) ?>');
+    show_sunburst(data, 'inter_activeDiv');
 
+    $(".main-page").css('padding', '0');
+    var inter_adding_data = JSON.parse('<?= json_encode($interactions->adding->data) ?>');
+    var inter_adding_params = {
+        axisBreaks: JSON.parse('<?= json_encode($interactions->adding->axisBreaks)?>'),
+        series: [ 
+            {
+                attribute: 'count_interactions',
+                label: 'Total interactions'
+            },
+            {
+                attribute: 'count_substances',
+                label: "Total substances"
+            }
+        ]
+    };
+    makeAddingLineChart(inter_adding_data, "interactionAddDiv", inter_adding_params, "<?= $interactions->adding->max_value ?>")
+
+    var data = JSON.parse('<?= json_encode($identifiers->data) ?>');
+    var axisBreak = JSON.parse('<?= json_encode($identifiers->axisBreaks[0])?>');
+    var max_value = parseInt('<?= $identifiers->maxValue ?>');
+    make_identifiers_chart("interactionAddDiv3", data, axisBreak, max_value);
+
+    // Chart for count of total membranes
+    var data = JSON.parse('<?= json_encode($membranes->stats->data) ?>');
+    var axisBreaks = {
+        interactions: JSON.parse('<?= json_encode($membranes->stats->axisBreaks_interactions)?>')
+    }
+    make_membrane_total_column_chart('membraneDiv', data);
+
+    
+    var data = JSON.parse('<?= json_encode($interactions_pa->data) ?>');
+    makeInteractionsPie('interactionAddDiv2', data);
+
+    // Chart for count of total methods
+    var data = JSON.parse('<?= json_encode($methods->stats->data) ?>');
+    var axisBreaks = {
+        interactions: JSON.parse('<?= json_encode($methods->stats->axisBreaks_interactions)?>')
+    }
+
+    make_method_total_column_chart('methodDiv', data, axisBreaks);
+
+    
 </script>

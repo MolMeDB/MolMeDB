@@ -135,19 +135,80 @@ class Datasets extends Db
         ');
 
         $res = array();
+        $proccessed = array();
+
+        $all_datasets = $this->order_by('id', 'ASC')->get_all();
+
+        for($i = 0; $i < count($all_datasets); $i++)
+        {
+            $d1 = $all_datasets[$i];
+            $d_ids = [$d1->id];
+
+            if(in_array($d1->id, $proccessed))
+            {
+                continue;
+            }
+
+            for($k = $i+1; $k < count($all_datasets); $k++)
+            {
+                $d2 = $all_datasets[$k];
+
+                if($d2->id_membrane == $d1->id_membrane && 
+                    $d2->id_method == $d1->id_method &&
+                    $d2->id_publication == $d1->id_publication &&
+                    $d2->id_user_upload == $d1->id_user_upload)
+                {
+                    $d_ids[] = $d2->id;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if(count($d_ids) > 1)
+            {
+                $res[] = $d_ids;
+                $proccessed = array_merge($proccessed, $d_ids);
+            }
+        }
 
         foreach($dps as $d)
         {
-            $ids = $this->queryAll('
+            $data = $this->queryAll('
                 SELECT id
                 FROM datasets
                 WHERE id_membrane = ? AND id_publication = ? AND id_method = ? AND
                     DATE(createDateTime) = ? AND id_user_upload = ?
             ', array($d->id_membrane, $d->id_publication, $d->id_method, $d->date, $d->id_user_upload));
 
+            $ids = [];
+
+            foreach($data as $row)
+            {
+                $ids[] = $row->id;
+            }
+            
             if(count($ids))
             {
-                $res[] = $ids->as_array();
+                $flag = TRUE;
+
+                for($i = 0; $i < count($res); $i++)
+                {
+                    $intersection = array_intersect($res[$i], $ids);
+
+                    if(count($intersection) > 0)
+                    {
+                        $flag = FALSE;
+                        $res[$i] = array_unique(array_merge($res[$i], $ids));
+                        break;
+                    }
+                }
+
+                if($flag)
+                {
+                    $res[] = $ids;
+                }
             }
         }
 

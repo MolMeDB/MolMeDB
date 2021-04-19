@@ -19,3 +19,5 @@ define('DEBUG', false);
 
 // Maintenance
 define('MAINTENANCE', False);
+
+define('GOOGLE_ANALYTICS', "");

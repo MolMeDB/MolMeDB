@@ -53,7 +53,7 @@ function depict_url(opts, smiles, title, w, h) {
 	smi = smi.replace(/%40/g, '@');
         smi = smi.replace('%0A', '');
         smi = smi.replace('%09', '');
-	var url = 'http://molmedb.upol.cz:8081/depict/' + opts.style + '/svg?smi=' + smi + "%20%0C" + title;
+	var url = 'https://molmedb.upol.cz/depict/' + opts.style + '/svg?smi=' + smi + "%20%0C" + title;
 //	if (w && h)
 //	  url += '&w=' + w + '&h=' + h;
 	url += '&abbr=' + opts.abbr;

@@ -23,7 +23,7 @@
  * 
  * @property Substances $substance
  * @property Transporter_datasets $dataset
- * @property Transporter_targets $transporter_target
+ * @property Transporter_targets $target
  * @property Users $user
  * @property Publications $reference
  * 
@@ -121,6 +121,16 @@ class Transporters extends Db
             'class' => 'Transporter_targets'
         ),
     );
+
+    /**
+     * Returns all enum_types
+     * 
+     * @return array
+     */
+    public static function get_all_enum_types()
+    {
+        return self::$enum_types;
+    }
 
 
     /**
@@ -294,6 +304,4 @@ class Transporters extends Db
 
         return array_search($shortcut, self::$upload_shortcuts);
     }
-
-
-}
+}   

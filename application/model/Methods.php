@@ -62,6 +62,22 @@ class Methods extends Db
     
 
     /**
+     * Returns methods linked to given category
+     * 
+     * @param int $enum_type_link_id
+     * 
+     * @return Iterable_object
+     */
+    public function get_linked_data($enum_type_link_id)
+    {
+        return $this->queryAll('
+            SELECT m.*
+            FROM methods m
+            JOIN method_enum_type_links l ON l.id_method = m.id AND l.id_enum_type_link = ?
+        ', array($enum_type_link_id));
+    }
+
+    /**
      * Loads search whisper for API response
      * 
      * @param string $q - QUERY
@@ -185,39 +201,151 @@ class Methods extends Db
 
 
     /**
-     * REST API function
-     * Gets method for given params
+     * Returns empty methods
      * 
-     * @param array $substance_ids
-     * @param array $membranes_ids
+     * @return Iterable_object
      */
-    // public function get_methods_by_params($substances_ids = array(), $membranes_ids = array())
-    // {
-    //     if(empty($substances_ids) && empty($membranes_ids))
-    //     {
-    //         return $this->queryAll('SELECT id, name FROM methods ORDER BY name');
-    //     }
-        
-    //     if(empty($membranes_ids))
-    //     {
-    //         return $this->queryAll('
-    //             SELECT DISTINCT m.id, m.name
-    //             FROM interaction i
-    //             JOIN methods m ON (m.id = i.id_method)
-    //             WHERE i.id_substance IN (' . implode(',', $substances_ids ) . ')');
-    //     }
-        
-    //     if(empty($substances_ids))
-    //     {
-    //         return array();
-    //     }
-        
-    //     return $this->queryAll('
-    //         SELECT DISTINCT m.id, m.name
-    //         FROM interaction i
-    //         JOIN methods m ON (m.id = i.id_method)
-    //         WHERE i.id_substance IN (' . implode( ',', $substances_ids) . ')
-    //         AND i.id_membrane IN (' . implode(',', $membranes_ids) . ')' );
-    // }
+    public function get_empty_methods()
+    {
+        $data = $this->queryAll('
+            SELECT m.id
+            FROM methods m
+            LEFT JOIN interaction i ON i.id_method = m.id
+            WHERE i.id IS NULL
+        ');
+
+        $res = [];
+
+        foreach($data as $row)
+        {
+            $res[] = new Methods($row->id);
+        }
+
+        return $res;
+    }
+
+    /**
+     * Returns enum_type_link for given method
+     * 
+     * @return Enum_type_links
+     */
+    public function get_category_link()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        $row = $this->queryOne('
+            SELECT etl.*
+            FROM method_enum_type_links ml
+            JOIN enum_type_links etl ON etl.id = ml.id_enum_type_link AND ml.id_method = ?
+        ', array($this->id));
+
+        return new Enum_type_links($row->id);
+    }
+
+    /**
+     * Set enum_type_link for given method
+     * 
+     */
+    public function set_category_link($link_id)
+    {
+        if(!$this->id || !$link_id)
+        {
+            throw new Exception('Invalid instance.');
+        }
+
+        return $this->query('
+            INSERT INTO `method_enum_type_links` VALUES(?,?);
+        ', array($link_id, $this->id));
+    }
+
+
+    /**
+     * Returns methods without links
+     */
+    public function get_all_without_links()
+    {
+        return $this->queryAll('
+            SELECT m.*
+            FROM methods m
+            LEFT JOIN method_enum_type_links metl ON metl.id_method = m.id
+            WHERE metl.id_enum_type_link IS NULL
+            ORDER BY name
+        ');
+    }
+
+    /**
+     * Unlink category
+     */
+    public function unlink_category($id = NULL)
+    {
+        if(!$id && $this->id)
+        {
+            $id = $this->id;
+        }
+
+        return $this->query('
+            DELETE FROM `method_enum_type_links`
+            WHERE `id_method` = ?
+        ', array($id));
+    }
+
+    /**
+     * Returns membranes with categories
+     * 
+     * @return Iterable_object
+     */
+    public function get_active_categories()
+    {
+        $result = [];
+
+        $data = $this->queryAll('
+            SELECT m.id, et_cat.name as category, et_subcat.name as subcategory
+            FROM methods m
+            LEFT JOIN method_enum_type_links metl ON metl.id_method = m.id
+            LEFT JOIN enum_type_links etl ON etl.id = metl.id_enum_type_link
+            LEFT JOIN enum_types et_cat ON et_cat.id = etl.id_enum_type_parent
+            LEFT JOIN enum_types et_subcat ON et_subcat.id = etl.id_enum_type
+        ');
+
+        foreach($data as $row)
+        {
+            $result[$row->id] = array
+            (
+                'category' => $row->category,
+                'subcategory' => $row->subcategory
+            );
+        }
+
+        return new Iterable_object($result, TRUE);
+    }
+
+
+     /**
+     * Returns all membrane interactions
+     * 
+     * @return Iterable_object
+     * 
+     * @author Jakub Juracka
+     */
+    public function get_interactions()
+    {
+        return $this->queryAll('
+            SELECT DISTINCT s.name, s.identifier, s.SMILES, s.inchikey, s.MW, s.LogP, s.pubchem, s.drugbank, s.pdb, s.chEMBL,
+                mem.name as membrane, met.name as method, i.temperature, i.charge, i.comment as note, i.Position as X_min,
+                i.Position_acc as X_min_acc, i.Penetration as G_pen, i.Penetration_acc as G_pen_acc, i.Water as G_wat, i.Water_acc as G_wat_acc,
+                i.LogK, i.LogK_acc, i.LogPerm, i.LogPerm_acc, i.theta, i.theta_acc, i.abs_wl, i.abs_wl_acc, i.fluo_wl, i.fluo_wl_acc, i.QY, i.QY_acc, i.lt, i.lt_acc,
+                p1.citation as primary_reference, p2.citation as secondary_reference
+            FROM substances s 
+            JOIN interaction i ON i.id_substance = s.id
+            JOIN membranes mem ON mem.id = i.id_membrane
+            JOIN methods met ON met.id = i.id_method AND met.id = ?
+            JOIN datasets d ON d.id = i.id_dataset
+            LEFT JOIN publications p1 ON p1.id = i.id_reference
+            LEFT JOIN publications p2 ON p2.id = d.id_publication
+        ', array($this->id));
+    }
         
 }

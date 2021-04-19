@@ -1,43 +1,11 @@
-<button class="accordion"><div><span class="glyphicon glyphicon-menu-hamburger" style="font-size:24px;"></span><div class="acc_text">Navigator</div></div></button>
-   <div class="panelDetail">
-        <div class="col-md-12 category-flex cat-1">
-            <div class="category-items-flex" id="cat-level-1">
-                <?php foreach($categories as $cat) : ?>
-                <div class="category-item" onclick="category_detail(1, '<?=$cat['id'] ?>', this);">
-                    <input type="hidden" value="<?=$cat['id'] ?>">
-                    <div><?=$cat['name'] ?></div>
-                </div>    
-                <?php endforeach ?>
-            </div>
-            <div class="category-items-arrow">
-                <span class="glyphicon glyphicon-chevron-right"></span>
-            </div>
-
-            <div class="category-items-flex" id="cat-level-2">
-
-            </div>
-
-            <div class="category-items-arrow">
-                <span class="glyphicon glyphicon-chevron-right"></span>
-            </div>
-            <div class="category-items-flex cat-3" id="cat-level-3">
-
-            </div>
-        </div>
-   </div>
-
+<div id='chartdiv' style="height: 600px;"></div>
 
 <div class="browse-contents">
     <div id="material-list">
         <div class="browse-list-title">
             Membranes
         </div>
-        <?php foreach($membranes as $m) : ?>
-        <div class="browse-list-item">
-            <img src="files/icons/chevron-right.svg" style="width: 8px">
-            <a class="list-item" id="tab<?=$m->id?>-tab" href="#tab<?=$m->id?>"><?=$m->idTag?></a>
-        </div>
-        <?php endforeach ?>
+        <?= $nonsec_side_list ?>
     </div>
     
     <div class="tab-contents">
@@ -45,7 +13,7 @@
         <div id="tab<?=$m->id?>">
             <div class="membraneName">
                 <div>
-                    <h2><?=$m->name?></h2>
+                    <h2><?=$m->name?></h2>  
                 </div>
                 <div class="membraneCategory">
                     <div class="categoryName"><?=$active_categories[$m->id]->category?></div>
@@ -55,16 +23,24 @@
             </div>
             <div class="content"><?=$m->description?></div>
             <div class="content"><?=$m->references?></div>
-            <button type="button" onclick="addSetToComparator('membrane', '<?=$m->id ?>')" style="margin-top: -15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button>
+            <button type="button" onclick="addSetToComparator('membrane', '<?=$m->id ?>')" style="margin-top: 15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button>
+            <button type="button" onclick="redirect('export/membrane/<?= $m->id ?>')" style="margin-top: 15px; margin-right: 10px;" class="btn btn-danger btn-sm pull-right">Download data </button>
         </div>
         <?php endforeach ?>
     </div>
 </div>
 
+<script src="js/browse.js?ver=<?=JS_VERSION?>"></script>
 <script>
+    var data = JSON.parse('<?= $nonsec_categories ?>');
+    show_sunburst(data, "chartdiv");
+</script>
+
+<script>
+    var remote_active = '<?= isset($_GET['target']) ? '#target_' . $_GET['target'] : '' ?>';
+
     $(document).ready(function() {
 		$('#material-list').each(function() {
-
             var $active, $content, $links = $(this).find('a');
 
             $active = $($links[0]);
@@ -73,10 +49,11 @@
             $content = $($active[0].hash);
 
             $links.not($active).each(function() {
-                $(this.hash).hide();
+                    $(this.hash).hide();
             });
 
             $(this).on('click', 'a', function(e) {
+
                 $active.removeClass('active');
                 $content.hide();
 
@@ -87,26 +64,12 @@
                 $content.show();
 
                 e.preventDefault();
-                setActive_category(this.id);
             });
-		});
-        document.getElementById("material-list").children[1].children[1].click();
+    });
+
+    if(remote_active)
+    {
+        $(remote_active).click();
+    }
 });
-
-var acc = document.getElementsByClassName("accordion");
-var i;
-
-for (i = 0; i < acc.length; i++) {
-  acc[i].onclick = function() {
-    this.classList.toggle("active");
-    var panel = this.nextElementSibling;
-    if (panel.style.maxHeight){
-      panel.style.maxHeight = null;
-    } else {
-      panel.style.maxHeight = (panel.scrollHeight + 100) + "px";
-    } 
-  }
-}
 </script>
-
-<script src="js/edit/membrane.js?ver=<?=JS_VERSION?>"></script>

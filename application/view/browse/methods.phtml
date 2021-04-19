@@ -1,61 +1,77 @@
+<div id='chartdiv' style="height: 600px;"></div>
+
 <div class="browse-contents">
     <div id="material-list">
         <div class="browse-list-title">
             Methods
         </div>
-        <?php foreach ($methods as $m) : ?>
-        <div class="browse-list-item">
-            <img src="files/icons/chevron-right.svg" style="width: 8px">
-            <?php if ($m->id==1) : ?>
-                <a class="list-item active" id="tab<?=$m->id?>-tab" href="#tab<?=$m->id?>"><?=$m->CAM?></a>
-            <?php else : ?>
-                <a class="list-item" id="tab<?=$m->id?>-tab" href="#tab<?=$m->id?>"><?=$m->CAM?></a>
-            <?php endif ?>
-        </div>
-        <?php endforeach ?>
+        <?= $nonsec_side_list ?>
     </div>
 
     <div class="tab-contents">
         <?php foreach($nonsec_methods as $m) : ?>
         <div id="tab<?=$m->id?>">
-            <h2><?=$m->name?></h2>
+            <div class="membraneName">
+                <div>
+                    <h2><?=$m->name?></h2>
+                </div>
+                <div class="membraneCategory">
+                    <div class="categoryName"><?=$active_categories[$m->id]->category?></div>
+                    <div class="categoryArrow"><span class="glyphicon glyphicon-chevron-right"></span></div>
+                    <div class="categoryName"><?=$active_categories[$m->id]->subcategory?></div>
+                </div> 
+            </div>
             <div class="content"><?=$m->description?></div>
             <div class="content"><?=$m->references?></div>
-            <button type="button" onclick="addSetToComparator('method', '<?=$m->id?>')" style="margin-top: 15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button>
-
+            <div class="content">
+                <button type="button" onclick="addSetToComparator('method', '<?=$m->id?>')" style="margin-top: 15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button>
+                <button type="button" onclick="redirect('export/method/<?= $m->id ?>')" style="margin-top: 15px; margin-right: 10px;" class="btn btn-danger btn-sm pull-right">Download data </button>
+            </div>
         </div>
         <?php endforeach ?>
     </div>
 </div>
 
+<script src="js/browse.js?ver=<?=JS_VERSION?>"></script>
 <script>
+    var data = JSON.parse('<?= $nonsec_categories ?>');
+    show_sunburst(data, "chartdiv");
+</script>
+
+<script>
+    var remote_active = '<?= isset($_GET['target']) ? '#target_' . $_GET['target'] : '' ?>';
+
     $(document).ready(function() {
 		$('#material-list').each(function() {
+            var $active, $content, $links = $(this).find('a');
 
-        var $active, $content, $links = $(this).find('a');
-
-        $active = $($links[0]);
-        $active.addClass('active');
-
-        $content = $($active[0].hash);
-
-        $links.not($active).each(function() {
-                $(this.hash).hide();
-        });
-
-        $(this).on('click', 'a', function(e) {
-
-            $active.removeClass('active');
-            $content.hide();
-
-            $active = $(this);
-            $content = $(this.hash);
-
+            $active = $($links[0]);
             $active.addClass('active');
-            $content.show();
 
-            e.preventDefault();
-        });
+            $content = $($active[0].hash);
+
+            $links.not($active).each(function() {
+                    $(this.hash).hide();
+            });
+
+            $(this).on('click', 'a', function(e) {
+
+                $active.removeClass('active');
+                $content.hide();
+
+                $active = $(this);
+                $content = $(this.hash);
+
+                $active.addClass('active');
+                $content.show();
+
+                e.preventDefault();
+            });
     });
+
+    if(remote_active)
+    {
+        $(remote_active).click();
+    }
 });
 </script>

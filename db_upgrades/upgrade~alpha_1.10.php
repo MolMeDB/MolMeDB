@@ -23,7 +23,7 @@ $upgrade_sql = array
    "INSERT INTO `enum_types` (`id`, `name`, `content`, `type`) VALUES (NULL, 'Membranes', NULL, '1'), (NULL, 'Methods', NULL, '2'), (NULL, 'Transporters', NULL, '3')",
    // Delete old category tables
    "DROP TABLE `cat_membranes`, `cat_mem_mem`, `cat_subcat_membranes`;",
-   "CREATE TABLE `membrane_enum_type_links` ( `id_enum_type` INT NOT NULL , `id_membrane` INT NOT NULL ) ENGINE = InnoDB;",
+   "CREATE TABLE `membrane_enum_type_links` ( `id_enum_type_link` INT NOT NULL , `id_membrane` INT NOT NULL ) ENGINE = InnoDB;",
    "ALTER TABLE `membrane_enum_type_links` ADD FOREIGN KEY (`id_enum_type_link`) REFERENCES `enum_type_links`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
    "ALTER TABLE `membrane_enum_type_links` ADD FOREIGN KEY (`id_membrane`) REFERENCES `membranes`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
    "ALTER TABLE `membrane_enum_type_links` ADD UNIQUE (`id_membrane`);",
@@ -35,6 +35,7 @@ $upgrade_sql = array
    "CREATE TABLE `transporter_target_enum_type_links` ( `id_enum_type_link` INT NOT NULL , `id_transporter_target` INT NOT NULL ) ENGINE = InnoDB;",
    "ALTER TABLE `transporter_target_enum_type_links` ADD FOREIGN KEY (`id_enum_type_link`) REFERENCES `enum_type_links`(`id`) ON DELETE CASCADE ON UPDATE RESTRICT;",
    "ALTER TABLE `transporter_target_enum_type_links` ADD FOREIGN KEY (`id_transporter_target`) REFERENCES `transporter_targets`(`id`) ON DELETE CASCADE ON UPDATE RESTRICT;",
+   "ALTER TABLE `molmedb`.`enum_type_links` DROP INDEX `id_enum_type`, ADD INDEX `id_enum_type` (`id_enum_type`) USING BTREE;"
 
 
 );

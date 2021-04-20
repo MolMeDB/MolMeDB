@@ -1,7 +1,7 @@
 <?php
 
 // DB login info
-define("dbURL", "localhost");
+define("dbURL", "database");
 define("dbName", "molmedb");
 define("dbUser", "molmedb");
 define("dbPassword", "molmedb");

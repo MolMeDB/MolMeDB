@@ -1,5 +1,5 @@
 # FROM php:8.0.3-apache
-FROM php:8.0.3-apache-buster
+FROM php:7.4.16-apache-buster
 
 # Install and run apache
 RUN apt-cache search mysql

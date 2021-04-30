@@ -83,13 +83,23 @@ class RouterController extends Controller
         // Scheduler redirection
         if($classController === 'SchedulerController')
         {
-            if($targetFunction !== 'run')
+            // Can be access only from local machine
+            if (server::remote_addr() != server::server_addr() &&
+                server::remote_addr() != "127.0.0.1")
+            {
+                echo 'access denied';
+                die();
+            }
+
+            if(!in_array($targetFunction, SchedulerController::$accessible))
             {
                 die;
             }
+
+            array_shift($parsedURL);
             
             $api_controller = new SchedulerController();
-            $api_controller->run();
+            $api_controller->$targetFunction(...$parsedURL);
             die;
         }
 

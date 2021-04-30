@@ -23,19 +23,20 @@ class SchedulerController extends Controller
     private $debug_FMD = FALSE && DEBUG;
 
     /**
+     * Specifies publicly accessible functions
+     */
+    static $accessible = array
+    (
+        'run',
+        'revalidate_3d_structures'
+    );
+
+    /**
      * Main scheduler funtion
      * 
      */
     public function run()
     {
-        // Can be access only from local machine
-        if (server::remote_addr() != server::server_addr() &&
-			server::remote_addr() != "127.0.0.1")
-		{
-			echo 'access denied';
-			die();
-        }
-
         // Holds info about run time
         $time = $this->time = new Time();
 
@@ -1360,6 +1361,41 @@ class SchedulerController extends Controller
             ($substance->drugbank && $substance->drugbank == $obj->drugbank) ||
             ($substance->chEMBL && $substance->chEMBL == $obj->chembl) ||
             ($substance->chEBI && $substance->chEBI == $obj->chebi));
+    }
+
+    /**
+     * Redownloads all 3D structures of molecules from given ID
+     * 
+     * @param int $start_id
+     * 
+     */
+    public function revalidate_3d_structures($start_id = 1)
+    {
+        $subst_model = new Substances();
+        $file_model = new File();
+
+        $substance_ids = $subst_model->where('id >=', $start_id)->get_all();
+
+        echo "Validating total " . count($substance_ids) . " structures. \n";
+
+        foreach($substance_ids as $sub)
+        {
+            $s = new Substances($sub->id);
+            $content = $this->find_3d_structure($s);
+
+            if($content)
+            {
+                # Save new structure
+                $file_model->save_structure_file($s->identifier, $content);
+                $s->invalid_structure_flag = NULL;
+
+                $s->save();
+
+                echo "Validated " . $s->identifier . ". \n";
+            }
+        }
+
+        echo "Validation done. \n";
     }
 
     /**

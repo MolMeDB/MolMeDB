@@ -1369,12 +1369,12 @@ class SchedulerController extends Controller
      * @param int $start_id
      * 
      */
-    public function revalidate_3d_structures($start_id = 1)
+    public function revalidate_3d_structures($offset = 0, $limit = 1000)
     {
         $subst_model = new Substances();
         $file_model = new File();
 
-        $substance_ids = $subst_model->where('id >=', $start_id)->get_all();
+        $substance_ids = $subst_model->test($offset, $limit);
 
         echo "Validating total " . count($substance_ids) . " structures. \n";
 

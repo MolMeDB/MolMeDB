@@ -78,7 +78,7 @@ class Substances extends Db
             ) as tab
             WHERE tab.iid IS NULL AND tab.tid IS NOT NULL
             LIMIT ?,?
-            ORDER BY tab.id ASC
+            ORDER BY id ASC
         ',array($pubchem_membrane->id, $pubchem_method->id, $offset, $limit));
     }
     

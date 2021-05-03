@@ -17,6 +17,7 @@ class SettingController extends Controller
     /** MENU SECTIONS */
     const MENU_SYSTEM = 'system';
     const MENU_ENUM_TYPES = 'enum_types';
+    const MENU_SCHEDULER = "scheduler";
 
     /**
      * System settings
@@ -198,6 +199,114 @@ class SettingController extends Controller
         $this->view = 'settings/system';
     }
 
+    public function scheduler()
+    {
+        $forge = new Forge('Scheduler');
+
+        $forge->add(Configs::S_ACTIVE)
+            ->title('Scheduler enabled')
+            ->type('checkbox')
+            ->value(1)
+            ->checked($this->config->get(Configs::S_ACTIVE));
+
+        $forge->add(Configs::S_DELETE_EMPTY_SUBSTANCES)
+            ->title('Autodelete empty substances')
+            ->type('checkbox')
+            ->value(1)
+            ->value($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES));
+
+        $forge->add(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)
+            ->title('Runtime of previous setting')
+            ->value($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME));
+
+        $forge->add(Configs::S_VALIDATE_PASSIVE_INT)
+            ->type('checkbox')
+            ->value(1)
+            ->title('Autovalidate passive interactions')
+            ->value($this->config->get(Configs::S_VALIDATE_PASSIVE_INT));
+
+        $forge->add(Configs::S_VALIDATE_PASSIVE_INT_TIME)
+            ->title('Runtime of previous setting')
+            ->value($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME));
+
+        $forge->add(Configs::S_VALIDATE_ACTIVE_INT)
+            ->title('Autovalidate active interactions')
+            ->type('checkbox')
+            ->value(1)
+            ->value($this->config->get(Configs::S_VALIDATE_ACTIVE_INT));
+
+        $forge->add(Configs::S_VALIDATE_ACTIVE_INT_TIME)
+            ->title('Runtime of previous setting')
+            ->value($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME));
+
+        $forge->add(Configs::S_VALIDATE_SUBSTANCES)
+            ->title('Autovalidate substances')
+            ->type('checkbox')
+            ->value(1)
+            ->value($this->config->get(Configs::S_VALIDATE_SUBSTANCES));
+
+        $forge->add(Configs::S_VALIDATE_SUBSTANCES_TIME)
+            ->title('Runtime of previous setting')
+            ->value($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME));
+
+        $forge->add(Configs::S_UPDATE_STATS)
+            ->title('Update statistics')
+            ->type('checkbox')
+            ->value(1)
+            ->value($this->config->get(Configs::S_UPDATE_STATS));
+
+        $forge->add(Configs::S_UPDATE_STATS_TIME)
+            ->title('Runtime of previous setting')
+            ->value($this->config->get(Configs::S_UPDATE_STATS_TIME));
+
+        $forge->add(Configs::S_CHECK_PUBLICATIONS)
+            ->title('Validate publications')
+            ->type('checkbox')
+            ->value(1)
+            ->value($this->config->get(Configs::S_CHECK_PUBLICATIONS));
+
+        $forge->add(Configs::S_CHECK_PUBLICATIONS_TIME)
+            ->title('Runtime of previous setting')
+            ->value($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME));
+
+        $forge->add(Configs::S_CHECK_MEMBRANES_METHODS)
+            ->title('Validate membranes/methods')
+            ->type('checkbox')
+            ->value(1)
+            ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS));
+
+        $forge->add(Configs::S_CHECK_MEMBRANES_METHODS_TIME)
+            ->title('Runtime of previous setting')
+            ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME));
+
+        $forge->add(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES)
+            ->title('Revalidate 3D structures')
+            ->type('checkbox')
+            ->value(1)
+            ->value($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES));
+
+        $forge->add(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID)
+            ->title('Starting ID for validations')
+            ->value($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID));
+
+        $forge->submit('Save');
+
+        $forge->init_post();
+
+        if($this->form->is_post())
+        {
+            foreach($_POST as $key => $val)
+            {
+                $this->config->set($key, $val);
+            }
+        }
+
+        $this->data['forge'] = $forge->form();
+
+        $this->header['title'] = 'Scheduler';
+        $this->view = 'settings/scheduler';
+    }
+
     /**
      * Enum type settings
      * 
@@ -241,6 +350,13 @@ class SettingController extends Controller
                 'name' => 'Enum types',
                 'glyphicon' => 'folder-open',
                 'ref' => self::MENU_ENUM_TYPES
+            ),
+            array
+            (
+                'type'  => self::MENU_SCHEDULER,
+                'name' => 'Scheduler',
+                'glyphicon' => 'time',
+                'ref' => self::MENU_SCHEDULER
             ),
         );
 

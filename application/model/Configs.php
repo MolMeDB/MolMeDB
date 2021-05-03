@@ -27,6 +27,23 @@ class Configs extends Db
     const S_DUPL_CHECK = 'scheduler_duplicity_check';  
     const S_FILL_MISSING_RDKIT = 'scheduler_fill_missing_rdkit';  
     const S_FILL_MISSING_REMOTE = 'scheduler_fill_missing_remote';  
+    const S_DELETE_EMPTY_SUBSTANCES = 'scheduler_delete_empty_substances';
+    const S_DELETE_EMPTY_SUBSTANCES_TIME = 'scheduler_delete_empty_substances_TIME';
+    const S_VALIDATE_PASSIVE_INT = 'scheduler_VALIDATE_PASSIVE_INT';
+    const S_VALIDATE_PASSIVE_INT_TIME = 'scheduler_VALIDATE_PASSIVE_INT_TIME';
+    const S_VALIDATE_ACTIVE_INT = 'scheduler_VALIDATE_ACTIVE_INT';
+    const S_VALIDATE_ACTIVE_INT_TIME = 'scheduler_VALIDATE_ACTIVE_INT_TIME';
+    const S_VALIDATE_SUBSTANCES = 'scheduler_validate_substances';
+    const S_VALIDATE_SUBSTANCES_TIME = 'scheduler_validate_substances_time';
+    const S_UPDATE_STATS = 'scheduler_update_stats';
+    const S_UPDATE_STATS_TIME = 'scheduler_update_stats_time';
+    const S_CHECK_PUBLICATIONS = 'scheduler_check_publications';
+    const S_CHECK_PUBLICATIONS_TIME = 'scheduler_check_publications_time';
+    const S_CHECK_MEMBRANES_METHODS = 'scheduler_check_membranes_methods';
+    const S_CHECK_MEMBRANES_METHODS_TIME = 'scheduler_check_membranes_methods_time';
+    const S_CHECK_REVALIDATE_3D_STRUCTURES = 'scheduler_revalidate_3d_structures';
+    const S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID = 'scheduler_revalidate_3d_structures_last_id';
+    const S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING = 'scheduler_revalidate_3d_structures_is_running';
 
     // Email attributes
     const EMAIL_ENABLED = "email_enabled";
@@ -56,6 +73,23 @@ class Configs extends Db
         self::S_DUPL_CHECK,
         self::S_FILL_MISSING_RDKIT,
         self::S_FILL_MISSING_REMOTE,
+        self::S_DELETE_EMPTY_SUBSTANCES,
+        self::S_DELETE_EMPTY_SUBSTANCES_TIME,
+        self::S_VALIDATE_PASSIVE_INT,
+        self::S_VALIDATE_PASSIVE_INT_TIME,
+        self::S_VALIDATE_ACTIVE_INT,
+        self::S_VALIDATE_ACTIVE_INT_TIME,
+        self::S_VALIDATE_SUBSTANCES,
+        self::S_VALIDATE_SUBSTANCES_TIME,
+        self::S_UPDATE_STATS,
+        self::S_UPDATE_STATS_TIME,
+        self::S_CHECK_PUBLICATIONS,
+        self::S_CHECK_PUBLICATIONS_TIME,
+        self::S_CHECK_MEMBRANES_METHODS,
+        self::S_CHECK_MEMBRANES_METHODS_TIME,
+        self::S_CHECK_REVALIDATE_3D_STRUCTURES,
+        self::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID,
+        self::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING,
         self::EMAIL_ENABLED,
         self::EMAIL,
         self::EMAIL_SERVER_USERNAME,

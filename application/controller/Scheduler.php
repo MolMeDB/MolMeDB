@@ -31,6 +31,59 @@ class SchedulerController extends Controller
         'revalidate_3d_structures'
     );
 
+
+    /**
+     * Checks time
+     * 
+     * @param string $time
+     * 
+     * @return boolean
+     */
+    public function check_time($time)
+    {
+        if(!$this->time)
+        {
+            $this->time = new Time();
+        }
+
+        $times = explode('|', $time);
+
+        foreach($times as $time)
+        {
+            if(!$time || strpos($time, ":") === FALSE)
+            {
+                continue;
+            }
+
+            $time = explode(':', $time);
+            $h = $time[0];
+            $m = $time[1];
+
+            if(!is_numeric($h) && !is_numeric($m))
+            {
+                return TRUE;
+            }
+
+            $h = intval($h);
+            $m = intval($m);
+
+            if(!is_numeric($h))
+            {
+                return $this->time->is_minute($m);
+            }
+
+            if(!is_numeric($m))
+            {
+                return $this->time->is_hour($h);
+            }
+
+            return $this->time->is_minute($m) && $this->time->is_hour($h);
+        }
+
+        return FALSE;
+    }
+
+
     /**
      * Main scheduler funtion
      * 
@@ -51,12 +104,17 @@ class SchedulerController extends Controller
             }
 
             // Send all unsent emails
-            $this->send_emails();
-            echo "Emails sent. \n";
+            if($this->config->get(Configs::EMAIL_ENABLED))
+            {
+                $this->send_emails();
+                echo "Emails sent. \n";
+            }
 
             // Delete substances without interactions
             // 19:01
-            if($this->debug_DES || ($time->is_minute(1) && $time->is_hour(19)))
+            if($this->debug_DES || 
+                ($this->check_time($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)) && 
+                $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
             {
                 echo "Deleting empty substances. \n";
                 $this->delete_empty_substances();
@@ -64,7 +122,9 @@ class SchedulerController extends Controller
 
             // Checks interactions datasets
             // 20:01
-            if($this->debug_CID || ($time->is_hour(20) && $time->is_minute(1)))
+            if($this->debug_CID || 
+                ($this->check_time($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME)) && 
+                $this->config->get(Configs::S_VALIDATE_PASSIVE_INT)))
             {
                 echo "Checking interaction datasets.\n";
                 $this->check_interaction_datasets();
@@ -72,7 +132,9 @@ class SchedulerController extends Controller
 
             // Checks transporter datasets - NOW INACTIVATED
             // 20:10
-            if($this->debug_CTD || (FALSE && $time->is_hour(20) && $time->is_minute(10)))
+            if($this->debug_CTD ||
+                ($this->check_time($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME)) && 
+                $this->config->get(Configs::S_VALIDATE_ACTIVE_INT)))
             {
                 $this->check_transporter_datasets();
                 echo "Transporter datasets checked.\n";
@@ -80,7 +142,9 @@ class SchedulerController extends Controller
 
             // ---- Molecules data autofill ---- //
             // 21:01 - 05:01
-            if($this->debug_FMD || ($time->is_minute(1) && ($time->get_hour() > 20 || $time->get_hour() < 6))) // Run only once per hour and only at night
+            if($this->debug_FMD || 
+                ($this->check_time($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME)) && 
+                $this->config->get(Configs::S_VALIDATE_SUBSTANCES))) // Run only once per hour and only at night
             {
                 echo "Subtance validations is running. \n";
                 $this->substance_autofill_missing_data($time->get_hour() % 2);
@@ -88,7 +152,8 @@ class SchedulerController extends Controller
 
             // Once per day, update stats data
             // 01:30
-            if($time->is_hour(1) && $time->is_minute(30))
+            if(($this->check_time($this->config->get(Configs::S_UPDATE_STATS_TIME)) && 
+                $this->config->get(Configs::S_UPDATE_STATS)))
             {
                 echo "Updating stats data. \n";
                 $this->update_stats();
@@ -96,7 +161,8 @@ class SchedulerController extends Controller
 
             // Once per day, update stats data
             // 01:35
-            if($time->is_hour(1) && $time->is_minute(35))
+            if(($this->check_time($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME)) && 
+                $this->config->get(Configs::S_CHECK_PUBLICATIONS)))
             {
                 echo "Updating publications data. \n";
                 $this->update_publications();
@@ -106,10 +172,19 @@ class SchedulerController extends Controller
 
             // Delete empty membranes and methods
             // 02:30
-            if($time->is_hour(2) && $time->is_minute(30))
+            if(($this->check_time($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME)) && 
+                $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
             {
                 echo "Deleting epmpty membranes/methods. \n";
                 $this->delete_empty_membranes_methods();
+            }
+
+            // Delete empty membranes and methods
+            // 02:30
+            if($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES))
+            {
+                echo "Revalidating 3D structures. \n";
+                $this->revalidate_3d_structures();
             }
 
             // Once per day, try to find identifiers
@@ -1374,7 +1449,21 @@ class SchedulerController extends Controller
         $subst_model = new Substances();
         $file_model = new File();
 
-        $substance_ids = $subst_model->test($offset, $limit);
+        if($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING))
+        {
+            return;
+        }
+
+        $last_id = $this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID);
+
+        if(!$last_id)
+        {
+            $last_id = 1;
+        }
+
+        $substance_ids = $subst_model->test($last_id);
+
+        $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING, 1);
 
         echo "Validating total " . count($substance_ids) . " structures. \n";
 
@@ -1394,6 +1483,8 @@ class SchedulerController extends Controller
                 echo "Validated " . $s->identifier . ". \n";
             }
         }
+
+        $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING, 0);
 
         echo "Validation done. \n";
     }

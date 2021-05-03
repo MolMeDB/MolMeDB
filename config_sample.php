@@ -1,10 +1,10 @@
 <?php
 
 // DB login info
-define("dbURL", "localhost");
+define("dbURL", "database");
 define("dbName", "molmedb");
-define("dbUser", "root");
-define("dbPassword", "password");
+define("dbUser", "molmedb");
+define("dbPassword", "molmedb");
 
 // SERVER VALUES 
 define("URL", $_SERVER['HTTP_HOST']);

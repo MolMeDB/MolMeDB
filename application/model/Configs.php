@@ -29,8 +29,8 @@ class Configs extends Db
     const S_FILL_MISSING_REMOTE = 'scheduler_fill_missing_remote';  
     const S_DELETE_EMPTY_SUBSTANCES = 'scheduler_delete_empty_substances';
     const S_DELETE_EMPTY_SUBSTANCES_TIME = 'scheduler_delete_empty_substances_TIME';
-    const S_VALIDATE_PASSIVE_INT = 'scheduler_VALIDATE_PASSIVE_INT';
-    const S_VALIDATE_PASSIVE_INT_TIME = 'scheduler_VALIDATE_PASSIVE_INT_TIME';
+    const S_VALIDATE_PASSIVE_INT = 'scheduler_validate_passive_int';
+    const S_VALIDATE_PASSIVE_INT_TIME = 'scheduler_validate_passive_int_TIME';
     const S_VALIDATE_ACTIVE_INT = 'scheduler_VALIDATE_ACTIVE_INT';
     const S_VALIDATE_ACTIVE_INT_TIME = 'scheduler_VALIDATE_ACTIVE_INT_TIME';
     const S_VALIDATE_SUBSTANCES = 'scheduler_validate_substances';

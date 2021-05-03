@@ -28,7 +28,7 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run',
-        'revalidate_3d_structures'
+        // 'revalidate_3d_structures'
     );
 
 
@@ -55,29 +55,51 @@ class SchedulerController extends Controller
                 continue;
             }
 
+            $time = trim($time);
+
             $time = explode(':', $time);
             $h = $time[0];
             $m = $time[1];
 
             if(!is_numeric($h) && !is_numeric($m))
             {
-                return TRUE;
+                if(strtolower($h) == 'xx' && strtolower($m) == 'xx')
+                {
+                    return true;
+                };
+
+                continue;
             }
-
-            $h = intval($h);
-            $m = intval($m);
-
+            
             if(!is_numeric($h))
             {
-                return $this->time->is_minute($m);
+                $m = intval($m);
+                if($this->time->is_minute($m))
+                {
+                    return true;
+                }
+
+                continue;
             }
 
             if(!is_numeric($m))
             {
-                return $this->time->is_hour($h);
+                $h = intval($h);
+                if($this->time->is_hour($h))
+                {
+                    return true;
+                }
+
+                continue;
             }
 
-            return $this->time->is_minute($m) && $this->time->is_hour($h);
+            $m = intval($m);
+            $h = intval($h);
+
+            if($this->time->is_minute($m) && $this->time->is_hour($h))
+            {
+                return TRUE;
+            }
         }
 
         return FALSE;
@@ -94,7 +116,7 @@ class SchedulerController extends Controller
         $time = $this->time = new Time();
 
         echo '--- RUN ' . $time->get_string() . " ---\n";
-        
+
         try
         {
             if(!$this->config->get(Configs::S_ACTIVE))
@@ -111,7 +133,6 @@ class SchedulerController extends Controller
             }
 
             // Delete substances without interactions
-            // 19:01
             if($this->debug_DES || 
                 ($this->check_time($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)) && 
                 $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
@@ -121,7 +142,6 @@ class SchedulerController extends Controller
             }
 
             // Checks interactions datasets
-            // 20:01
             if($this->debug_CID || 
                 ($this->check_time($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME)) && 
                 $this->config->get(Configs::S_VALIDATE_PASSIVE_INT)))
@@ -131,7 +151,6 @@ class SchedulerController extends Controller
             }
 
             // Checks transporter datasets - NOW INACTIVATED
-            // 20:10
             if($this->debug_CTD ||
                 ($this->check_time($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME)) && 
                 $this->config->get(Configs::S_VALIDATE_ACTIVE_INT)))
@@ -141,7 +160,6 @@ class SchedulerController extends Controller
             }
 
             // ---- Molecules data autofill ---- //
-            // 21:01 - 05:01
             if($this->debug_FMD || 
                 ($this->check_time($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME)) && 
                 $this->config->get(Configs::S_VALIDATE_SUBSTANCES))) // Run only once per hour and only at night
@@ -151,7 +169,6 @@ class SchedulerController extends Controller
             }
 
             // Once per day, update stats data
-            // 01:30
             if(($this->check_time($this->config->get(Configs::S_UPDATE_STATS_TIME)) && 
                 $this->config->get(Configs::S_UPDATE_STATS)))
             {
@@ -160,7 +177,6 @@ class SchedulerController extends Controller
             }
 
             // Once per day, update stats data
-            // 01:35
             if(($this->check_time($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME)) && 
                 $this->config->get(Configs::S_CHECK_PUBLICATIONS)))
             {
@@ -171,16 +187,14 @@ class SchedulerController extends Controller
             }
 
             // Delete empty membranes and methods
-            // 02:30
             if(($this->check_time($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME)) && 
                 $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
             {
-                echo "Deleting epmpty membranes/methods. \n";
+                echo "Deleting empty membranes/methods. \n";
                 $this->delete_empty_membranes_methods();
             }
 
-            // Delete empty membranes and methods
-            // 02:30
+            // Revalidate 3D structures
             if($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES))
             {
                 echo "Revalidating 3D structures. \n";
@@ -188,7 +202,6 @@ class SchedulerController extends Controller
             }
 
             // Once per day, try to find identifiers
-            // 05:01
             if($this->debug_FMD || ($time->is_minute(1) && $time->is_hour(5))) // Run only once per hour and only at night
             {
                 echo "`Filling missing identifiers` is running. \n";
@@ -1444,13 +1457,15 @@ class SchedulerController extends Controller
      * @param int $start_id
      * 
      */
-    public function revalidate_3d_structures($offset = 0, $limit = 1000)
+    private function revalidate_3d_structures()
     {
         $subst_model = new Substances();
         $file_model = new File();
+        $last_validation_time = $this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING);
 
-        if($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING))
+        if($last_validation_time && $last_validation_time > strtotime('-4 hour'))
         {
+            echo "Validation in progress. Skipping. \n";
             return;
         }
 
@@ -1458,12 +1473,13 @@ class SchedulerController extends Controller
 
         if(!$last_id)
         {
-            $last_id = 1;
+            $last_id = 0;
         }
 
-        $substance_ids = $subst_model->test($last_id);
+        # MAX validate 2000 substanes in one run
+        $substance_ids = $subst_model->where('id >=', $last_id)->order_by('id', 'ASC')->limit(1000)->get_all();
 
-        $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING, 1);
+        $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING, strtotime('now'));
 
         echo "Validating total " . count($substance_ids) . " structures. \n";
 
@@ -1482,6 +1498,8 @@ class SchedulerController extends Controller
 
                 echo "Validated " . $s->identifier . ". \n";
             }
+
+            $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID, $s->id);
         }
 
         $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING, 0);

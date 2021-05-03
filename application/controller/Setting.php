@@ -199,9 +199,27 @@ class SettingController extends Controller
         $this->view = 'settings/system';
     }
 
+    /**
+     * Scheduler settings
+     * 
+     * @author Jakub Juracka
+     */
     public function scheduler()
     {
-        $forge = new Forge('Scheduler');
+        $checkboxes = array
+        (
+            Configs::S_ACTIVE,
+            Configs::S_DELETE_EMPTY_SUBSTANCES,
+            Configs::S_VALIDATE_PASSIVE_INT,
+            Configs::S_VALIDATE_ACTIVE_INT,
+            Configs::S_VALIDATE_SUBSTANCES,
+            Configs::S_UPDATE_STATS,
+            Configs::S_CHECK_PUBLICATIONS,
+            Configs::S_CHECK_MEMBRANES_METHODS,
+            Configs::S_CHECK_REVALIDATE_3D_STRUCTURES
+        );
+
+        $forge = new Forge('Settings');
 
         $forge->add(Configs::S_ACTIVE)
             ->title('Scheduler enabled')
@@ -213,80 +231,80 @@ class SettingController extends Controller
             ->title('Autodelete empty substances')
             ->type('checkbox')
             ->value(1)
-            ->value($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES));
+            ->checked($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES));
 
         $forge->add(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)
-            ->title('Runtime of previous setting')
+            ->title('Runtime')
             ->value($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME));
 
         $forge->add(Configs::S_VALIDATE_PASSIVE_INT)
             ->type('checkbox')
             ->value(1)
             ->title('Autovalidate passive interactions')
-            ->value($this->config->get(Configs::S_VALIDATE_PASSIVE_INT));
+            ->checked($this->config->get(Configs::S_VALIDATE_PASSIVE_INT));
 
         $forge->add(Configs::S_VALIDATE_PASSIVE_INT_TIME)
-            ->title('Runtime of previous setting')
+            ->title('Runtime')
             ->value($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME));
 
         $forge->add(Configs::S_VALIDATE_ACTIVE_INT)
             ->title('Autovalidate active interactions')
             ->type('checkbox')
             ->value(1)
-            ->value($this->config->get(Configs::S_VALIDATE_ACTIVE_INT));
+            ->checked($this->config->get(Configs::S_VALIDATE_ACTIVE_INT));
 
         $forge->add(Configs::S_VALIDATE_ACTIVE_INT_TIME)
-            ->title('Runtime of previous setting')
+            ->title('Runtime')
             ->value($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME));
 
         $forge->add(Configs::S_VALIDATE_SUBSTANCES)
             ->title('Autovalidate substances')
             ->type('checkbox')
             ->value(1)
-            ->value($this->config->get(Configs::S_VALIDATE_SUBSTANCES));
+            ->checked($this->config->get(Configs::S_VALIDATE_SUBSTANCES));
 
         $forge->add(Configs::S_VALIDATE_SUBSTANCES_TIME)
-            ->title('Runtime of previous setting')
+            ->title('Runtime')
             ->value($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME));
 
         $forge->add(Configs::S_UPDATE_STATS)
             ->title('Update statistics')
             ->type('checkbox')
             ->value(1)
-            ->value($this->config->get(Configs::S_UPDATE_STATS));
+            ->checked($this->config->get(Configs::S_UPDATE_STATS));
 
         $forge->add(Configs::S_UPDATE_STATS_TIME)
-            ->title('Runtime of previous setting')
+            ->title('Runtime')
             ->value($this->config->get(Configs::S_UPDATE_STATS_TIME));
 
         $forge->add(Configs::S_CHECK_PUBLICATIONS)
             ->title('Validate publications')
             ->type('checkbox')
             ->value(1)
-            ->value($this->config->get(Configs::S_CHECK_PUBLICATIONS));
+            ->checked($this->config->get(Configs::S_CHECK_PUBLICATIONS));
 
         $forge->add(Configs::S_CHECK_PUBLICATIONS_TIME)
-            ->title('Runtime of previous setting')
+            ->title('Runtime')
             ->value($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME));
 
         $forge->add(Configs::S_CHECK_MEMBRANES_METHODS)
             ->title('Validate membranes/methods')
             ->type('checkbox')
             ->value(1)
-            ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS));
+            ->checked($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS));
 
         $forge->add(Configs::S_CHECK_MEMBRANES_METHODS_TIME)
-            ->title('Runtime of previous setting')
+            ->title('Runtime')
             ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME));
 
         $forge->add(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES)
             ->title('Revalidate 3D structures')
             ->type('checkbox')
             ->value(1)
-            ->value($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES));
+            ->checked($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES));
 
         $forge->add(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID)
-            ->title('Starting ID for validations')
+            ->title('Starting ID for the next validation')
             ->value($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID));
 
         $forge->submit('Save');
@@ -295,14 +313,29 @@ class SettingController extends Controller
 
         if($this->form->is_post())
         {
-            foreach($_POST as $key => $val)
+            try
             {
-                $this->config->set($key, $val);
+                foreach($_POST as $key => $val)
+                {
+                    $this->config->set($key, $val);
+                }
+
+                foreach($checkboxes as $attr)
+                {
+                    $this->config->set($attr, $this->form->param->$attr ? 1 : 0);
+                }
+
+                $this->alert->success('Saved.');
+            }
+            catch(Exception $e)
+            {
+                $this->alert->error($e->getMessage());
             }
         }
 
         $this->data['forge'] = $forge->form();
 
+        $this->data['navigator'] = self::createNavigator(self::MENU_SCHEDULER);
         $this->header['title'] = 'Scheduler';
         $this->view = 'settings/scheduler';
     }

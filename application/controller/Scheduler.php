@@ -1452,7 +1452,7 @@ class SchedulerController extends Controller
     }
 
     /**
-     * Redownloads all 3D structures of molecules from given ID
+     * Redownloads all 3D structures of molecules 
      * 
      * @param int $start_id
      * 
@@ -1476,7 +1476,7 @@ class SchedulerController extends Controller
             $last_id = 0;
         }
 
-        # MAX validate 2000 substanes in one run
+        # MAX validate 1000 substanes in one run
         $substance_ids = $subst_model->where('id >=', $last_id)->order_by('id', 'ASC')->limit(1000)->get_all();
 
         $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING, strtotime('now'));

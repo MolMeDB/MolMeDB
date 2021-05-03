@@ -41,6 +41,46 @@ class Substances extends Db
         $this->table = 'substances';
         parent::__construct($id);
     }    
+
+    public function test($from_id)
+    {
+        $pubchem = new Pubchem();
+
+        $pubchem_method = $pubchem->get_logP_method();
+        $pubchem_membrane = $pubchem->get_logP_membrane();
+
+        ///// INTERSECTION
+
+        // return $this->queryAll('
+            // SELECT DISTINCT tab.id
+            // FROM 
+            // (
+            //     SELECT s.id, MAX(i.id) iid, MAX(t.id) tid
+            //     FROM substances s 
+            //     LEFT JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ?
+            //     LEFT JOIN transporters t ON t.id_substance = s.id
+            //     GROUP BY s.id
+            // ) as tab
+            // WHERE tab.iid IS NOT NULL AND tab.tid IS NOT NULL
+            // ORDER BY tab.id ASC
+        //     LIMIT ?,?
+        // ',array($pubchem_membrane->id, $pubchem_method->id, $offset, $limit));
+        
+        return $this->queryAll('
+            SELECT DISTINCT tab.id
+            FROM 
+            (
+                SELECT s.id, MAX(i.id) iid, MAX(t.id) tid
+                FROM substances s 
+                LEFT JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ?
+                JOIN transporters t ON t.id_substance = s.id
+                GROUP BY s.id
+            ) as tab
+            WHERE tab.iid IS NULL AND tab.tid IS NOT NULL AND tab.id > ?
+            ORDER BY id ASC
+            LIMIT 1000
+        ',array($pubchem_membrane->id, $pubchem_method->id, $from_id));
+    }
     
     /**
      * Loads whisper detail to search engine

@@ -1,0 +1,26 @@
+version: '3'
+services:
+  app:
+    build: .
+    container_name: php-app
+    working_dir: /var/www/html/
+    volumes:
+        - ./:/var/www/html
+    ports:
+        - "1515:80"
+  database:
+    image: mysql:5.7
+    ports:
+      - "3406:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: molmedb
+      MYSQL_USER: molmedb
+      MYSQL_PASSWORD: molmedb
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "1516:80"
+    environment:
+      PMA_HOST: database
+      UPLOAD_LIMIT: 3000000000

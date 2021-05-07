@@ -177,7 +177,7 @@ class Substances extends Db
             SELECT COUNT(*) as count 
             FROM
             (
-                SELECT DISTINCT s.id
+                SELECT DISTINCT s.id, s.name
                 FROM (
                     SELECT id
                     FROM substances s
@@ -205,7 +205,7 @@ class Substances extends Db
     public function search($query, $pagination = 1)
 	{
         $query = '%' . $query . '%';
-        
+
         $result = $this->queryAll('
             SELECT DISTINCT s.`name`, identifier, a.name as altername, s.`id`, `SMILES`, `MW`, `pubchem`, `drugbank`, `chEBI`, `pdb`, `chEMBL` 
             FROM (

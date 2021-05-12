@@ -1496,7 +1496,7 @@ class SchedulerController extends Controller
 
                 $s->save();
 
-                echo "Validated " . $s->identifier . ". \n";
+                // echo "Validated " . $s->identifier . ". \n";
             }
 
             $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID, $s->id);

@@ -181,7 +181,7 @@ class Rdkit
 
         try
         {
-            $response = $this->client->request($uri, $method, $params);
+            $response = $this->client->request($uri, $method, $params, false, 6*60);
 
             if(!empty($response) && isset($response[0]) && $response[0] != '')
             {
@@ -196,5 +196,43 @@ class Rdkit
         }
     }
 
+    
+    /**
+     * For given SMILES returns SDF content (2D structure)
+     * 
+     * @param Substances $substance
+     * 
+     * @return $string
+     */
+    public function get_2d_structure($substance)
+    {
+        if(!$this->STATUS || !$substance->SMILES)
+        {
+            return NULL;
+        }
+
+        $uri = '2dstructure/generate';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'smi' => $substance->SMILES
+        );
+
+        try
+        {
+            $response = $this->client->request($uri, $method, $params);
+
+            if(!empty($response) && isset($response[0]) && $response[0] != '')
+            {
+                return $response[0];
+            }
+
+            return NULL;
+        }
+        catch(Exception $e)
+        {
+            return NULL;
+        }
+    }
 
 }

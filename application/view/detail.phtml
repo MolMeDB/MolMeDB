@@ -35,7 +35,8 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><b>Identifier</b></td>
+                                    <td>
+                                        <b>Identifier</b></td>
                                     <td><?= $substance->identifier ?>
                                 </tr>
                                 <tr>
@@ -157,16 +158,65 @@
                    <div class="detail-content" id="transporterTab">
                        <table>
                             <thead class="thead-detail">
-                                <td><b>Target</b></td>
-                                <td>Uniprot ID</td>
-                                <td>Type</td>
-                                <td>pKm</td>
-                                <td>pEC<sub>50</sub></td>
-                                <td>pK<sub>i</sub></td>
-                                <td>pIC<sub>50</sub></td>
-                                <td>Primary<br/>reference</td>
-                                <td>Secondary<br/>reference</td>
-                                <td>Note</td>
+                                <tr>
+                                <td class="detail-th" style="cursor: help;">
+                                    <p><b>Target</b></p>
+                                    <div class="th-descriptor">
+                                        Target protein
+                                    </div>
+                                </td>
+                                <td class="detail-th" style="cursor: help;">
+                                    <p>Uniprot ID</p>
+                                        <div class="th-descriptor">
+                                            Link to Uniprot databse
+                                        </div>
+                                </td>
+                                <td class="detail-th" style="cursor: help;">
+                                        <p>Type</p>
+                                        <div class="th-descriptor">
+                                            Type of interaction (non-)inhibitor | (non-)substrate
+                                        </div>
+                                </td>
+                                <td class="detail-th" style="cursor: help;">
+                                    <p>pKm</p>
+                                        <div class="th-descriptor">
+                                            Negative logarithm of Michaelis constant
+                                        </div>
+                                </td>
+                                <td class="detail-th" style="cursor: help;">
+                                <p>pEC<sub>50</sub></p>
+                                        <div class="th-descriptor">
+                                            Negative logarithm of effective concentration
+                                        </div>
+                                </td>
+                                <td class="detail-th" style="cursor: help;">
+                                <p>pK<sub>i</sub></p>
+                                        <div class="th-descriptor">
+                                            Negative logarithm of inhibition constant
+                                        </div>
+                                </td>
+                                <td class="detail-th" style="cursor: help;">
+                                <p>pIC<sub>50</sub></p>
+                                        <div class="th-descriptor">
+                                            Negative logarithm of inhibition concentration
+                                        </div>
+                                </td>
+                                <td class="detail-th" style="cursor: help;">
+                                <p>Primary<br/>reference</p>
+                                        <div class="th-descriptor">
+                                            Original source
+                                        </div>
+                                </td>
+                                <td class="detail-th" style="cursor: help;">
+                                <p>Secondary<br/>reference</p>
+                                        <div class="th-descriptor">
+                                            Source of input into databse if different from original
+                                        </div>
+                                </td>
+                                <td class="detail-th">
+                                    <p> Note</p>
+                                </td>
+                                </tr>
                             </thead>
                             <tbody>
                                 <?php foreach($transporters as $k => $t) : ?>

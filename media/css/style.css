@@ -324,6 +324,33 @@ div.table-detail td {
     background-color: #f5f5f5;
 }
 
+.thead-detail td.detail-th{
+    position: relative;
+}
+
+.thead-detail div.th-descriptor {
+    font-size: 11px;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    position: absolute;
+    display: none;
+    bottom: -20px;
+    left: 50%;
+    padding: 5px;
+    background: #555;
+    color: white;
+    min-width: 200px;
+    max-width: 250px;
+    z-index: 10;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+.thead-detail>tr *:hover div.th-descriptor{
+    display: block;
+}
+
 thead.thead-detail td.first-td, td.first-td{background-color: #e8e8e8}
 
 tr.last-row td {border: 0px solid #fff;}

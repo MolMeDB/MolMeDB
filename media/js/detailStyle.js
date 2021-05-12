@@ -139,22 +139,64 @@ function loadTable(id)
     var thead = document.createElement("thead");
     var tbody = document.createElement("tbody");
     thead.setAttribute("class", "thead-detail");
-    var attributes = ["Membrane", "Method", "Q", 'T <br/><label class="units">[°C]</label>', 'X<sub>min</sub> <br/><label class="units">[nm]</label>', 
-                      '&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>', '&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', 
-                      'LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub></label>]', 'LogPerm <br/><label class="units">[cm/s]</label>', 
-                      'Theta<br/><label class="units">[°]</label>','Abs_wl<br/><label class="units">[nm]</label>', 'Fluo_wl<br/><label class="units">[nm]</label>',
-                      'QY<br/><label class="units"></label>', 'lt<br/><label class="units">[ns]</label>', "Note", 'Primary<br/> reference', 'Secondary<br/> reference'];
+
+    var headtr = document.createElement("tr");
+
+    var attributes = {
+        membrane: "Membrane", 
+        method: "Method", 
+        charge: "Q", 
+        temperature: 'T <br/><label class="units">[°C]</label>',
+        x_min: 'X<sub>min</sub> <br/><label class="units">[nm]</label>',
+        g_pen: '&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>',
+        g_wat: '&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', 
+        logk: 'LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub></label>]', 
+        logperm: 'LogPerm <br/><label class="units">[cm/s]</label>', 
+        theta: 'Theta<br/><label class="units">[°]</label>',
+        abs_wl: 'Abs_wl<br/><label class="units">[nm]</label>', 
+        fluo_wl: 'Fluo_wl<br/><label class="units">[nm]</label>',
+        qy: 'QY<br/><label class="units"></label>', 
+        lt: 'lt<br/><label class="units">[ns]</label>', 
+        note: "Note", 
+        primary_ref: 'Primary<br/> reference', 
+        secondary_ref: 'Secondary<br/> reference'
+    };
+
+    var descriptors = {
+        charge: "Charge",
+        temperature: "Temperature",
+        x_min: "Position of minima along the membrane normal from the membrane center",
+        g_pen: "Penetration barrier (maximum - minimum)",
+        g_wat: "A depth of minima within membrane",
+        logk: "Partition coefficient membrane/water",
+        logperm: "Permeability coefficient",
+        theta: "Contact angle in membrane",
+        abs_wl: "Peak absorption wavelenght",
+        fluo_wl: "Peak fluorescence wavelenght",
+        qy: "Quantum yield",
+        lt: "Fluorescence lifetime",
+        primary_ref: "Original source",
+        secondary_ref: "Source of input into databse if different from original"
+    }
     
     var methods = get_all_methods();
     var countMet = methods.length;
     var checked = [];
     
     // Make table header
-    for(var i=0; i<attributes.length; i++)
+    for(var key in attributes)
     {
         var td = document.createElement("td");
-        td.innerHTML = "<p><b>" + attributes[i] + "</b></p>";
-        thead.appendChild(td);
+        td.classList.add("detail-th");
+        td.innerHTML = "<p><b>" + attributes[key] + "</b></p>";
+
+        if(descriptors[key])
+        {
+            td.style.cursor = "help";
+            td.innerHTML += "<div class='th-descriptor'>" + descriptors[key] + "</div>";
+        }
+
+        headtr.appendChild(td);
     }
 
     // Get checked methods
@@ -255,7 +297,8 @@ function loadTable(id)
             tbody.appendChild(tr);
         }
     }
-    
+
+    thead.appendChild(headtr);
     table.appendChild(thead);
     table.appendChild(tbody);
     div.appendChild(table);

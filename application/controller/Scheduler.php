@@ -1477,7 +1477,7 @@ class SchedulerController extends Controller
         }
 
         # MAX validate 1000 substanes in one run
-        $substance_ids = $subst_model->where('id >=', $last_id)->order_by('id', 'ASC')->limit(1000)->get_all();
+        $substance_ids = $subst_model->where('id >=', $last_id)->order_by('id', 'ASC')->select_list("id")->limit(1000)->get_all();
 
         $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING, strtotime('now'));
 
@@ -1496,7 +1496,7 @@ class SchedulerController extends Controller
 
                 $s->save();
 
-                echo "Validated " . $s->identifier . ". \n";
+                // echo "Validated " . $s->identifier . ". \n";
             }
 
             $this->config->set(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID, $s->id);

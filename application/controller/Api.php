@@ -10,56 +10,8 @@ class ApiController extends Controller
     private $function;
     protected $user;
     protected $request_method;
-
-    /** RESPONSE CODES */
-    const CODE_OK = 200;
-    const CODE_OK_NO_CONTENT = 204;
-    const CODE_BAD_REQUEST = 400;
-    const CODE_UNAUTHORIZED = 401;
-    const CODE_FORBIDDEN = 403;
-    const CODE_NOT_FOUND = 404;
-
-    /** API ENDPOINTS */
-    const COMPARATOR = 'comparator';
-    const DETAIL = 'detail';
-    const EDITOR = 'editor';
-    const INTERACTIONS = 'interactions';
-    const MEMBRANES = 'membranes';
-    const METHODS   = 'methods';
-    const PUBLICATION = 'publications';
-    const S_ENGINE = 'searchEngine';
-    const SMILES = 'smiles';
-    const SETTINGS = 'settings';
-    const STATS = 'stats';
-    const UPLOADER = 'uploader';
-
-    // Valid endpoints
-    private $valid_endpoints = array
-    (
-        self::COMPARATOR,
-        self::DETAIL,
-        self::EDITOR,
-        self::INTERACTIONS,
-        self::MEMBRANES,
-        self::METHODS,
-        self::S_ENGINE,
-        self::SETTINGS,
-        self::SMILES,
-        self::STATS,
-        self::PUBLICATION,
-        self::UPLOADER,
-    );
-
-    /** REQUEST METHODS */
-    const METHOD_POST = 'POST';
-    const METHOD_GET = 'GET';
-
-    /** Now allowed just GET/POST requests */
-    private $valid_request_methods = array
-    (
-        self::METHOD_GET,
-        self::METHOD_POST
-    );
+    protected $parsed_request;
+    protected $endpoint_info;
 
     /**
      * Main constructor
@@ -67,28 +19,13 @@ class ApiController extends Controller
     function __construct($endPoint = NULL, $function = NULL)
     {
         parent::__construct();
+        //Parsing request header
+        $this->parsed_request = new HeaderParser();
+
+        $this->endpoint_info = new ApiEndpoint($endPoint, $function);
         
-        // If not valid entry
-        if(!$endPoint || !$function)
-        {
-            $this->answer(NULL, self::CODE_NOT_FOUND);
-        }
-
-        // Is endpoint valid?
-        if(!in_array($endPoint, $this->valid_endpoints))
-        {
-            $this->answer(NULL, self::CODE_NOT_FOUND);
-        }
-
         // Get request method
         $this->request_method = $_SERVER['REQUEST_METHOD'];
-
-        // Is request method valid?
-        if(!in_array($this->request_method, $this->valid_request_methods))
-        {
-            $this->answer(NULL, self::CODE_BAD_REQUEST);
-        }
-
         $this->endpoint = $endPoint;
         $this->function = $function;
     }

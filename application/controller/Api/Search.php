@@ -3,7 +3,7 @@
 /**
  * API HANDLER for search engine requests
  */
-class ApiSearchEngine extends ApiController
+class ApiSearch extends ApiController
 {    
     /** SEARCH TYPES */
     const T_COMPOUND = 'compounds';

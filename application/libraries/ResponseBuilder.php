@@ -13,13 +13,14 @@ class ResponseBuilder
     const CODE_UNAUTHORIZED = 401;
     const CODE_FORBIDDEN = 403;
     const CODE_NOT_FOUND = 404;
+    const CODE_SERVER_ERROR = 500;
 
     /**
      * Method for creating HTTP 400 response code and error message
      * 
      * @param string $err_text - OPTIONAL
      * 
-     * @author 
+     * @author Jaromír Hradil 
      */
     public static function bad_request($err_text = NULL)
     {
@@ -84,4 +85,20 @@ class ResponseBuilder
         die;
     } 
 
+    /**
+     * Method for creating HTTP 500 response code and error message
+     * 
+     * @param string $err_text - OPTIONAL
+     * 
+     * @author Jaromír Hradil
+     */
+    public static function server_error($err_text = NULL)
+    {
+        http_response_code(self::CODE_SERVER_ERROR);
+        if($err_text)
+        {
+            echo('500 Server error: Internal error occured');
+        }
+        die;
+    } 
 }

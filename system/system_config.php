@@ -192,7 +192,7 @@ class System_config
             require_once(APP_ROOT . "controller/" . $class . ".php");
         }
         else if (preg_match('/^Api/', $class) 
-            && file_exists(APP_ROOT . "controller/Api/" . $class . ".php"))
+            && file_exists(APP_ROOT . "controller/Api/" . substr($class, 3) . ".php"))
         {
             $class = str_replace('Api', '', $class);
             require_once(APP_ROOT . "controller/Api/" . $class . ".php");

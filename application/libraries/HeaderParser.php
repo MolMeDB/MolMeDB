@@ -1,6 +1,8 @@
 <?php
 /**
- * RequestParser class for request header parsing
+ * HeaderParser class for request header parsing
+ * 
+ * @author Jaromir Hradil
  */
 class HeaderParser
 {    
@@ -25,16 +27,18 @@ class HeaderParser
 
     /**
      * Allowed values in Accept header
+     * Order implicates prefered values
      */
     private $allowed_accept_types = array
-    (
-        '*/*', 
+    ( 
+        '*/*',
         'application/json', 
         'text/csv'
     );
 
     /**
      * Allowed values in Accept-Encoding header
+     * Order implicates prefered values
      */
     private $allowed_accept_encoding = array
     (
@@ -45,6 +49,7 @@ class HeaderParser
 
     /**
      * Allowed values in Accept-Charset header
+     * Order implicates prefered values
      */
     private $allowed_accept_charset = array
     (
@@ -53,6 +58,7 @@ class HeaderParser
 
     /**
      * Allowed values in Content-Type header
+     * Order implicates prefered values
      */
     private $allowed_content_type = array
     (
@@ -62,8 +68,6 @@ class HeaderParser
 
     //Public values for ResponseBuilder
     public $method_type = NULL;
-/*  public $endpoint = NULL;
-    public $function = NULL;*/
     public $accept_type = NULL;
     public $accept_encoding = NULL;
     public $accept_charset = NULL;
@@ -96,10 +100,6 @@ class HeaderParser
             ResponseBuilder::bad_request('Only allowed request methods are: POST, GET');    
         }
 
-/*      $this->method_type = $_SERVER['REQUEST_METHOD'];
-        $this->endpoint = $endPoint;
-        $this->function = $function;*/
-
         $this->accept_type = Server::http_accept();
 
         //Checking if valid accept content is used
@@ -111,15 +111,25 @@ class HeaderParser
         {
             $valid_accept_type = false;
 
+            $this->accept_type =  explode(',', $this->accept_type);
+
+            for($idx=0; $idx<count($this->accept_type); $idx++)
+            {
+                $this->accept_type[$idx] = trim($this->accept_type[$idx]);                
+            }
+
             foreach($this->allowed_accept_types as $accept_type_item)
             {
-                if(strpos($this->accept_type, $accept_type_item) !== false)
-                {
+                if(in_array($accept_type_item, $this->accept_type))
+                {             
                     if($accept_type_item == '*/*')
                     {
                         $this->accept_type = 'application/json';    
                     }
-        
+                    else
+                    {
+                        $this->accept_type = $accept_type_item; 
+                    }        
                     $valid_accept_type = true;                    
                     break;
                 }
@@ -143,11 +153,19 @@ class HeaderParser
         {
             $valid_encoding_type = false;
 
+            $this->accept_encoding =  explode(',', $this->accept_encoding);
+
+            for($idx=0; $idx<count($this->accept_encoding); $idx++)
+            {
+                $this->accept_encoding[$idx] = trim($this->accept_encoding[$idx]);                
+            }
+
             foreach($this->allowed_accept_encoding as $accept_encoding_item)
             {
-                if(strpos($this->accept_encoding, $accept_encoding_item) !== false)
+                if(in_array($accept_encoding_item, $this->accept_encoding))
                 {             
-                    $valid_encoding_type = true;                    
+                    $valid_encoding_type = true;
+                    $this->accept_encoding = $accept_encoding_item;         
                     break;
                 }
             }
@@ -167,13 +185,22 @@ class HeaderParser
         }
         else
         {
+            
             $valid_charset_type = false;
+
+            $this->accept_charset =  explode(',', $this->accept_charset);
+
+            for($idx=0; $idx<count($this->accept_charset); $idx++)
+            {
+                $this->accept_charset[$idx] = trim($this->accept_charset[$idx]);                
+            }
 
             foreach($this->allowed_accept_charset as $accept_charset_item)
             {
-                if(strpos($this->accept_charset, $accept_charset_item) !== false)
+                if(in_array($accept_charset_item, $this->accept_charset))
                 {             
-                    $valid_charset_type = true;                    
+                    $valid_charset_type = true;
+                    $this->accept_charset = $accept_charset_item;         
                     break;
                 }
             }
@@ -195,12 +222,19 @@ class HeaderParser
         else
         {
             $valid_content_type = false;
+            $this->content_type =  explode(',', $this->content_type);
+
+            for($idx=0; $idx<count($this->content_type); $idx++)
+            {
+                $this->content_type[$idx] = trim($this->content_type[$idx]);                
+            }
 
             foreach($this->allowed_content_type as $content_type_item)
             {
-                if(strpos($this->content_type, $content_type_item) !== false)
+                if(in_array($content_type_item, $this->content_type))
                 {             
-                    $valid_content_type = true;                    
+                    $valid_content_type = true;
+                    $this->content_type = $content_type_item;         
                     break;
                 }
             }
@@ -227,6 +261,5 @@ class HeaderParser
 
             $this->auth_token = $content[1];
         }
-
     } 
 }

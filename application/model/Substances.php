@@ -26,6 +26,7 @@
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
+ * @author Jakub Juracka
  */
 class Substances extends Db
 {
@@ -41,6 +42,63 @@ class Substances extends Db
         $this->table = 'substances';
         parent::__construct($id);
     }    
+
+    /**
+     * Returns info about fragmentation state of molecule
+     * 
+     * @return boolean|null
+     */
+    public function is_fragmented()
+    {
+        if(!$this)
+        {
+            return null;
+        }
+
+        $data = Validator::get_fragmentation_records($this);
+
+        if(!$data || !count($data))
+        {
+            return False;
+        }
+
+        // The newest record should be info about successful fragmentation
+        return $data[0]->type === Validator_state::TYPE_FRAGMENTED;
+    }
+
+    /**
+     * Returns true, if 3D Structure was already downloaded from given source
+     * 
+     * @param int $source - constants from Validator_state class
+     * 
+     * @return boolean
+     * 
+     */
+    public function had_structure_from_source($source)
+    {
+        if(!$this)
+        {
+            return null;
+        }
+
+        if(!Validator_state::is_valid_source($source))
+        {
+            throw new Exception('Invalid source flag.');
+        }
+
+        $data = Validator::get_structure_records($this);
+
+        foreach($data as $row)
+        {
+            if($row->get_source() == $source)
+            {
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
+
 
     public function test($from_id)
     {

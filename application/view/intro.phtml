@@ -1,3 +1,28 @@
+<?php 
+    $s = new Substances(45);
+    $s2 = new Substances(436511);
+
+    $v = Validator_3D_structure::add(
+        $s, 
+        Validator_3D_structure::TYPE_3D_STRUCTURE_EDITED, 
+        Validator_state::SOURCE_DRUGBANK, 
+        new File(File::FOLDER_3DSTRUCTURES . 'MM00001.mol'),
+        new File(File::FOLDER_3DSTRUCTURES . 'MM00005.mol'),
+        "https://drgbank.com");
+
+    // $v = Validator_state::instance(3449);
+
+    // echo $s->had_structure_from_source(Validator_state::SOURCE_PDB) ? 1 : 0;
+
+
+    echo $v;
+
+    die;
+?>
+
+
+
+
 <?php if(isset($_SESSION['user']) && $_SESSION['user']['admin'] == 1) : ?>
     <h4><a href="/edit/article"><div style="text-align: right;"> <span class="glyphicon glyphicon-edit"></span> Edit</div></a></h4>
 <?php endif?>

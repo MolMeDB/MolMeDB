@@ -9,15 +9,13 @@ class File
     public $name;
     public $extension;
     public $size;
+    public $path;
     public $origin_path;
     private $FILE;
 
     // 3dstructure folder
     const FOLDER_3DSTRUCTURES = MEDIA_ROOT . "files/3DStructures/";
-    
-    // 
     const FOLDER_STATS_DOWNLOAD = MEDIA_ROOT . 'files/download/stats/';
-
     const FOLDER_PUBLICATION_DOWNLOAD = MEDIA_ROOT . 'files/download/publication/';
     const FOLDER_MEMBRANE_DOWNLOAD = MEDIA_ROOT . 'files/download/membrane/';
     const FOLDER_METHOD_DOWNLOAD = MEDIA_ROOT . 'files/download/method/';
@@ -30,23 +28,19 @@ class File
      */
     function __construct($path = NULL)
     {
-        if($path && is_array($path)) // Uploaded file
+        if($path && is_array($path) && 
+            isset($path['tmp_name']) && // Uploaded file
+            isset($path['size']) && // Uploaded file
+            isset($path['name'])) // Uploaded file
         {
-            $this->origin_path = $path['tmp_name'];
+            $this->origin_path = $this->path = $path['tmp_name'];
             $this->size = $path['size'];
             $this->extension = pathinfo($path['name'], PATHINFO_EXTENSION);
             $this->name = rtrim($path['name'], '.'. $this->extension);
         }
-        else if($path)
+        else if($path && file_exists($path))
         {
-            $this->origin_path = $path;
-
-            // Check if exists
-            if(!file_exists($path))
-            {
-                throw new Exception("File '$path' was not found.");
-            }
-
+            $this->origin_path = $this->path = $path;
             $this->get_file_info($path);
         }
     }
@@ -72,8 +66,18 @@ class File
 
         // Set default values
         $this->FILE = fopen($filePath, $type);
-        $this->origin_path = $filePath;
+        $this->origin_path = $this->path = $filePath;
         $this->name = $filePath ? substr($filePath, $last_slash + 1) : null;
+    }
+
+    /**
+     * Checks, if file exists
+     * 
+     * @return bool
+     */
+    public function exists()
+    {
+        return $this->path && file_exists($this->path);
     }
 
     /**
@@ -178,6 +182,8 @@ class File
             throw new Exception('Cannot move uploaded file to target directory.');
         }
 
+        $this->path = $target;
+
         return True;
     }
 
@@ -198,6 +204,8 @@ class File
         {
             throw new Exception('Cannot rename file.');
         }
+
+        $this->path = $path . $new_name . '.' . $this->extension;
 
         return True;
     }
@@ -237,6 +245,8 @@ class File
      * 
      * @param string $identifier
      * @param string $content
+     * 
+     * @return File
      */
     public function save_structure_file($identifier, $content)
     {
@@ -248,6 +258,8 @@ class File
         $file = fopen(self::FOLDER_3DSTRUCTURES . $identifier . '.mol', 'w');
         fwrite($file, $content);
         fclose($file);
+
+        return new File(self::FOLDER_3DSTRUCTURES . $identifier . '.mol');
     }
 
     /**

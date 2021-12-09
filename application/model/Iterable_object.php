@@ -91,23 +91,23 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS ONE parsing
             if($type == $this->valid_link_types[self::T_HAS_ONE])
             {
-                foreach($values as $key => $values)
+                foreach($values as $key => $vals)
                 {
-                    if(is_array($values))
+                    if(is_array($vals))
                     {
                         // IS STRUCTURE VALID ?
-                        if(!isset($values['var']) || !isset($values['class']))
+                        if(!isset($vals['var']) || !isset($vals['class']))
                         {
                             $this->$key = NULL;
                             continue;
                         }
 
-                        $class_name = $values['class'];
-                        $new_key = $values['var'];
+                        $class_name = $vals['class'];
+                        $new_key = $vals['var'];
                     }
                     else // Is set only value
                     {
-                        $val = $values;
+                        $val = $vals;
 
                         $key = $val;
 
@@ -116,14 +116,16 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                         $class_name = ucwords($new_key . 's');
                     }
 
+                    $k = 'id_' . $new_key;
+                    
                     // Not valid input, set value to NULL
-                    if (!class_exists($class_name) || !$this->$key) 
+                    if (!class_exists($class_name) || !$this->$k) 
                     {
                         $this->$new_key = NULL;
                     } 
                     else 
                     {
-                        $this->$new_key = new $class_name($this->$key);
+                        $this->$new_key = new $class_name($this->$k);
                     }
                 
                 }

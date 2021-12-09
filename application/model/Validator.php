@@ -5,37 +5,53 @@
  * 
  * @property int $id
  * @property int $id_substance_1
+ * @property Substances $substance_1
  * @property int $id_substance_2
- * @property int $duplicity
- * @property int $active
+ * @property Substances $substance_2
+ * @property int $type
+ * @property int $state
+ * @property string $description
+ * @property string $dateTime
  * @property string $createDateTime
  * 
+ * @property Validator_value[] $values
  */
 class Validator extends Db
 {
     /**
-     * Validator constants
+     * Validator STATES
      */
-    const NOT_VALIDATED = 0;
-    /** MISSING DATA AUTO-FILLED */
-    const SUBSTANCE_FILLED = 1;
-    /** Filled identifiers */
-    const IDENTIFIERS_FILLED = 2;
-    /** LABELED AS POSSIBLE DUPLICITY */
-    const POSSIBLE_DUPLICITY = 3;
-    /** Filled LogPs */
-    const LogP_FILLED = 4;
-    /** VALIDATED */
-    const VALIDATED = 5;
+    const STATE_OPENED = 1;
+    const STATE_CLOSED = 2;
 
-    public static $enum_states = array
+    /**
+     * Validator enum states
+     */
+    private static $enum_states = array
     (
-        self::NOT_VALIDATED => 'Not validated',
-        self::SUBSTANCE_FILLED => 'Missing values filled',
-        self::IDENTIFIERS_FILLED => 'Identifiers filled',
-        self::POSSIBLE_DUPLICITY => 'Possible duplicity',
-        self::LogP_FILLED => 'LogP filled',
-        self::VALIDATED => 'Validated'
+        self::STATE_OPENED => 'Opened',
+        self::STATE_CLOSED => 'Closed'
+    );
+
+    protected $has_one = array
+    (
+        [
+            'var' => 'substance_1',
+            'class' => 'Substances'
+        ],
+        [
+            'var' => 'substance_2',
+            'class' => 'Substances'
+        ]
+    );
+
+    protected $has_many = array
+    (
+        [
+            'var'   => 'values',
+            'own'   => 'id_validation',
+            'class' => 'Validator_value'
+        ]
     );
 
     /**
@@ -315,4 +331,44 @@ class Validator extends Db
             WHERE `id_substance_1` = ?
         ', array($id_substance));
     }
+
+    /**
+     * #####################################################################
+     * #####################################################################
+     * ##### SHORTCUTS FOR CALLING VALIDATION_STATE METHODS ################
+     * #####################################################################
+     * #####################################################################
+     */
+
+    /**
+     * Returns molecule's fragmentation records
+     * 
+     * @param Susbtances $substance
+     * 
+     * @return Validator_fragmentation[]
+     */
+    public static function get_fragmentation_records($substance)
+    {
+        return Validator_state::get_fragmentation_records($substance);
+    }
+
+    /**
+     * Returns all molecule's structure validation records
+     * 
+     * @param Substances $substance
+     * 
+     * @return Validator_3D_structure[]|null - Null if error occured
+     */
+    public static function get_structure_records($substance)
+    {
+        return Validator_state::get_structure_records($substance);
+    }
+
+    /**
+     * #####################################################################
+     * #####################################################################
+     * ############################ END ####################################
+     * #####################################################################
+     * #####################################################################
+     */
 }

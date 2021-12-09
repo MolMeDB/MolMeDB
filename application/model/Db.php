@@ -50,6 +50,50 @@ class Db extends Iterable_object
     }
 
     /**
+     * Returns instance of called class
+     * 
+     * @return Db|null
+     */
+    public static function factory()
+    {
+        $class = get_called_class();
+
+        if($class && class_exists($class))
+        {
+            return new $class();
+        }
+
+        return null;
+    }
+
+    /**
+     * Fetch DB table structure
+     * 
+     * @return array|null
+     */
+    private function fetch_structure()
+    {
+        // If old values are presented, return
+        if(!empty($this->old_values))
+        {
+            return array_keys($this->old_values);
+        }
+
+        $table = $this->table;
+
+        if(!$table)
+        {
+            return null;
+        }
+
+        $q = self::$connection->prepare("DESCRIBE " . $table);
+        $q->execute();
+        $structure = $q->fetchAll(PDO::FETCH_COLUMN);
+
+        return $structure;
+    }
+
+    /**
      * Static constructor
      * 
      * @return Db
@@ -780,6 +824,12 @@ class Db extends Iterable_object
         $data = $this->as_array();
         $old_data = $this->old_data;
         $new_data = array();
+        $allowed_attrs = $this->fetch_structure();
+
+        if(!count($allowed_attrs))
+        {
+            throw new Exception('Invalid table structure. Cannot load list of attributes.');
+        }
 
         // Remove numeric values
         foreach ($data as $key => $val) 
@@ -791,7 +841,7 @@ class Db extends Iterable_object
             }
 
             // If new record, just add
-            if(!$this->id)
+            if(!$this->id && in_array($key, $allowed_attrs))
             {
                 $new_data[$key] = $val;
                 continue;
@@ -803,7 +853,10 @@ class Db extends Iterable_object
             }
 
             // If change is recognized
-            if (array_key_exists($key, $old_data) && $old_data[$key] !== $val && !is_object($val) && !is_array($val)) // Improve required
+            if (in_array($key, $allowed_attrs) && 
+                $old_data[$key] !== $val && 
+                !is_object($val) && 
+                !is_array($val))
             {
                 $new_data[$key] = $val === NULL ? NULL : trim($val);
             }
@@ -852,6 +905,11 @@ class Db extends Iterable_object
         } 
         else 
         {
+            if($this->debug)
+            {
+                print_r($new_data);
+                die;
+            }
             $last_id = $this->insert($this->table, $new_data);
             $this->id = $last_id;
             self::__construct($this->id);

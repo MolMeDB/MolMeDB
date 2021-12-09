@@ -207,5 +207,10 @@ class System_config
         {
             require("system/exceptions/" . $class . ".php");
         }
+        else if (preg_match('/^Validator_/', $class))
+        {
+            $class = ucfirst(str_replace('Validator_', '', $class));
+            require(APP_ROOT . 'libraries/Validator/' . $class . '.php');
+        }
     }   
 }

@@ -67,7 +67,6 @@ class ApiController extends Controller
     function __construct($endPoint = NULL, $function = NULL)
     {
         parent::__construct();
-        
         // If not valid entry
         if(!$endPoint || !$function)
         {
@@ -88,6 +87,11 @@ class ApiController extends Controller
         {
             $this->answer(NULL, self::CODE_BAD_REQUEST);
         }
+
+
+        echo (base64_decode("bmFtZTpwYXNzd29yZA=="));
+        print_r(getallheaders());
+        die;
 
         $this->endpoint = $endPoint;
         $this->function = $function;
@@ -118,7 +122,6 @@ class ApiController extends Controller
         {
             echo($code);
         }
-        die;
     }
 
     /**

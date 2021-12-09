@@ -48,12 +48,21 @@ class Html
      * 
      * @param string $url
      * @param string $title
+     * @param boolean $new_tab
      * 
      * @return string
      */
     public static function anchor($url, $title, $new_tab = FALSE)
     {
-        $url = PROTOCOL . URL . '/' . $url;
+        if(!preg_match('/^http/', $url))
+        {
+            $url = PROTOCOL . URL . '/' . $url;
+        }
+
+        if(!strlen(trim($title)))
+        {
+            $title = '[_LINK]';
+        }
 
         return "<a href='$url'" . ($new_tab ? 'target="_blank"' : '') . ">$title</a>";
     }

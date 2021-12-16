@@ -33,7 +33,7 @@ class ApiDetail extends ApiController
 
         if(!$subs->id)
         {
-            $this->answer(NULL, self::CODE_NOT_FOUND);
+            //$this->answer(NULL, self::CODE_NOT_FOUND);
         }
 
         $result = array();
@@ -68,7 +68,7 @@ class ApiDetail extends ApiController
                 );
         }
 
-        $this->answer($result);
+        //$this->answer($result);
     }
 
     /**
@@ -83,7 +83,7 @@ class ApiDetail extends ApiController
 
         $result = $method_model->check_avail_by_substance($ID)->as_array();
 
-        $this->answer($result);
+        //$this->answer($result);
     }
     
     /**
@@ -113,7 +113,7 @@ class ApiDetail extends ApiController
 
         $result = array('count' => $count);
         
-        $this->answer($result);
+        //$this->answer($result);
     }
 
     /**
@@ -231,7 +231,7 @@ class ApiDetail extends ApiController
             );
         }
 
-        return $this->answer($result);
+        //return $this->answer($result);
     }
     
 
@@ -268,7 +268,7 @@ class ApiDetail extends ApiController
                 ))
             ->get_all();
 
-        $this->answer($data->as_array());
+        //$this->answer($data->as_array());
     }
     
     /**
@@ -285,7 +285,7 @@ class ApiDetail extends ApiController
 
         if(!$membrane->id || !$method->id)
         {
-            $this->answer(NULL, self::CODE_NOT_FOUND);
+            //$this->answer(NULL, self::CODE_NOT_FOUND);
         }
 
         $result = array
@@ -294,7 +294,7 @@ class ApiDetail extends ApiController
             'method'    => $method->CAM
         );
 
-        $this->answer($result);
+        //$this->answer($result);
     }
     
     /**
@@ -312,7 +312,7 @@ class ApiDetail extends ApiController
 
         if(!$id)
         {
-            $this->answer(NULL, self::CODE_BAD_REQUEST);
+            //$this->answer(NULL, self::CODE_BAD_REQUEST);
         }
 
         $energy_model = new Energy();
@@ -335,7 +335,7 @@ class ApiDetail extends ApiController
             $result[] = $data->id ? 1 : 0;
         }
         
-        $this->answer($result);
+        //$this->answer($result);
     }
     
 }

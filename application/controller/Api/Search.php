@@ -81,7 +81,7 @@ class ApiSearch extends ApiController
                 break;
         }
         
-        $this->answer($data);
+        //$this->answer($data);
     }
     
 }

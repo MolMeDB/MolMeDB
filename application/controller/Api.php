@@ -5,73 +5,38 @@
  */
 class ApiController extends Controller 
 {
+    //Accept types for response
+    const JSON = 'application/json';
+    const CSV = 'text/csv';
 
-    /** RESPONSE CODES */
-    const CODE_OK = 200;
-    const CODE_OK_NO_CONTENT = 204;
-    const CODE_BAD_REQUEST = 400;
-    const CODE_UNAUTHORIZED = 401;
-    const CODE_FORBIDDEN = 403;
-    const CODE_NOT_FOUND = 404;
-    
+    //Iterable object constant
+    const ITERABLE_OBJECT = 'Iterable_object';
+
+
+    protected $accept_type_methods = array
+    (
+        self::JSON => 'json_response',
+        self::CSV => 'csv_response',
+    );
+
+
     /** Class variables */
     protected $user;
     protected $request_method;
     protected $parsed_request;
     protected $api_endpoint;
 
-    private $requested_endpoint;
-    private $requested_function;
+    protected $response;
+    protected $header;
 
     /**
      * Main constructor
      */
-    function __construct($requested_endpoint = NULL, $requested_function = NULL)
+    function __construct($requested_endpoint = NULL)
     {
         parent::__construct();
         //Parsing request header
-        $this->parsed_request = new HeaderParser();
-        // Get request method
-        $this->request_method = $_SERVER['REQUEST_METHOD'];
-
-        $this->requested_endpoint = $requested_endpoint;
-        $this->requested_function = $requested_function;
-    }
-
-    /**
-     * Return server answer to request
-     * 
-     * @param string $message
-     * @param integer $code
-     * 
-     */
-    protected function answer($message, $code = self::CODE_OK)
-    {
-        if((!$message || $message == '') && $code == self::CODE_OK)
-        {
-            $code = self::CODE_OK_NO_CONTENT;
-        }
-
-        http_response_code($code);
-        header('Content-Type: application/json');
-
-        if($message || is_array($message))
-        {
-            echo(json_encode($message));
-        }
-        else
-        {
-            echo($code);
-        }
-        die;
-    }
-
-    /**
-     * Sends BAD REQUEST shortcut
-     */
-    protected function bad_request()
-    {
-        return $this->answer(NULL, SELF::CODE_BAD_REQUEST);
+        $this->parsed_request = new HeaderParser($requested_endpoint);
     }
 
     /**
@@ -79,44 +44,163 @@ class ApiController extends Controller
      */
     public function parse() 
     {   
+
+
         //Parsing requested endpoint
-        $this->api_endpoint = new ApiEndpoint($this->requested_endpoint, $this->requested_function);
-        //Calling parsed endpoint and its params
-        $this->api_endpoint->call();
+        if($this->parsed_request->content_type == self::JSON)
+        {
+            $this->api_endpoint = new ApiEndpoint($this->parsed_request->requested_endpoint, self::JSON);
+        }
+        else
+        {
+            $this->api_endpoint = new ApiEndpoint($this->parsed_request->requested_endpoint);
+        }
+        
+        try
+        {
+            //Calling parsed endpoint and its params
+            $this->response = $this->api_endpoint->call();
+            
+            //No content was found
+            if(!$this->response)
+            {
+                ResponseBuilder::ok_no_content();
+            }
+            elseif(is_a($this->response, self::ITERABLE_OBJECT))
+            {
+                $this->response = $this->response->as_array();
+            }
+            if(!is_array($this->response))
+            {
+                throw new ApiException("Expected array response");
+            }
+
+            $this->create_response();
+        }
+        catch(ApiException $ex)
+        {
+            ResponseBuilder::server_error($ex->getMessage());
+        }
+        catch(Exception $ex)
+        {
+            ResponseBuilder::server_error($ex->getMessage());
+        }
+             
+        ResponseBuilder::ok($this->header, $this->response);
     }
     
 
-    
-    protected function remove_empty_values($arr = array(), $recursive = false)
-    {
-        if(!is_array($arr))
+    /**
+    * Method for creating HTTP response  
+    * 
+    * @author Jaromír Hradil
+    *
+    * @throws ApiException 
+    */
+    protected function create_response()
+    {          
+        foreach ($this->parsed_request->accept_type as $accept_type_item) 
         {
-            if(!strval($arr) !== "0" && !$arr)
+            if(in_array($accept_type_item, array_keys($this->accept_type_methods)))
             {
-                return NULL;
+                $response_method = $this->accept_type_methods[$accept_type_item];
+                $response_encoded = ApiController::$response_method($this->response);
+
+                if($response_encoded !== false)
+                {
+                    $this->response = $response_encoded;
+                    $this->header = 'Content-Type: '.$accept_type_item;
+                    return;
+                }
+            }
+        }
+        throw new ApiException("Failed to create response, no valid response type found");
+    }
+
+    /**
+    * Method for creating JSON output
+    * 
+    * @author Jaromír Hradil
+    * 
+    * @return bool
+    */
+    public static function json_response($response)
+    {
+        return json_encode($response);
+    } 
+
+    /**
+    * Method for creating CSV output
+    * 
+    * @author Jaromír Hradil
+    * 
+    * @return bool
+    */
+    public static function csv_response($response)
+    {
+        return ApiController::create_csv($response);
+    } 
+
+
+
+    /**
+    * Method for creating CSV output
+    * 
+    * @param array $arr
+    *  
+    * @author Jaromír Hradil
+    */
+    protected static function create_csv($arr)
+    {
+        if(!is_array($arr) || count($arr) === 0)
+        {
+            return false;
+        }
+
+        $keys = array_keys($arr[0]);
+
+        $csv_output = "";
+
+        $keys = array_keys($arr[0]);
+
+        for ($i=0; $i < count($keys); $i++)
+        { 
+            $keys[$i] = strval($keys[$i]);
+        }
+
+        $csv_output = $csv_output.implode(";", $keys).PHP_EOL;
+
+        $keys = array_keys($arr[0]);
+
+
+        foreach($arr as $arr_item)
+        {
+            $arr_item_keys = array_keys($arr_item);
+            $csv_content_line = array();
+
+            //Csv keys are not the same
+            if($arr_item_keys != $keys)
+            {
+                return false;
             }
             else
             {
-                return $arr;
-            }
-        }
-
-        for($i = 0; $i < count($arr); $i++)
-        {
-            if($recursive && is_array($arr[$i]))
-            {
-                $arr[$i] = self::remove_empty_values($arr[$i]);
+                foreach($arr_item as $arr_item_content)
+                {
+                    //There are nested elements
+                    if(is_array($arr_item_content))
+                    {
+                        return false;
+                    }
+            
+                    $csv_content_line[] = strval($arr_item_content);
+                }
             }
             
-            $arr[$i] = trim($arr[$i]);
-            
-            if($arr[$i] === '' || $arr[$i] === NULL)
-            {
-                unset($arr[$i]);
-            }
+            $csv_output = $csv_output.implode(";", $csv_content_line).PHP_EOL;
         }
         
-        return $arr;
+        return $csv_output;
     }
     
 }

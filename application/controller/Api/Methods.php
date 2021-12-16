@@ -26,7 +26,7 @@ class ApiMethods extends ApiController
 
         if(!$method->id)
         {
-            $this->answer(array(), self::CODE_OK_NO_CONTENT);
+            //$this->answer(array(), self::CODE_OK_NO_CONTENT);
         }
 
         $result = array
@@ -40,7 +40,7 @@ class ApiMethods extends ApiController
             'created'   => $method->createDateTime
         );
 
-        $this->answer($result);
+        //$this->answer($result);
     }
 
     /**
@@ -61,8 +61,8 @@ class ApiMethods extends ApiController
             $membrane_ids = [];
         }
 
-        $substance_ids = $this->remove_empty_values($substance_ids);
-        $membrane_ids = $this->remove_empty_values($membrane_ids);
+        //$substance_ids = $this->remove_empty_values($substance_ids);
+        //$membrane_ids = $this->remove_empty_values($membrane_ids);
 
         $result = array();
 
@@ -112,7 +112,7 @@ class ApiMethods extends ApiController
             }
         }
 
-        $this->answer($result);
+        //$this->answer($result);
     }
     
 }

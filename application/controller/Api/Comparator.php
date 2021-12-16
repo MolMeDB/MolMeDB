@@ -20,11 +20,11 @@ class ApiComparator extends ApiController
 	 */
     public function getEnergyValues($energyFlagIds)
     {
-		$energyFlagIds = $this->remove_empty_values($energyFlagIds);
+		//$energyFlagIds = $this->remove_empty_values($energyFlagIds);
 
 		if(empty($energyFlagIds))
 		{
-			$this->answer(array());
+			//$this->answer(array());
 		}
 
 		$result = array();
@@ -70,7 +70,7 @@ class ApiComparator extends ApiController
 			$index++;
 		}
 
-		$this->answer($result);
+		//$this->answer($result);
 
     }
     
@@ -152,7 +152,7 @@ class ApiComparator extends ApiController
 		{
 			$result = $result[0];
 		}
-		return $this->answer($result);
+		//return $this->answer($result);
     }
     
     /**
@@ -206,7 +206,7 @@ class ApiComparator extends ApiController
 		{
 			$result = $result[0];
 		}
-		return $this->answer($result);
+		//return $this->answer($result);
     }
     
 	/**
@@ -220,16 +220,16 @@ class ApiComparator extends ApiController
 	 */
     public function getInteractionIds($methods, $membranes, $substances, $charges)
     {
-		$methods_ids = $methods ? $this->remove_empty_values($methods) : array();
-		$membranes_ids = $membranes ? $this->remove_empty_values($membranes) : array();
-		$charges = $charges ? $this->remove_empty_values($charges) : array();
-		$substances_ids = $substances ? $this->remove_empty_values($substances) : array();
+		//$methods_ids = $methods ? $this->remove_empty_values($methods) : array();
+		//$membranes_ids = $membranes ? $this->remove_empty_values($membranes) : array();
+		//$charges = $charges ? $this->remove_empty_values($charges) : array();
+		//$substances_ids = $substances ? $this->remove_empty_values($substances) : array();
 
 		// If not set parameters, then return empty response
 		if(empty($methods_ids) && empty($membranes_ids) &&
 			empty($charges) && empty($substances_ids))
 		{
-			$this->answer(array());	
+			//$this->answer(array());	
 		}
 
 		$interaction_model = new Interactions();
@@ -254,7 +254,7 @@ class ApiComparator extends ApiController
 			);
 		}
 
-		$this->answer($result);
+		//$this->answer($result);
     }
 
 	
@@ -277,7 +277,7 @@ class ApiComparator extends ApiController
 
 		if(!in_array($type, $valid_types) || !$id)
 		{
-			$this->answer(NULL, self::CODE_BAD_REQUEST);
+			//$this->answer(NULL, self::CODE_BAD_REQUEST);
 		}
 
 		$inter_model = new Interactions();
@@ -325,6 +325,6 @@ class ApiComparator extends ApiController
 			);
 		}
 
-		$this->answer($result);
+		//$this->answer($result);
 	}
 }

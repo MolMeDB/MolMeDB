@@ -67,7 +67,7 @@ class ApiInteractions extends ApiController
             );
         }
         
-        $this->answer($result);
+        //$this->answer($result);
     }
     
 }

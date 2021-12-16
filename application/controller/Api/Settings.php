@@ -21,7 +21,7 @@ class ApiSettings extends ApiController
 
         if(!Enum_types::is_type_valid($type))
         {
-            $this->answer('Invalid form params.', self::CODE_BAD_REQUEST);
+            //$this->answer('Invalid form params.', self::CODE_BAD_REQUEST);
         }
 
         try
@@ -57,10 +57,10 @@ class ApiSettings extends ApiController
         catch(Exception $e)
         {
             $et->rollbackTransaction();
-            $this->answer($e->getMessage(), self::CODE_BAD_REQUEST);
+            //$this->answer($e->getMessage(), self::CODE_BAD_REQUEST);
         }
 
-        $this->answer(null, self::CODE_OK_NO_CONTENT);
+        //$this->answer(null, self::CODE_OK_NO_CONTENT);
     }
 
     const MOVE_CAT = 1;
@@ -94,7 +94,7 @@ class ApiSettings extends ApiController
         }
         else
         {
-            $this->answer('Invalid form params.', self::CODE_BAD_REQUEST);
+            //$this->answer('Invalid form params.', self::CODE_BAD_REQUEST);
         }
 
         try
@@ -216,16 +216,16 @@ class ApiSettings extends ApiController
             }
             
             $enum_type->commitTransaction();
-            $this->answer('Item moved.');
+            //$this->answer('Item moved.');
             
         }
         catch(Exception $e)
         {
-            $this->answer($e->getMessage(), self::CODE_NOT_FOUND);
+            //$this->answer($e->getMessage(), self::CODE_NOT_FOUND);
             $enum_type->rollbackTransaction();
         }
 
-        $this->answer(null, self::CODE_OK_NO_CONTENT);
+        //$this->answer(null, self::CODE_OK_NO_CONTENT);
     }
 
 }

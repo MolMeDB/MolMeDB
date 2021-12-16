@@ -40,6 +40,6 @@ class ApiUploader extends ApiController
 			$data[] = explode($delimiter, $row);
 		}
 		
-		$this->answer($data);
+		//$this->answer($data);
     }
 }

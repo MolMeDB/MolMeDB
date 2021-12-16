@@ -29,7 +29,7 @@ class ApiSmiles extends ApiController
         // Is RDKIT running?
         if(!$RDKIT->is_connected())
         {
-            $this->answer(NULL, self::CODE_FORBIDDEN);
+            //$this->answer(NULL, self::CODE_FORBIDDEN);
         }
 
         $canonized = $RDKIT->canonize_smiles($smiles);
@@ -42,9 +42,9 @@ class ApiSmiles extends ApiController
                 'canonized' => $canonized
             );
 
-            $this->answer($result);
+            //$this->answer($result);
         }
 
-        $this->answer(NULL, self::CODE_BAD_REQUEST);
+        //$this->answer(NULL, self::CODE_BAD_REQUEST);
     }
 }

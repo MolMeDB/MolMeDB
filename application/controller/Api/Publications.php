@@ -22,7 +22,7 @@ class ApiPublications extends ApiController
 
         if(!$ref->id)
         {
-            $this->answer(array(), self::CODE_OK_NO_CONTENT);
+            //$this->answer(array(), self::CODE_OK_NO_CONTENT);
         }
 
         $result = array
@@ -42,7 +42,7 @@ class ApiPublications extends ApiController
             'created'   => $ref->createDateTime
         );
 
-        $this->answer($result);
+        //$this->answer($result);
     }
 
     /**
@@ -56,7 +56,7 @@ class ApiPublications extends ApiController
         
         $data = $publ_model->order_by("citation")->get_all();
         
-        $this->answer($data->as_array(NULL, FALSE));
+        //$this->answer($data->as_array(NULL, FALSE));
     }
 
     /**
@@ -72,7 +72,7 @@ class ApiPublications extends ApiController
 
         if(!$PMC->is_connected())
         {
-            $this->answer(NULL, self::CODE_FORBIDDEN);
+            //$this->answer(NULL, self::CODE_FORBIDDEN);
         }
 
         $publ = $PMC->search($doi);
@@ -80,10 +80,10 @@ class ApiPublications extends ApiController
         // Should contains max one result
         if(!isset($publ[0]))
         {
-            $this->answer(NULL, self::CODE_OK_NO_CONTENT);
+            //$this->answer(NULL, self::CODE_OK_NO_CONTENT);
         }
 
-        $this->answer($publ[0]);
+        //$this->answer($publ[0]);
     }
     
 }

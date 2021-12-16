@@ -21,7 +21,7 @@ class ApiStats extends ApiController
         
         $data = $substanceModel->getSubstancesToStat($idMembrane, $idMethod);
 
-        $this->answer($data->as_array());
+        //$this->answer($data->as_array());
     }
 
     
@@ -39,7 +39,7 @@ class ApiStats extends ApiController
 
         if(!$membrane->id)
         {
-            $this->answer(NULL, self::CODE_BAD_REQUEST);
+            //$this->answer(NULL, self::CODE_BAD_REQUEST);
         }
 
         $data = $interaction_model
@@ -70,7 +70,7 @@ class ApiStats extends ApiController
             );
         }
 
-        $this->answer($result);
+        //$this->answer($result);
     }
 
     /**
@@ -87,7 +87,7 @@ class ApiStats extends ApiController
 
         if(!$method->id)
         {
-            $this->answer(NULL, self::CODE_BAD_REQUEST);
+            //$this->answer(NULL, self::CODE_BAD_REQUEST);
         }
 
         $data = $interaction_model
@@ -118,7 +118,7 @@ class ApiStats extends ApiController
             );
         }
 
-        $this->answer($result);
+        //$this->answer($result);
     }
 
     /**
@@ -137,7 +137,7 @@ class ApiStats extends ApiController
 
         if(!$membrane->id || !$method->id)
         {
-            $this->answer(NULL, self::CODE_BAD_REQUEST);
+            //$this->answer(NULL, self::CODE_BAD_REQUEST);
         }
 
         $interactions = $interaction_model->where(array
@@ -183,6 +183,6 @@ class ApiStats extends ApiController
             );
         }
 
-        $this->answer($result);
+        //$this->answer($result);
     }
 }

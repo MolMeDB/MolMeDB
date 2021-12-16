@@ -161,6 +161,29 @@ class Server
         }
     }
     /**
+    * Returns basic auth credentials
+    * 
+    * @author Jaromir Hradil
+    * 
+    * @return string
+    */
+    public static function basic_auth_creds()
+    {
+        if(!array_key_exists('PHP_AUTH_USER', $_SERVER) ||
+           !array_key_exists('PHP_AUTH_PW', $_SERVER))
+        {
+            return NULL;
+        }
+        else
+        {
+            return array
+            (
+                'usernaname' => $_SERVER['PHP_AUTH_USER'],
+                'passwd' => $_SERVER['PHP_AUTH_PW']
+            );
+        }
+    }
+    /**
      * Returns server software
      * 
      * @return string

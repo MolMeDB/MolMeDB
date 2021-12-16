@@ -25,7 +25,7 @@ class ApiMembranes extends ApiController
 
         if(!$membrane->id)
         {
-            $this->answer(array(), self::CODE_OK_NO_CONTENT);
+            //$this->answer(array(), self::CODE_OK_NO_CONTENT);
         }
 
         $result = array
@@ -39,7 +39,7 @@ class ApiMembranes extends ApiController
             'created'   => $membrane->createDateTime
         );
 
-        $this->answer($result);
+        //$this->answer($result);
     }
 
     /**
@@ -62,8 +62,8 @@ class ApiMembranes extends ApiController
         }
 
         // Verify input
-        $substance_ids = $this->remove_empty_values($substance_ids);
-        $method_ids = $this->remove_empty_values($method_ids);
+        //$substance_ids = $this->remove_empty_values($substance_ids);
+        //$method_ids = $this->remove_empty_values($method_ids);
 
         $result = array();
 
@@ -111,7 +111,7 @@ class ApiMembranes extends ApiController
             }
         }
         
-        $this->answer($result);
+        //$this->answer($result);
     }
     
     /**
@@ -141,7 +141,7 @@ class ApiMembranes extends ApiController
                 break;
         }
         
-        $this->answer($data->as_array());
+        //$this->answer($data->as_array());
     }
     
     /**
@@ -160,7 +160,7 @@ class ApiMembranes extends ApiController
         
         $data['all_subcategories'] = $membrane_model->get_all_subcategories()->as_array();
         
-        $this->answer($data);
+        //$this->answer($data);
     }
     
 }

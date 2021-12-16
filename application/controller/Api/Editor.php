@@ -27,7 +27,7 @@ class ApiEditor extends ApiController
         $membrane = $membrane_model->where('idTag', $idTag)
             ->get_one();
         
-        $this->answer($membrane->as_array());
+        //$this->answer($membrane->as_array());
     }
 
     /**
@@ -43,6 +43,6 @@ class ApiEditor extends ApiController
         $method = $method_model->where('idTag', $idTag)
             ->get_one();
 
-        $this->answer($method->as_array());
+        //$this->answer($method->as_array());
     }
 }

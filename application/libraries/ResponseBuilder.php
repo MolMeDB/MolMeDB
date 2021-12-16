@@ -52,6 +52,48 @@ class ResponseBuilder
 
     /**
      * 
+     * Method for creating HTTP 200 response code and error message
+     * 
+     * @param string $err_text - OPTIONAL
+     * 
+     * @author Jaromír Hradil
+     */
+    public static function ok($header_content = NULL, $response = NULL)
+    {
+        if($header_content)
+        {
+            header($header_content);
+        }
+
+        http_response_code(self::CODE_OK);
+
+        if($response)
+        {
+            echo($response);
+        }
+        die;
+    }
+
+    /**
+     * 
+     * Method for creating HTTP 200 response code and error message
+     * 
+     * @param string $err_text - OPTIONAL
+     * 
+     * @author Jaromír Hradil
+     */
+    public static function ok_no_content($response = NULL)
+    {
+        http_response_code(self::CODE_OK_NO_CONTENT);
+        if($response)
+        {
+            echo($response);
+        }
+        die;
+    }
+
+    /**
+     * 
      * Method for creating HTTP 403 response code and error message
      * 
      * @param string $err_text - OPTIONAL
@@ -89,7 +131,7 @@ class ResponseBuilder
      * Method for creating HTTP 500 response code and error message
      * 
      * @param string $err_text - OPTIONAL
-     * 
+     *  
      * @author Jaromír Hradil
      */
     public static function server_error($err_text = NULL)
@@ -97,8 +139,11 @@ class ResponseBuilder
         http_response_code(self::CODE_SERVER_ERROR);
         if($err_text)
         {
+            echo $err_text;
             echo('500 Server error: Internal error occured');
         }
+        //TODO logging of errors
         die;
     } 
+
 }

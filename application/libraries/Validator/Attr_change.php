@@ -7,33 +7,6 @@
  */
 class Validator_attr_change extends Validator_state
 {
-    /** value TYPES */
-    const VALUE_PUBCHEM = 1;
-    const VALUE_CHEMBL = 2;
-    const VALUE_SMILES = 3;
-    const VALUE_DRUGBANK = 4;
-    const VALUE_CHEBI = 5;
-    const VALUE_PDB = 6;
-    const VALUE_NAME = 7;
-    const VALUE_INCHIKEY = 8;
-    const VALUE_LOGP = 9;
-
-    /**
-     * VALUE links
-     */
-    private static $value_links = array
-    (
-        self::VALUE_CHEMBL      => self::FLAG_CHEMBL,
-        self::VALUE_CHEBI       => self::FLAG_CHEBI,
-        self::VALUE_DRUGBANK    => self::FLAG_DRUGBANK,
-        self::VALUE_PUBCHEM     => self::FLAG_PUBCHEM,
-        self::VALUE_PDB         => self::FLAG_PDB,
-        self::VALUE_SMILES      => self::FLAG_SMILES,
-        self::VALUE_NAME        => self::FLAG_NAME,
-        self::VALUE_INCHIKEY    => self::FLAG_INCHIKEY,
-        self::VALUE_LOGP        => self::FLAG_LOGP
-    );
-
     /**
      * Object handler
      */
@@ -66,18 +39,6 @@ class Validator_attr_change extends Validator_state
     protected $params = [];
 
     /**
-     * Checks, if type is valid
-     * 
-     * @param int $type
-     * 
-     * @return boolean
-     */
-    public static function is_valid_type($type)
-    {
-        return array_key_exists($type, self::$value_links);
-    }
-
-    /**
      * Constructor
      * 
      * @param Validator $record
@@ -95,20 +56,21 @@ class Validator_attr_change extends Validator_state
      * Adds new record
      * 
      * @param Substances $substance
-     * @param int $type
-     * @param string $value
+     * @param int $attr_flag
+     * @param string $value - If not set, old value is loaded from $substance->old_data and new from $subtance->[attribute]
      * @param int $source
+     * @param string $source_detail
      * @param string|null $additional_info
      * 
      * @return Validator_attr_change - Returns instance of Validator attribute change record
      * 
      * @author Jakub Juracka
      */
-    public static function add($substance, $type, $value, $source, $additional_info = NULL)
+    public static function add($substance, $attr_flag, $value = FALSE, $source = self::SOURCE_USER_INPUT, $source_detail = NULL, $additional_info = NULL)
     {
-        if(!self::is_valid_type($type))
+        if(!self::is_valid_flag($attr_flag))
         {
-            throw new Exception('Invalid edit type.');
+            throw new Exception('Invalid attribute.');
         }
 
         if(!self::is_valid_source($source))
@@ -121,48 +83,51 @@ class Validator_attr_change extends Validator_state
             throw new Exception('Invalid substance record.');
         }
 
-        if(!$value)
-        {
-            throw new Exception('Empty value.');
-        }
-
         // Get old value
-        switch($type)
+        switch($attr_flag)
         {
-            case self::VALUE_LOGP:
-                $old_value = $substance->LogP;
+            case self::FLAG_LOGP:
+                $old_value = $substance->old_data['LogP'];
+                $value = $value === FALSE ? $substance->LogP : $value;
                 break;
-            case self::VALUE_NAME:
-                $old_value = $substance->name;
+            case self::FLAG_NAME:
+                $old_value = $substance->old_data['name'];
+                $value = $value === FALSE ? $substance->name : $value;
                 break;
-            case self::VALUE_CHEBI:
-                $old_value = $substance->chEBI;
+            case self::FLAG_CHEBI:
+                $old_value = $substance->old_data['chEBI'];
+                $value = $value === FALSE ? $substance->chEBI : $value;
                 break;
-            case self::VALUE_CHEMBL:
-                $old_value = $substance->chEMBL;
+            case self::FLAG_CHEMBL:
+                $old_value = $substance->old_data['chEMBL'];
+                $value = $value === FALSE ? $substance->chEMBL : $value;
                 break;
-            case self::VALUE_INCHIKEY:
-                $old_value = $substance->inchikey;
+            case self::FLAG_INCHIKEY:
+                $old_value = $substance->old_data['inchikey'];
+                $value = $value === FALSE ? $substance->inchikey : $value;
                 break;
-            case self::VALUE_PDB:
-                $old_value = $substance->pdb;
+            case self::FLAG_PDB:
+                $old_value = $substance->old_data['pdb'];
+                $value = $value === FALSE ? $substance->pdb : $value;
                 break;
-            case self::VALUE_PUBCHEM:
-                $old_value = $substance->pubchem;
+            case self::FLAG_PUBCHEM:
+                $old_value = $substance->old_data['pubchem'];
+                $value = $value === FALSE ? $substance->pubchem : $value;
                 break;
-            case self::VALUE_SMILES:
-                $old_value = $substance->SMILES;
+            case self::FLAG_SMILES:
+                $old_value = $substance->old_data['SMILES'];
+                $value = $value === FALSE ? $substance->SMILES : $value;
                 break;
-            case self::VALUE_DRUGBANK:
-                $old_value = $substance->drugbank;
+            case self::FLAG_DRUGBANK:
+                $old_value = $substance->old_data['drugbank'];
+                $value = $value === FALSE ? $substance->drugbank : $value;
                 break;
-            default:
-                $old_value = NULL;
         }
 
-        if(!$old_value || $old_value == $value)
+        // No change? Return...
+        if($old_value === $value)
         {
-            $old_value = "[NULL]";
+            return TRUE;
         }
 
         $record = new Validator();
@@ -171,33 +136,47 @@ class Validator_attr_change extends Validator_state
         {
             $record->beginTransaction();
 
-            $record->id_substance_1 = $substance->id;
-            $record->id_substance_2 = NULL;
-            $record->type = self::TYPE;
-            $record->state = Validator::STATE_OPENED;
-            $record->description = $additional_info;
+            // exists?
+            $record = $record->where(array
+            (
+                'id_substance_1'    => $substance->id,
+                'type'              => self::TYPE,
+            ))->get_one();
 
-            $record->save();
+            if(!$record || !$record->id)
+            {
+                $record->id_substance_1 = $substance->id;
+                $record->id_substance_2 = NULL;
+                $record->type = self::TYPE;
+                $record->state = Validator::STATE_OPENED;
+                $record->description = $additional_info;
+
+                $record->save();
+            }
+            else
+            {
+                $record->dateTime = date('Y-m-d H:i:s');
+                $record->state = Validator::STATE_OPENED;
+                $record->save();
+            }
 
             // Add old value info
             $r = new Validator_value();
             $r->id_validation = $record->id;
             $r->value = $old_value;
-            $r->flag = self::$value_links[$type];
+            $r->flag = $attr_flag;
             $r->save();
 
             // Add new value info
-            $r = new Validator_value();
-            $r->id_validation = $record->id;
-            $r->value = $value;
-            $r->flag = self::$value_links[$type];
-            $r->save();
+            $r2 = new Validator_value();
+            $r2->id_validation = $record->id;
+            $r2->group_nr = $r->group_nr;
+            $r2->value = $value;
+            $r2->flag = $attr_flag;
+            $r2->save();
 
             // Add source info
-            $r = new Validator_value();
-            $r->id_validation = $record->id;
-            $r->value = $source;
-            $r->save();
+            self::add_source($record->id, $r->group_nr, $source, $source_detail);
 
             $record->commitTransaction();
         }

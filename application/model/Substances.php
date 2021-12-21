@@ -99,6 +99,31 @@ class Substances extends Db
         return FALSE;
     }
 
+    /**
+     * Returns all history values for given attribute
+     * 
+     * @param int $attribute_flag
+     * 
+     * @return array
+     */
+    public function get_attribute_value_history($attribute_flag)
+    {
+        return Validator::get_atribute_changes($this, $attribute_flag);
+    }
+
+    /**
+     * Checks, if substance had given value for given attribute already
+     * 
+     * @param int $attribute_flag
+     * @param string $value
+     * 
+     * @return Iterable_object[]
+     * @throws Exception
+     */
+    public function had_attribute_value($attribute_flag, $value)
+    {
+        return Validator::had_attribute_value($this, $attribute_flag, $value);
+    }
 
     public function test($from_id)
     {
@@ -823,5 +848,68 @@ class Substances extends Db
         $this->validated = Validator::POSSIBLE_DUPLICITY;
         $this->waiting = 1;
         $this->save();
+    }
+
+    /**
+     * Overloading of save() function
+     * 
+     * @param int $source - For logging source of changes
+     */
+    public function save($source = NULL)
+    {
+        if($source)
+        {
+            // Get all changes
+            $changes = $this->get_attribute_changes();
+
+            print_r($changes);
+            die;
+
+            foreach($changes as $attr => $vals)
+            {
+                switch($attr)
+                {
+                    case 'pubchem':
+                        $flag = Validator_state::FLAG_PUBCHEM;
+                        break;
+                    case 'drugbank':
+                        $flag = Validator_state::FLAG_DRUGBANK;
+                        break;
+                    case 'chEBI':
+                        $flag = Validator_state::FLAG_CHEBI;
+                        break;
+                    case 'pdb':
+                        $flag = Validator_state::FLAG_PDB;
+                        break;
+                    case 'chEMBL':
+                        $flag = Validator_state::FLAG_CHEMBL;
+                        break;
+                    case 'inchikey':
+                        $flag = Validator_state::FLAG_INCHIKEY;
+                        break;
+                    case 'SMILES':
+                        $flag = Validator_state::FLAG_SMILES;
+                        break;
+                    case 'name':
+                        $flag = Validator_state::FLAG_NAME;
+                        break;
+                    case 'LogP':
+                        $flag = Validator_state::FLAG_LOGP;
+                        break;
+                    default:
+                        $flag = NULL;
+                        break;
+                }
+
+                if(!$flag)
+                {
+                    continue;
+                }
+
+                // Validator_attr_change::add($this, $flag, $vals['new_value'])
+            }
+        }
+
+        parent::save();
     }
 }

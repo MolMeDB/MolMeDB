@@ -365,6 +365,35 @@ class Validator extends Db
     }
 
     /**
+     * Returns all molecule changes for given attribute
+     * 
+     * @param Substances $substance
+     * @param int $attribute_flag
+     * 
+     * @return Iterable_object[]
+     * @throws Exception
+     */
+    public static function get_atribute_changes($substance, $attribute_flag)
+    {
+        return Validator_state::get_atribute_changes($substance, $attribute_flag);
+    }
+
+    /**
+     * Checks, if substance has given value for given attribute already
+     * 
+     * @param Substances $substance
+     * @param int $attribute_flag
+     * @param string $value
+     * 
+     * @return Iterable_object[]
+     * @throws Exception
+     */
+    public static function had_attribute_value($substance, $attribute_flag, $value)
+    {
+        return Validator_state::had_attribute_value($substance, $attribute_flag, $value);
+    }
+
+    /**
      * #####################################################################
      * #####################################################################
      * ############################ END ####################################

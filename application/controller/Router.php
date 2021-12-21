@@ -87,8 +87,8 @@ class RouterController extends Controller
             if (server::remote_addr() != server::server_addr() &&
                 server::remote_addr() != "127.0.0.1")
             {
-                echo 'access denied';
-                die();
+                // echo 'access denied';
+                // die();
             }
 
             if(!in_array($targetFunction, SchedulerController::$accessible))

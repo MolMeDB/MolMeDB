@@ -2,20 +2,32 @@
     $s = new Substances(45);
     $s2 = new Substances(436511);
 
-    $v = Validator_3D_structure::add(
-        $s, 
-        Validator_3D_structure::TYPE_3D_STRUCTURE_EDITED, 
-        Validator_state::SOURCE_DRUGBANK, 
-        new File(File::FOLDER_3DSTRUCTURES . 'MM00001.mol'),
-        new File(File::FOLDER_3DSTRUCTURES . 'MM00005.mol'),
-        "https://drgbank.com");
+    $s->identifier = 'MM00045';
+    // $s->identifier = 'NN00045';
+    $s->save(Validator_state::SOURCE_DRUGBANK);
 
-    // $v = Validator_state::instance(3449);
+    // echo (Rdkit::is_connected() ? 1 : 0);
 
-    // echo $s->had_structure_from_source(Validator_state::SOURCE_PDB) ? 1 : 0;
+    
+    // $d = Rdkit::get_2d_structure($s);
+    
+    // echo (Rdkit::is_connected() ? 1 : 0);
 
+    // print_r($d);
+    die;
 
-    echo $v;
+    // $v = Validator_duplicity::add($s, $s2, Validator_duplicity::DUPLICITY_DRUGBANK, 'DB0002', Validator_state::SOURCE_RDKIT, "DBBBB");
+    // $v = Validator_attr_change::add($s, Validator_attr_change::FLAG_SMILES, 'COOOC', Validator_attr_change::SOURCE_DRUGBANK, 'jowak je pen');
+
+    
+    // $v = Validator_3D_structure::add($s, Validator_3D_structure::TYPE_3D_STRUCTURE_EDITED, Validator_state::SOURCE_CHEBI, new File(File::FOLDER_3DSTRUCTURES . 'MM00001.mol'), 
+        // new File(File::FOLDER_3DSTRUCTURES . 'MM00002.mol'), NULL, "Další popis");
+
+    // $v = Validator_fragmentation::add($s, Validator_fragmentation::TYPE_FRAGMENTED, 'jowak je pen dawd');
+
+    // $v = Validator_state::instance(3471);
+
+    // echo $v;
 
     die;
 ?>

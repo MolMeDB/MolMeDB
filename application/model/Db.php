@@ -222,9 +222,9 @@ class Db extends Iterable_object
      * @param string $query
      * @param array $parameters
      * 
-     * @return array|object
+     * @return array|object|Iterable_object
      */
-    protected function queryOne($query, $parameters = array(), $as_object = True)
+    public function queryOne($query, $parameters = array(), $as_object = True)
     {
         $return = self::$connection->prepare($query);
         $return->execute($parameters);
@@ -810,6 +810,53 @@ class Db extends Iterable_object
         return intval($count);
     }
 
+
+    /**
+     * Returns changes of attribte values
+     * 
+     * @return array
+     */
+    public function get_attribute_changes()
+    {
+        if(!$this || !$this->table || !$this->id)
+        {
+            return [];
+        }
+
+        $result = [];
+        $data = $this->as_array();
+        $old_data = $this->old_data;
+        $allowed_attrs = $this->fetch_structure();
+
+        foreach ($data as $key => $val) 
+        {
+            if (is_numeric($key) || $key == '' ||
+                $key == 'id')
+            {
+                continue;
+            }
+
+            if(!is_object($val) && !is_array($val) && trim(strval($val)) === '')
+            {
+                $val = NULL;
+            }
+
+            // If change is recognized
+            if (in_array($key, $allowed_attrs) && 
+                $old_data[$key] !== $val && 
+                !is_object($val) && 
+                !is_array($val))
+            {
+                $result[$key] = array
+                (
+                    'new' => $val === NULL ? NULL : trim($val),
+                    'old' => $old_data[$key]
+                );
+            }
+        }
+
+        return $result;
+    }
 
     /**
      * Save new instance of object

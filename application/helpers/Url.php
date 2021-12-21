@@ -21,4 +21,17 @@ class Url
         return preg_match(self::URL_PATTERN, $url);
     }
 
+    /**
+     * Checks, if given URL is reachable (returns 200)
+     * 
+     * @param string $url
+     * 
+     * @return boolean
+     */
+    public static function is_reachable($url)
+    {
+        list($status) = get_headers($url);
+        return strpos($status, '200') !== FALSE;
+    }
+
 }

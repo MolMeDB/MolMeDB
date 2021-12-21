@@ -143,30 +143,52 @@ class Validator_3D_structure extends Validator_state
         {
             $record->beginTransaction();
 
-            $record->id_substance_1 = $substance->id;
-            $record->id_substance_2 = NULL;
-            $record->type = $type;
-            $record->state = Validator::STATE_OPENED;
-            $record->description = $additional_info;
+            // Exists?
+            $record = $record->where(array
+                (
+                    'id_substance_1'    => $substance->id,
+                    'type'              => $type,
+                ))
+                ->get_one();
 
-            $record->save();
-
+            if(!$record || !$record->id)
+            {
+                $record->id_substance_1 = $substance->id;
+                $record->id_substance_2 = NULL;
+                $record->type = $type;
+                $record->state = Validator::STATE_OPENED;
+                // $record->description = $additional_info;
+                $record->save();
+            }
+            else
+            {
+                $record->dateTime = date('Y-m-d H:i:s');
+                $record->state = Validator::STATE_OPENED;
+                $record->save();
+            }
+                
             // Add info
             $val = new Validator_value();
             $val->id_validation = $record->id;
-            $val->value = $new_file->path;
+            $val->value = 'file_1';
+            $val->flag = self::FLAG_FILE;
+            $val->description = $new_file->path;
             $val->save();
 
             if($record->type == self::TYPE_3D_STRUCTURE_EDITED)
             {
-                $val = new Validator_value();
-                $val->id_validation = $record->id;
-                $val->value = $old_file->path;
-                $val->save();
+                $v = new Validator_value();
+                $v->id_validation = $record->id;
+                $v->value = 'file_2';
+                $v->group_nr = $val->group_nr;
+                $v->flag = self::FLAG_FILE;
+                $v->description = $old_file->path;
+                $v->save();
             }
 
             // Add source info
-            self::add_source($record->id, $source, $source_url);
+            self::add_source($record->id, $val->group_nr, $source, $source_url);
+            self::add_group_description($record->id, $val->group_nr, $additional_info);
 
             $record->commitTransaction();
         }

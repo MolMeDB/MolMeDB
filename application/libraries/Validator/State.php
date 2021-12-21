@@ -18,7 +18,17 @@ abstract class Validator_state
     private $count_params_required;
     protected $message;
     protected $message_params_types;
+    private $prep_params;
+    private $group_nrs;
+
+    /**
+     * @var Validator_value
+     */
     protected $params;
+
+    /**
+     * @var Validator
+     */
     protected $record;
 
     /**
@@ -43,6 +53,9 @@ abstract class Validator_state
     const FLAG_INCHIKEY       = 7;
     const FLAG_NAME           = 8;
     const FLAG_LOGP           = 9;
+    const FLAG_SOURCE         = 10;
+    const FLAG_FILE           = 11;
+    const FLAG_DESCRIPTION    = 12;
 
     /** 
      * Data sources 
@@ -68,7 +81,10 @@ abstract class Validator_state
         self::FLAG_SMILES     => 'smiles',
         self::FLAG_INCHIKEY   => 'inchikey',
         self::FLAG_NAME       => 'name',
-        self::FLAG_LOGP       => 'LogP'
+        self::FLAG_LOGP       => 'LogP',
+        self::FLAG_SOURCE     => 'source',
+        self::FLAG_FILE       => 'file',
+        self::FLAG_DESCRIPTION => 'group description'
     );
 
     /**
@@ -98,6 +114,7 @@ abstract class Validator_state
     const VAR_SUBSTANCE2_LINK           = '@SUBSTANCE_2_LINK';
     const VAR_FILE                      = '@FILE';
     const VAR_SOURCE                    = '@SOURCE';
+    const VAR_DESCRIPTION               = '@DESCRIPTION';
 
 
     /**
@@ -191,172 +208,171 @@ abstract class Validator_state
     }
 
     /**
-     * Prints type message for given record
+     * Returns string value of given record
+     * 
+     * @param int $group_number - If not set, returns last message
+     * 
+     * @return string
      */
-    public function __toString()
+    public function __toStr()
     {
         $this->prepare_message();
+        $this->prepare_params();
 
-        // if(count($this->params) !== $this->count_params_required)
-        // {
-        //     $t = count($this->params);
-        //     return "INVALID PARAMETER NUMBER: [Required: $this->count_params_required / Available: $t].";
-        // }
+        if(!isset($this->prep_params[$group]))
+        {
+            return '';
+        }
 
         // Fill variables
         preg_match_all(self::PARAM_REGEXP, $this->message, $matches);
 
-        if($this->params instanceof Iterable_object)
+        if(count($matches) && $group)
         {
-            $params = $this->params->as_array();
-        }
-        else if(is_array($this->params))
-        {
-            $params = $this->params;
-        }
-        else
-        {
-            return 'CANNOT GENERATE INFO MESSAGE';
-        }
+            $params = $this->prep_params;
 
-        if(count($matches))
-        {
             foreach($matches[0] as $m)
             {
                 $m = ltrim(rtrim($m, ']'), '[');
+                $replace_text = '{INVALID}';
                 switch($m)
                 {
                     case self::VAR_SUBSTANCE1_LINK:
-                        if($this->record && $this->record->id_substance_1 && $this->record->substance_1->id)
+                        if(isset($params['substance_1']))
                         {
-                            $s = $this->record->substance_1;
-                            $this->message = preg_replace(self::PARAM_REGEXP, Html::anchor('mol/' . $s->identifier, $s->identifier, TRUE), $this->message, 1);
-                        }
-                        else
-                        {
-                            return 'INVALID PARAMETER VALUE FOR PARAMETER ' . $m;
+                            $s = $params['substance_1'];
+                            $replace_text = Html::anchor('mol/' . $s->identifier, $s->identifier, TRUE);
                         }
                         break;
 
                     case self::VAR_SUBSTANCE2_LINK:
-                        if($this->record && $this->record->id_substance_2 && $this->record->substance_2->id)
+                        if(isset($params['substance_2']))
                         {
-                            $s = $this->record->substance_2;
-                            $this->message = preg_replace(self::PARAM_REGEXP, Html::anchor('mol/' . $s->identifier, $s->identifier, TRUE), $this->message, 1);
-                        }
-                        else
-                        {
-                            return 'INVALID PARAMETER VALUE FOR PARAMETER ' . $m;
+                            $s = $params['substance_2'];
+                            $replace_text = Html::anchor('mol/' . $s->identifier, $s->identifier, TRUE);
                         }
                         break;
 
                     case self::VAR_SUBSTANCE1_NAME:
-                        if($this->record && $this->record->id_substance_1 && $this->record->substance_1->id)
+                        if(isset($params['substance_1']))
                         {
-                            $s = $this->record->substance_1;
-                            $this->message = preg_replace(self::PARAM_REGEXP, $s->name, $this->message, 1);
-                        }
-                        else
-                        {
-                            return 'INVALID PARAMETER VALUE FOR PARAMETER ' . $m;
+                            $s = $params['substance_1'];
+                            $replace_text = $s->name;
                         }
                         break;
 
                     case self::VAR_SUBSTANCE2_NAME:
-                        if($this->record && $this->record->id_substance_2 && $this->record->substance_2->id)
+                        if(isset($params['substance_2']))
                         {
-                            $s = $this->record->substance_2;
-                            $this->message = preg_replace(self::PARAM_REGEXP, $s->name, $this->message, 1);
-                        }
-                        else
-                        {
-                            return 'INVALID PARAMETER VALUE FOR PARAMETER ' . $m;
+                            $s = $params['substance_2'];
+                            $replace_text = $s->name;
                         }
                         break;
 
                     case self::VAR_SUBSTANCE1_IDENTIFIER:
-                        if($this->record && $this->record->id_substance_1 && $this->record->substance_1->id)
+                        if(isset($params['substance_1']))
                         {
-                            $s = $this->record->substance_1;
-                            $this->message = preg_replace(self::PARAM_REGEXP, $s->identifier, $this->message, 1);
-                        }
-                        else
-                        {
-                            return 'INVALID PARAMETER VALUE FOR PARAMETER ' . $m;
+                            $s = $params['substance_1'];
+                            $replace_text = $s->identifier;
                         }
                         break;
 
                     case self::VAR_SUBSTANCE2_IDENTIFIER:
-                        if($this->record && $this->record->id_substance_2 && $this->record->substance_2->id)
+                        if(isset($params['substance_2']))
                         {
-                            $s = $this->record->substance_2;
-                            $this->message = preg_replace(self::PARAM_REGEXP, $s->identifier, $this->message, 1);
-                        }
-                        else
-                        {
-                            return 'INVALID PARAMETER VALUE FOR PARAMETER ' . $m;
+                            $s = $params['substance_2'];
+                            $replace_text = $s->identifier;
                         }
                         break;
                     
                     case self::VAR_DB_VALUE:
-                        $t = array_shift($params);
-                        $this->message = preg_replace(self::PARAM_REGEXP, "`" . $t['value'] . "`", $this->message, 1);
+                        $t = &$params[$group];
+
+                        if(isset($t['value']))
+                        {
+                            $replace_text = "`" . array_shift($t['value'])['value'] . "`";
+                        }
+                        break;
+                    
+                    case self::VAR_DESCRIPTION:
+                        $t = &$params[$group];
+
+                        if(isset($t[self::FLAG_DESCRIPTION]) && count($t[self::FLAG_DESCRIPTION]))
+                        {
+                            $replace_text = "`" . array_shift($t[self::FLAG_DESCRIPTION])['description'] . "`";
+                        }
                         break;
 
                     case self::VAR_DB_IDENTIFIER_FLAG_VALUE:
-                        $t = array_shift($params);
-                        
-                        if(!self::is_valid_flag($t['flag']))
+                        $r = self::get_identifier_flag_value($params[$group]);
+
+                        if(is_array($r))
                         {
-                            return 'Invalid flag value.';
+                            $replace_text = "`" . self::$enum_flags[$r['flag']] . "` = `" . $r['value'] . "`";
                         }
 
-                        $text = "`" . self::$enum_flags[$t['flag']] . "` = `" . $t['value'] . "`";
-
-                        $this->message = preg_replace(self::PARAM_REGEXP, $text, $this->message, 1);
                         break;
-                    case self::VAR_FILE:
-                        $t = array_shift($params);
-                        $f = new File($t['value']);
 
-                        if(!$f->exists())
+                    case self::VAR_FILE:
+                        $t = &$params[$group];
+
+                        if(isset($t[self::FLAG_FILE]))
                         {
-                            $this->message = preg_replace(self::PARAM_REGEXP, '`FILE NOT FOUND`', $this->message, 1);
-                        }
-                        else
-                        {
-                            $this->message = preg_replace(self::PARAM_REGEXP, Html::anchor($f->path, 'FILE', TRUE), $this->message, 1);
+                            $f = new File(array_shift($t[self::FLAG_FILE])['description']);
+
+                            if($f->exists())
+                            {
+                                $replace_text = Html::anchor($f->path, 'FILE', TRUE);
+                            }
+                            else
+                            {
+                                $replace_text = '`FILE NOT FOUND`';
+                            }
                         }
                         break;
 
                     case self::VAR_SOURCE:
-                        $t = array_shift($params);
+                        $t = &$params[$group];
 
-                        if($t['description'] && Url::is_valid($t['description']))
+                        if(isset($t[self::FLAG_SOURCE]))
                         {
-                            $text = Html::anchor($t['description'], self::get_enum_source($t['value']), TRUE); 
-                        }
-                        else
-                        {
-                            $text = self::get_enum_source($t['value']);
-                        }
+                            $t = array_shift($t[self::FLAG_SOURCE]);
 
-                        $this->message = preg_replace(self::PARAM_REGEXP, $text, $this->message, 1);
+                            if($t['description'] && Url::is_valid($t['description']))
+                            {
+                                $replace_text = Html::anchor($t['description'], self::get_enum_source($t['value']), TRUE); 
+                            }
+                            else
+                            {
+                                $replace_text = self::get_enum_source($t['value']);
+                            }
+                        }
                         break;
 
                     default:
-                        $this->message = preg_replace(self::PARAM_REGEXP, "`INVALID`", $this->message, 1);
                         break;
                 }
+                $this->message = preg_replace(self::PARAM_REGEXP, $replace_text, $this->message, 1);
             }
         }   
 
         if(strlen($this->record->description))
         {
-            $this->message = $this->message . ' Explanation: ' . $this->record->description;
+            $this->message = $this->message . ' Record info: ' . $this->record->description;
         }
 
         return $this->message;
+    }
+
+    /**
+     * Prints type message for given record
+     * 
+     * @return string
+     */
+    public function __toString()
+    {
+        // Prints only the newest message
+        return $this->__toStr();
     }
 
     /**
@@ -365,35 +381,156 @@ abstract class Validator_state
     private function prepare_message()
     {
         $msg = $this->message;
-        $total_required_db_values = 0;
 
         if(isset($this->message_params_types))
         {
             foreach($this->message_params_types as $type)
             {
-                // if($type == self::VAR_DB_VALUE || $type == self::VAR_DB_IDENTIFIER_FLAG_VALUE)
-                // {
-                //     $total_required_db_values++;
-                // }
-
                 $msg = preg_replace('/\[@\]/', "[$type]", $msg, 1);
             }
         }
 
-        $this->count_params_required = $total_required_db_values;
+        // Other are invalid
+        $msg = preg_replace('/\[@\]/', "[@INVALID]", $msg);
+
         $this->message = $msg;
+    }
+
+    /**
+     * Prepares parameters to result message
+     */
+    private function prepare_params()
+    {
+        if($this->prep_params)
+        {
+            return;
+        }
+
+        $result = [];
+
+        if($this->record && $this->record->id)
+        {
+            $result['substance_1'] = (object)array
+            (
+                'id'            => $this->record->substance_1->id,
+                'identifier'    => $this->record->substance_1->identifier,
+                'name'          => $this->record->substance_1->name
+            );
+
+            if($this->record->substance_2)
+            {
+                $result['substance_2'] = (object)array
+                (
+                    'id'            => $this->record->substance_2->id,
+                    'identifier'    => $this->record->substance_2->identifier,
+                    'name'          => $this->record->substance_2->name,
+                );
+            }
+        }
+
+        $this->group_nrs = [];
+
+        foreach($this->params as $p)
+        {
+            $this->group_nrs[] = $p->group_nr;
+
+            if(!$p->group_nr)
+            {
+                continue;
+            }
+
+            if($p->flag)
+            {
+                $k = $p->flag;
+            }
+            else
+            {
+                $k = 'value';
+            }
+
+            $g = 'g_' . $p->group_nr;
+
+            if(!array_key_exists($g, $result))
+            {
+                $result[$g] = [];
+            }
+
+            if(!array_key_exists($k, $result[$g]))
+            {
+                $result[$g][$k] = [];
+            }
+
+            $result[$g][$k][] = array
+            (
+                'value' => $p->value,
+                'description' => $p->description,
+                'flag'      => $p->flag,
+                'order_nr'  => $p->order_nr
+            );
+        }
+
+        $this->group_nrs = array_unique($this->group_nrs, SORT_NUMERIC);
+        $this->prep_params = $result;
+    }
+
+    /**
+     * Returns current identifier flag value
+     * 
+     * @param array|object $data
+     * 
+     * @return array
+     */
+    private static function get_identifier_flag_value(&$data)
+    {
+        $temp = null;
+        $min = 9999999;
+        $f = $k = null;
+
+        foreach($data as $flag => $rows)
+        {
+            foreach($data[$flag] as $key => $row)
+            {
+                if($row['order_nr'] < $min && self::is_valid_flag($flag))
+                {
+                    $min = $row['order_nr'];
+                    $temp = $row;
+                    $f=$flag;
+                    $k=$key;
+                }
+            }
+        }
+
+        if(!$temp)
+        {
+            return null;
+        }
+
+        unset($data[$f][$k]);
+
+        if(!count($data[$f]))
+        {
+            unset($data[$f]);
+        }
+
+        return array
+        (
+            'flag'  => $f,
+            'value' => $temp['value'],
+            'description' => $temp['description']
+        );
     }
 
     /**
      * Adds source value
      * 
      * @param int $validation_id
+     * @param int $group_nr
      * @param string|int|double $value
      * @param string $url
      * 
      * @return Validator_value
      */
-    public static function add_source($validation_id, $value, $url = NULL)
+    public static function add_source($validation_id, $group_nr, $value, $url = NULL)
     {
         if(!$value)
         {
@@ -402,9 +539,37 @@ abstract class Validator_state
 
         $v = new Validator_value();
         $v->id_validation = $validation_id;
+        $v->group_nr = $group_nr;
         $v->value = $value;
         $v->description = $url;
-        $v->flag = NULL;
+        $v->flag = self::FLAG_SOURCE;
+        $v->save();
+
+        return $v;
+    }
+
+    /**
+     * Adds group description
+     * 
+     * @param int $validation_id
+     * @param int $group_nr
+     * @param string $description
+     * 
+     * @return Validator_value
+     */
+    public static function add_group_description($validation_id, $group_nr, $description)
+    {
+        if(!$description)
+        {
+            return false;
+        }
+
+        $v = new Validator_value();
+        $v->id_validation = $validation_id;
+        $v->group_nr = $group_nr;
+        $v->value = NULL;
+        $v->description = $description;
+        $v->flag = self::FLAG_DESCRIPTION;
         $v->save();
 
         return $v;
@@ -469,4 +634,93 @@ abstract class Validator_state
 
         return $res;
     } 
+
+    /**
+     * Returns all molecule changes for given attribute
+     * 
+     * @param Substances $substance
+     * @param int $attribute_flag
+     * 
+     * @return Iterable_object[]
+     * @throws Exception
+     */
+    public static function get_atribute_changes($substance, $attribute_flag)
+    {
+        if(!$substance || !$substance->id)
+        {
+            throw new Exception('Invalid substance.');
+        }
+
+        if(!self::is_valid_flag($attribute_flag))
+        {
+            throw new Exception('Invalid attribute flag.');
+        }
+
+        // Get all changes
+        $rows = Validator::instance()->where(
+            array
+            (
+                'id_substance_1'    => $substance->id,
+                'type'              => self::TYPE_VALUE_EDITED
+            ))
+            ->get_all();
+
+        $result = [];
+
+        foreach($rows as $r)
+        {
+            if(count($r->values) != 3)
+            {
+                continue;
+            }
+
+            $val1 = $r->values[0];
+
+            if(!$val1 || $val1->flag != $attribute_flag)
+            {
+                continue;
+            }
+
+            $result[] = array
+            (
+                'old'   => $r->values[0]->value,
+                'new'   => $r->values[1]->value,
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * Checks, if substance has given value for given attribute already
+     * 
+     * @param Substances $substance
+     * @param int $attribute_flag
+     * @param string $value
+     * 
+     * @return Iterable_object[]
+     * @throws Exception
+     */
+    public static function had_attribute_value($substance, $attribute_flag, $value)
+    {
+        if(!$substance || !$substance->id)
+        {
+            throw new Exception('Invalid substance.');
+        }
+
+        if(!self::is_valid_flag($attribute_flag))
+        {
+            throw new Exception('Invalid attribute flag.');
+        }
+
+        $rows = Validator::instance()->queryAll('
+            SELECT *
+            FROM validations v
+            JOIN validation_values vv ON vv.id_validation = v.id
+            WHERE v.id_substance_1 = ? AND v.type = ? 
+                AND vv.flag = ? AND vv.value = ?
+        ', array($substance->id, self::TYPE_VALUE_EDITED, $attribute_flag, $value));
+
+        return count($rows) ? TRUE : FALSE;
+    }
 }

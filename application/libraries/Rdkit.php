@@ -7,10 +7,10 @@
 class Rdkit
 {
     /** SERVICE STATUS */
-    private $STATUS = false;
+    private static $STATUS = false;
 
     /** Holds connection */
-    private $client;
+    private static $client;
 
     /**
      * Constructor
@@ -18,19 +18,33 @@ class Rdkit
      */
     function __construct()
     {
+        // Add to the system setting in next update
+        if(!self::is_connected())
+        {
+            self::connect();
+        }
+    }
+
+    /**
+     * Connect to remote server
+     */
+    public static function connect()
+    {
+        if(self::is_connected())
+        {
+            return;
+        }
+
         try
         {
-            $config = new Config();
-
-            // Add to the system setting in next update
-            $this->client = new Http_request($config->get(Configs::RDKIT_URI));
-
+            self::$client = new Http_request(Config::get(Configs::RDKIT_URI));
             // Try to connect
-            $this->STATUS =  $this->client->test_connection('test');
+            self::$STATUS =  self::$client->test_connection('test');
         }
         catch(Exception $e)
         {
-            $this->STATUS = false;
+           self::$STATUS = false;
+           throw new Exception('Cannot establish connection to RDKIT server.');
         }
     }
 
@@ -39,9 +53,9 @@ class Rdkit
      * 
      * @return boolean
      */
-    public function is_connected()
+    public static function is_connected()
     {
-        return $this->STATUS;
+        return self::$client !== NULL && self::$STATUS;
     }
 
     /**
@@ -67,7 +81,7 @@ class Rdkit
 
         try
         {
-            $response = $this->client->request($uri, $method, $params);
+            $response = self::$client->request($uri, $method, $params);
 
             if(!empty($response) && isset($response[0]) && $response[0] != '')
             {
@@ -204,9 +218,14 @@ class Rdkit
      * 
      * @return $string
      */
-    public function get_2d_structure($substance)
+    public static function get_2d_structure($substance)
     {
-        if(!$this->STATUS || !$substance->SMILES)
+        if(!self::is_connected())
+        {
+            self::connect();
+        }
+
+        if(!$substance->SMILES)
         {
             return NULL;
         }
@@ -220,7 +239,7 @@ class Rdkit
 
         try
         {
-            $response = $this->client->request($uri, $method, $params);
+            $response = self::$client->request($uri, $method, $params);
 
             if(!empty($response) && isset($response[0]) && $response[0] != '')
             {

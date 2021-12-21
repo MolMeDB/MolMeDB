@@ -96,13 +96,15 @@ class Validator_duplicity extends Validator_state
      * @param Substances $substance_2
      * @param int $type
      * @param string $dup_value
+     * @param int $source
+     * @param string $source_detail
      * @param string|null $additional_info
      * 
      * @return Validator - Returns instance of Validator record
      * 
      * @author Jakub Juracka
      */
-    public static function add($substance_1, $substance_2, $type, $dup_value, $additional_info = NULL)
+    public static function add($substance_1, $substance_2, $type, $dup_value, $source, $source_detail = NULL, $additional_info = NULL)
     {
         if(!self::is_valid_type($type))
         {
@@ -121,28 +123,84 @@ class Validator_duplicity extends Validator_state
             throw new Exception('Empty duplicity value.');
         }
 
+        if(!self::is_valid_source($source))
+        {
+            throw new Exception('Invalid source.');
+        }
+
         $record = new Validator();
 
         try
         {
             $record->beginTransaction();
 
-            $record->id_substance_1 = $substance_1->id;
-            $record->id_substance_2 = $substance_2->id;
-            $record->type = self::TYPE;
-            $record->state = Validator::STATE_OPENED;
-            $record->description = $additional_info;
+            // Check if exists
+            $record = $record->where(array
+                (
+                    'id_substance_1'    => $substance_1->id,
+                    'id_substance_2'    => $substance_2->id,
+                    'type'              => self::TYPE,
+                ))
+                ->get_one();
 
-            $record->save();
+            if($record && $record->id)
+            {
+                $record->dateTime = date('Y-m-d H:i:s');
+                $record->state = Validator::STATE_OPENED;
+                $record->save();
+            }
+            else
+            {
+                $record->id_substance_1 = $substance_1->id;
+                $record->id_substance_2 = $substance_2->id;
+                $record->type = self::TYPE;
+                $record->state = Validator::STATE_OPENED;
+                $record->description = $additional_info;
+                $record->save();
+            }
 
-            // Add param
-            $r = new Validator_value();
+            // Check, if record already exists
+            $r = Validator_value::instance()->queryOne('
+                SELECT *
+                FROM(
+                    SELECT id, COUNT(id) as c, group_nr
+                    FROM validation_values
+                    WHERE id_validation = ? AND 
+                        ((value LIKE ? AND flag = ?) 
+                        OR (value = ? AND flag = ? AND description LIKE ?))
+                    GROUP BY group_nr) as tab
+                WHERE c = 2
+                LIMIT 1
+            ', array
+            (
+               $record->id,
+               $dup_value,
+               self::$duplicity_links[$type],
+               $source,
+               self::FLAG_SOURCE,
+               $source_detail
+            ));
 
-            $r->id_validation = $record->id;
-            $r->value = $dup_value;
-            $r->flag = self::$duplicity_links[$type];
+            if(!$r || !$r->id)
+            {
+                // Add duplicity value
+                $r = new Validator_value();
+                $r->id_validation = $record->id;
+                $r->value = $dup_value;
+                $r->flag = self::$duplicity_links[$type];
+                $r->save();
 
-            $r->save();
+                // Add source info
+                self::add_source($record->id, $r->group_nr, $source, $source_detail);
+            }
+            else // Update datetime
+            {
+                Validator_value::instance()->query('
+                    UPDATE validation_values
+                    SET dateTime = ?
+                    WHERE id_validation = ? AND group_nr = ?
+                ', array(date('Y-m-d H:i:s'), $record->id, $r->group_nr));
+            }
 
             $record->commitTransaction();
         }

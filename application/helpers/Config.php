@@ -6,14 +6,22 @@
 class Config
 {
     // DB instance holder
-    private $db;
+    private static $db;
 
     /**
      * Constructor
      */
     function __construct()
     {
-        $this->db = new Configs();
+        self::init();
+    }
+
+    /**
+     * Initialization
+     */
+    public static function init()
+    {
+        self::$db = new Configs();
     }
 
     /**
@@ -23,14 +31,14 @@ class Config
      * @param string $value
      * 
      */
-    public function set($attr, $value)
+    public static function set($attr, $value)
     {
-        if(!$this->db->is_valid_attribute($attr))
+        if(self::$db == NULL)
         {
-            throw new Exception("Invalid config attribute: $attr");
+            self::init();
         }
 
-        $id = $this->attr_exists($attr);
+        $id = self::attr_exists($attr);
 
         $detail = new Configs($id);
 
@@ -49,9 +57,14 @@ class Config
      * 
      * @return string|null
      */
-    public function get($attr)
+    public static function get($attr)
     {
-        $id = $this->attr_exists($attr);
+        if(self::$db == NULL)
+        {
+            self::init();
+        }
+
+        $id = self::attr_exists($attr);
 
         $detail = new Configs($id);
 
@@ -73,9 +86,9 @@ class Config
      * 
      * @return integer|null
      */
-    private function attr_exists($attr)
+    private static function attr_exists($attr)
     {
-        $id = $this->db->where('attribute', $attr)
+        $id = self::$db->where('attribute', $attr)
             ->select_list('id')
             ->get_one()
             ->id;

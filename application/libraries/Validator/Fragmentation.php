@@ -50,7 +50,8 @@ class Validator_fragmentation extends Validator_state
             }
             else
             {
-                $this->message = 'Error occured during molecule fragmentation.';
+                $this->message = 'Error occured during molecule fragmentation. Error: [@]';
+                $this->message_params_types = [self::VAR_DESCRIPTION];
             }
         }
     }
@@ -104,7 +105,7 @@ class Validator_fragmentation extends Validator_state
             }
 
             // Check, if already exists
-            $record = Validator::factory()->where(array
+            $record = $record->where(array
             (
                 'id_substance_1'    => $substance->id,
                 'type'              => $type
@@ -112,7 +113,7 @@ class Validator_fragmentation extends Validator_state
 
             if($record->id)
             {
-                $record->dateTime = date('Y-m-d H:i:s', strtotime('now'));
+                $record->dateTime = date('Y-m-d H:i:s');
                 $record->save();
             }
             else
@@ -121,9 +122,29 @@ class Validator_fragmentation extends Validator_state
                 $record->id_substance_2 = NULL;
                 $record->type = $type;
                 $record->state = $type == self::TYPE_FRAGMENTED ? Validator::STATE_CLOSED : Validator::STATE_OPENED;
-                $record->description = $additional_info;
-
                 $record->save();
+            }
+
+            if($additional_info)
+            {
+                $v = new Validator_value();
+                $v = $v->where(array
+                    (
+                        'id_validation' => $record->id,
+                        'flag'          => self::FLAG_DESCRIPTION,
+                        'description LIKE' => $additional_info
+                    ))
+                    ->get_one();
+                
+                if($v->id)
+                {
+                    $v->dateTime = date('Y-m-d H:i:s');
+                    $v->save();
+                }
+                else
+                {
+                    self::add_group_description($record->id, Validator_value::generate_group_number($record->id), $additional_info);
+                }
             }
 
             $record->commitTransaction();

@@ -101,7 +101,7 @@ class Api_endpoint_parser
         
         $endpoint_path = $method . "@" . $endpoint;
 
-		if(in_array($endpoint_path, array_keys($endpoints)))
+		if(array_key_exists($endpoint_path, $endpoints))
 		{
             $data = $endpoints[$endpoint_path];
             // Check for changes
@@ -139,7 +139,12 @@ class Api_endpoint_parser
 		try
         {
             // At first, clear old definitions
-            file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode([]));
+            $res = file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode([]));
+
+            if($res === false)
+            {
+                throw new ApiException("Writing into URL keeper file failed");
+            }
 
             $files = scandir(APP_ROOT . 'controller/Api/');
 
@@ -176,6 +181,10 @@ class Api_endpoint_parser
                     $this->add_new_endpoint($detail);
                 }
             }
+        }
+        catch(ApiException $ex)
+        {
+            ResponseBuilder::server_error($ex->getMessage());
         }
         catch(Exception $ex)
         {
@@ -287,8 +296,6 @@ class Api_endpoint_parser
     * @param array $rf
     * @param string $endpoint_path
     * 
-    * @throws Exception
-    * @throws ApiException
     * 
     */
     private function get_function_params($rf)

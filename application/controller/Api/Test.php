@@ -8,7 +8,7 @@ class ApiTest extends ApiController
 	* 
 	* @POST
 	* @param $test_string
-	* @param @required $TeST_string1
+	* @param $TeST_string1
 	* @param $test_string2
 	* 
 	* @path(test/check)
@@ -40,10 +40,12 @@ class ApiTest extends ApiController
 			),
 		);
 
-		$arra = new Iterable_object([
+/*		$arra = new Iterable_object([
 			'id' => 1,
 			'ta' => 'awdawd'
 		]);
+
+		$arra = array(1,2,3,4,5,6,7,9); */
 
 		return $arra;
     }

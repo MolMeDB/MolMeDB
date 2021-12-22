@@ -56,7 +56,6 @@ class ApiEndpoint
             ResponseBuilder::not_found('Requested endpoint was not found.');
         }
 
-
         //Lowercasing endpoint for validation and error toleration
         if(!$this->check_valid_endpoint($this->requested_path[0]))
         {
@@ -93,7 +92,11 @@ class ApiEndpoint
 
 
 
-
+    /**
+    * Calls requested endpoint
+    * 
+    * @return content of endpoint
+    */
     public function call()
     {
         //Creating instance of requested class

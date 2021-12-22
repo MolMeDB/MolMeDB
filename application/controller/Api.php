@@ -74,17 +74,17 @@ class ApiController extends Controller
     */
     protected function create_response()
     {
-        foreach ($this->parsed_request->accept_type as $accept_type_item) 
+        foreach ($this->parsed_request->accept_type as $at_item) 
         {
-            if(array_key_exists($accept_type_item, $this->accept_type_methods))
+            if(array_key_exists($at_item, $this->accept_type_methods))
             {
-                $response_method = $this->accept_type_methods[$accept_type_item];
+                $response_method = $this->accept_type_methods[$at_item];
                 $response_encoded = self::$response_method($this->response);
 
                 if($response_encoded !== false)
                 {
                     $this->response = $response_encoded;
-                    $this->headers[] = 'Content-Type: '.$accept_type_item;
+                    $this->headers[] = 'Content-Type: '.$at_item;
                     return;
                 }
             }
@@ -142,21 +142,36 @@ class ApiController extends Controller
             return false;
         }
 
-        $keys = array_keys($arr[0]);
+        $arr_vals = array_values($arr);
 
-        $csv_output = "";
+        
+        //If input array is 1D it will be converted into 2D array
+        $nested = true; 
 
-        $keys = array_keys($arr[0]);
-
-        for ($i=0; $i < count($keys); $i++)
+        for ($i=0; $i < count($arr_vals); $i++)
         { 
-            $keys[$i] = strval($keys[$i]);
+            if(!is_array($arr_vals[$i]))
+            {
+                $nested = false;
+            }
         }
-
-        $csv_output = $csv_output.implode(";", $keys).PHP_EOL;
-
+        //Converting into 2D array
+        $arr = $nested ? $arr : array($arr);
+        
+        //Preparing for inner values checking
+        $csv_output = "";
         $keys = array_keys($arr[0]);
+        $key_format_check = array_keys(range(1, count($keys)));
 
+        if($keys !== $key_format_check)
+        {
+            for ($i=0; $i < count($keys); $i++)
+            { 
+                $keys[$i] = strval($keys[$i]);
+            }
+
+            $csv_output = $csv_output.implode(";", $keys).PHP_EOL;  
+        }        
 
         foreach($arr as $arr_item)
         {

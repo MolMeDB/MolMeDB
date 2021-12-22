@@ -44,6 +44,42 @@ class Substances extends Db
     }    
 
     /**
+     * Update identifiers by validator states
+     */
+    public function update_identifiers()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        $v = new Validator_identifiers();
+
+        if(!$this->identifier)
+        {
+            $this->identifier = Identifiers::generate_substance_identifier($this->id);
+        }
+
+        $this->name = $v->get_active_substance_value($this->id, $v::ID_NAME);
+        $this->SMILES = $v->get_active_substance_value($this->id, $v::ID_SMILES);
+        $this->inchikey = $v->get_active_substance_value($this->id, $v::ID_INCHIKEY);
+        $this->pubchem = $v->get_active_substance_value($this->id, $v::ID_PUBCHEM);
+        $this->pdb = $v->get_active_substance_value($this->id, $v::ID_PDB);
+        $this->drugbank = $v->get_active_substance_value($this->id, $v::ID_DRUGBANK);
+        $this->chEMBL = $v->get_active_substance_value($this->id, $v::ID_CHEMBL);
+        $this->chEBI = $v->get_active_substance_value($this->id, $v::ID_CHEBI);
+
+        // Check name
+        if(!$this->name)
+        {
+            $this->name = $this->identifier;
+        }
+
+        $this->save();
+    }
+
+
+    /**
      * Returns info about fragmentation state of molecule
      * 
      * @return boolean|null

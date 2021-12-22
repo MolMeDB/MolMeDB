@@ -512,7 +512,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             $str_val = $p_val === NULL ? "NULL" : trim(strval($p_val));
             $curr_str_val = !is_array($curr_data->$p_key) && !is_object($curr_data->$p_key) ? ($curr_data->$p_key === NULL || trim(strval($curr_data->$p_key)) === '' ? "NULL" : trim(strval($curr_data->$p_key))) : $mss;
 
-            // echo $p_key . ' - ' . $str_val . ' / ' . $curr_str_val . '<br/>';
+            echo $p_key . ' - ' . $str_val . ' / ' . $curr_str_val . '<br/>';
 
             if($curr_str_val !== $mss && $curr_str_val !== $str_val)
             {

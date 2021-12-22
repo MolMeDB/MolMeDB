@@ -142,10 +142,25 @@ class ApiController extends Controller
             return false;
         }
 
-        $keys = array_keys($arr[0]);
+        $arr_vals = array_values($arr);
 
+        
+        //If input array is 1D it will be converted into 2D array
+        $nested = false; 
+
+        for ($i=0; $i < count($arr_vals); $i++)
+        { 
+            if(is_array($arr_vals[$i]))
+            {
+                $nested = true;
+                break;
+            }
+        }
+        //Converting into 2D array
+        $arr = $nested ? $arr : array($arr);
+        
+        //Preparing for inner values checking
         $csv_output = "";
-
         $keys = array_keys($arr[0]);
 
         for ($i=0; $i < count($keys); $i++)
@@ -154,8 +169,6 @@ class ApiController extends Controller
         }
 
         $csv_output = $csv_output.implode(";", $keys).PHP_EOL;
-
-        $keys = array_keys($arr[0]);
 
 
         foreach($arr as $arr_item)

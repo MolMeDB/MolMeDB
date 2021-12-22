@@ -155,8 +155,6 @@ class HeaderParser
                 $this->accept_type[] = self::DEFAULT_ACCEPT_TYPE;
             }
 
-            $this->accept_type = array_unique($this->accept_type);
-
             if(!count($this->accept_type))
             {
                 ResponseBuilder::bad_request('The server only accepts the following Accept-Type values: '.implode(', ', $this->allowed_accept_types));
@@ -242,13 +240,22 @@ class HeaderParser
                 case self::JSON:
                     $remote_params = file_get_contents('php://input');
 
-                    if($remote_params === false || !is_string($remote_params))
+                    if(!$remote_params || !is_string($remote_params))
                     {
                         $this->content = [];
                         break;
                     }
 
-                    $this->content = json_decode($remote_params, true);
+                    $remote_params = json_decode($remote_params, true);
+                        
+                    if($remote_params === NULL)
+                    {
+                        $this->content = [];
+                        break;
+                    }
+
+                    $this->content = $remote_params;                    
+
                     break;
 
                 case self::MULTIPART:

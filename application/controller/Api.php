@@ -5,18 +5,11 @@
  */
 class ApiController extends Controller 
 {
-    //Accept types for response
-    const JSON = 'application/json';
-    const CSV = 'text/csv';
-
-    //Iterable object constant
-    const ITERABLE_OBJECT = 'Iterable_object';
-
 
     protected $accept_type_methods = array
     (
-        self::JSON => 'json_response',
-        self::CSV => 'csv_response',
+        HeaderParser::JSON  => 'json_response',
+        HeaderParser::CSV   => 'csv_response',
     );
 
 
@@ -26,8 +19,8 @@ class ApiController extends Controller
     protected $parsed_request;
     protected $api_endpoint;
 
-    protected $response;
-    protected $header;
+    private $response;
+    private $headers = [];
 
     /**
      * Main constructor
@@ -44,20 +37,10 @@ class ApiController extends Controller
      */
     public function parse() 
     {   
-
-
-        //Parsing requested endpoint
-        if($this->parsed_request->content_type == self::JSON)
-        {
-            $this->api_endpoint = new ApiEndpoint($this->parsed_request->requested_endpoint, self::JSON);
-        }
-        else
-        {
-            $this->api_endpoint = new ApiEndpoint($this->parsed_request->requested_endpoint);
-        }
-        
         try
         {
+            $this->api_endpoint = new ApiEndpoint($this->parsed_request);
+
             //Calling parsed endpoint and its params
             $this->response = $this->api_endpoint->call();
             
@@ -65,14 +48,6 @@ class ApiController extends Controller
             if(!$this->response)
             {
                 ResponseBuilder::ok_no_content();
-            }
-            elseif(is_a($this->response, self::ITERABLE_OBJECT))
-            {
-                $this->response = $this->response->as_array();
-            }
-            if(!is_array($this->response))
-            {
-                throw new ApiException("Expected array response");
             }
 
             $this->create_response();
@@ -86,7 +61,7 @@ class ApiController extends Controller
             ResponseBuilder::server_error($ex->getMessage());
         }
              
-        ResponseBuilder::ok($this->header, $this->response);
+        ResponseBuilder::ok($this->response, $this->headers);
     }
     
 
@@ -98,23 +73,23 @@ class ApiController extends Controller
     * @throws ApiException 
     */
     protected function create_response()
-    {          
+    {
         foreach ($this->parsed_request->accept_type as $accept_type_item) 
         {
-            if(in_array($accept_type_item, array_keys($this->accept_type_methods)))
+            if(array_key_exists($accept_type_item, $this->accept_type_methods))
             {
                 $response_method = $this->accept_type_methods[$accept_type_item];
-                $response_encoded = ApiController::$response_method($this->response);
+                $response_encoded = self::$response_method($this->response);
 
                 if($response_encoded !== false)
                 {
                     $this->response = $response_encoded;
-                    $this->header = 'Content-Type: '.$accept_type_item;
+                    $this->headers[] = 'Content-Type: '.$accept_type_item;
                     return;
                 }
             }
         }
-        throw new ApiException("Failed to create response, no valid response type found");
+        throw new ApiException("Cannot encode output to the required format. Please, try to expand your Accept-Type options.");
     }
 
     /**
@@ -126,6 +101,11 @@ class ApiController extends Controller
     */
     public static function json_response($response)
     {
+        if($response instanceof Iterable_object)
+        {
+            $response = $response->as_array();
+        }
+
         return json_encode($response);
     } 
 
@@ -138,7 +118,12 @@ class ApiController extends Controller
     */
     public static function csv_response($response)
     {
-        return ApiController::create_csv($response);
+        if($response instanceof Iterable_object)
+        {
+            $response = $response->as_array();
+        }
+
+        return self::create_csv($response);
     } 
 
 
@@ -150,7 +135,7 @@ class ApiController extends Controller
     *  
     * @author Jaromír Hradil
     */
-    protected static function create_csv($arr)
+    private static function create_csv($arr)
     {
         if(!is_array($arr) || count($arr) === 0)
         {

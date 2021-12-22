@@ -15,8 +15,6 @@ class ApiComparator extends ApiController
 	 * Returns energy values for given params
 	 * 
 	 * @POST
-	 * @param flags
-	 * 
 	 */
     public function getEnergyValues($energyFlagIds)
     {

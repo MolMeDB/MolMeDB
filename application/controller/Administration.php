@@ -18,7 +18,6 @@ class AdministrationController extends Controller
         $this->verifyUser(true);
     }
 
-
     public function parse() 
     {
         // Check if user has admin rights

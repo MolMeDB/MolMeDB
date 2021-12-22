@@ -52,22 +52,28 @@ class ResponseBuilder
 
     /**
      * 
-     * Method for creating HTTP 200 response code and error message
+     * Method for creating HTTP 200 response 
      * 
-     * @param string $err_text - OPTIONAL
+     * @param string $response
+     * @param array|string $header_content
      * 
      * @author Jaromír Hradil
      */
-    public static function ok($header_content = NULL, $response = NULL)
+    public static function ok($response, $header_content = [])
     {
-        if($header_content)
+        if(!is_array($header_content))
         {
-            header($header_content);
+            $header_content = [$header_content];
+        }
+
+        foreach($header_content as $hc)
+        {
+            header($hc);
         }
 
         http_response_code(self::CODE_OK);
 
-        if($response)
+        if($response && is_string($response))
         {
             echo($response);
         }
@@ -137,10 +143,10 @@ class ResponseBuilder
     public static function server_error($err_text = NULL)
     {
         http_response_code(self::CODE_SERVER_ERROR);
-        if($err_text)
+        if($err_text && DEBUG)
         {
+            echo('500 Server error: Internal error occured. ');
             echo $err_text;
-            echo('500 Server error: Internal error occured');
         }
         //TODO logging of errors
         die;

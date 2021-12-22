@@ -20,18 +20,18 @@ class ApiTest extends ApiController
 		(
 			array
 			(
-				'id' => 0,
-				'value' => 0,
+				'id' => $test_string2,
+				'value' => $test_string1,
 			),
 			array
 			(
-				'id' => 1,
+				'id' => $test_string,
 				'value' => 1,
 			),
 			array
 			(
 				'id' => '',
-				'value' => array(0,1,2,3)
+				'value' => array('dwdw')
 			),
 			array
 			(
@@ -39,6 +39,11 @@ class ApiTest extends ApiController
 				'value' => 1,
 			),
 		);
+
+		$arra = new Iterable_object([
+			'id' => 1,
+			'ta' => 'awdawd'
+		]);
 
 		return $arra;
     }
@@ -53,7 +58,7 @@ class ApiTest extends ApiController
 	* @param $test_string1
 	* @param $test_string2
 	* 
-	* @path(test/path-test)
+	* @path(test/check)
 	* 
 	*/
     public function check2($test_string, $test_string1, $test_string2)

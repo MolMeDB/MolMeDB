@@ -20,17 +20,17 @@ class HeaderParser
     const DEFLATE = 'deflate';
     const UTF8 = 'utf-8';
 
+    /** ALLOWED AUTHORIZATION TYPES */
+    const AUTH_BASIC = 1;
 
     /** Default values for not specified headers*/
     const DEFAULT_ENCODING = self::GZIP;
     const DEFAULT_CHARSET = self::UTF8;
-    const DEFAULT_ACCEPT = self::JSON;
+    const DEFAULT_ACCEPT_TYPE = self::JSON;
     const DEFAULT_CONTENT = self::JSON;
 
-
-
     //Private values for validity checking
-    private $allowed_methods = array
+    public static $allowed_methods = array
     (
        self::METHOD_GET,
        self::METHOD_POST
@@ -79,14 +79,18 @@ class HeaderParser
 
 
     //Public values for ResponseBuilder
-    public $requested_path = NULL;
+    public $requested_endpoint = NULL;
     public $method_type = NULL;
-    public $accept_type = NULL;
+    public $accept_type = [];
     public $accept_encoding = NULL;
     public $accept_charset = NULL;
     public $content_type = NULL;
-    public $auth_creds = NULL;
+    public $content = [];
 
+    /** Authorization info */
+    public $auth_username = NULL;
+    public $auth_token = NULL;
+    public $auth_type = NULL;
 
     /**
     * Constructor
@@ -108,9 +112,9 @@ class HeaderParser
         //Checking if allowed HTTP request method is used
         $this->method_type = Server::request_method();
 
-        if(!in_array($this->method_type, $this->allowed_methods))
+        if(!in_array(strtoupper($this->method_type), self::$allowed_methods))
         {
-            ResponseBuilder::bad_request('Only allowed request methods are: POST, GET');    
+            ResponseBuilder::bad_request('The server only accepts the following request methods: ' . implode(', ', self::$allowed_methods));    
         }
 
         $accept_header_content = Server::http_accept();
@@ -118,196 +122,160 @@ class HeaderParser
         //Checking if valid accept content is used
         if(!$accept_header_content)
         {
-            $this->accept_type = array(self::DEFAULT_ACCEPT);
+            $this->accept_type = array(self::DEFAULT_ACCEPT_TYPE);
         }
         else
         {
-            $valid_accept_type = false;
-
             $accept_header_content = preg_split('/(,|;)/i', strtolower($accept_header_content), -1, PREG_SPLIT_NO_EMPTY);
 
-            for($idx=0; $idx<count($accept_header_content); $idx++)
-            {
-                $accept_header_content[$idx] = trim($accept_header_content[$idx]);                
-            }
+            // Trim all values
+            $accept_header_content = array_map('trim', $accept_header_content);
 
             $this->accept_type = array();
 
-            foreach($this->allowed_accept_types as $accept_type_item)
-            {
-                if(in_array($accept_type_item, $accept_header_content))
-                {             
-                    if($accept_type_item == self::ALL_TYPES)
-                    {
-                        $all_type_idx = array_search(self::ALL_TYPES, $this->allowed_accept_types);
-                        $tmp_allowed_accept_types = $this->allowed_accept_types;
-                        unset($tmp_allowed_accept_types[$all_type_idx]);
+            $has_all = FALSE;
 
-                        foreach ($tmp_allowed_accept_types as $tmp_item) 
-                        {
-                            $this->accept_type[] = $tmp_item;
-                        }
-                    }
-                    else
+            foreach($accept_header_content as $ac)
+            {
+                if(in_array($ac, $this->allowed_accept_types))
+                {
+                    if($ac == self::ALL_TYPES)
                     {
-                        $this->accept_type[] = $accept_type_item;  
-                    }  
-                    $valid_accept_type = true;                    
+                        $has_all = TRUE;
+                        continue;
+                    }
+
+                    $this->accept_type[] = $ac;
                 }
             }
-            if(!$valid_accept_type)
+
+            // If no matter on return value, add default if not present
+            if($has_all && !in_array(self::DEFAULT_ACCEPT_TYPE, $this->accept_type))
             {
-                ResponseBuilder::bad_request('Supported Accept-Type values are : '.implode
-                                                                                  (',', $this->allowed_accept_types));
-            }   
+                $this->accept_type[] = self::DEFAULT_ACCEPT_TYPE;
+            }
 
             $this->accept_type = array_unique($this->accept_type);
+
+            if(!count($this->accept_type))
+            {
+                ResponseBuilder::bad_request('The server only accepts the following Accept-Type values: '.implode(', ', $this->allowed_accept_types));
+            }   
         }
 
 
-        $this->accept_encoding = Server::http_encoding();
+        $accept_encodings = Server::http_encoding();
 
         //Checking if valid encoding is used
-        if(!$this->accept_encoding)
+        if(!$accept_encodings)
         {
             $this->accept_encoding = self::DEFAULT_ENCODING;
         }
         else
         {
-            $valid_encoding_type = false;
+            $accept_encodings = preg_split('/(,|;)/i', strtolower($accept_encodings), -1, PREG_SPLIT_NO_EMPTY);
 
-            $this->accept_encoding = preg_split('/(,|;)/i', strtolower($this->accept_encoding), -1, PREG_SPLIT_NO_EMPTY);
+            // Trim all values
+            $accept_encodings = array_map('trim', $accept_encodings);
 
-            for($idx=0; $idx<count($this->accept_encoding); $idx++)
+            foreach($accept_encodings as $ae)
             {
-                $this->accept_encoding[$idx] = trim($this->accept_encoding[$idx]);                
-            }
-
-            foreach($this->allowed_accept_encoding as $accept_encoding_item)
-            {
-                if(in_array($accept_encoding_item, $this->accept_encoding))
-                {             
-                    $valid_encoding_type = true;
-                    $this->accept_encoding = $accept_encoding_item;         
+                if(in_array($ae, $this->allowed_accept_encoding))
+                {
+                    $this->accept_encoding = $ae;
                     break;
                 }
             }
-            if(!$valid_encoding_type)
+
+            if(!$this->accept_encoding)
             {
-                ResponseBuilder::bad_request('Only supported Accept-Encodings types are : '.implode
-                                                                                          (',', $this->allowed_accept_encoding));
+                ResponseBuilder::bad_request('The server only accepts the following Accept-Encodings types: '.implode
+                                                                                          (', ', $this->allowed_accept_encoding));
             }   
         }
 
-        $this->accept_charset = Server::http_charset();
+        $accept_charsets = Server::http_charset();
 
         //Checking if valid accept charset is used
-        if(!$this->accept_charset)
+        if(!$accept_charsets)
         {
             $this->accept_charset = self::DEFAULT_CHARSET;
         }
         else
         {
-            
-            $valid_charset_type = false;
+            $accept_charsets = preg_split('/(,|;)/i', strtolower($accept_charsets), -1, PREG_SPLIT_NO_EMPTY);
 
-            $this->accept_charset = preg_split('/(,|;)/i', strtolower($this->accept_charset), -1, PREG_SPLIT_NO_EMPTY);
+            // Trim all values
+            $accept_charsets = array_map('trim', $accept_charsets);
 
-            for($idx=0; $idx<count($this->accept_charset); $idx++)
+            foreach($accept_charsets as $ac)
             {
-                $this->accept_charset[$idx] = trim($this->accept_charset[$idx]);                
-            }
-
-            foreach($this->allowed_accept_charset as $accept_charset_item)
-            {
-                if(in_array($accept_charset_item, $this->accept_charset))
-                {             
-                    $valid_charset_type = true;
-                    $this->accept_charset = $accept_charset_item;         
+                if(in_array($ac, $this->allowed_accept_charset))
+                {
+                    $this->accept_charset = $ae;
                     break;
                 }
             }
-            if(!$valid_charset_type)
+            
+            if(!$this->accept_charset)
             {
-                ResponseBuilder::bad_request('Only supported Accept-Charset types are: '.implode
-                                                                                        (',', $this->allowed_accept_charset));
+                ResponseBuilder::bad_request('The server only accepts the following Accept-Charset types: '.implode
+                                                                                        (', ', $this->allowed_accept_charset));
             }   
         }
 
-
+        // Save content type if set
         $this->content_type = Server::content_type();
 
         //Checking if valid content type is used
-        if(!$this->content_type)
+        if($this->content_type)
         {
-            $this->content_type = self::DEFAULT_CONTENT;
-        }
-        else
-        {
-            $valid_content_type = false;
-            $valid_content_types_count = 0;
-            $content_type_value = NULL;
-
-            $this->content_type = preg_split('/(,|;)/i', strtolower($this->content_type), -1, PREG_SPLIT_NO_EMPTY);
-
-            for($idx=0; $idx<count($this->content_type); $idx++)
+            if(!in_array($this->content_type, $this->allowed_content_type))
             {
-                $this->content_type[$idx] = trim($this->content_type[$idx]);                
+                ResponseBuilder::bad_request('The server only accepts the following Content-Type values: '.implode
+                                                                                        (', ', $this->allowed_content_type));
             }
 
-            foreach($this->allowed_content_type as $content_type_item)
+            // Get request content
+            switch($this->content_type)
             {
-                if(in_array($content_type_item, $this->content_type))
-                {             
-                    $valid_content_type = true;
-                    $content_type_value = $content_type_item;         
-                    $valid_content_types_count++;
-                }
-            }
-            if(!$valid_content_type)
-            {
-                ResponseBuilder::bad_request('Only supported Content-Type values are: '.implode
-                                                                                        (',', $this->allowed_content_type));
-            }
-            elseif($valid_content_types_count != 1)
-            {
-                ResponseBuilder::bad_request('Only one Content-Type value per request permitted. Only supported Content-Type values are: '.implode
-                                                                                        (',', $this->allowed_content_type));
-            }   
-            $this->content_type = $content_type_value;
-        }
+                case self::JSON:
+                    $remote_params = file_get_contents('php://input');
 
+                    if($remote_params === false || !is_string($remote_params))
+                    {
+                        $this->content = [];
+                        break;
+                    }
 
-        $this->auth_creds = Server::http_authorize();
-
-        //Checking if valid authorize type is used
-        if($this->auth_creds)
-        {
-            $this->auth_creds = preg_split('/(,|;)/i', strtolower($this->auth_creds), -1, PREG_SPLIT_NO_EMPTY);
-
-            for($idx=0; $idx<count($this->auth_creds); $idx++)
-            {
-                $this->auth_creds[$idx] = trim($this->auth_creds[$idx]);                
-            }
-
-            $valid_auth_creds = false;
-
-            foreach($this->auth_creds as $auth_creds_item)
-            {
-                $content = preg_split('/\s+/', $auth_creds_item, -1, PREG_SPLIT_NO_EMPTY);
-
-                if($content && count($content) == 2 && strtolower($content[0]) == 'basic')
-                {
-                    $this->auth_creds = base64_decode($content[1]);
-                    $valid_auth_creds = true;
+                    $this->content = json_decode($remote_params, true);
                     break;
-                } 
-            }  
 
-            if(!$valid_auth_creds)
-            {
-                $this->auth_creds = NULL;
-            }   
+                case self::MULTIPART:
+                    if($this->method_type === self::METHOD_POST)
+                    {
+                        $this->content = $_POST;
+                    }
+                    break;
+
+                default:
+                    $this->content = [];
+            }
+        }
+
+        if($this->method_type == self::METHOD_GET && empty($this->content))
+        {
+            $this->content = $_GET;
+        }
+
+        // Check authorization info
+        $basic_auth = Server::basic_auth_creds();
+
+        if(!empty($basic_auth))
+        {
+            $this->auth_type = self::AUTH_BASIC;
+            $this->auth_username = $basic_auth['username'];
+            $this->auth_token = $basic_auth['password'];
         }
     } 
 }

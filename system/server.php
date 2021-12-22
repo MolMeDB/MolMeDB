@@ -67,7 +67,7 @@ class Server
     */
     public static function request_method()
     {
-        return $_SERVER['REQUEST_METHOD'];
+        return isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : NULL;
     }
 
     /**
@@ -79,14 +79,7 @@ class Server
     */
     public static function http_accept()
     {
-        if(!array_key_exists('HTTP_ACCEPT', $_SERVER))
-        {
-            return NULL;
-        }
-        else
-        {
-            return $_SERVER['HTTP_ACCEPT'];
-        }
+        return isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : NULL;
     }
     /**
     * Returns accept encoding header value
@@ -97,14 +90,7 @@ class Server
     */
     public static function http_encoding()
     {
-        if(!array_key_exists('HTTP_ACCEPT_ENCODING', $_SERVER))
-        {
-            return NULL;
-        }
-        else
-        {
-            return $_SERVER['HTTP_ACCEPT_ENCODING'];
-        }
+        return isset($_SERVER['HTTP_ACCEPT_ENCODING']) ? $_SERVER['HTTP_ACCEPT_ENCODING'] : NULL;
     }
     /**
     * Returns accept charset header value
@@ -115,14 +101,7 @@ class Server
     */
     public static function http_charset()
     {
-        if(!array_key_exists('HTTP_ACCEPT_CHARSET', $_SERVER))
-        {
-            return NULL;
-        }
-        else
-        {
-            return $_SERVER['HTTP_ACCEPT_CHARSET'];
-        }
+        return isset($_SERVER['HTTP_ACCEPT_CHARSET']) ? $_SERVER['HTTP_ACCEPT_CHARSET'] : NULL;
     }
     /**
     * Returns content type header value
@@ -133,14 +112,7 @@ class Server
     */
     public static function content_type()
     {
-        if(!array_key_exists('CONTENT_TYPE', $_SERVER))
-        {
-            return NULL;
-        }
-        else
-        {
-            return $_SERVER['CONTENT_TYPE'];
-        }
+        return isset($_SERVER['CONTENT_TYPE']) ? explode(";",$_SERVER['CONTENT_TYPE'])[0] : NULL;
     }
     /**
     * Returns authorize header value
@@ -151,21 +123,15 @@ class Server
     */
     public static function http_authorize()
     {
-        if(!array_key_exists('HTTP_AUTHORIZE', $_SERVER))
-        {
-            return NULL;
-        }
-        else
-        {
-            return $_SERVER['HTTP_AUTHORIZE'];
-        }
+        return isset($_SERVER['HTTP_AUTHORIZE']) ? $_SERVER['HTTP_AUTHORIZE'] : NULL;
     }
+
     /**
     * Returns basic auth credentials
     * 
     * @author Jaromir Hradil
     * 
-    * @return string
+    * @return array
     */
     public static function basic_auth_creds()
     {
@@ -178,11 +144,12 @@ class Server
         {
             return array
             (
-                'usernaname' => $_SERVER['PHP_AUTH_USER'],
-                'passwd' => $_SERVER['PHP_AUTH_PW']
+                'username' => $_SERVER['PHP_AUTH_USER'],
+                'password' => $_SERVER['PHP_AUTH_PW']
             );
         }
     }
+    
     /**
      * Returns server software
      * 
@@ -190,7 +157,7 @@ class Server
      */
     public static function server_software()
     {
-        return $_SERVER['SERVER_SOFTWARE'];
+        return isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : NULL;
     }
 
     /**
@@ -200,7 +167,7 @@ class Server
      */
     public static function script_name()
     {
-        return $_SERVER['SCRIPT_NAME'];
+        return isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : NULL;
     }
     
     /**
@@ -210,20 +177,17 @@ class Server
      */
     public static function request_uri()
     {
-        return $_SERVER['REQUEST_URI'];
+        return isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : NULL;
     }
     
     /**
-     * Returns base directory of FreenetIS
-     * 
      * This function is based on current path of this file, please do not
      * relocate this file!!
      * 
-     * @author Ondřej Fibich
      * @return string
      */
     public static function base_dir()
     {
-        return dirname(dirname(dirname(__FILE__)));
+        return dirname(dirname(__FILE__));
     }
 }

@@ -303,8 +303,6 @@ class Api_endpoint_parser
     * @param array $rf
     * @param string $endpoint_path
     * 
-    * @throws Exception
-    * @throws ApiException
     * 
     */
     private function get_function_params($rf)

@@ -2,7 +2,7 @@
 /**
  * HeaderParser class for request header parsing
  * 
- * @author Jaromir Hradil
+ * @author Jaromir Hradil, Jakub Juracka
  */
 class HeaderParser
 {    
@@ -89,8 +89,13 @@ class HeaderParser
 
     /** Authorization info */
     public $auth_username = NULL;
+    public $auth_password = NULL;
     public $auth_token = NULL;
     public $auth_type = NULL;
+
+    /** SOURCE info */
+    public $remote_ip;
+    public $remote_port;
 
     /**
     * Constructor
@@ -282,7 +287,12 @@ class HeaderParser
         {
             $this->auth_type = self::AUTH_BASIC;
             $this->auth_username = $basic_auth['username'];
-            $this->auth_token = $basic_auth['password'];
+            $this->auth_password = $basic_auth['password'];
+            $this->auth_token = $basic_auth['token'];
         }
+
+        // Remote info
+        $this->remote_ip = Server::remote_addr();
+        $this->remote_port = Server::remote_port();
     } 
 }

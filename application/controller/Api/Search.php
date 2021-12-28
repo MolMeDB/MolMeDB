@@ -24,22 +24,14 @@ class ApiSearch extends ApiController
         self::T_TRANSPORTER
     );
 
-
-    /**
-     * Constructor
-     */
-    function __construct()
-    {
-        // Is user logged in ?
-        $this->user = isset($_SESSION['user']) ? $_SESSION['user'] : NULL;
-    }
-
     /**
      * Internal function for search engine whisper
      * 
      * @GET
-     * @param q Query
-     * @param type
+     * @INTERNAL
+     * @param $query
+     * @param @required $type
+     * @PATH(/all)
      */
     public function search($query, $type)
     {
@@ -48,7 +40,7 @@ class ApiSearch extends ApiController
         // Check type validity
         if(!in_array($type, $this->valid_search_types))
         {
-            $this->bad_request();
+            ResponseBuilder::bad_request('Invalid search type.');
         }
 
         $data = array();
@@ -81,7 +73,7 @@ class ApiSearch extends ApiController
                 break;
         }
         
-        //$this->answer($data);
+        return $data;
     }
     
 }

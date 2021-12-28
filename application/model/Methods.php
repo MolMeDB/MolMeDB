@@ -41,6 +41,16 @@ class Methods extends Db
     }
 
     /**
+     * Instance
+     * 
+     * @return Methods
+     */
+    public static function instance()
+    {
+        return parent::instance();
+    }
+
+    /**
      * Returns method by type
      * 
      * @param int $type
@@ -186,7 +196,7 @@ class Methods extends Db
      * 
      * @param integer $substance_id
      * 
-     * @return Iterable
+     * @return Iterable_object
      */
     public function check_avail_by_substance($substance_id)
     {

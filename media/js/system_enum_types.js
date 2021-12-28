@@ -81,7 +81,7 @@ function handleDrop(e) {
                 type: source_type,
             };
 
-            var result = ajax_request('settings/unlink_item', params, 'POST');
+            var result = ajax_request('settings/unlink', params, 'POST');
 
             if(result == false)
             {
@@ -129,7 +129,7 @@ function handleDrop(e) {
                 return;
             }
 
-            var r = ajax_request('settings/move_enum_type', params, "POST");
+            var r = ajax_request('settings/move/enum_type', params, "POST");
 
             if(r == false)
             {
@@ -170,7 +170,7 @@ function handleDrop(e) {
                 return;
             }
 
-            var r = ajax_request('settings/move_enum_type', params, "POST");
+            var r = ajax_request('settings/move/enum_type', params, "POST");
 
             if(r == false)
             {

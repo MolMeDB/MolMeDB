@@ -179,7 +179,8 @@ class System_config
             APP_ROOT . 'helpers/',
             APP_ROOT . 'libraries/',
             APP_ROOT . 'model/',
-            'system/exceptions/'
+            'system/exceptions/',
+            'system/'
         );
 
         // Default destinations for fast loading

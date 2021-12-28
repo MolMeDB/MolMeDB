@@ -5,69 +5,494 @@
  */
 class ApiInteractions extends ApiController
 {
+   
     /**
-     * Constructor
-     */
-    function __construct()
-    {
-        // Is user logged in ?
-        $this->user = isset($_SESSION['user']) ? $_SESSION['user'] : NULL;
-    }
-    
-    /**
-     * Returns interactions by reference ID
+     * Returns passive interactions by ids
      * 
      * @GET
-     * @param id - Reference ID
+     * @INTERNAL
+     * @param @required $id
+     * @PATH(/detail/passive)
      */
-    public function get_by_reference($id)
+    public function get_passive_interactions($id)
     {
-        $inter = new Interactions();
+        if(!is_array($id))
+		{
+			$id = [$id];
+		}
 
-        $data = $inter
-            ->where(array
-            (
-                'id_reference'  => $id,
-                'visibility'    => Interactions::VISIBLE
-            ))
-            ->get_all();
+		if(empty($id))
+		{
+			ResponseBuilder::bad_request('Invalid id list.');
+		}
 
-        $result = array();
+		$result = array();
 
-        foreach($data as $row)
+		foreach($id as $interaction_id)
+		{
+			$int = new Interactions($interaction_id);
+			$energy = new Energy();
+
+			if(!$int->id)
+			{
+				continue;
+			}
+
+			// Check if energy value exists
+			$avail = $energy->where(array
+				(
+					'id_substance'	=> $int->id_substance,
+					'id_membrane'	=> $int->id_membrane,
+					'id_method'		=> $int->id_method
+				))
+				->get_one();
+
+			$result[] = array
+			(
+				'id'			=> $int->id,
+				'substance'		=> $int->substance ? $int->substance->as_array() : NULL,
+				'membrane'		=> $int->membrane ? $int->membrane->name : NULL,
+				'method'		=> $int->method ? $int->method->name : NULL,
+				'comment'		=> $int->comment ? $int->comment : NULL,
+				'charge'		=> $int->charge,
+				'temperature'	=> $int->temperature,
+				'Position'		=> $int->Position,
+				'Position_acc' 	=> $int->Position_acc,
+				'Penetration'	=> $int->Penetration,
+				'Penetration_acc' 	=> $int->Penetration_acc,
+				'Water'			=> $int->Water,
+				'Water_acc' 	=> $int->Water_acc,
+				'LogK'			=> $int->LogK,
+				'LogK_acc' 		=> $int->LogK_acc,
+				'LogPerm'		=> $int->LogPerm,
+				'LogPerm_acc' 	=> $int->LogPerm_acc,
+				'theta'			=> $int->theta,
+				'theta_acc' 	=> $int->theta_acc,
+				'abs_wl'		=> $int->abs_wl,
+				'abs_wl_acc' 	=> $int->abs_wl_acc,
+				'fluo_wl'		=> $int->fluo_wl,
+				'fluo_wl_acc' 	=> $int->fluo_wl_acc,
+				'lt'			=> $int->lt,
+				'lt_acc' 		=> $int->lt_acc,
+				'QY'			=> $int->QY,
+				'QY_acc' 		=> $int->QY_acc,
+				'id_reference'	=> $int->id_reference,
+				'reference'		=> $int->reference ? $int->reference->citation : NULL,
+				'id_dataset'	=> $int->id_dataset,
+				'id_substance'	=> $int->id_substance,
+				'id_membrane'	=> $int->id_membrane,
+				'id_method'		=> $int->id_method,
+				'energy_profile_flag'	=> $avail->id,
+				'last_update'	=> $int->editDateTime,
+				'uploaded'		=> $int->createDateTime
+			);
+		}
+
+		if(count($result) === 1)
+		{
+			$result = $result[0];
+		}
+		
+		return $result;
+    }
+
+    /**
+     * Returns active interactions details
+     * 
+     * @GET
+     * @param @required $id
+     * @PATH(/detail/active)
+     */
+    public function get_active_interactions($id)
+    {
+        $ids = $id;
+
+        if(!is_array($ids))
         {
-            $result[] = array
-            (
-                'name'  => $row->substance ? $row->substance->name : NULL,
-                'identifier' => $row->substance ? $row->substance->identifier : NULL,
-                'pubchem' => $row->substance ? $row->substance->pubchem : NULL,
-                'drugbank' => $row->substance ? $row->substance->drugbank : NULL,
-                'membrane'  => $row->membrane ? $row->membrane->name : NULL,
-                'method'  => $row->method ? $row->method->name : NULL,
-                'publication' => $row->reference ? $row->reference->citation : NULL,
-                'secondary_publication' => $row->dataset ? $row->dataset->publication->citation : NULL,
-                'SMILES'  => $row->substance ? $row->substance->SMILES : NULL,
-                'LogP'  => $row->substance ? $row->substance->LogP : NULL,
-                'MW'  => $row->substance ? $row->substance->MW : NULL,
-                'charge'  => $row->charge,
-                'temperature'  => $row->temperature,
-                'comment'  => $row->comment,
-                'Position'  => $row->Position,
-                'Position_acc'  => $row->Position_acc,
-                'Penetration'  => $row->Penetration,
-                'Penetration_acc'  => $row->Penetration_acc,
-                'LogK'  => $row->LogK,
-                'LogK_acc'  => $row->LogK_acc,
-                'Water'  => $row->Water,
-                'Water_acc'  => $row->Water_acc,
-                'Penetration'  => $row->Penetration,
-                'Penetration_acc'  => $row->Penetration_acc,
-                'LogPerm'  => $row->LogPerm,
-                'LogPerm_acc'  => $row->LogPerm_acc,
-            );
+            $ids = [$ids];
+        }
+        else if(empty($ids))
+        {
+            ResponseBuilder::bad_request('Invalid id list.');
+        }
+
+		$result = array();
+
+		foreach($ids as $interaction_id)
+		{
+			$int = new Transporters($interaction_id);
+
+			if(!$int->id)
+			{
+				continue;
+			}
+
+			$result[] = array
+			(
+				'id'			=> $int->id,
+				'substance'		=> $int->substance ? $int->substance->as_array() : NULL,
+				'comment'		=> $int->note ? $int->note : NULL,
+				'type'			=> $int->type,
+				'target_id' 	=> $int->id_target,
+				'target'		=> $int->target->as_array(),
+				'Km'			=> $int->Km,
+				'Km_acc'		=> $int->Km_acc,
+				'EC50'			=> $int->EC50,
+				'EC50_acc'		=> $int->EC50_acc,
+				'Ki'			=> $int->Ki,
+				'Ki_acc'		=> $int->Ki_acc,
+				'IC50'			=> $int->IC50,
+				'IC50_acc'		=> $int->IC50_acc,
+				'id_reference'	=> $int->id_reference,
+				'reference'		=> $int->reference ? $int->reference->citation : NULL,
+				'id_dataset'	=> $int->id_dataset,
+				'id_substance'	=> $int->id_substance,
+				'uploaded'		=> $int->create_datetime
+			);
+		}
+
+		if(count($result) === 1)
+		{
+			$result = $result[0];
+		}
+
+		return $result;
+    }
+
+    /**
+     * Returns passive interaction ids for given params
+     * 
+     * @POST - used, because of big number of parameters
+     * @param $method_ids
+     * @param $membrane_ids
+	 * @param $substance_ids
+	 * @param $charges
+     * @PATH(/ids)
+     */
+    public function get_ids_for_params($method_ids, $membrane_ids, $substance_ids, $charges)
+    {
+        if(!is_array($method_ids) && $method_ids)
+        {
+            $method_ids = [$method_ids];
+        }
+        if(!is_array($membrane_ids) && $membrane_ids)
+        {
+            $membrane_ids = [$membrane_ids];
+        }
+        if(!is_array($substance_ids) && $substance_ids)
+        {
+            $substance_ids = [$substance_ids];
+        }
+        if(!is_array($charges) && $charges)
+        {
+            $charges = [$charges];
+        }
+
+        if(empty($method_ids) && empty($membrane_ids) && empty($substance_ids) && empty($charges))
+        {
+            return [];
         }
         
-        //$this->answer($result);
+        $interaction_model = new Interactions();
+
+		$data = $interaction_model
+            ->where("visibility", Interactions::VISIBLE)
+            ->select_list('id, charge');
+
+        if(!empty($method_ids))
+        {
+            $data->in('id_method', $method_ids);
+        }
+        if(!empty($membrane_ids))
+        {
+            $data->in('id_membrane', $membrane_ids);
+        }
+        if(!empty($substance_ids))
+        {
+            $data->in('id_substance', $substance_ids);
+        }
+        if(!empty($charges))
+        {
+            $data->in('charge', $charges);
+        }
+
+        $data = $data->get_all();
+
+		$result = array();
+
+		foreach($data as $row)
+		{
+			$result[] = array
+			(
+				'id' => $row->id,
+				'charge' => $row->charge
+			);
+		}
+
+        return $result;
+    }
+
+    /**
+     * Returns all passive interaction for given compound x membrane x method combination
+     * 
+     * @GET
+     * @param $id_compound
+     * @param $id_method
+     * @param $id_membrane
+     * @param $id_reference
+     * @param @default[FALSE] $group_by
+     * 
+     * @PATH(/all/passive)
+     * 
+     * @author Jakub Juracka <jakub.juracka@upol.cz>
+     */
+    public function get_all_passive_interactions($id_compound, $id_method, $id_membrane, $id_reference, $group_by)
+    {
+        $obj = Interactions::instance();
+        $check = false;
+
+        // Allowed group_by types
+        $allowed_gb = array
+        (
+            'membrane',
+            'method',
+            'compound',
+            'reference'
+        );
+
+        if($group_by && !in_array($group_by, $allowed_gb))
+        {
+            ResponseBuilder::bad_request('Invalid group_by parameter');
+        }
+
+        if(is_numeric($id_membrane))
+        {
+            $id_membrane = [$id_membrane];
+        }
+        if(is_numeric($id_method))
+        {
+            $id_method = [$id_method];
+        }
+        if(is_numeric($id_compound))
+        {
+            $id_compound = [$id_compound];
+        }
+        if(is_numeric($id_reference))
+        {
+            $id_reference = [$id_reference];
+        }
+
+        if(is_array($id_membrane) && $group_by !== 'membrane')
+        {
+            $obj->in('id_membrane', $id_membrane);
+            $check = true;
+        }
+        if(is_array($id_method) && $group_by !== 'method')
+        {
+            $obj->in('id_method', $id_method);
+            $check = true;
+        }
+        if(is_array($id_compound) && $group_by !== 'compound')
+        {
+            $obj->in('id_substance', $id_compound);
+            $check = true;
+        }
+        if(is_array($id_reference) && $group_by !== 'reference')
+        {
+            $obj->in('id_reference', $id_reference);
+            $check = true;
+        }
+
+        if(!$check)
+        {
+            ResponseBuilder::bad_request('Invalid input parameters.');
+        }
+
+        $result = [];
+        
+        if(!$group_by)
+        {
+            $interactions = $obj->get_all();
+
+            foreach($interactions as $i)
+            {
+                // Prepare data
+                $i->substance = $i->substance ? $i->substance->as_array() : NULL;
+                $i->membrane_name = $i->membrane->name;
+                $i->membrane_CAM = $i->membrane->CAM;
+                $i->method_name = $i->method->name;
+                $i->method_CAM = $i->membrane->CAM;
+                $i->primary_reference = $i->reference ? $i->reference->citation : NULL;
+                $i->secondary_reference = $i->dataset && $i->dataset->publication ? $i->dataset->publication->citation : NULL;
+                $i->secondary_reference_id = $i->dataset && $i->dataset->publication ? $i->dataset->publication->id : NULL;
+
+                $result[] = $i->as_array(NULL, TRUE);
+            }
+
+            if(count($result) == 1)
+            {
+                return $result[0];
+            }
+        }
+        else
+        {
+            $data = [];
+            $name = '';
+
+            switch($group_by)
+            {
+                case 'membrane':
+                    if(!is_array($id_membrane))
+                    {
+                        // Get available membrane ids
+                        $rows = $obj->select_list('id_membrane')->distinct()->get_all(false);
+                        $id_membrane = [];
+                        foreach($rows as $r)
+                        {
+                            $id_membrane[] = $r->id_membrane;
+                        }
+                    }
+                    foreach($id_membrane as $id)
+                    {
+                        $m = new Membranes($id);
+                        if(!$m->id)
+                        {
+                            continue;
+                        }
+                        $name = $m->name;
+                        $data[$id] = $obj->where('id_membrane', $id)->get_all();
+                    }
+                    break;
+                case 'method':
+                    if(!is_array($id_method))
+                    {
+                        // Get available membrane ids
+                        $rows = $obj->select_list('id_method')->distinct()->get_all();
+                        $id_method = [];
+                        foreach($rows as $r)
+                        {
+                            $id_method[] = $r->id_method;
+                        }
+                    }
+                    foreach($id_method as $id)
+                    {
+                        $m = new Methods($id);
+                        if(!$m->id)
+                        {
+                            continue;
+                        }
+                        $name = $m->name;
+                        $data[$id] = $obj->where('id_method', $id)->get_all();
+                    }
+                    break;
+                case 'compound':
+                    if(!is_array($id_compound))
+                    {
+                        // Get available membrane ids
+                        $rows = $obj->select_list('id_substance')->distinct()->get_all();
+                        $id_compound = [];
+                        foreach($rows as $r)
+                        {
+                            $id_compound[] = $r->id_substance;
+                        }
+                    }
+                    foreach($id_compound as $id)
+                    {
+                        $m = new Substances($id);
+                        if(!$m->id)
+                        {
+                            continue;
+                        }
+                        $name = $m->name;
+                        $data[$id] = $obj->where('id_substance', $id)->get_all();
+                    }
+                    break;
+                case 'reference':
+                    if(!is_array($id_reference))
+                    {
+                        // Get available membrane ids
+                        $rows = $obj->select_list('id_reference')->distinct()->get_all();
+                        $id_reference = [];
+                        foreach($rows as $r)
+                        {
+                            $id_reference[] = $r->id_reference;
+                        }
+                    }
+                    foreach($id_reference as $id)
+                    {
+                        $m = new Publications($id);
+                        if(!$m->id)
+                        {
+                            continue;
+                        }
+                        $name = $m->citation;
+                        $data[$id] = $obj->where('id_reference', $id)->get_all();
+                    }
+                    break;
+            }
+
+            foreach($data as $id => $rows)
+            {
+                if(!count($rows))
+                {
+                    continue;
+                }
+
+                $d = [];
+                foreach($rows as $i)
+                {
+                    $i->substance = $i->substance ? $i->substance->as_array() : NULL;
+                    $i->membrane_name = $i->membrane->name;
+                    $i->membrane_idTag = $i->membrane->idTag;
+                    $i->membrane_CAM = $i->membrane->CAM;
+                    $i->method_name = $i->method->name;
+                    $i->method_idTag = $i->method->idTag;
+                    $i->method_CAM = $i->membrane->CAM;
+                    $i->primary_reference = $i->reference ? $i->reference->citation : NULL;
+                    $i->secondary_reference = $i->dataset && $i->dataset->publication ? $i->dataset->publication->citation : NULL;
+                    $i->secondary_reference_id = $i->dataset && $i->dataset->publication ? $i->dataset->publication->id : NULL;
+
+                    $d[] = $i->as_array(NULL, TRUE);
+                }
+
+                $result[] = array
+                (
+                    'id_' . $group_by => $id,
+                    $group_by . "_name" => $name,
+                    'data'  => $d
+                );
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * 
+     * 
+     * @GET
+     * @param $id_compound
+     * @param $id_method
+     * @param $id_membrane
+     * 
+     * @PATH(/count/passive)
+     */
+    public function count_passive_by_params($id_compound, $id_method, $id_membrane)
+    {
+        $interaction_model = new Interactions();
+
+        $count = $interaction_model->where(array
+            (
+                'id_substance'  => $id_compound,
+                'id_membrane'   => $id_membrane,
+                'id_method'     => $id_method,
+                'visibility'    => Interactions::VISIBLE
+            ))
+            ->select_list('COUNT(*) as count')
+            ->get_one()
+            ->count;
+
+        return array('count' => $count);
     }
     
 }

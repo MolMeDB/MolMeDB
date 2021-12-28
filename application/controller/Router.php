@@ -62,6 +62,9 @@ class RouterController extends Controller
 
         $parsedURL = $this->parseURL($parameters);
 
+        // Check and save token for internal requests
+        session::check_api_token();
+
         // If not set endpoint
         if (!isset($parsedURL[0]) || empty($parsedURL[0]))
         {		

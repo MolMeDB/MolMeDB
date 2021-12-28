@@ -37,6 +37,11 @@ class Server
     {
         return $_SERVER['REMOTE_ADDR'];
     }
+
+    public static function remote_port()
+    {
+        return isset($_SERVER['REMOTE_PORT']) ? $_SERVER['REMOTE_PORT'] : NULL;
+    }
     
     public static function content_length()
     {
@@ -145,7 +150,8 @@ class Server
             return array
             (
                 'username' => $_SERVER['PHP_AUTH_USER'],
-                'password' => $_SERVER['PHP_AUTH_PW']
+                'password' => $_SERVER['PHP_AUTH_PW'],
+                'token'    => base64_encode($_SERVER['PHP_AUTH_USER'] . ":" . $_SERVER['PHP_AUTH_PW'])
             );
         }
     }

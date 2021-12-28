@@ -65,12 +65,13 @@ function compare_substances(subst_id_1, subst_id_2, nondupl = true)
         subst_id_2 = $('#iden_2').val();
     }
 
-    var substance_1 = ajax_request('detail/mol',{'identifier': subst_id_1});
-    var substance_2 = ajax_request('detail/mol', {'identifier': subst_id_2});
+    var substance_1 = ajax_request('compounds/detail',{'id': subst_id_1, "pi": 1});
+    var substance_2 = ajax_request('compounds/detail', {'id': subst_id_2, "pi": 1});
 
     if(!substance_1 || !substance_2)
     {
         alert('Invalid data.');
+        return;
     }
 
     var target = $('#joiner_columns');

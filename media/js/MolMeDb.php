@@ -43,7 +43,7 @@ function add_message(message, type="success")
  * @param {object} params
  * @param {string} method - GET/POST only
  */
-function ajax_request(uri, params, method = "GET")
+function ajax_request(uri, params = {}, method = "GET")
 {
     method = method.toUpperCase();
     var valid_methods = ['GET', 'POST'];
@@ -55,24 +55,36 @@ function ajax_request(uri, params, method = "GET")
     }
 
     // Make uri
-    uri = url_prefix + "/api/" + uri + "?";
+    uri = url_prefix + "/api/" + uri;
     
-    if(method == "GET")
-    {
-        $.each(params, function(key, value)
-        {                   
-            uri += key + "=" + value + "&";
-        });
-    }
+    // if(method == "GET")
+    // {
+    //     $.each(params, function(key, value)
+    //     {
+    //         if(Array.isArray(value))
+    //         {
+    //             $(value).each(function(i,val){
+    //                 uri += key + "[]=" + val + "&";
+    //             });
+    //         }   
+    //         else
+    //         {
+    //             uri += key + "=" + value + "&";
+    //         }                
+    //     });
+    // }
 
-    uri = uri.replace(/\&+$/, '');
-    
+    // uri = uri.replace(/\&+$/, '');
+
     var result;
 
     // Send request
     $.ajax({
         url: uri,
         type: method,
+        headers:{
+            "Authorization": "Basic " + $('#api_internal_token').val()
+        },
         async: false,
         data: params,
         success: function(data)
@@ -142,39 +154,6 @@ $(document).ready(function()
 
 
 
-
-// /**
-//  * 
-//  */
-// function browserSetActive(id)
-// {
-//     var x = document.getElementById(id);
-
-//     if(x.classList.contains('browse-section-active')){
-//         x.classList.remove('browse-section-active');
-//         x.classList.add('non-active');
-//     }
-//     else{
-//         x.classList.remove('non-active');
-//         x.classList.add('browse-section-active');
-//     }
-// }
-
-// function showBrowseContent(contentId){
-//     var x = document.getElementById('content' + contentId);
-//     var btn = document.getElementById('descBtn' + contentId);
-    
-//     if (x.style.display == 'none'){
-//         x.style.display = 'block';
-//         btn.classList.add('active');
-//     }
-//     else{
-//         x.style.display = 'none';
-//         btn.classList.remove('active');
-//     }
-// }
-
-
 /**
  * Adds substances from dataset to comparator list 
  * @param {string} type 
@@ -182,7 +161,7 @@ $(document).ready(function()
  */
 function addSetToComparator(type, id)
 {
-    var ligands = ajax_request('comparator/getSubstancesToComparator', {type: type, id: id});
+    var ligands = ajax_request('compounds/ids/byPassiveInteractionType', {type: type, id: id});
 
     if(!ligands)
     {
@@ -226,7 +205,7 @@ function canonize_smiles(smiles, target_input_id)
 
     var target_element = document.getElementById(target_input_id);
 
-    var result = ajax_request('smiles/canonize', {smi: smiles}, 'GET');
+    var result = ajax_request('smiles/canonize', {smiles: smiles}, 'GET');
 
     if(!target_element || result === false || !result.canonized)
     {
@@ -256,7 +235,7 @@ function get_reference_by_doi(input_id)
         return;
     }
 
-    var result = ajax_request('publications/get_by_doi', {doi: doi});
+    var result = ajax_request('publications/find/remote', {doi: doi});
 
     if(result === false)
     {
@@ -352,7 +331,7 @@ function download_dataset_byRef(idRef)
     var data = [];
      
     // Get data
-    data = ajax_request("interactions/get_by_reference", {id: idRef});
+    data = ajax_request("interactions/all/passive", {id_reference: idRef});
 
     if(!data)
     {
@@ -576,7 +555,7 @@ function redirect(path, params = {}, method = 'GET')
  */
 function get_all_membranes()
 {
-    var result = ajax_request("membranes/getAll", {}, 'POST');
+    var result = ajax_request("membranes/get");
 
     if(result === false)
         return [];
@@ -591,7 +570,7 @@ function get_all_membranes()
  */
 function get_all_methods()
 {
-    var result = ajax_request("methods/getAll", {}, 'POST');
+    var result = ajax_request("methods/all");
 
     if(result === false)
         return [];
@@ -606,7 +585,7 @@ function get_all_methods()
  */
 function get_all_publications()
 {
-    var result = ajax_request("publications/getAll");
+    var result = ajax_request("publications/all");
 
     if(result === false)
         return [];

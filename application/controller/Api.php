@@ -2,6 +2,22 @@
 
 /**
  * API controller
+ * 
+ * Usage:
+ * Api endpoints must be defined in corresponding files in ./Api/ folder.
+ * For defining of the new endpoint, create class method and define following 
+ * params in method documentation:
+ *  - @[METHOD] - required param specifiing HTTP METHOD, e.g. @POST/@GET
+ *  - @path([PATH]) - required param specifiing uri of defined endpoint, e.g. @Path(/get/byId)
+ *  - @param [OPTIONS] $[NAME] - optional param specifiing parameter given by client for method execution
+ *      - can be included multiple times (once for each parameter)
+ *      - $[NAME] - name has to correspond to exactly one method parameter name
+ *      - OPTIONS:
+ *          - @required - specifies, that parameter has to be passed by client side
+ *          - @default[VALUE] - specifies default value of given param
+ *              - if DEFAULT is set, REQUIRED is ignored
+ *              - VALUE must match following regexp [0-9,a-z,_,\,]+
+ *              - if multiple values required, use "," char as sepearator
  */
 class ApiController extends Controller 
 {

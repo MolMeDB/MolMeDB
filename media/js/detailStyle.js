@@ -29,10 +29,10 @@ acc[0].click();
 function checkMethods(id)
 {
     var params = {
-        id: id
+        id_compound: id
     };
     
-    var result = ajax_request('detail/checkMethods', params);
+    var result = ajax_request('methods/availability/substance', params);
 
     if(!result)
     {
@@ -217,14 +217,23 @@ function loadTable(id)
     }
 
     // Get all interactions
-    var data = ajax_request('detail/getInteractions', { id: id, idMethods: checked}, "POST");
+    var data = ajax_request('interactions/all/passive', { id_compound: id, id_method: checked});
+
 
     if(!data)
     {
         return;
     }
 
-    var membrane_count = data.length;
+    if(Array.isArray(data))
+    {
+        var membrane_count = data.length;
+    }
+    else
+    {
+        var membrane_count = 1;
+        data = [data];
+    }
 
     for (var i = 0; i < membrane_count; i++) 
     {
@@ -458,8 +467,8 @@ function export_detail_data(name)
     rows[0] = ['Membrane', 'Method', 'Note', 'Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-',
         'LogPerm', 'LogPerm_+/-', 'Theta', 'Theta_+/-', 'Abs_wl', 'Abs_wl_+/-', 'Fluo_wl', 'Fluo_wl_+/-','QY', 'QY_+/-', 'lt', 'lt_+/-', 'Primary_reference', 'Secondary_reference'];
     
-    detail = ajax_request("detail/getInteractions", {id: id, idMethods: 0, idMembranes: 0}, "POST");
-    
+    detail = ajax_request("interactions/all/passive", {idCompound: id}, "GET");
+
     if(!detail)
     {
         return;

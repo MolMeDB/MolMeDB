@@ -63,7 +63,7 @@ class Api_endpoint_parser
 			throw new Exception("Failed to decode content of URL keeper file");
 		}		
 		
-        $endpoint_path = $data['method'] . "@" . $data['path'];
+        $endpoint_path = $data['method'] . "@" . strtolower(preg_replace('/^Api/', "", $data['class_name'])) . $data['path'];
 
 		$endpoints[$endpoint_path] = $data;
 		
@@ -85,6 +85,13 @@ class Api_endpoint_parser
 	*/
 	public function find($endpoint, $method, $fast_check = FALSE)
 	{
+        // If debug, always update all endpoints
+        if(DEBUG)
+        {
+            $fast_check = TRUE;
+            $this->update_all();
+        }
+
 		$content = file_get_contents(self::URL_ENDPOINT_KEEPER_PATH);
 
 		if($content === false)
@@ -98,17 +105,17 @@ class Api_endpoint_parser
 		{
 			throw new Exception("Failed to decode content of URL keeper file");
 		}
-        
+
         $endpoint_path = $method . "@" . $endpoint;
 
-		if(in_array($endpoint_path, array_keys($endpoints)))
+		if(array_key_exists($endpoint_path, $endpoints))
 		{
             $data = $endpoints[$endpoint_path];
             // Check for changes
             $r = $this->get_method_detail($data['class_name'], $data['function_name']);
-            
+
             // Update
-            if(!$r || $r['path'] !== $endpoint)
+            if(!$r || strtolower(preg_replace('/^Api/', '', $r['class_name'])) . $r['path'] !== $endpoint)
             {
                 file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
                 return NULL;
@@ -134,7 +141,7 @@ class Api_endpoint_parser
 	 * 
 	 * @author Jakub Juracka, Jaromir Hradil
 	 */
-	public function update_all()
+	private function update_all()
 	{
 		try
         {
@@ -143,7 +150,7 @@ class Api_endpoint_parser
 
             if($res === false)
             {
-                throw new ApiException("Writing into URL keeper file failed");
+                throw new Exception("Writing into URL keeper file failed");
             }
 
             $files = scandir(APP_ROOT . 'controller/Api/');
@@ -307,7 +314,7 @@ class Api_endpoint_parser
         //Checking method params
         foreach($rf as $row)
         {
-            if(!preg_match('/^\s*@param/i', $row))
+            if(!preg_match('/^\s*@param\s+.*\$[a-z]+/i', $row))
             {
                  continue;
             }
@@ -316,29 +323,80 @@ class Api_endpoint_parser
             $required = false;
 
             //Checking "@param @REQUIRED <parameter>" syntax
-            if(preg_match('/^\s*@param\s+@REQUIRED\s+\$\S+/i', $row))
+            if(preg_match('/^\s*@param\s+.*@required\s+.*\$.+/i', $row))
             {
                 $required = true;
             } 
 
-            //Getting name of parameter
-            $key = preg_replace('/^\s*(@param\s+@REQUIRED|@param)\s*/i', '', $row);
-            preg_match('/^\s*\$\S+\s*/i', $key, $key);
+            // Check default value
+            $has_default = FALSE;
+            preg_match('/\s*@param.*@default\[([0-9,\s,a-z,_,\,]+)\].+\$/i', $row, $def);
+            if(count($def) > 1)
+            {
+                $default = [];
+                $default_value = $def[1];
+                // Has multiple values?
+                $default_value = preg_replace('/\s+/', "", $default_value);
+                $default_value = explode(',', $default_value);
 
-            if(!count($key))
+                // Proccess values
+                foreach($default_value as $d)
+                {
+                    $d = strtolower($d);
+                    if($d == 'true')
+                    {
+                        $default[] = TRUE;
+                        continue;
+                    }
+                    if($d == 'false')
+                    {
+                        $default[] = FALSE;
+                        continue;
+                    }
+                    if($d == 'null')
+                    {
+                        $default[] = NULL;
+                        continue;
+                    }
+                    $default[] = $d;
+                    continue;
+                }
+
+                if(count($default))
+                {
+                    $has_default = TRUE;
+                }
+
+                if(is_array($default) && count($default) == 1)
+                {
+                    $default = $default[0];
+                }
+            }
+
+            //Getting name of parameter
+            $key = preg_match('/\$[a-z,_]+/i', $row, $output);
+
+            if(!count($output))
             {
                 continue;
             }
 
             //Editing name for comparison
-            $key = strtolower(trim($key[0]));
+            $key = strtolower(trim($output[0]));
             $key = preg_replace('/^\$/', '', $key);
 
-            $params[] = array
+            $t = array
             (
                 'name' => $key,  
-                'required' => $required
+                'required' => $required,
             );
+
+            if($has_default && isset($default))
+            {
+                $t['default'] = $default;
+            }
+
+            $params[] = $t;
         }
 
         return $params;

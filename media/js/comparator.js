@@ -231,7 +231,7 @@ function loadSummaryChart(energyFlags)
     dataset_export[0][0] = 'Distance [nm]';
     
     // Get data
-    var data = ajax_request('comparator/getEnergyValues', {flags: energyFlags}, "POST");
+    var data = ajax_request('energy/detail', {ids: energyFlags, group: true}, "GET");
 
     if(!data)
     {
@@ -399,7 +399,7 @@ function export_whole_dataset(name)
     while(actual_index < interaction_ids.length)
     {
         var ids = interaction_ids.slice(actual_index, per_request + actual_index);
-        var ajax_data = ajax_request('comparator/getInteraction', { id: ids.join() });
+        var ajax_data = ajax_request('interactions/detail/passive', { ids: ids });
 
         if (ajax_data === false) 
         {
@@ -564,7 +564,7 @@ function loadComparatorTable()
     // Load only maximal 200 compounds
     var interactions_limited = interaction_ids.slice(0,200);
 
-    var ajax_data = ajax_request('comparator/getInteraction', { id: interactions_limited.join() });
+    var ajax_data = ajax_request('interactions/detail/passive', { ids: interactions_limited });
 
     if(!ajax_data)
     {
@@ -1297,7 +1297,7 @@ function total_interaction()
     }
 
     // Get interaction IDs
-    var ajax_data = ajax_request('comparator/getInteractionIds', 
+    var ajax_data = ajax_request('interactions/ids', 
     {
         membrane_ids: active_membranes,
         method_ids: active_methods,
@@ -1433,17 +1433,15 @@ function load_membranes_methods(methods=false)
 {
     var config = 
     {
-        substance_ids: substance_ids,
-        method_ids: 0,
-        membrane_ids: 0
+        id_compound: substance_ids,
     };
 
     if(methods)
     {
-        config.method_ids = active_methods;
+        config.id_method = active_methods;
     }
 
-    var membranes_all = ajax_request('membranes/getAll', config, "POST");
+    var membranes_all = ajax_request('membranes/all', config);
     var methods_all = ajax_request('methods/getAll', config, "POST");
 
     if(membranes_all == false || methods_all == false)

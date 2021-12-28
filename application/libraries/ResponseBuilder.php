@@ -84,17 +84,11 @@ class ResponseBuilder
      * 
      * Method for creating HTTP 200 response code and error message
      * 
-     * @param string $err_text - OPTIONAL
-     * 
      * @author Jaromír Hradil
      */
-    public static function ok_no_content($response = NULL)
+    public static function ok_no_content()
     {
         http_response_code(self::CODE_OK_NO_CONTENT);
-        if($response)
-        {
-            echo($response);
-        }
         die;
     }
 
@@ -136,12 +130,17 @@ class ResponseBuilder
     /**
      * Method for creating HTTP 500 response code and error message
      * 
-     * @param string $err_text - OPTIONAL
+     * @param string|Exception $err_text - OPTIONAL
      *  
      * @author Jaromír Hradil
      */
     public static function server_error($err_text = NULL)
     {
+        if($err_text instanceof Exception)
+        {
+            $err_text = $err_text->getMessage();
+        }
+
         http_response_code(self::CODE_SERVER_ERROR);
         if($err_text && DEBUG)
         {

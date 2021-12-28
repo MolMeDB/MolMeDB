@@ -5,20 +5,14 @@
  */
 class ApiSmiles extends ApiController
 {
-    /**
-     * Constructor
-     */
-    function __construct()
-    {
-
-    }
 
     /**
      * Canonize given smiles string
      * 
      * @GET
-     * @param smi - SMILES string
+     * @param @required $smiles - SMILES string
      * 
+     * @PATH(/canonize)
      */
     public function canonize($smiles)
     {
@@ -29,7 +23,7 @@ class ApiSmiles extends ApiController
         // Is RDKIT running?
         if(!$RDKIT->is_connected())
         {
-            //$this->answer(NULL, self::CODE_FORBIDDEN);
+            ResponseBuilder::server_error('Cannot establish a connection to the RDKIT server.');
         }
 
         $canonized = $RDKIT->canonize_smiles($smiles);
@@ -42,9 +36,9 @@ class ApiSmiles extends ApiController
                 'canonized' => $canonized
             );
 
-            //$this->answer($result);
+            return $result;
         }
 
-        //$this->answer(NULL, self::CODE_BAD_REQUEST);
+        ResponseBuilder::server_error('Cannot canonize SMILES.');
     }
 }

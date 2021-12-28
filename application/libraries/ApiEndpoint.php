@@ -2,26 +2,12 @@
 
 class ApiEndpoint
 {
-
-    /** Request Methods */
-    const METHOD_POST = 'POST';
-    const METHOD_GET = 'GET';
-
-    //Supported content type
-    const JSON = 'application/json';
-
     /** Endpoint function types */
     const ENDPOINT_INTERNAL = 'INTERNAL';
     const ENDPOINT_PRIVATE = 'PRIVATE';
     const ENDPOINT_PUBLIC = 'PUBLIC';
 
-    private $allowed_methods = array
-    (
-       self::METHOD_GET,
-       self::METHOD_POST
-    );
-
-    private $endpoint_function_types = array
+    private $endpoint_access_types = array
     (
         self::ENDPOINT_INTERNAL,
         self::ENDPOINT_PRIVATE,
@@ -62,10 +48,12 @@ class ApiEndpoint
             ResponseBuilder::not_found('Specified endpoint does not exist');
         }
 
-        
+        $path = $this->requested_path;
+        $path = implode("/", $path);
+
         //Checking if endpoint was previously loaded
         $endpoint_parser = new Api_endpoint_parser();
-        $loaded_endpoint = $endpoint_parser->find(implode('/', $this->requested_path), $this->request->method_type);
+        $loaded_endpoint = $endpoint_parser->find($path, $this->request->method_type);
 
         if(!$loaded_endpoint)
         {
@@ -74,7 +62,36 @@ class ApiEndpoint
 
         $this->access_types = $loaded_endpoint['access_types'];
 
-        // TODO check access
+        // Check access
+        $access = false;
+
+        if(in_array(ApiEndpoint::ENDPOINT_PUBLIC, $this->access_types))
+        {
+            $access = true;
+        }
+        else if(in_array(ApiEndpoint::ENDPOINT_PRIVATE, $this->access_types))
+        {
+            // TODO
+            // Check if valid user info
+            // $access = true;
+        }
+
+        if(!$access && in_array(ApiEndpoint::ENDPOINT_INTERNAL, $this->access_types))
+        {
+            $token = $this->request->auth_token;
+            $server_token = Config::get('api_access_token');
+            $access = ($token && $token === $server_token);
+
+            if(!$server_token)
+            {
+                ResponseBuilder::server_error('Internal requests are not currently supported.');
+            }
+        }
+
+        if(!$access)
+        {
+            ResponseBuilder::unauthorized();
+        }
 
         try
         {   
@@ -161,12 +178,16 @@ class ApiEndpoint
         foreach($endpoint_details['params'] as $param)
         {
             $key = $param['name'];
-            $value = NULL;
+            $value = NULL;;
             $required =  $param['required'];
 
             if(!isset($remote_params[$key]))
             {
-                if($required)
+                if(isset($param['default']))
+                {
+                    $value = $param['default'];
+                }
+                else if($required)
                 {
                     ResponseBuilder::bad_request(sprintf("Parameter %s is required", $key));                
                 }

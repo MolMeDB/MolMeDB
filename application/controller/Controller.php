@@ -41,7 +41,7 @@ abstract class Controller
         $this->config = new Config();
         $this->alert = new Alert();
         $this->form = new Form();
-        $this->session = new Iterable_object($_SESSION, true);
+        $this->session = session::instance();
     }
 
     /**

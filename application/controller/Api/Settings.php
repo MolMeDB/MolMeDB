@@ -2,18 +2,16 @@
 
 class ApiSettings extends ApiController
 {    
-    function __construct()
-    {
-        
-    }
 
     /**
      * Unlink item
      * 
      * @POST
      * 
-     * @param id
-     * @param type
+     * @param $id
+     * @param $type
+     * 
+     * @PATH(/unlink)
      */
     public function unlink_item($id, $type)
     {
@@ -21,7 +19,7 @@ class ApiSettings extends ApiController
 
         if(!Enum_types::is_type_valid($type))
         {
-            //$this->answer('Invalid form params.', self::CODE_BAD_REQUEST);
+            ResponseBuilder::bad_request("Invalid item type.");
         }
 
         try
@@ -57,23 +55,25 @@ class ApiSettings extends ApiController
         catch(Exception $e)
         {
             $et->rollbackTransaction();
-            //$this->answer($e->getMessage(), self::CODE_BAD_REQUEST);
+            ResponseBuilder::server_error();
         }
 
-        //$this->answer(null, self::CODE_OK_NO_CONTENT);
+        ResponseBuilder::ok_no_content();
     }
 
     const MOVE_CAT = 1;
     const MOVE_ITEM = 2;
 
+    
     /**
      * Moves enum type
      * 
      * @POST
-     * @param source_id
-     * @param target_link_id
-     * @param item_type
-     * @param item_id
+     * @param $source_id
+     * @param $target_link_id
+     * @param $item_type
+     * @param $item_id
+     * @PATH(/move/enum_type)
      */
     public function move_enum_type($source_id, $target_link_id, $item_type, $item_id)
     {
@@ -216,16 +216,15 @@ class ApiSettings extends ApiController
             }
             
             $enum_type->commitTransaction();
-            //$this->answer('Item moved.');
+            ResponseBuilder::ok('Item moved.');
             
         }
         catch(Exception $e)
         {
-            //$this->answer($e->getMessage(), self::CODE_NOT_FOUND);
             $enum_type->rollbackTransaction();
+            ResponseBuilder::server_error($e);
         }
 
-        //$this->answer(null, self::CODE_OK_NO_CONTENT);
+        ResponseBuilder::ok_no_content();
     }
-
 }

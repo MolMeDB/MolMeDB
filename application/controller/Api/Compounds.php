@@ -14,7 +14,7 @@ class ApiCompounds extends ApiController
      * @internal
      * @param @required $id
      * @param @required $type
-     * @PATH(/ids/byPassiveInteractionTypes)
+     * @PATH(/ids/byPassiveInteractionType)
      */
     public function get_by_type($id, $type)
     {

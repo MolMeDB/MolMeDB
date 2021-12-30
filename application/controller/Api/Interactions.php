@@ -9,6 +9,19 @@ class ApiInteractions extends ApiController
     /**
      * Returns passive interactions by ids
      * 
+     * @POST
+     * @INTERNAL
+     * @param @required $id
+     * @PATH(/detail/passive)
+     */
+    public function get_passive_interactions_POST($id)
+    {
+        return $this->get_passive_interactions($id);
+    }
+
+    /**
+     * Returns passive interactions by ids
+     * 
      * @GET
      * @INTERNAL
      * @param @required $id
@@ -21,7 +34,7 @@ class ApiInteractions extends ApiController
 			$id = [$id];
 		}
 
-		if(empty($id))
+		if(empty($id) || !$id[0])
 		{
 			ResponseBuilder::bad_request('Invalid id list.');
 		}
@@ -162,33 +175,34 @@ class ApiInteractions extends ApiController
     /**
      * Returns passive interaction ids for given params
      * 
-     * @POST - used, because of big number of parameters
-     * @param $method_ids
-     * @param $membrane_ids
-	 * @param $substance_ids
-	 * @param $charges
+     * @POST - used because of possible big number of parameters' values
+     * @INTERNAL
+     * @param $id_method
+     * @param $id_membrane
+	 * @param $id_compound
+	 * @param $charge
      * @PATH(/ids)
      */
-    public function get_ids_for_params($method_ids, $membrane_ids, $substance_ids, $charges)
+    public function get_ids_for_params($id_method, $id_membrane, $id_compound, $charge)
     {
-        if(!is_array($method_ids) && $method_ids)
+        if(!is_array($id_method) && $id_method)
         {
-            $method_ids = [$method_ids];
+            $id_method = [$id_method];
         }
-        if(!is_array($membrane_ids) && $membrane_ids)
+        if(!is_array($id_membrane) && $id_membrane)
         {
-            $membrane_ids = [$membrane_ids];
+            $id_membrane = [$id_membrane];
         }
-        if(!is_array($substance_ids) && $substance_ids)
+        if(!is_array($id_compound) && $id_compound)
         {
-            $substance_ids = [$substance_ids];
+            $id_compound = [$id_compound];
         }
-        if(!is_array($charges) && $charges)
+        if(!is_array($charge) && $charge)
         {
-            $charges = [$charges];
+            $charge = [$charge];
         }
 
-        if(empty($method_ids) && empty($membrane_ids) && empty($substance_ids) && empty($charges))
+        if(empty($id_method) && empty($id_membrane) && empty($id_compound) && empty($charge))
         {
             return [];
         }
@@ -199,21 +213,21 @@ class ApiInteractions extends ApiController
             ->where("visibility", Interactions::VISIBLE)
             ->select_list('id, charge');
 
-        if(!empty($method_ids))
+        if(!empty($id_method))
         {
-            $data->in('id_method', $method_ids);
+            $data->in('id_method', $id_method);
         }
-        if(!empty($membrane_ids))
+        if(!empty($id_membrane))
         {
-            $data->in('id_membrane', $membrane_ids);
+            $data->in('id_membrane', $id_membrane);
         }
-        if(!empty($substance_ids))
+        if(!empty($id_compound))
         {
-            $data->in('id_substance', $substance_ids);
+            $data->in('id_substance', $id_compound);
         }
-        if(!empty($charges))
+        if(!empty($charge))
         {
-            $data->in('charge', $charges);
+            $data->in('charge', $charge);
         }
 
         $data = $data->get_all();

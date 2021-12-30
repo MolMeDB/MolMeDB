@@ -15,6 +15,7 @@ class HeaderParser
     const JSON = 'application/json';
     const CSV = 'text/csv';
     const MULTIPART = 'multipart/form-data';
+    const APP_WWW_FORM = "application/x-www-form-urlencoded";
     const GZIP = 'gzip';
     const COMPRESS = 'compress';
     const DEFLATE = 'deflate';
@@ -74,7 +75,8 @@ class HeaderParser
     private $allowed_content_type = array
     (
         self::JSON,
-        self::MULTIPART
+        self::MULTIPART,
+        self::APP_WWW_FORM
     );
 
 
@@ -252,7 +254,7 @@ class HeaderParser
                     }
 
                     $remote_params = json_decode($remote_params, true);
-                        
+
                     if($remote_params === NULL)
                     {
                         $this->content = [];
@@ -267,6 +269,14 @@ class HeaderParser
                     if($this->method_type === self::METHOD_POST)
                     {
                         $this->content = $_POST;
+                    }
+                    break;
+
+                case self::APP_WWW_FORM:
+                    if($this->method_type === self::METHOD_POST)
+                    {
+                        parse_str(file_get_contents("php://input"), $d);
+                        $this->content = $d;
                     }
                     break;
 

@@ -101,7 +101,7 @@
                 <h3><?= $publication->title ? $publication->title : $publication->citation ?></h3>
             </div>
         <div class="comp-addAll">
-            <button type="button" onclick="download_dataset_byRef('<?=$publication->id?>')" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
+            <button type="button" onclick="redirect('export/publication/<?=$publication->id?>')" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
             <button type="button" onclick="addSetToComparator('set', '<?=$publication->id?>')" class="btn btn-warning btn-sm pull-right" style="margin-bottom: 5px;">Add all compounds to the comparator </button>
             <button class="btn btn-sm btn-primary pull-right btn-add" id="btn-addALL">Add list to the comparator </button>
         </div>

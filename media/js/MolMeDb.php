@@ -56,25 +56,6 @@ function ajax_request(uri, params = {}, method = "GET")
 
     // Make uri
     uri = url_prefix + "/api/" + uri;
-    
-    // if(method == "GET")
-    // {
-    //     $.each(params, function(key, value)
-    //     {
-    //         if(Array.isArray(value))
-    //         {
-    //             $(value).each(function(i,val){
-    //                 uri += key + "[]=" + val + "&";
-    //             });
-    //         }   
-    //         else
-    //         {
-    //             uri += key + "=" + value + "&";
-    //         }                
-    //     });
-    // }
-
-    // uri = uri.replace(/\&+$/, '');
 
     var result;
 
@@ -83,13 +64,20 @@ function ajax_request(uri, params = {}, method = "GET")
         url: uri,
         type: method,
         headers:{
-            "Authorization": "Basic " + $('#api_internal_token').val()
+            "Authorization": "Basic " + $('#api_internal_token').val(),
         },
         async: false,
         data: params,
         success: function(data)
         {
-            result = data;
+            if(data)
+            {
+                result = data;
+            }
+            else
+            {
+                result = null;
+            }
         },
         error: function(data)
         {
@@ -163,13 +151,13 @@ function addSetToComparator(type, id)
 {
     var ligands = ajax_request('compounds/ids/byPassiveInteractionType', {type: type, id: id});
 
-    if(!ligands)
+    if(ligands === false)
     {
         add_message('Compounds were not added to the comparator list.', 'danger');
         return;
     }
 
-    var count = ligands.length;
+    var count = ligands ? ligands.length : 0;
 
     for(var i = 0; i<count; i++)
     {
@@ -179,7 +167,7 @@ function addSetToComparator(type, id)
         add_to_comparator(ID, name);
     }
 
-    if(count <= 1)
+    if(!count)
     {
         alert("No compounds available.");
     }

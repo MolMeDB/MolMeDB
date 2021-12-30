@@ -231,7 +231,7 @@ function loadSummaryChart(energyFlags)
     dataset_export[0][0] = 'Distance [nm]';
     
     // Get data
-    var data = ajax_request('energy/detail', {ids: energyFlags, group: true}, "GET");
+    var data = ajax_request('energy/detail', {id: energyFlags, group: true});
 
     if(!data)
     {
@@ -246,11 +246,16 @@ function loadSummaryChart(energyFlags)
         dataset_export[i+1][0] = i/10;
     }
 
-    var count = data.length;
+    var count = energyFlags.length;
 
     for(var i=0; i<count; i++)
     {
-        var detail = data[i];
+        var detail = data[energyFlags[i]];
+
+        if(!detail)
+        {
+            continue;
+        }
 
         dataset[i] = {};
         dataset[i].label = detail.substance + '(' + detail.membrane + '|' + detail.method + ')';
@@ -399,7 +404,7 @@ function export_whole_dataset(name)
     while(actual_index < interaction_ids.length)
     {
         var ids = interaction_ids.slice(actual_index, per_request + actual_index);
-        var ajax_data = ajax_request('interactions/detail/passive', { ids: ids });
+        var ajax_data = ajax_request('interactions/detail/passive', { id: ids }, "POST");
 
         if (ajax_data === false) 
         {
@@ -564,7 +569,7 @@ function loadComparatorTable()
     // Load only maximal 200 compounds
     var interactions_limited = interaction_ids.slice(0,200);
 
-    var ajax_data = ajax_request('interactions/detail/passive', { ids: interactions_limited });
+    var ajax_data = ajax_request('interactions/detail/passive', { id: interactions_limited }, "POST");
 
     if(!ajax_data)
     {
@@ -1299,10 +1304,10 @@ function total_interaction()
     // Get interaction IDs
     var ajax_data = ajax_request('interactions/ids', 
     {
-        membrane_ids: active_membranes,
-        method_ids: active_methods,
-        substance_ids: substance_ids,
-        charges: active_ch
+        id_membrane: active_membranes,
+        id_method: active_methods,
+        id_compound: substance_ids,
+        charge: active_ch
     }, "POST");
 
     interaction_ids = [];
@@ -1442,7 +1447,7 @@ function load_membranes_methods(methods=false)
     }
 
     var membranes_all = ajax_request('membranes/all', config);
-    var methods_all = ajax_request('methods/getAll', config, "POST");
+    var methods_all = ajax_request('methods/All', config);
 
     if(membranes_all == false || methods_all == false)
     {

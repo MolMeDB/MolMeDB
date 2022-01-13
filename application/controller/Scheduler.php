@@ -434,6 +434,11 @@ class SchedulerController extends Controller
 
                 $fragments = $rdkit->fragment_molecule($s->SMILES);
 
+                if(!$fragments)
+                {
+                    continue;
+                }
+
                 foreach($fragments as $record)
                 {
                     $order = Substances_fragments::instance()->get_free_order_number($s->id);

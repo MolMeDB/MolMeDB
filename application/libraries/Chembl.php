@@ -3,7 +3,7 @@
 /**
  * Chembl api handler
  */
-class Chembl
+class Chembl extends Identifier_loader
 {
     /** Holds connection */
     private $client;
@@ -11,11 +11,20 @@ class Chembl
     /** STATUS */
     private $STATUS = false;
 
+    /** Holds info about last used identifier type */
+    public $last_identifier = null;
+
     /** INTERACTION DATA DETAIL */
     const logP_MEMBRANE_TYPE = Membranes::LOGP_TYPE;
     const logP_METHOD_TYPE = Methods::CHEMBL_LOGP_TYPE;
     const DATASET_TYPE = Datasets::CHEMBL;
     const PUBLICATION_TYPE = Publications::CHEMBL;
+
+    /** Data holder */
+    private $data = [];
+
+    /** SMILES source attribute */
+    public $SMILES_SOURCE_TYPE = Validator_identifiers::ID_CHEMBL;
 
 
     /**
@@ -23,22 +32,191 @@ class Chembl
      */
     function __construct()
     {
+        $this->reconnect();
+    }
+
+    /**
+     * Checks, if given remote server is reachable
+     * 
+     * @return boolean
+     */
+    function is_reachable()
+    {
+        if(!$this->is_connected())
+        {
+            $this->reconnect();
+        }
+
+        return $this->is_connected();
+    }
+
+    /**
+     * Reconnect
+     *
+     */
+    function reconnect()
+    {
         try 
         {
-            $config = new Config();
-
-            // Add to the system setting in next update
-            // $this->client = new Http_request($config->get(Configs::RDKIT_URI));
             $this->client = new Http_request('https://www.ebi.ac.uk/chembl/api/data/');
-
-            // Try to connect
-            $this->STATUS =  $this->client->test_connection('test');
+            $this->STATUS =  $this->client->test_connection();
         } 
         catch (Exception $e) 
         {
             $this->STATUS = false;
-            throw new Exception('Chembl service is unreachable.');
         }
+    }
+
+    /**
+     * Checks, if given identifier is valid
+     * 
+     * @param string $identifier
+     * 
+     * @return boolean
+     */
+    function is_valid_identifier($identifier)
+    {
+        if(!$this->is_reachable())
+        {
+            return null;
+        }
+
+        $uri = "molecule/$identifier";
+        $method = Http_request::METHOD_GET;
+        $params = ['format' => 'json'];
+
+        try 
+        {
+            $response = $this->client->request($uri, $method, $params);
+
+            if($response)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        catch(Exception $e)
+        {
+            return false;
+        }
+    }
+
+    /**
+     * Returns PDB id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_pdb($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns inchikey for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_inchikey($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns Pubchem id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_pubchem($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns drugbank id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_drugbank($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns chembl id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_chembl($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns chebi id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_chebi($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns SMILES for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_smiles($substance)
+    {
+        $data = $this->get_data($substance->chEMBL);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return $data->SMILES;
+    }
+
+    /**
+     * Returns name for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_name($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns 3D structure for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_3d_structure($substance)
+    {
+        return false;
     }
 
     /**
@@ -102,12 +280,19 @@ class Chembl
      * 
      * @return object|null
      */
-    public function get_molecule_data($chembl_id)
+    public function get_data($chembl_id)
     {
         if(!$chembl_id)
         {
             return NULL;
         }
+
+        if(isset($this->data[$chembl_id]))
+        {
+            return $this->data[$chembl_id];
+        }
+
+        $this->last_identifier = Validator_identifiers::ID_CHEMBL;
 
         $uri = "molecule/$chembl_id";
         $method = Http_request::METHOD_GET;
@@ -126,17 +311,21 @@ class Chembl
                 $result['formula'] = $d->full_molformula ? $d->full_molformula : NULL;
                 $result['MW'] = $d->mw_freebase ? $d->mw_freebase : NULL;
             }
-            elseif($response && $response->molecule_structures)
+
+            if($response && $response->molecule_structures)
             {
                 $d = $response->molecule_structures;
 
                 $result['SMILES'] = $d->canonical_smiles ? $d->canonical_smiles : NULL;
+                $result['inchi'] = $d->standard_inchi ? $d->standard_inchi : NULL;
+                $result['inchikey'] = $d->standard_inchi_key ? $d->standard_inchi_key : NULL;
             }
 
             // Return result
             if(!empty($result))
             {
-                return (object) $result;
+                $this->data[$chembl_id] = new Iterable_object($result);
+                return $this->data[$chembl_id];
             }
 
             return NULL;

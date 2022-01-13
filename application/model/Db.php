@@ -214,8 +214,6 @@ class Db extends Iterable_object
         return $this;
     }
 
-
-
     /**
      * Execute query to DB and returns one result
      * 
@@ -637,6 +635,7 @@ class Db extends Iterable_object
                 }
                 else
                 {
+                    $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
                     $this->where .= $attr . ' "' . $val . '"';
                 }
             }
@@ -646,6 +645,7 @@ class Db extends Iterable_object
             }
             else
             {
+                $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
                 $this->where .= $attr . ' = "' . $val . '"';
             }
 
@@ -659,6 +659,7 @@ class Db extends Iterable_object
             foreach($where as $attr => $val)
             {
                 $attr = trim($attr);
+                $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
 
                 // echo($attr . ' / ' . $val . '<br/>');
 

@@ -13,6 +13,13 @@ class MolController extends Controller
         parent::__construct();
     }
 
+    /**
+     * Shows substance detail
+     * 
+     * @param string $identifier
+     * 
+     * @author Jakub Juracka
+     */
     public function parse($identifier = NULL) 
     {
         $energyModel = new Energy();
@@ -23,16 +30,6 @@ class MolController extends Controller
         $transporter_dataset_model = new Transporter_datasets();
         $link_model = new Substance_links();
 
-         // Get substance detail
-        // $substance = $substanceModel
-        //     ->where('identifier', $identifier)
-        //     ->get_one();
-
-        // $pubchem = new Drugbank();
-
-        // print_r($pubchem->get_3d_structure($substance));
-        // die;
-        
         try
         {
             // Get substance detail
@@ -93,6 +90,9 @@ class MolController extends Controller
 
         // Substance detail
         $this->data['substance'] = $substance;
+
+        // 3D structure
+        $this->data['structure_3d'] = $substance->get_3D_structure();
         
         // Membranes and methods
         $this->data['membranes'] = $membranes;

@@ -22,7 +22,22 @@
                     </div>
                     <div class="structure">
                         <div id="litemol" class="structure3D"></div>
-                        <script src="js/litemol.js"></script>
+                        <script>
+                            var plugin = LiteMol.Plugin.create({ 
+                                target: '#litemol', 
+                                viewportBackground: '#fff',
+                                layoutState: {
+                                    hideControls: true,
+                                } 
+                            });
+                            var path = "<?= $structure_3d->path ?>";
+
+                            plugin.loadMolecule({
+                                id: '<?= $substance->identifier ?>',
+                                url: '/' + path,
+                                format: 'sdf' // default
+                            });
+                        </script>
                     </div>
                 </div>
                 <div class="flex-column space-between" style="width: 47%">

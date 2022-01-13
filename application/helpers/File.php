@@ -24,10 +24,21 @@ class File
     /**
      * Constructor
      * 
-     * @param string $path - PATH to the file
+     * @param string|int|Files $path - PATH to the file
      */
     function __construct($path = NULL)
     {
+        // File model id
+        if(is_numeric($path))
+        {
+            $f = new Files($path);
+            $path = $f->path;
+        }
+        else if($path instanceof Files)
+        {
+            $path = $path->path;
+        }
+        
         if($path && is_array($path) && 
             isset($path['tmp_name']) && // Uploaded file
             isset($path['size']) && // Uploaded file
@@ -67,7 +78,7 @@ class File
         // Set default values
         $this->FILE = fopen($filePath, $type);
         $this->origin_path = $this->path = $filePath;
-        $this->name = $filePath ? substr($filePath, $last_slash + 1) : null;
+        $this->name = substr($filePath, $last_slash + 1);
     }
 
     /**
@@ -127,6 +138,21 @@ class File
         }
 
         fwrite($this->FILE, $line . PHP_EOL);
+    }
+
+    /**
+     * Writes content to the file
+     * 
+     * @param string $text
+     */
+    public function write($text)
+    {
+        if(!$this->FILE)
+        {
+            throw new Exception('Wrong file instance');
+        }
+
+        fwrite($this->FILE, $text);
     }
 
     /**
@@ -222,58 +248,6 @@ class File
         if(!is_dir($dir_path))
         {
             mkdir($dir_path, 0777, True);
-        }
-    }
-
-    /**
-     * Checks if exists 3d structure for given molecule identifier
-     * 
-     * @param string $identifier
-     */
-    public function structure_file_exists($identifier)
-    {
-        // If not exists, then make folder
-        $this->make_path(self::FOLDER_3DSTRUCTURES);
-
-        $path = self::FOLDER_3DSTRUCTURES . $identifier . '.mol';
-
-        return file_exists($path) && filesize($path);
-    }
-
-    /**
-     * Saves new file structure
-     * 
-     * @param string $identifier
-     * @param string $content
-     * 
-     * @return File
-     */
-    public function save_structure_file($identifier, $content)
-    {
-        if($this->structure_file_exists($identifier))
-        {
-            $this->remove_structure_file($identifier);
-        }
-
-        $file = fopen(self::FOLDER_3DSTRUCTURES . $identifier . '.mol', 'w');
-        fwrite($file, $content);
-        fclose($file);
-
-        return new File(self::FOLDER_3DSTRUCTURES . $identifier . '.mol');
-    }
-
-    /**
-     * Removes structure file
-     * 
-     * @param string $identifier
-     */
-    public function remove_structure_file($identifier)
-    {
-        $path = self::FOLDER_3DSTRUCTURES . $identifier . '.mol';
-
-        if($this->structure_file_exists($identifier))
-        {
-            unlink($path);
         }
     }
 

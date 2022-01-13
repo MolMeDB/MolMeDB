@@ -19,21 +19,13 @@
  * @property string $pdb
  * @property string $chEMBL
  * @property integer $user_id
- * @property integer $validated
- * @property integer $prev_validation_state
- * @property integer $waiting
- * @property integer $invalid_structure_flag
- * @property datetime $createDateTime
- * @property datetime $editDateTime
+ * @property string $createDateTime
+ * @property string $editDateTime
  * 
  * @author Jakub Juracka
  */
 class Substances extends Db
 {
-    /** INVALID STRUCTURE CONSTANTS */
-    const INVALID_STRUCTURE = 1;
-    const VALIDATED_STRUCTURE = 2;
-
     /**
      * Constructor
      */
@@ -44,163 +36,321 @@ class Substances extends Db
     }    
 
     /**
-     * Update identifiers by validator states
+     * Checks current substance name, if contains some identifier
+     * 
+     * @return boolean - True, if found. False otherwise
      */
-    public function update_identifiers()
+    public function check_identifiers_in_name()
     {
-        if(!$this->id)
+        if(!$this || !$this->id)
         {
-            return null;
+            return false;
         }
 
-        $v = new Validator_identifiers();
+        $name = trim($this->name);
+        
+        $vi = new Validator_identifiers();
+        $source = $vi->find_source($this->id, $vi::ID_NAME);
 
-        if(!$this->identifier)
+        $vi->id_substance = $this->id;
+        $vi->id_source = $source->id;
+        $vi->value = $name;
+        $vi->id_user = NULL;
+        $vi->state = $source->is_credible($vi::SERVER_MOLMEDB) ? $vi::STATE_VALIDATED : $vi::STATE_NEW;
+        
+        if(!$source || !$source->id)
         {
-            $this->identifier = Identifiers::generate_substance_identifier($this->id);
+            throw new Exception('Cannot find name source.');
         }
 
-        $this->name = $v->get_active_substance_value($this->id, $v::ID_NAME);
-        $this->SMILES = $v->get_active_substance_value($this->id, $v::ID_SMILES);
-        $this->inchikey = $v->get_active_substance_value($this->id, $v::ID_INCHIKEY);
-        $this->pubchem = $v->get_active_substance_value($this->id, $v::ID_PUBCHEM);
-        $this->pdb = $v->get_active_substance_value($this->id, $v::ID_PDB);
-        $this->drugbank = $v->get_active_substance_value($this->id, $v::ID_DRUGBANK);
-        $this->chEMBL = $v->get_active_substance_value($this->id, $v::ID_CHEMBL);
-        $this->chEBI = $v->get_active_substance_value($this->id, $v::ID_CHEBI);
-
-        // Check name
-        if(!$this->name)
+        if(Upload_validator::check_identifier_format($name, Upload_validator::DRUGBANK, True))
         {
-            $this->name = $this->identifier;
+            // Exists already?
+            $exists = $vi->get_active_substance_value($this->id, $vi::ID_DRUGBANK);
+
+            $vi->identifier = $vi::ID_DRUGBANK;
+            $vi->active = $vi->state == $vi::STATE_VALIDATED && !$exists->id ? $vi::ACTIVE : $vi::INACTIVE;
         }
+        elseif(Upload_validator::check_identifier_format($name, Upload_validator::CHEMBL_ID, True))
+        {
+            // Exists already?
+            $exists = $vi->get_active_substance_value($this->id, $vi::ID_CHEMBL);
+
+            $vi->identifier = $vi::ID_CHEMBL;
+            $vi->active = $vi->state == $vi::STATE_VALIDATED && !$exists->id ? $vi::ACTIVE : $vi::INACTIVE;
+
+        }
+        else
+        {
+            return false;
+        }
+
+        $vi->save();
+
+        // Update name
+        $vi = new Validator_identifiers();
+        $vi->id_substance = $this->id;
+        $vi->id_source = NULL;
+        $vi->value = $this->identifier;
+        $vi->id_user = NULL;
+        $vi->identifier = $vi::ID_NAME;
+        $vi->state = $vi::STATE_VALIDATED;
+        $vi->active = $vi::ACTIVE;
+
+        $vi->save();
+
+        return true;
+    }
+
+    /**
+     * Checks, if substance identifiers are persistent
+     * 
+     * @throws Exception
+     */
+    public function check_identifiers()
+    {
+        if(!$this || !$this->id)
+        {
+            throw new Exception('Invalid subtance instance.');
+        }
+
+        $vi = new Validator_identifiers();
+
+        $vi->init_substance_identifiers($this);
+
+        $name = $vi->get_active_substance_value($this->id, $vi::ID_NAME);
+        $smiles = $vi->get_active_substance_value($this->id, $vi::ID_SMILES);
+        $inchikey = $vi->get_active_substance_value($this->id, $vi::ID_INCHIKEY);
+        $pubchem = $vi->get_active_substance_value($this->id, $vi::ID_PUBCHEM);
+        $drugbank = $vi->get_active_substance_value($this->id, $vi::ID_DRUGBANK);
+        $chebi = $vi->get_active_substance_value($this->id, $vi::ID_CHEBI);
+        $chembl = $vi->get_active_substance_value($this->id, $vi::ID_CHEMBL);
+        $pdb = $vi->get_active_substance_value($this->id, $vi::ID_PDB);
+
+        // Check identifier validity
+        
+        if($chembl->id)
+        {
+            try
+            {
+                $checked = Upload_validator::get_attr_val(Upload_validator::CHEMBL_ID, $chembl->value);
+
+                if(!$checked)
+                {
+                    throw new SchedulerException('Chembl id doesn\'t match pattern.');
+                }
+                else
+                {
+                    // Check, if exists
+                    $chembl_server = new Chembl();
+                    
+                    if($chembl_server->is_valid_identifier($chembl->value) === false)
+                    {
+                        throw new SchedulerException('Cannot find identifier on remote server.');
+                    }
+                }
+            }
+            catch(SchedulerException $e)
+            {
+                $chembl->active = $chembl::INACTIVE;
+                $chembl->active_msg = $e->getMessage();
+                $chembl->save();
+
+                $chembl = null; 
+            }
+            catch(Exception $e)
+            {
+                
+            }
+        }
+        if($drugbank->id)
+        {
+            try
+            {
+                $checked = Upload_validator::get_attr_val(Upload_validator::DRUGBANK, $drugbank->value);
+
+                if(!$checked)
+                {
+                    throw new SchedulerException('Drugbank id doesn\'t match pattern.');
+                }
+                else
+                {
+                    // Check, if exists
+                    $drugbank_server = new Drugbank();
+                    
+                    if($drugbank_server->is_valid_identifier($drugbank->value) === false)
+                    {
+                        throw new SchedulerException('Cannot find identifier on remote server.');
+                    }
+                }
+            }
+            catch(SchedulerException $e)
+            {
+                $drugbank->active = $drugbank::INACTIVE;
+                $drugbank->active_msg = $e->getMessage();
+                $drugbank->save();
+
+                $drugbank = null; 
+            }
+            catch(Exception $e)
+            {
+                
+            }
+        }
+        
+
+        $this->name = $name && $name->id ? $name->value : NULL;
+        $this->SMILES = $smiles && $smiles->id ? $smiles->value : NULL;
+        $this->inchikey = $inchikey && $inchikey->id ? $inchikey->value : NULL;
+        $this->pubchem = $pubchem && $pubchem->id ? $pubchem->value : NULL;
+        $this->drugbank = $drugbank && $drugbank->id ? $drugbank->value : NULL;
+        $this->chEBI = $chebi && $chebi->id ? $chebi->value : NULL;
+        $this->chEMBL = $chembl && $chembl->id ? $chembl->value : NULL;
+        $this->pdb = $pdb && $pdb->id ? $pdb->value : NULL;
 
         $this->save();
     }
 
-
     /**
-     * Returns info about fragmentation state of molecule
+     * Returns substance 3D structure
      * 
-     * @return boolean|null
+     * @param int $server - Finds 3D structure from given server if present
+     * 
+     * @return Files
      */
-    public function is_fragmented()
+    public function get_3D_structure($server = NULL)
     {
-        if(!$this)
+        if(!$this || !$this->id)
         {
-            return null;
+            return new Files();
         }
 
-        $data = Validator::get_fragmentation_records($this);
+        $where = ['id_substance' => $this->id];
 
-        if(!$data || !count($data))
+        if($server)
         {
-            return False;
+            $where['server'] = $server;
         }
 
-        // The newest record should be info about successful fragmentation
-        return $data[0]->type === Validator_state::TYPE_FRAGMENTED;
+        $vs = new Validator_structure();
+
+        $record = $vs->where($where)->order_by('is_default DESC, datetime', 'DESC')->get_one();
+
+        if(!$record->id)
+        {
+            return new Files();
+        }
+
+        foreach($record->files as $f)
+        {
+            return $f;
+        }
+
+        return new Files();
     }
 
     /**
-     * Returns true, if 3D Structure was already downloaded from given source
-     * 
-     * @param int $source - constants from Validator_state class
+     * Checks, if substance has default 3D structure
      * 
      * @return boolean
-     * 
      */
-    public function had_structure_from_source($source)
+    public function has_default_3D_structure()
     {
-        if(!$this)
+        if(!$this || !$this->id)
         {
-            return null;
+            return new Files();
         }
 
-        if(!Validator_state::is_valid_source($source))
-        {
-            throw new Exception('Invalid source flag.');
-        }
+        $where = ['id_substance' => $this->id];
 
-        $data = Validator::get_structure_records($this);
+        $vs = new Validator_structure();
+        $record = $vs->where($where)->order_by('is_default', 'DESC')->get_one();
 
-        foreach($data as $row)
-        {
-            if($row->get_source() == $source)
-            {
-                return TRUE;
-            }
-        }
-
-        return FALSE;
+        return $record->is_default;
     }
 
-    /**
-     * Returns all history values for given attribute
-     * 
-     * @param int $attribute_flag
-     * 
-     * @return array
-     */
-    public function get_attribute_value_history($attribute_flag)
-    {
-        return Validator::get_atribute_changes($this, $attribute_flag);
-    }
+    // /**
+    //  * Returns info about fragmentation state of molecule
+    //  * 
+    //  * @return boolean|null
+    //  */
+    // public function is_fragmented()
+    // {
+    //     if(!$this)
+    //     {
+    //         return null;
+    //     }
 
-    /**
-     * Checks, if substance had given value for given attribute already
-     * 
-     * @param int $attribute_flag
-     * @param string $value
-     * 
-     * @return Iterable_object[]
-     * @throws Exception
-     */
-    public function had_attribute_value($attribute_flag, $value)
-    {
-        return Validator::had_attribute_value($this, $attribute_flag, $value);
-    }
+    //     $data = Validator::get_fragmentation_records($this);
 
-    public function test($from_id)
-    {
-        $pubchem = new Pubchem();
+    //     if(!$data || !count($data))
+    //     {
+    //         return False;
+    //     }
 
-        $pubchem_method = $pubchem->get_logP_method();
-        $pubchem_membrane = $pubchem->get_logP_membrane();
+    //     // The newest record should be info about successful fragmentation
+    //     return $data[0]->type === Validator_state::TYPE_FRAGMENTED;
+    // }
 
-        ///// INTERSECTION
+    // /**
+    //  * Returns true, if 3D Structure was already downloaded from given source
+    //  * 
+    //  * @param int $source - constants from Validator_state class
+    //  * 
+    //  * @return boolean
+    //  * 
+    //  */
+    // public function had_structure_from_source($source)
+    // {
+    //     if(!$this)
+    //     {
+    //         return null;
+    //     }
 
-        // return $this->queryAll('
-            // SELECT DISTINCT tab.id
-            // FROM 
-            // (
-            //     SELECT s.id, MAX(i.id) iid, MAX(t.id) tid
-            //     FROM substances s 
-            //     LEFT JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ?
-            //     LEFT JOIN transporters t ON t.id_substance = s.id
-            //     GROUP BY s.id
-            // ) as tab
-            // WHERE tab.iid IS NOT NULL AND tab.tid IS NOT NULL
-            // ORDER BY tab.id ASC
-        //     LIMIT ?,?
-        // ',array($pubchem_membrane->id, $pubchem_method->id, $offset, $limit));
-        
-        return $this->queryAll('
-            SELECT DISTINCT tab.id
-            FROM 
-            (
-                SELECT s.id, MAX(i.id) iid, MAX(t.id) tid
-                FROM substances s 
-                LEFT JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ?
-                JOIN transporters t ON t.id_substance = s.id
-                GROUP BY s.id
-            ) as tab
-            WHERE tab.iid IS NULL AND tab.tid IS NOT NULL AND tab.id > ?
-            ORDER BY id ASC
-            LIMIT 1000
-        ',array($pubchem_membrane->id, $pubchem_method->id, $from_id));
-    }
-    
+    //     if(!Validator_state::is_valid_source($source))
+    //     {
+    //         throw new Exception('Invalid source flag.');
+    //     }
+
+    //     $data = Validator::get_structure_records($this);
+
+    //     foreach($data as $row)
+    //     {
+    //         if($row->get_source() == $source)
+    //         {
+    //             return TRUE;
+    //         }
+    //     }
+
+    //     return FALSE;
+    // }
+
+    // /**
+    //  * Returns all history values for given attribute
+    //  * 
+    //  * @param int $attribute_flag
+    //  * 
+    //  * @return array
+    //  */
+    // public function get_attribute_value_history($attribute_flag)
+    // {
+    //     return Validator::get_atribute_changes($this, $attribute_flag);
+    // }
+
+    // /**
+    //  * Checks, if substance had given value for given attribute already
+    //  * 
+    //  * @param int $attribute_flag
+    //  * @param string $value
+    //  * 
+    //  * @return Iterable_object[]
+    //  * @throws Exception
+    //  */
+    // public function had_attribute_value($attribute_flag, $value)
+    // {
+    //     return Validator::had_attribute_value($this, $attribute_flag, $value);
+    // }
+
     /**
      * Loads whisper detail to search engine
      * 
@@ -438,7 +588,7 @@ class Substances extends Db
      * Parsing search list detail
      * 
      * @param array $data
-     * @param array $pagination
+     * @param int $pagination
      * 
      * @return array
      */
@@ -756,41 +906,41 @@ class Substances extends Db
         return new Substances($res->id);
     }
     
-    /**
-     * Checks if exists substances for given names
-     * DEPRECATED - USE exists method instead
-     * 
-     * @param string $ligand
-     * @param string $uploadName
-     * 
-     * @return integer|null ID of found substance
-     */
-    public function test_duplicates($ligand, $uploadName)
-    {
-        $result = $this->queryOne("
-            SELECT id_substance 
-            FROM alternames 
-            WHERE name = ? OR name = ? 
-            LIMIT 1", 
-            array($ligand, $uploadName));
+    // /**
+    //  * Checks if exists substances for given names
+    //  * DEPRECATED - USE exists method instead
+    //  * 
+    //  * @param string $ligand
+    //  * @param string $uploadName
+    //  * 
+    //  * @return integer|null ID of found substance
+    //  */
+    // public function test_duplicates($ligand, $uploadName)
+    // {
+    //     $result = $this->queryOne("
+    //         SELECT id_substance 
+    //         FROM alternames 
+    //         WHERE name = ? OR name = ? 
+    //         LIMIT 1", 
+    //         array($ligand, $uploadName));
         
-        if($result->id)
-        {
-            return $result->id;
-        }
+    //     if($result->id)
+    //     {
+    //         return $result->id;
+    //     }
 
-        $result = $this->queryOne("
-            SELECT id FROM substances WHERE uploadName = ? OR name = ? OR uploadName = ? OR name = ? LIMIT 1", 
-            array
-            (
-                $ligand, 
-                $uploadName, 
-                $uploadName, 
-                $ligand
-            ));
+    //     $result = $this->queryOne("
+    //         SELECT id FROM substances WHERE uploadName = ? OR name = ? OR uploadName = ? OR name = ? LIMIT 1", 
+    //         array
+    //         (
+    //             $ligand, 
+    //             $uploadName, 
+    //             $uploadName, 
+    //             $ligand
+    //         ));
 
-        return $result->id;
-    }
+    //     return $result->id;
+    // }
     
     /**
 	 * Get substances for given membrane x method
@@ -824,128 +974,105 @@ class Substances extends Db
         }
     }
     
-	/**
-     * Validate substance table
-     * Fill identifier, if anywhere is not set
-     * 
-     */
-	public function validate_table()
-	{
-        $rows = $this->queryAll('SELECT DISTINCT * FROM substances WHERE name IS NULL OR uploadName IS NULL OR identifier IS NULL');
-		
-		foreach($rows as $row)
-		{
-            $substance = new Substances($row->id);
+    // /**
+    //  * Label given substance as possible duplicity for current object
+    //  * 
+    //  * @param $id_substance - Found duplicity
+    //  * @param $duplicity - Duplicity detail
+    //  */
+    // public function add_duplicity($id_substance, $duplicity)
+    // {
+    //     if(!$this->id || !$id_substance)
+    //     {
+    //         throw new Exception('Cannot add duplicity. Invalid instance or substance_id.');
+    //     }
 
-            $identifier = Identifiers::generate_substance_identifier($row->id);
-            
-            $substance->identifier = $identifier;
-            $substance->name = !empty($substance->name) ? $substance->name : $identifier; 
-            $substance->uploadName = !empty($substance->uploadName) ? $substance->uploadName : $identifier; 
+    //     $validation = new Validator();
 
-            $substance->save();
-		}	
-    }
+    //     $exists = $validation->where(array
+    //         (
+    //             'id_substance_1' => $this->id,
+    //             'id_substance_2' => $id_substance,
+    //             'duplicity LIKE' => $duplicity
+    //         ))
+    //         ->get_one();
 
-    /**
-     * Label given substance as possible duplicity for current object
-     * 
-     * @param $id_substance - Found duplicity
-     * @param $duplicity - Duplicity detail
-     */
-    public function add_duplicity($id_substance, $duplicity)
-    {
-        if(!$this->id || !$id_substance)
-        {
-            throw new Exception('Cannot add duplicity. Invalid instance or substance_id.');
-        }
+    //     if(!$exists->id)
+    //     {
+    //         $validation->id_substance_1 = $this->id;
+    //         $validation->id_substance_2 = $id_substance;
+    //         $validation->duplicity = $duplicity;
 
-        $validation = new Validator();
+    //         $validation->save();
+    //     }
 
-        $exists = $validation->where(array
-            (
-                'id_substance_1' => $this->id,
-                'id_substance_2' => $id_substance,
-                'duplicity LIKE' => $duplicity
-            ))
-            ->get_one();
+    //     // Label molecule as possible duplicity
+    //     $this->prev_validation_state = $this->validated;
+    //     $this->validated = Validator::POSSIBLE_DUPLICITY;
+    //     $this->waiting = 1;
+    //     $this->save();
+    // }
 
-        if(!$exists->id)
-        {
-            $validation->id_substance_1 = $this->id;
-            $validation->id_substance_2 = $id_substance;
-            $validation->duplicity = $duplicity;
+    // /**
+    //  * Overloading of save() function
+    //  * 
+    //  * @param int $source - For logging source of changes
+    //  */
+    // public function save($source = NULL)
+    // {
+    //     if($source)
+    //     {
+    //         // Get all changes
+    //         $changes = $this->get_attribute_changes();
 
-            $validation->save();
-        }
+    //         print_r($changes);
+    //         die;
 
-        // Label molecule as possible duplicity
-        $this->prev_validation_state = $this->validated;
-        $this->validated = Validator::POSSIBLE_DUPLICITY;
-        $this->waiting = 1;
-        $this->save();
-    }
+    //         foreach($changes as $attr => $vals)
+    //         {
+    //             switch($attr)
+    //             {
+    //                 case 'pubchem':
+    //                     $flag = Validator_state::FLAG_PUBCHEM;
+    //                     break;
+    //                 case 'drugbank':
+    //                     $flag = Validator_state::FLAG_DRUGBANK;
+    //                     break;
+    //                 case 'chEBI':
+    //                     $flag = Validator_state::FLAG_CHEBI;
+    //                     break;
+    //                 case 'pdb':
+    //                     $flag = Validator_state::FLAG_PDB;
+    //                     break;
+    //                 case 'chEMBL':
+    //                     $flag = Validator_state::FLAG_CHEMBL;
+    //                     break;
+    //                 case 'inchikey':
+    //                     $flag = Validator_state::FLAG_INCHIKEY;
+    //                     break;
+    //                 case 'SMILES':
+    //                     $flag = Validator_state::FLAG_SMILES;
+    //                     break;
+    //                 case 'name':
+    //                     $flag = Validator_state::FLAG_NAME;
+    //                     break;
+    //                 case 'LogP':
+    //                     $flag = Validator_state::FLAG_LOGP;
+    //                     break;
+    //                 default:
+    //                     $flag = NULL;
+    //                     break;
+    //             }
 
-    /**
-     * Overloading of save() function
-     * 
-     * @param int $source - For logging source of changes
-     */
-    public function save($source = NULL)
-    {
-        if($source)
-        {
-            // Get all changes
-            $changes = $this->get_attribute_changes();
+    //             if(!$flag)
+    //             {
+    //                 continue;
+    //             }
 
-            print_r($changes);
-            die;
+    //             // Validator_attr_change::add($this, $flag, $vals['new_value'])
+    //         }
+    //     }
 
-            foreach($changes as $attr => $vals)
-            {
-                switch($attr)
-                {
-                    case 'pubchem':
-                        $flag = Validator_state::FLAG_PUBCHEM;
-                        break;
-                    case 'drugbank':
-                        $flag = Validator_state::FLAG_DRUGBANK;
-                        break;
-                    case 'chEBI':
-                        $flag = Validator_state::FLAG_CHEBI;
-                        break;
-                    case 'pdb':
-                        $flag = Validator_state::FLAG_PDB;
-                        break;
-                    case 'chEMBL':
-                        $flag = Validator_state::FLAG_CHEMBL;
-                        break;
-                    case 'inchikey':
-                        $flag = Validator_state::FLAG_INCHIKEY;
-                        break;
-                    case 'SMILES':
-                        $flag = Validator_state::FLAG_SMILES;
-                        break;
-                    case 'name':
-                        $flag = Validator_state::FLAG_NAME;
-                        break;
-                    case 'LogP':
-                        $flag = Validator_state::FLAG_LOGP;
-                        break;
-                    default:
-                        $flag = NULL;
-                        break;
-                }
-
-                if(!$flag)
-                {
-                    continue;
-                }
-
-                // Validator_attr_change::add($this, $flag, $vals['new_value'])
-            }
-        }
-
-        parent::save();
-    }
+    //     parent::save();
+    // }
 }

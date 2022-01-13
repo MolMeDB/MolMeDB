@@ -133,19 +133,19 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS MANY AND BELONGS TO parsing
             else if($type == $this->valid_link_types[self::T_HAS_MANY_AND_BELONGS_TO])
             {
-                foreach($values as $table => $values)
+                foreach($values as $table => $vals)
                 {
                     // IS STRUCTURE VALID ?
-                    if(!is_array($values) || !isset($values['var']) || !isset($values['class']) || 
-                        !isset($values['own']) || !isset($values['remote']))
+                    if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
+                        !isset($vals['own']) || !isset($vals['remote']))
                     {
                         continue;
                     }
 
-                    $class_name = $values['class'];
-                    $new_key = $values['var'];
-                    $remote_key = $values['remote'];
-                    $own_key = $values['own'];
+                    $class_name = $vals['class'];
+                    $new_key = $vals['var'];
+                    $remote_key = $vals['remote'];
+                    $own_key = $vals['own'];
 
                     // Not valid input, set value to NULL
                     if (!class_exists($class_name) || !$this->id) 
@@ -175,18 +175,18 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS MANY parsing
             else if($type == $this->valid_link_types[self::T_HAS_MANY])
             {
-                foreach($values as $table => $values)
+                foreach($values as $table => $vals)
                 {
                     // IS STRUCTURE VALID ?
-                    if(!is_array($values) || !isset($values['var']) || !isset($values['class']) || 
-                        !isset($values['own']))
+                    if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
+                        !isset($vals['own']))
                     {
                         continue;
                     }
 
-                    $class_name = $values['class'];
-                    $new_key = $values['var'];
-                    $own_key = $values['own'];
+                    $class_name = $vals['class'];
+                    $new_key = $vals['var'];
+                    $own_key = $vals['own'];
 
 
                     // Not valid input, set value to NULL
@@ -195,7 +195,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                         $this->$new_key = NULL;
                         continue;
                     } 
-                    
+
                     $new_class = new $class_name();
                     $this->$new_key = $new_class->where($own_key, $this->id)->get_all();
                 }
@@ -500,8 +500,6 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
         $diff = array();
         $mss = "x@#sd#";
 
-        // print_r($curr_data);
-
         foreach($prev_data as $p_key => $p_val)
         {
             if(is_array($p_val) || is_object($p_val))
@@ -512,7 +510,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             $str_val = $p_val === NULL ? "NULL" : trim(strval($p_val));
             $curr_str_val = !is_array($curr_data->$p_key) && !is_object($curr_data->$p_key) ? ($curr_data->$p_key === NULL || trim(strval($curr_data->$p_key)) === '' ? "NULL" : trim(strval($curr_data->$p_key))) : $mss;
 
-            echo $p_key . ' - ' . $str_val . ' / ' . $curr_str_val . '<br/>';
+            // echo $p_key . ' - ' . $str_val . ' / ' . $curr_str_val . '<br/>';
 
             if($curr_str_val !== $mss && $curr_str_val !== $str_val)
             {

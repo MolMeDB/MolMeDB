@@ -5,10 +5,10 @@ var plugin = LiteMol.Plugin.create({
         hideControls: true,
     } 
 });
-var id = $("#nameStructure").val();
+var path = $("#structurePath").val();
 
 plugin.loadMolecule({
     id: 'Mole',
-    url: '/media/files/3DStructures/' + id + '.mol',
+    url: '/' + path,
     format: 'sdf' // default
 });

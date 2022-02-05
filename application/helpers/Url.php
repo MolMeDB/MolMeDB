@@ -34,4 +34,45 @@ class Url
         return strpos($status, '200') !== FALSE;
     }
 
+    /**
+     * Returns current base of url address
+     * 
+     * @return string
+     */
+    public static function base()
+    {
+        $base_url = url::protocol().'://'.url::domain().url::suffix();
+		return $base_url;
+    }
+
+    /**
+	 * Returns protocol
+	 * 
+	 * @return string
+	 */
+	public static function protocol()
+	{
+		// if exists settings key, return it
+        return (
+                !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ||
+                @$_SERVER['SERVER_PORT'] == 443
+        ) ? 'https' : 'http';
+	}
+
+    /**
+	 * @return string
+	 */
+	public static function suffix()
+	{
+        return substr(server::script_name(),0,-9);
+	}
+
+    /**
+	 * Returns domain
+	 * @return string
+	 */
+	public static function domain()
+	{
+        return server::http_host();
+	}
 }

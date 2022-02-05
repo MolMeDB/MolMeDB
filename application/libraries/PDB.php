@@ -85,6 +85,25 @@ class PDB extends Identifier_loader
     }
 
     /**
+     * Returns title for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_title($substance)
+    {
+        $data = $this->get_data($substance->pdb);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return $data->title;
+    }
+
+    /**
      * Checks, if given identifier is valid
      * 
      * @param Substances $substance
@@ -139,7 +158,14 @@ class PDB extends Identifier_loader
      */
     function get_pubchem($substance)
     {
-        return FALSE;   
+        $data = $this->get_data($substance->pdb);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return Upload_validator::get_attr_val(Upload_validator::PUBCHEM, $data->identifiers[Validator_identifiers::ID_PUBCHEM]);  
     }
 
     /**
@@ -175,7 +201,15 @@ class PDB extends Identifier_loader
 
         }
 
-        return false;
+        // Not found? Try classic way
+        $data = $this->get_data($substance->pdb);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return Upload_validator::get_attr_val(Upload_validator::DRUGBANK, $data->identifiers[Validator_identifiers::ID_DRUGBANK]);  
     }
 
     /**
@@ -187,7 +221,14 @@ class PDB extends Identifier_loader
      */
     function get_chembl($substance)
     {
-        return FALSE;
+        $data = $this->get_data($substance->pdb);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return Upload_validator::get_attr_val(Upload_validator::CHEMBL_ID, $data->identifiers[Validator_identifiers::ID_CHEMBL]);  
     }
 
     /**
@@ -199,7 +240,14 @@ class PDB extends Identifier_loader
      */
     function get_inchikey($substance)
     {
-        return false;
+        $data = $this->get_data($substance->pdb);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return $data->inchikey;  
     }
 
     /**
@@ -211,7 +259,14 @@ class PDB extends Identifier_loader
      */
     function get_chebi($substance)
     {
-        return FALSE;
+        $data = $this->get_data($substance->pdb);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return Upload_validator::get_attr_val(Upload_validator::CHEBI_ID, $data->identifiers[Validator_identifiers::ID_CHEBI]);  
     }
 
     /**
@@ -309,14 +364,81 @@ class PDB extends Identifier_loader
                     }
                 }
 
+                $inchikey = null;
+
+                if($response->rcsb_chem_comp_descriptor)
+                {
+                    if(!$smiles && $response->rcsb_chem_comp_descriptor->smiles)
+                    {
+                        $smiles = $response->rcsb_chem_comp_descriptor->smiles;
+                    }
+
+                    if($response->rcsb_chem_comp_descriptor->in_ch_ikey)
+                    {
+                        $inchikey = $response->rcsb_chem_comp_descriptor->in_ch_ikey;
+                    }
+                }
+
+                if($response->rcsb_chem_comp_synonyms && count($response->rcsb_chem_comp_synonyms))
+                {
+                    $name = null;
+
+                    foreach($response->rcsb_chem_comp_synonyms as $synonym)
+                    {
+                        if($synonym->comp_id !== $response->chem_comp->id)
+                        {
+                            continue;
+                        }
+
+                        if($synonym->name)
+                        {
+                            $name = $synonym->name;
+                            break;
+                        }
+                    }
+                }
+
+                // Load all identifiers
+                $identifiers = [
+                    Validator_identifiers::ID_CHEBI => null,
+                    Validator_identifiers::ID_CHEMBL => null,
+                    Validator_identifiers::ID_PUBCHEM => null,
+                    Validator_identifiers::ID_DRUGBANK => null,
+                ];
+                $identifiers_keys = array
+                (
+                    Validator_identifiers::ID_CHEBI => 'ChEBI',
+                    Validator_identifiers::ID_CHEMBL => 'ChEMBL',
+                    Validator_identifiers::ID_PUBCHEM => 'PubChem',
+                    Validator_identifiers::ID_DRUGBANK => 'Drugbank',
+                );
+
+                if($response->rcsb_chem_comp_related && count($response->rcsb_chem_comp_related))
+                {
+                    foreach($identifiers_keys as $id => $key)
+                    {
+                        foreach($response->rcsb_chem_comp_related as $record)
+                        {
+                            if($record->resource_name == $key && $record->resource_accession_code)
+                            {
+                                $identifiers[$id] = $record->resource_accession_code;
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 $this->data[$pdb_id] = (object) array
                 (
                     'id'        => $response->chem_comp->id,
-                    'name'      => $response->chem_comp->name,
+                    'title'     => $response->chem_comp->name,
+                    'name'      => $name,
                     'formula'   => $response->chem_comp->formula,
                     'mw'        => $response->chem_comp->formula_weight,
                     'type'      => $response->chem_comp->type,
-                    'smiles'    => $smiles
+                    'smiles'    => $smiles,
+                    'inchikey'  => $inchikey,
+                    'identifiers' => $identifiers
                 );
 
                 return $this->data[$pdb_id];

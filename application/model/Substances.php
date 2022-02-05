@@ -35,6 +35,17 @@ class Substances extends Db
         parent::__construct($id);
     }    
 
+
+    /**
+     * Returns all molecule fragments
+     * 
+     * @return array
+     */
+    public function get_all_fragments()
+    {
+        return Substances_fragments::instance()->get_all_substance_fragments($this->id);
+    }
+
     /**
      * Checks current substance name, if contains some identifier
      * 
@@ -212,6 +223,77 @@ class Substances extends Db
     }
 
     /**
+     * Returns active identifiers
+     * 
+     * @return object
+     */
+    public function get_active_identifiers()
+    {
+        if(!$this || !$this->id)
+        {
+            return [];
+        }
+
+        $vi = new Validator_identifiers();
+
+        $ids = $vi->get_all_active_substance_values($this->id);
+
+        $identifiers = [];
+
+        foreach($ids as $id => $obj)
+        {
+            if(!$obj || !$obj->id)
+            {
+                $identifiers[$id] = null;
+            }
+
+            $validation = Validator_identifier_validations::instance()->where(
+                array
+                (
+                    'id_validator_identifier' => $obj->id,
+                ))
+                ->order_by('datetime', 'DESC')
+                ->get_one();
+
+            if(!$validation->id || $validation->state !== $obj->state)
+            {
+                $validation = null;
+            }
+
+            $identifiers[$id] = (object) array
+            (
+                'id' => $obj->id,
+                'value' => $obj->value,
+                'enum_identifier' => Validator_identifiers::get_enum_identifier($obj->identifier),
+                'source' => !$obj->id_source ? null : array
+                (
+                    'id' => $obj->source->id,
+                    'identifier' => Validator_identifiers::get_enum_identifier($obj->source->identifier),
+                    'value' => $obj->source->value,
+                    'state' => $obj->source->state,
+                    'active' => $obj->source->active
+                ),
+                'text_source' => !$obj->source ? 'Presented in the original dataset.' : (
+                    $obj->id_user ? 
+                    "Manually obtained from " . Validator_identifiers::get_enum_server($obj->server) . "." :
+                    "Automatically obtained from " . Validator_identifiers::get_enum_server($obj->server) . "."
+                ),
+                'state' => $obj->state,
+                'active' => $obj->active,
+                'server' => Validator_identifiers::get_enum_server($obj->server),
+                'validation' => !$validation ? null : array
+                (
+                    'message' => $validation->message,
+                    'state'   => $validation->state,
+                    'id_user' => $validation->id_user
+                )
+            );
+        }
+
+        return $identifiers;
+    }
+
+    /**
      * Returns substance 3D structure
      * 
      * @param int $server - Finds 3D structure from given server if present
@@ -225,16 +307,24 @@ class Substances extends Db
             return new Files();
         }
 
-        $where = ['id_substance' => $this->id];
+        $where = [
+            'validator_structure.id_substance' => $this->id,
+            'vi.state'     => Validator_identifiers::STATE_VALIDATED
+        ];
 
         if($server)
         {
-            $where['server'] = $server;
+            $where['validator_structure.server'] = $server;
         }
 
         $vs = new Validator_structure();
 
-        $record = $vs->where($where)->order_by('is_default DESC, datetime', 'DESC')->get_one();
+        $record = $vs->where($where)
+            ->select_list('validator_structure.*')
+            ->join('JOIN validator_identifiers vi ON vi.id = validator_structure.id_source')
+            ->join('JOIN files f ON f.id_validator_structure = validator_structure.id')
+            ->order_by('is_default DESC, datetime', 'DESC')
+            ->get_one();
 
         if(!$record->id)
         {
@@ -247,6 +337,50 @@ class Substances extends Db
         }
 
         return new Files();
+    }
+
+    /**
+     * Returns substance 3D structures
+     * 
+     * @return Files
+     */
+    public function get_all_3D_structures()
+    {
+        if(!$this || !$this->id)
+        {
+            return [new Files()];
+        }
+
+        $vs = new Validator_structure();
+
+        $records = $vs->where('validator_structure.id_substance', $this->id)
+            ->select_list('validator_structure.*')
+            ->distinct()
+            ->join('JOIN validator_identifiers vi ON vi.id = validator_structure.id_source')
+            ->join('JOIN files f ON f.id_validator_structure = validator_structure.id')
+            ->order_by('is_default DESC, datetime', 'DESC')
+            ->get_all();
+
+        $result = [];
+
+        foreach($records as $record)
+        {
+            if(isset($result[$record->server]))
+            {
+                continue;
+            }
+
+            foreach($record->files as $f)
+            {
+                if($f->file_exists())
+                {
+                    $result[$record->server] = $f->as_array();
+                    break;
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**

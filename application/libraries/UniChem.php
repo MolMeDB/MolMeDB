@@ -209,6 +209,18 @@ class UniChem extends Identifier_loader
     }
 
     /**
+     * Returns title for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_title($substance)
+    {
+        return false;
+    }
+
+    /**
      * Returns 3D structure for given substance
      * 
      * @param Substances $substance

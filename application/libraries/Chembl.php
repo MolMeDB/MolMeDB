@@ -125,7 +125,14 @@ class Chembl extends Identifier_loader
      */
     function get_inchikey($substance)
     {
-        return false;
+        $data = $this->get_data($substance->chEMBL);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return $data->inchikey;
     }
 
     /**
@@ -203,6 +210,18 @@ class Chembl extends Identifier_loader
      * @return string|false - False, if not found
      */
     function get_name($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns title for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_title($substance)
     {
         return false;
     }

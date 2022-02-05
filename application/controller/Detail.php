@@ -17,10 +17,9 @@ class DetailController extends Controller
     {    
         $intro = new Articles(Articles::T_INTRO);
 
-        $this->data["content"] = $intro->content;;
-
-        $this->view = 'intro';
-        $this->header['title'] = 'MolMeDB';
+        $this->title = 'MolMeDB';
+        $this->view = new View('intro');
+        $this->view->content = $intro->content;
     }
 
 
@@ -31,9 +30,9 @@ class DetailController extends Controller
     {
         $contact = new Articles(Articles::T_CONTACTS);
 
-        $this->data["contact"] = $contact->content;
-        $this->header['title'] = 'Contact';
-        $this->view = 'contact';
+        $this->title = 'Contact';
+        $this->view = new View('contact');
+        $this->view->contact = $contact->content;
     }
 
     /**
@@ -43,8 +42,8 @@ class DetailController extends Controller
     {
         $documentation = new Articles(Articles::T_DOCUMENTATION);
 
-        $this->data['content'] = $documentation->content;
-        $this->view = 'documentation';
-        $this->header['title'] = 'Documentation';
+        $this->title = 'Docs';
+        $this->view = new View('documentation');
+        $this->view->content = $documentation->content;
     }
 }

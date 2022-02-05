@@ -14,6 +14,9 @@
  * @property Users $user
  * @property int $id_validator_structure
  * @property Validator_structure $validator_structure
+ * @property string $datetime
+ * 
+ * @author Jakub Juracka
  */
 class Files extends Db
 {
@@ -24,6 +27,22 @@ class Files extends Db
     {
         $this->table = 'files';
         parent::__construct($id);
+    }
+
+    /**
+     * Checks, if given file exists
+     * 
+     * @return boolean
+     */
+    public function file_exists()
+    {
+        if(!$this || !$this->id)
+        {
+            return false;
+        }
+
+        $file = new File($this->path);
+        return $file->path ? TRUE : FALSE;
     }
 
     /**

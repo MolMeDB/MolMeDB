@@ -61,5 +61,53 @@ class Fragments extends Db
         }
 
         parent::save();
+
+        // After adding new fragment, create options
+        if($this->id)
+        {
+            if(!preg_match_all('/\[\*:\]/', $this->smiles))
+            {
+                return;
+            }
+
+            $rdkit = new Rdkit();
+
+            $subfragments = Text::str_replace_combine_all('[*:]', '[H]', $this->smiles);
+
+            foreach($subfragments as $dels => $smi)
+            {
+                // Smiles must be canonized first!
+                $smi = preg_replace('/\[\*:\]/', '[*:1]', $smi);
+
+                $c_smi = $rdkit->canonize_smiles($smi);
+
+                // Try repeatedly - max 3-times
+                $limit = 3;
+
+                while(!$c_smi && $limit)
+                {
+                    $c_smi = $rdkit->canonize_smiles($smi);
+                    $limit--;
+                }
+
+                if(!$c_smi)
+                {
+                    throw new Exception('Cannot canonize smiles - ' . $smi);
+                }
+
+                $c_smi = preg_replace('/\[\*:1\]/', '[*:]', $c_smi);
+
+                // Add new
+                $fragment = new Fragments();
+                $fragment->smiles = $c_smi;
+                $fragment->save();
+
+                $new = new Fragments_options();
+                $new->id_parent = $this->id;
+                $new->id_child = $fragment->id;
+                $new->deletions = $dels;
+                $new->save();
+            }
+        }
     }
 }

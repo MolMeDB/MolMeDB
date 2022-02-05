@@ -20,7 +20,7 @@ class MolController extends Controller
      * 
      * @author Jakub Juracka
      */
-    public function parse($identifier = NULL) 
+    public function index($identifier = NULL) 
     {
         $energyModel = new Energy();
         $methodModel = new Methods();
@@ -53,6 +53,7 @@ class MolController extends Controller
             // Get all membranes/methods
             $membranes = $membraneModel->get_all();
             $methods = $methodModel->get_all();
+            $methods_cat = $methodModel->get_structured_for_substance($substance->id, true);
 
             // Get all transporters
             $visible_datasets = $transporter_dataset_model
@@ -74,6 +75,8 @@ class MolController extends Controller
                 ->in('id_dataset', $dataset_ids)
                 ->get_all();
 
+            $identifiers = $substance->get_active_identifiers();
+
             if($by_link)
             {
                 $this->addMessageWarning('Your request has been redirected from record ' . $identifier);
@@ -85,23 +88,25 @@ class MolController extends Controller
             $this->redirect('error');
         }
 
-        $this->view = 'detail';
-        $this->header['title'] = $substance->name;
+        $this->title = $substance->name;
 
+        $this->view = new View('detail');
         // Substance detail
-        $this->data['substance'] = $substance;
+        $this->view->substance = $substance;
+        $this->view->identifiers = $identifiers;
 
         // 3D structure
-        $this->data['structure_3d'] = $substance->get_3D_structure();
+        $this->view->structures_3d = $substance->get_all_3D_structures();
         
         // Membranes and methods
-        $this->data['membranes'] = $membranes;
-        $this->data['methods'] = $methods;
+        $this->view->membranes = $membranes;
+        $this->view->methods = $methods;
+        $this->view->methods_cat = $methods_cat;
 
         // Transporters
-        $this->data['transporters'] = $transporters;
+        $this->view->transporters = $transporters;
         
         // Energy data
-        $this->data['availableEnergy'] = $energyModel->get_available_by_substance($substance->id);
+        $this->view->availableEnergy = $energyModel->get_available_by_substance($substance->id);
     }
 }

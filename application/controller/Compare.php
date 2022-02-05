@@ -13,9 +13,9 @@ class CompareController extends Controller
         parent::__construct();
     }
 
-    public function parse() 
+    public function index() 
     {
-        $this->header['title'] = 'Comparator';
-        $this->view = 'comparator';
+        $this->title = 'Comparator';
+        $this->view = new View('comparator');
     }
 }

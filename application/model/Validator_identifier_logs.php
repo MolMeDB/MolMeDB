@@ -36,6 +36,7 @@ class Validator_identifier_logs extends Db
     const TYPE_REMOTE_IDENTIFIERS = 5;
     const TYPE_3D_STRUCTURE = 6;
     const TYPE_NAME_BY_IDENTIFIERS = 7;
+    const TYPE_TITLE = 8;
 
     /** STATES */
     const STATE_WAITING = 0;
@@ -140,12 +141,13 @@ class Validator_identifier_logs extends Db
      * Finds substances for next validatation run
      * 
      * @param int $limit
+     * @param int $offset
      * @param bool $include_with_errors
      * @param bool $include_ignored
      * 
      * @return Substances[]
      */
-    public function get_substances_for_validation($limit, $include_with_errors = TRUE, $include_ignored = FALSE)
+    public function get_substances_for_validation($limit, $offset = 0, $include_with_errors = TRUE, $include_ignored = FALSE)
     {
         $select = 's.id, (';
         $joins = '';
@@ -192,16 +194,28 @@ class Validator_identifier_logs extends Db
         $select = preg_replace('/\+\s*$/', '', $select);
         $select .= ') as score';
 
+        // echo "SELECT * 
+        // FROM
+        // (
+        //     SELECT $select
+        //     FROM substances s
+        //     $joins
+        // ) as tab
+        // WHERE tab.score > 0
+        // ORDER BY score DESC, id ASC
+        // LIMIT $limit OFFSET $offset";
+        // die;
+
         $data = $this->queryAll(" SELECT * 
             FROM
             (
                 SELECT $select
                 FROM substances s
                 $joins
-                ORDER BY score DESC, s.id ASC
             ) as tab
             WHERE tab.score > 0
-            LIMIT $limit
+            ORDER BY score DESC, id ASC
+            LIMIT $limit OFFSET $offset
         ");
 
         $result = [];

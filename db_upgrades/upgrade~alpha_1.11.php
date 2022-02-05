@@ -9,12 +9,6 @@
  */
 $upgrade_sql = array
 (
-   "ALTER TABLE `substances`
-      DROP `validated`,
-      DROP `prev_validation_state`,
-      DROP `waiting`,
-      DROP `invalid_structure_flag`;",
-   
    ///// FRAGMENTS TABLES /////////
    "CREATE TABLE `fragments` (
       `id` int(11) NOT NULL,
@@ -243,5 +237,8 @@ $upgrade_sql = array
                WHERE type = 7
                GROUP BY id_substance
           ) as t
-       )"
+       )",
+
+    "CREATE TABLE `files` ( `id` INT NOT NULL AUTO_INCREMENT , `name` VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL , `comment` VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL , `mime` VARCHAR(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL , `size` BIGINT(20) NULL , `hash` BINARY(20) NOT NULL , `path` VARCHAR(255) NOT NULL , `id_user` INT NULL DEFAULT NULL , `id_validator_structure` INT NULL DEFAULT NULL , `datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
+
 );

@@ -88,11 +88,6 @@ class ApiController extends Controller
             $this->answer(NULL, self::CODE_BAD_REQUEST);
         }
 
-
-        echo (base64_decode("bmFtZTpwYXNzd29yZA=="));
-        print_r(getallheaders());
-        die;
-
         $this->endpoint = $endPoint;
         $this->function = $function;
     }
@@ -104,7 +99,7 @@ class ApiController extends Controller
      * @param integer $code
      * 
      */
-    protected function answer($message, $code = self::CODE_OK)
+    protected function answer($message, $code = self::CODE_OK, $type = 'json')
     {
         if((!$message || $message == '') && $code == self::CODE_OK)
         {
@@ -112,15 +107,18 @@ class ApiController extends Controller
         }
 
         http_response_code($code);
-        header('Content-Type: application/json');
 
-        if($message || is_array($message))
+        switch($type)
         {
-            echo(json_encode($message));
-        }
-        else
-        {
-            echo($code);
+            case 'json':
+                header('Content-Type: application/json');
+                echo(json_encode($message));
+                die;
+
+            default:
+                header('Content-Type: text/html');
+                echo $message;
+                die;
         }
     }
 
@@ -135,7 +133,7 @@ class ApiController extends Controller
     /**
      * Main function for processing request
      */
-    public function parse() 
+    public function index() 
     {   
         try
         {

@@ -186,17 +186,18 @@ class SettingController extends Controller
             }
         }
 
-        $this->data['email_forge'] = $forge->form();
-        $this->data['rdkit'] = isset($_POST[Configs::RDKIT_URI]) ? $_POST[Configs::RDKIT_URI] : $this->config->get(Configs::RDKIT_URI);
-        $this->data['europePMC'] = isset($_POST[Configs::EUROPEPMC_URI]) ? $_POST[Configs::EUROPEPMC_URI] : $this->config->get(Configs::EUROPEPMC_URI);
-        $this->data['drugbank_pattern'] = isset($_POST[Configs::DB_DRUGBANK_PATTERN]) ? $_POST[Configs::DB_DRUGBANK_PATTERN] : $this->config->get(Configs::DB_DRUGBANK_PATTERN);
-        $this->data['pdb_pattern'] = isset($_POST[Configs::DB_PDB_PATTERN]) ? $_POST[Configs::DB_PDB_PATTERN] : $this->config->get(Configs::DB_PDB_PATTERN);
-        $this->data['pubchem_pattern'] = isset($_POST[Configs::DB_PUBCHEM_PATTERN]) ? $_POST[Configs::DB_PUBCHEM_PATTERN] : $this->config->get(Configs::DB_PUBCHEM_PATTERN);
-        $this->data['chembl_pattern'] = isset($_POST[Configs::DB_CHEMBL_PATTERN]) ? $_POST[Configs::DB_CHEMBL_PATTERN] : $this->config->get(Configs::DB_CHEMBL_PATTERN);
-        $this->data['chebi_pattern'] = isset($_POST[Configs::DB_CHEBI_PATTERN]) ? $_POST[Configs::DB_CHEBI_PATTERN] : $this->config->get(Configs::DB_CHEBI_PATTERN);
-        $this->data['navigator'] = self::createNavigator(self::MENU_SYSTEM);
-        $this->header['title'] = 'Settings';
-        $this->view = 'settings/system';
+        $this->title = 'Settings';
+
+        $this->view = new View('settings/system');
+        $this->view->email_forge = $forge->form();
+        $this->view->rdkit = isset($_POST[Configs::RDKIT_URI]) ? $_POST[Configs::RDKIT_URI] : $this->config->get(Configs::RDKIT_URI);
+        $this->view->europePMC = isset($_POST[Configs::EUROPEPMC_URI]) ? $_POST[Configs::EUROPEPMC_URI] : $this->config->get(Configs::EUROPEPMC_URI);
+        $this->view->drugbank_pattern = isset($_POST[Configs::DB_DRUGBANK_PATTERN]) ? $_POST[Configs::DB_DRUGBANK_PATTERN] : $this->config->get(Configs::DB_DRUGBANK_PATTERN);
+        $this->view->pdb_pattern = isset($_POST[Configs::DB_PDB_PATTERN]) ? $_POST[Configs::DB_PDB_PATTERN] : $this->config->get(Configs::DB_PDB_PATTERN);
+        $this->view->pubchem_pattern = isset($_POST[Configs::DB_PUBCHEM_PATTERN]) ? $_POST[Configs::DB_PUBCHEM_PATTERN] : $this->config->get(Configs::DB_PUBCHEM_PATTERN);
+        $this->view->chembl_pattern = isset($_POST[Configs::DB_CHEMBL_PATTERN]) ? $_POST[Configs::DB_CHEMBL_PATTERN] : $this->config->get(Configs::DB_CHEMBL_PATTERN);
+        $this->view->chebi_pattern = isset($_POST[Configs::DB_CHEBI_PATTERN]) ? $_POST[Configs::DB_CHEBI_PATTERN] : $this->config->get(Configs::DB_CHEBI_PATTERN);
+        $this->view->navigator = self::createNavigator(self::MENU_SYSTEM);
     }
 
     /**
@@ -332,12 +333,12 @@ class SettingController extends Controller
                 $this->alert->error($e->getMessage());
             }
         }
+        
+        $this->title = 'Scheduler';
 
-        $this->data['forge'] = $forge->form();
-
-        $this->data['navigator'] = self::createNavigator(self::MENU_SCHEDULER);
-        $this->header['title'] = 'Scheduler';
-        $this->view = 'settings/scheduler';
+        $this->view = new View('settings/scheduler');
+        $this->view->forge = $forge->form();
+        $this->view->navigator = self::createNavigator(self::MENU_SCHEDULER);
     }
 
     /**
@@ -348,13 +349,13 @@ class SettingController extends Controller
     public function enum_types()
     {
         $enum_type_model = new Enum_types();
+        
+        $this->title = 'Settings';
 
-        $this->data['enum_types'] = self::generate_tree($enum_type_model->get_structure());
-        $this->data['items'] = self::get_free_items();
-
-        $this->data['navigator'] = self::createNavigator(self::MENU_ENUM_TYPES);
-        $this->header['title'] = 'Settings';
-        $this->view = 'settings/enum_types';
+        $this->view = new View('settings/enum_types');
+        $this->view->enum_types = self::generate_tree($enum_type_model->get_structure());
+        $this->view->items = self::get_free_items();
+        $this->view->navigator = self::createNavigator(self::MENU_ENUM_TYPES);
     }
 
     /**

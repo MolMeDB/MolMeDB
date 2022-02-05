@@ -94,6 +94,15 @@ abstract class Identifier_loader
     abstract function get_name($substance);
 
     /**
+     * Returns title for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    abstract function get_title($substance);
+
+    /**
      * Returns inchikey for given substance
      * 
      * @param Substances $substance

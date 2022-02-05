@@ -21,7 +21,7 @@ class ValidatorController extends Controller
     /**
      * Default redirection
      */
-    function parse($params = NULL)
+    function index($params = NULL)
     {
         $this->redirect('validator/show');
     }
@@ -58,7 +58,7 @@ class ValidatorController extends Controller
             $this->data['detail'] = FALSE;
         }
         
-        $this->header['title'] = 'Validator' . ($substance->name ? " | $substance->name" : '');
+        $this->title = 'Validator' . ($substance->name ? " | $substance->name" : '');
         $this->data['state'] = $state;
         $this->data['pagination'] = $pagination;
         $this->data['compounds'] = $validator->get_substances($state, 100*($pagination - 1), 100);

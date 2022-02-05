@@ -29,9 +29,6 @@ class SchedulerController extends Controller
     (
         'run',
         'log_sub_changes',
-        'validate_substance_identifiers',
-        'find_substance_duplicities',
-        'fragment_molecules'
     );
 
 
@@ -54,12 +51,7 @@ class SchedulerController extends Controller
 
         foreach($deletes as $wh)
         {
-            $rows = Scheduler_errors::instance()->where('error_text LIKE', "%$wh%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
-
-            foreach($rows as $c)
-            {
-                $c->delete();
-            }
+            Scheduler_errors::instance()->query("DELETE FROM `scheduler_errors` WHERE error_text LIKE '%$wh%'");
         }
 
         $changes = Scheduler_errors::instance()->where('error_text LIKE', "%on remote server%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
@@ -181,6 +173,8 @@ class SchedulerController extends Controller
 
         foreach($substnaces as $s)
         {
+            $s = new Substances($s->id);
+
             // Remove inchikey
             $s->inchikey = NULL;
             $s->save();
@@ -293,9 +287,11 @@ class SchedulerController extends Controller
         $time = $this->time = new Time();
 
         echo '--- RUN ' . $time->get_string() . " ---\n";
-
         try
         {
+            $this->fragment_molecules();
+            die;
+
             if(!$this->config->get(Configs::S_ACTIVE))
             {
                 echo 'Scheduler is not active.';
@@ -417,16 +413,16 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka
      */
-    public function fragment_molecules()
+    private function fragment_molecules()
     {
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
 
-        $all = $sf_model->get_non_fragmented_substances(1000);
+        $substances = $sf_model->get_non_fragmented_substances(10000);
 
         $rdkit = new Rdkit();
 
-        foreach($all as $s)
+        foreach($substances as $s)
         {
             try
             {
@@ -436,33 +432,61 @@ class SchedulerController extends Controller
 
                 if(!$fragments)
                 {
+                    Db::commitTransaction();
                     continue;
                 }
 
+                // add molecule smiles as new fragment
+                $new = new Fragments();
+                $new->smiles = $s->SMILES;
+                $new->save();
+                
+                $exists = Substances_fragments::instance()
+                    ->where(array
+                    (
+                        "id_substance" => $s->id,
+                        'id_fragment'   => $new->id
+                    ))->get_one();
+
+                
+                if(!$exists->id)
+                {
+                    $f = new Substances_fragments();
+                    $f->id_substance = $s->id;
+                    $f->id_fragment = $new->id;
+                    $f->links = null;
+                    $f->order_number = $sf_model->get_free_order_number($s->id);
+                    $f->similarity = 1.0;
+                    $f->save();
+                }
+
+                $metric = Rdkit::METRIC_DEFAULT;
+
                 foreach($fragments as $record)
                 {
-                    $order = Substances_fragments::instance()->get_free_order_number($s->id);
-
+                    $order = $sf_model->get_free_order_number($s->id);
                     $all = $record->fragments;
-
-                    if($record->core)
-                    {
-                        $all[] = $record->core;
-                    }
 
                     // Save fragments
                     $new_fragments = [];
                     $new_fragment_ids = [];
                     $new_links = [];
+                    $similarities = [];
+
                     foreach($all as $f)
                     {
                         $new = new Fragments();
 
-                        $data = $new->prepare_fragment($f);
+                        $data = $new->prepare_fragment($f->smiles);
+
+                        if(!$f->smiles)
+                        {
+                            continue;
+                        }
 
                         if(!$data)
                         {
-                            throw new Exception('Invalid fragment - ' . $f);
+                            throw new Exception('Invalid fragment - ' . $f->smiles);
                         }
 
                         $new->smiles = $data->smiles;
@@ -471,10 +495,11 @@ class SchedulerController extends Controller
                         $new_fragments[] = $new;
                         $new_fragment_ids[] = $new->id;
                         $new_links[] = $data->links;
+                        $similarities[] = $f->similarity->$metric;
                     }
 
                     // Check, if already exists
-                    if(!count($new_fragment_ids) || Substances_fragments::instance()->fragmentation_exists($s->id, $new_fragment_ids))
+                    if(!count($new_fragment_ids) || $sf_model->fragmentation_exists($s->id, $new_fragment_ids))
                     {
                         continue;
                     }
@@ -488,6 +513,7 @@ class SchedulerController extends Controller
                         $fragment->id_fragment = $new->id;
                         $fragment->links = $new_links[$key];
                         $fragment->order_number = $order;
+                        $fragment->similarity = $similarities[$key];
                         $fragment->save();
                     }
                 }
@@ -497,6 +523,8 @@ class SchedulerController extends Controller
             catch(Exception $e)
             {
                 Db::rollbackTransaction();
+                echo $e;
+                die;
             }
         }
     }
@@ -508,7 +536,7 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka
      */
-    public function find_substance_duplicities()
+    private function find_substance_duplicities()
     {
         $vi_model = new Validator_identifiers();
 
@@ -622,17 +650,42 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka
      */
-    public function validate_substance_identifiers($include_ignored = FALSE)
+    private function validate_substance_identifiers($include_ignored = FALSE)
     {
         $logs = new Validator_identifier_logs();
         
-        $substances = $logs->get_substances_for_validation(100, TRUE, $include_ignored);
+        $max_cores = Config::get('scheduler_substance_validation_max_cores');
+        $max_cores = $max_cores && is_numeric($max_cores) ? (int) $max_cores : 1;
+    
+        $running_cores = (int)Config::get('scheduler_substance_validation_running_cores');
+
+        if(!$running_cores)
+        {
+            $new_order = 1;
+        }
+        else if($running_cores >= $max_cores)
+        {
+            echo 'Max number of runs reached.';
+            return;
+        }
+        else
+        {
+            $new_order = $running_cores+1;
+        }
+
+        Config::set('scheduler_substance_validation_running_cores', $new_order);
+
+        $limit = 1000;
+        $offset = ($new_order-1)*$limit;
+
+        $substances = $logs->get_substances_for_validation($limit, $offset, TRUE, $include_ignored);
 
         if(!count($substances))
         {
+            Config::set('scheduler_substance_validation_running_cores', $new_order-1);
             return;
         }
-    
+
         $val_identifiers = new Validator_identifiers();
 
         // Remote servers
@@ -658,6 +711,7 @@ class SchedulerController extends Controller
             $logs::TYPE_REMOTE_IDENTIFIERS => null,
             $logs::TYPE_3D_STRUCTURE => null,
             $logs::TYPE_NAME_BY_IDENTIFIERS => null,
+            $logs::TYPE_TITLE => null
         );
 
         foreach($substances as $s)
@@ -1208,7 +1262,7 @@ class SchedulerController extends Controller
                                 unlink($file_name);
                             }
                             // LOG ERROR
-
+                            echo $e->getMessage();
                         }
                     }
 
@@ -1225,6 +1279,108 @@ class SchedulerController extends Controller
                 ###################################
                 ### End of finding 3D structure ###
                 ###################################
+
+                ####################################
+                ## Try to find TITLE as best name ##
+                ####################################
+
+                $log = $logs_arr[$log::TYPE_TITLE];
+
+                if(!$log->is_done())
+                {
+                    try
+                    {
+                        $found = false;
+
+                        $priority_methods = ['get_title', 'get_name'];
+
+                        foreach($val_identifiers::$identifier_servers[$val_identifiers::ID_NAME] as $servers)
+                        {
+                            if(is_numeric($servers))
+                            {
+                                $servers = [$servers];
+                            }
+
+                            foreach($servers as $server_id)
+                            {
+                                $server = $remote_servers[$server_id];
+
+                                if(!$server || !$server->is_reachable())
+                                {
+                                    continue;
+                                }
+
+                                foreach($priority_methods as $method)
+                                {
+                                    $found_value = $server->$method($s);
+
+                                    // Check name validity
+                                    $found_value = Upload_validator::get_attr_val(Upload_validator::NAME, $found_value);
+
+                                    if($found_value)
+                                    {
+                                        break;
+                                    }
+                                }
+
+                                if(!$found_value)
+                                {
+                                    continue;
+                                }
+
+                                $source = $val_identifiers->find_source($s->id, $server->last_identifier);
+
+                                if(!$source || $source->state != $source::STATE_VALIDATED)
+                                {
+                                    continue;
+                                }
+
+                                $found = true;
+
+                                $new = new Validator_identifiers();
+
+                                $new->id_substance = $s->id;
+                                $new->id_source = $source->id;
+                                $new->server = $server_id;
+                                $new->identifier = $new::ID_NAME;
+                                $new->value = $found_value;
+                                $new->state = $source->is_credible($server_id) ? $new::STATE_VALIDATED : $new::STATE_NEW;
+                                $new->active = $new->state == $new::STATE_VALIDATED ? $new::ACTIVE : $new::INACTIVE;
+                                
+                                $new->save();
+                                break;
+                            }
+
+                            if($found)
+                            {
+                                $log->update_state($s->id, $log->type, $log::STATE_DONE);
+                                break;
+                            }
+                        }
+                    }
+                    catch(Exception $e)
+                    {
+                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
+                        {
+                            $count = $log->count ? $log->count : 0;
+                            $new_state = $log::STATE_ERROR;
+                            $count++;
+
+                            if($count > 2)
+                            {
+                                $new_state = $log::STATE_MULTIPLE_ERROR;
+                            }
+
+                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
+                        }
+                        else 
+                        {
+                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
+                        }
+                    }
+                }
+
+                ///////////////////////
 
                 #########################################
                 ## Try to find new name by identifier ###
@@ -1333,6 +1489,9 @@ class SchedulerController extends Controller
                 echo $e->getMessage();
             }
         }
+
+        $no = (int)Config::get('scheduler_substance_validation_running_cores');
+        Config::set('scheduler_substance_validation_running_cores', $no > 0 ? $no-1 : 0);
     }
 
 

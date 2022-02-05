@@ -129,6 +129,25 @@ class Pubchem extends Identifier_loader
     }
 
     /**
+     * Returns title for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_title($substance)
+    {
+        $data = $this->get_data($substance->pubchem);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return $data->name;
+    }
+
+    /**
      * Returns PDB id for given substance
      * 
      * @param Substances $substance
@@ -456,12 +475,13 @@ class Pubchem extends Identifier_loader
 
                 $this->data[$pubchem_id] = new Iterable_object(array
                 (
-                    'pubchem_id'    => $data->CID,
-                    'MW'            => $data->MolecularWeight,
+                    'pubchem_id'    => property_exists($data, "CID") ? $data->CID : null,
+                    'MW'            => property_exists($data, "MolecularWeight") ? $data->MolecularWeight : null,
                     'SMILES'        => $smiles,
-                    'inchikey'      => $data->InChIKey,
-                    'name'          => $data->Title ? $data->Title : $data->IUPACName,
-                    'logP'          => $data->XLogP
+                    'inchikey'      => property_exists($data, "InChIKey") ? $data->InChIKey : null,
+                    'title'         => property_exists($data, "Title") ? $data->Title : null,
+                    'name'          => property_exists($data, "IUPACName") ? $data->IUPACName : null,
+                    'logP'          => property_exists($data, "XLogP") ? $data->XLogP : null
                 ));
 
                 return $this->data[$pubchem_id];

@@ -162,10 +162,10 @@ class EditController extends Controller
             }
         }
 
-        $this->data["detail"] = $detail;
-        $this->header['title'] = 'Editor';
-        $this->data['navigator'] = $this->createNavigator(self::M_ARTICLE, $type);
-        $this->view = 'edit/' . $type;
+        $this->view = new View('edit/' . $type);
+        $this->view->detail = $detail;
+        $this->view->navigator = $this->createNavigator(self::M_ARTICLE, $type);
+        $this->title = 'Editor';
     }
     
     /**
@@ -419,13 +419,12 @@ class EditController extends Controller
             ->order_by("id", "DESC")
             ->get_all();
 
-        $this->data['detail'] = $detail;
-        $this->data['interactions_all'] = $assigned_interactions;
-        $this->data['transporters_all'] = $assigned_transporters;
-        $this->data['logs'] = $logs;
-        $this->header['title'] = 'Edit compound';
-
-        $this->view = 'edit/compound';
+        $this->view = new View('edit/compound');
+        $this->view->detail = $detail;
+        $this->view->interactions_all = $assigned_interactions;
+        $this->view->transporters_all = $assigned_transporters;
+        $this->view->logs = $logs;
+        $this->title = 'Edit compound';
     }
 
 
@@ -526,9 +525,9 @@ class EditController extends Controller
             }
         }
 
-        $this->data['detail'] = $interaction;
-        $this->header['title'] = "Interaction [$interaction->id] editor";
-        $this->view = 'edit/interaction';
+        $this->view = new View('edit/interaction');
+        $this->view->detail = $interaction;
+        $this->title = "Interaction [$interaction->id] editor";
     }
 
     /**
@@ -605,10 +604,10 @@ class EditController extends Controller
             }
         }
 
-        $this->data['detail'] = $interaction;
-        $this->data['targets'] = Transporter_targets::instance()->order_by('name')->get_all();
-        $this->header['title'] = "Interaction [$interaction->id] editor";
-        $this->view = 'edit/active_interaction';
+        $this->view = new View('edit/active_interaction');
+        $this->view->detail = $interaction;
+        $this->view->targets = Transporter_targets::instance()->order_by('name')->get_all();
+        $this->title = "Interaction [$interaction->id] editor";
     }
 
     /**
@@ -812,6 +811,8 @@ class EditController extends Controller
             }
         }
 
+        $this->view = new View('edit/interaction_dataset');
+
         // If dataset exists, show detail
         if($dataset->id)
         {
@@ -829,25 +830,27 @@ class EditController extends Controller
                 ->where('id_dataset', $dataset->id)
                 ->count_all();
 
-            $this->data['total_duplicity'] = $validation->get_inter_dataset_duplicity_count($dataset->id);
-            $this->data['info'] = $dataset;
-            $this->data['interaction_table'] = self::createInteractionTable($dataset_interactions, $dataset->id);
-            $this->data['total'] = $total;
-            $this->data['pagination'] = $pagination;
-            $this->data['rights_users'] = $dataset->get_rights();
-            $this->data['rights_groups'] = $dataset->get_rights(true);
+            $this->view->total_duplicity = $validation->get_inter_dataset_duplicity_count($dataset->id);
+            $this->view->info = $dataset;
+            $this->view->interaction_table = self::createInteractionTable($dataset_interactions, $dataset->id);
+            $this->view->total = $total;
+            $this->view->pagination = $pagination;
+            $this->view->rights_users = $dataset->get_rights();
+            $this->view->rights_groups = $dataset->get_rights(true);
         }
 
-        $this->data['show_detail'] = $show_detail;
+        $this->view = new View('edit/interaction_dataset');
+
+        $this->view->show_detail = $show_detail;
         // Get all datasets
-        $this->data['datasets'] = $dataset
+        $this->view->datasets = $dataset
             ->order_by('createDateTime', 'DESC')
             ->get_all();
 
-        $this->header['title'] = 'Dataset editor';
-        $this->data['navigator'] = $this->createNavigator(self::M_DATASET_INTER);
-        $this->view = 'edit/interaction_dataset';
+        $this->title = 'Dataset editor';
+        $this->view->navigator = $this->createNavigator(self::M_DATASET_INTER);
     }
+    
     /**
      * Edits transporters datasets
      * 
@@ -1000,6 +1003,8 @@ class EditController extends Controller
             }
         }
 
+        $this->view = new View('edit/transporter_dataset');
+
         // If dataset exists, show detail
         if($dataset->id)
         {
@@ -1010,22 +1015,21 @@ class EditController extends Controller
                 ->where('id_dataset', $dataset->id)
                 ->get_all();
 
-            $this->data['info'] = $dataset;
-            $this->data['transporters_table'] = self::createTransportersTable($dataset_transporters, $dataset->id);
-            $this->data['targets'] = $target_model->order_by('name', 'ASC')->get_all();
-            // $this->data['rights_users'] = $dataset->get_rights();
-            // $this->data['rights_groups'] = $dataset->get_rights(true);
+            $this->view->info = $dataset;
+            $this->view->transporters_table = self::createTransportersTable($dataset_transporters, $dataset->id);
+            $this->view->targets = $target_model->order_by('name', 'ASC')->get_all();
+            // $this->view->rights_users = $dataset->get_rights();
+            // $this->view->rights_groups = $dataset->get_rights(true);
         }
 
-        $this->data['show_detail'] = $show_detail;
+        $this->view->show_detail = $show_detail;
         // Get all datasets
-        $this->data['datasets'] = $dataset
+        $this->view->datasets = $dataset
             ->order_by('create_datetime', 'DESC')
             ->get_all();
 
-        $this->header['title'] = 'Dataset editor';
-        $this->data['navigator'] = $this->createNavigator(self::M_DATASET_TRANS);
-        $this->view = 'edit/transporter_dataset';
+        $this->title = 'Dataset editor';
+        $this->view->navigator = $this->createNavigator(self::M_DATASET_TRANS);
     }
 
 
@@ -1041,7 +1045,8 @@ class EditController extends Controller
         $userModel = new Users($user_id);
         $groups = $userModel->get_all_groups();
 
-        $this->data['users_table'] = '';
+        $this->view = new View('edit/users');
+        $this->view->users_table = '';
 
         // Toggle group affiliation
         if($group_id && $user_id)
@@ -1076,7 +1081,7 @@ class EditController extends Controller
                 Db::beginTransaction();
 
                 $users = $userModel->get_users_by_group($group_id);
-                $this->data['users_table'] = $this->createTable_users("Group [#$group_id] users", array("#", "Name", "Affiliation", "Edit"), array("id", "name", "gp"), $users, $group_id);
+                $this->view->users_table = $this->createTable_users("Group [#$group_id] users", array("#", "Name", "Affiliation", "Edit"), array("id", "name", "gp"), $users, $group_id);
                 
                 Db::commitTransaction();
             } catch (Exception $ex) {
@@ -1086,10 +1091,9 @@ class EditController extends Controller
         }
 
 
-        $this->data['groups_table'] = $this->createTable_groups('Edit group', array('#', "Name"), array('id', 'gp_name'), $groups);
-        $this->data['navigator'] = $this->createNavigator(self::M_USERS);
-        $this->header['title'] = 'Edit users';
-        $this->view = 'edit/users';
+        $this->view->groups_table = $this->createTable_groups('Edit group', array('#', "Name"), array('id', 'gp_name'), $groups);
+        $this->view->navigator = $this->createNavigator(self::M_USERS);
+        $this->title = 'Edit users';
     }
 
     /**
@@ -1165,16 +1169,17 @@ class EditController extends Controller
             }
         }
 
+        $this->view = new View('edit/publication');
+
         if($publication->id)
         {
             $publication->publicated_date = $publication->publicated_date ? date('d-m-Y', strtotime($publication->publicated_date)) : NULL;
-            $this->data['detail'] = $publication;
+            $this->view->detail = $publication;
         }
 
-        $this->data['publications'] = $publication->get_all();
-        $this->data['navigator'] = $this->createNavigator(self::M_PUBLICATION);
-        $this->header['title'] = 'Edit publication';
-        $this->view = 'edit/publication';
+        $this->view->publications = $publication->get_all();
+        $this->view->navigator = $this->createNavigator(self::M_PUBLICATION);
+        $this->title = 'Edit publication';
     }
 
 
@@ -1193,7 +1198,7 @@ class EditController extends Controller
         if ($type == self::T_DETAIL) 
         {
             // Is submitted post?
-            if ($_POST) 
+            if ($this->form->is_post()) 
             {
                 // exists membrane?
                 if (!$method->id) 
@@ -1205,11 +1210,11 @@ class EditController extends Controller
                 try 
                 {
                     // Save changes
-                    $method->name = $_POST['name'];
-                    $method->keywords = $_POST['keywords'];
-                    $method->CAM = $_POST['CAM'];
-                    $method->description = $_POST['description'];
-                    $method->references = $_POST['reference'];
+                    $method->name = $this->form->param->name;
+                    $method->keywords = $this->form->param->keywords;
+                    $method->CAM = $this->form->param->CAM;
+                    $method->description = $this->form->param->description;
+                    $method->references = $this->form->param->reference;
 
                     $method->save();
 
@@ -1223,35 +1228,9 @@ class EditController extends Controller
                 }
             }
 
-            $this->data['pictures'] = $this->loadPictures();
-            $this->view = 'edit/method/detail';
+            $this->view = new View('edit/method/detail');
+            $this->view->pictures = $this->loadPictures();
         }
-        // Change method category
-        // else if ($type == self::T_CATEGORY) {
-        //     // Is submitted post?
-        //     if ($_POST) {
-        //         // exists membrane?
-        //         if (!$method->id) {
-        //             $this->addMessageError('Membrane was not found.');
-        //             $this->redirect('edit/membrane');
-        //         }
-
-        //         try {
-        //             // Save changes
-        //             $method->editCategory($_POST['idCat'], $_POST['idSubcat']);
-
-        //             $this->addMessageSuccess("Saved");
-        //             $this->redirect('edit/membrane');
-        //         } catch (Exception $e) {
-        //             $this->addMessageError('Error during saving membrane detail.');
-        //             $this->redirect('edit/membrane');
-        //         }
-        //     }
-
-        //     $this->data['categories'] = $method->get_all_categories();
-        //     $this->data['subcategories'] = $method->get_all_subcategories();
-        //     $this->view = 'edit/membrane/category';
-        // } 
         else 
         {
             $this->addMessageWarning('Wrong parameter');
@@ -1259,47 +1238,46 @@ class EditController extends Controller
         }
 
         // Get all method
-        $this->data["methods"] = $method->get_all();
-        $this->data['navigator'] = $this->createNavigator(self::M_METHOD);
-        $this->header['title'] = 'Edit method';
+        $this->view->methods = $method->get_all();
+        $this->view->navigator = $this->createNavigator(self::M_METHOD);
+        $this->title = 'Edit method';
     }
 
     /**
      * Checks name of 3d structure files and generates new ones if missing
-     * 
      */
-    public function check_3d_structures()
-    {
-        // Check if exists and rename if wrong
-        $substance_model = new Substances();
+    // public function check_3d_structures()
+    // {
+    //     // Check if exists and rename if wrong
+    //     $substance_model = new Substances();
 
-        $substances = $substance_model
-            ->select_list(array
-            (
-                'uploadName',
-                'identifier'
-            ))
-            ->get_all();
+    //     $substances = $substance_model
+    //         ->select_list(array
+    //         (
+    //             'uploadName',
+    //             'identifier'
+    //         ))
+    //         ->get_all();
 
-        $target_folder = MEDIA_ROOT . 'files/3Dstructures/';
+    //     $target_folder = MEDIA_ROOT . 'files/3Dstructures/';
 
-        foreach($substances as $row)
-        {
-            try
-            {
-                $file = new File($target_folder . $row->uploadName . '.mol');
+    //     foreach($substances as $row)
+    //     {
+    //         try
+    //         {
+    //             $file = new File($target_folder . $row->uploadName . '.mol');
 
-                $file->rename($row->identifier);
-            }
-            catch(Exception $e)
-            {
-                echo($e  . ' <br/>');
-                continue;
-            }
-        }
+    //             $file->rename($row->identifier);
+    //         }
+    //         catch(Exception $e)
+    //         {
+    //             echo($e  . ' <br/>');
+    //             continue;
+    //         }
+    //     }
 
-        die;
-    }
+    //     die;
+    // }
 
     /**
      * Membrane editor
@@ -1315,7 +1293,7 @@ class EditController extends Controller
         if($type == self::T_DETAIL)
         {
             // Is submitted post?
-            if($_POST)
+            if($this->form->is_post())
             {
                 // exists membrane?
                 if (!$membrane->id) 
@@ -1327,11 +1305,11 @@ class EditController extends Controller
                 try
                 {
                     // Save changes
-                    $membrane->name = $_POST['name'];
-                    $membrane->keywords = $_POST['keywords'];
-                    $membrane->CAM = $_POST['CAM'];
-                    $membrane->description = $_POST['description'];
-                    $membrane->references = $_POST['reference'];
+                    $membrane->name = $this->form->param->name;
+                    $membrane->keywords = $this->form->param->keywords;
+                    $membrane->CAM = $this->form->param->CAM;
+                    $membrane->description = $this->form->param->description;
+                    $membrane->references = $this->form->param->reference;
 
                     $membrane->save();
 
@@ -1345,18 +1323,18 @@ class EditController extends Controller
                 }
             }
 
-            $this->data['pictures'] = $this->loadPictures();
-            $this->view = 'edit/membrane/detail';
+            $this->view = new View('edit/membrane/detail');
+            $this->view->pictures = $this->loadPictures();
         }
         // Change membrane category
         else if($type == self::T_CATEGORY)
         {
             // Is submitted post?
-            if ($_POST) 
+            if ($this->form->is_post()) 
             {
-                if(!$membrane->id && isset($_POST['id']))
+                if(!$membrane->id && $this->form->param->id)
                 {
-                    $membrane = new Membranes($_POST['id']);
+                    $membrane = new Membranes($this->form->param->id);
                 }
 
                 // exists membrane?
@@ -1369,7 +1347,7 @@ class EditController extends Controller
                 try 
                 {
                     // Save changes
-                    $membrane->editCategory($_POST['category_id'], $_POST['subcategory_id']);
+                    $membrane->editCategory($this->form->param->category_id, $this->form->param->subcategory_id);
 
                     $this->addMessageSuccess("Saved");
                     $this->redirect('edit/membrane/' . self::T_CATEGORY);
@@ -1381,9 +1359,9 @@ class EditController extends Controller
                 }
             }
 
-            $this->data['categories'] = $membrane->get_all_categories();
-            $this->data['subcategories'] = $membrane->get_all_subcategories();
-            $this->view = 'edit/membrane/category';
+            $this->view = new View('edit/membrane/category');
+            $this->view->categories = $membrane->get_all_categories();
+            $this->view->subcategories = $membrane->get_all_subcategories();
         }
         else
         {
@@ -1392,9 +1370,9 @@ class EditController extends Controller
         }
 
         // Get all membranes
-        $this->data["membranes"] = $membrane->order_by('name')->get_all();
-        $this->data['navigator'] = $this->createNavigator(self::M_MEMBRANE, $type);
-        $this->header['title'] = 'Edit membranes';
+        $this->view->membranes = $membrane->order_by('name')->get_all();
+        $this->view->navigator = $this->createNavigator(self::M_MEMBRANE, $type);
+        $this->title = 'Edit membranes';
     }
 
     /**

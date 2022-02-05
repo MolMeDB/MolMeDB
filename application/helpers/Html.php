@@ -141,7 +141,12 @@ class Html
      */
     public static function image($src, $class = "")
     {
-        return "<img class='$class' src='" . self::$IMG . $src . "'>";
+        if(!preg_match('/^http/', $src, $m))
+        {
+            $src = self::$IMG . $src;
+        }
+
+        return "<img class='$class' src='" . $src . "'>";
     }
 
 

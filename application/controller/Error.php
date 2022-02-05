@@ -13,10 +13,10 @@ class ErrorController extends Controller
         parent::__construct();
     }
 
-    public function parse()
+    public function index()
     {
         header("HTTP/1.0 404 Not Found");
-        $this->header['title'] = 'Error 404';
-        $this->view = 'error';
+        $this->title = 'Error 404';
+        $this->view = new View('error');
     }
 }

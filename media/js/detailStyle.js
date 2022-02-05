@@ -22,62 +22,14 @@ acc[0].click();
 
 
 /**
- * Checks, for which methods are available interactions
- * 
- * @param {integer} id - Substance ID 
- */
-function checkMethods(id)
-{
-    var params = {
-        id: id
-    };
-    
-    var result = ajax_request('detail/checkMethods', params);
-
-    if(!result)
-    {
-        return;
-    }
-    
-    // Parse data
-    var data = result;
-    var size = data.length;
-    
-    if(!size){
-        return;
-    }
-    
-    var t = 0;
-    
-    for(var j=0; j<size; j++)
-    {
-        var btn = document.getElementById('but' + data[j].id_method);
-        btn.setAttribute("style", "display: inline-block");
-        t++;
-        btn.setAttribute("onclick", "showRows('" + id + "','but" + data[j].id_method +"');");
-        btn.setAttribute("class", "btn-methods");
-    }     
-    
-    if(t === 0)
-    {
-        document.getElementById("interaction-panel").style.display = "none";
-        document.getElementById("no-data-panel").style.display = "block";
-    }
-    else{ 
-        acc[1].click();
-    }
-}
-
-    
-/**
  * Shows checked rows in table
  * 
  * @param {integer} id - Substance ID 
  * @param {integer} idButton - ID of button just clicked
  */
- async function showRows(id, idButton)
+ async function showRows(element, id)
  {
-    var button = document.getElementById(idButton);
+    var button = element;
     var loader = document.getElementById("interaction_loader");
     loader.style.display = "block";
     await sleep(100);
@@ -98,7 +50,6 @@ function checkMethods(id)
     var height = panel.scrollHeight + 500; 
     panel.style.maxHeight = height + "px";
     
-
     loadTable(id);
     loader.style.display = "none";
 }
@@ -110,7 +61,7 @@ function checkMethods(id)
 $('#hide-empty-interaction-columns').change(function()
 {
     var id = $('#idSubstance').val();
-    showRows(id, null);
+    showRows(null, id);
 });
 
 
@@ -119,13 +70,11 @@ $('#hide-empty-interaction-columns').change(function()
  * 
  * @param {*} id Substance ID
  */
-function loadTable(id)
+async function loadTable(id)
 {
     var div = document.getElementById("detailTab");
-    if(div.children[0])
-    {
-        div.children[0].remove();
-    }
+    div.innerHTML = "";
+
     var hide_element = $('#hide-empty-interaction-columns');
     var hide_empty = false;
 
@@ -134,81 +83,23 @@ function loadTable(id)
         hide_empty = true;
     }
     
-    var table = document.createElement("table");
-    div.setAttribute("class", "detail-content");
-    var thead = document.createElement("thead");
-    var tbody = document.createElement("tbody");
-    thead.setAttribute("class", "thead-detail");
-
-    var headtr = document.createElement("tr");
-
-    var attributes = {
-        membrane: "Membrane", 
-        method: "Method", 
-        charge: "Q", 
-        temperature: 'T <br/><label class="units">[°C]</label>',
-        x_min: 'X<sub>min</sub> <br/><label class="units">[nm]</label>',
-        g_pen: '&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>',
-        g_wat: '&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', 
-        logk: 'LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub></label>]', 
-        logperm: 'LogPerm <br/><label class="units">[cm/s]</label>', 
-        theta: 'Theta<br/><label class="units">[°]</label>',
-        abs_wl: 'Abs_wl<br/><label class="units">[nm]</label>', 
-        fluo_wl: 'Fluo_wl<br/><label class="units">[nm]</label>',
-        qy: 'QY<br/><label class="units"></label>', 
-        lt: 'lt<br/><label class="units">[ns]</label>', 
-        note: "Note", 
-        primary_ref: 'Primary<br/> reference', 
-        secondary_ref: 'Secondary<br/> reference'
-    };
-
-    var descriptors = {
-        charge: "Charge",
-        temperature: "Temperature",
-        x_min: "Position of minima along the membrane normal from the membrane center",
-        g_pen: "Penetration barrier (maximum - minimum)",
-        g_wat: "A depth of minima within membrane",
-        logk: "Partition coefficient membrane/water",
-        logperm: "Permeability coefficient",
-        theta: "Contact angle in membrane",
-        abs_wl: "Peak absorption wavelenght",
-        fluo_wl: "Peak fluorescence wavelenght",
-        qy: "Quantum yield",
-        lt: "Fluorescence lifetime",
-        primary_ref: "Original source",
-        secondary_ref: "Source of input into databse if different from original"
-    }
-    
-    var methods = get_all_methods();
-    var countMet = methods.length;
     var checked = [];
-    
-    // Make table header
-    for(var key in attributes)
-    {
-        var td = document.createElement("td");
-        td.classList.add("detail-th");
-        td.innerHTML = "<p><b>" + attributes[key] + "</b></p>";
 
-        if(descriptors[key])
+    $('button[id^=btn_meth_]').each(function(i, el)
+    {
+        if(!$(el).hasClass('btn-methods-active'))
         {
-            td.style.cursor = "help";
-            td.innerHTML += "<div class='th-descriptor'>" + descriptors[key] + "</div>";
+            return;
         }
 
-        headtr.appendChild(td);
-    }
+        var id = $(el).attr('id');
+        id = id.replace('btn_meth_', '');
 
-    // Get checked methods
-    for(var j=0; j<countMet; j++)
-    {
-        var btn = document.getElementById("but" + methods[j].id);
-        
-        if(btn.value != "1")
-            continue;
-
-        checked.push(methods[j].id);
-    }
+        if(id)
+        {
+            checked.push(id);
+        }
+    });
 
     // If not checked, set nonsense value for getting empty table
     if(!checked[0])
@@ -216,125 +107,9 @@ function loadTable(id)
         checked = [-1];
     }
 
-    // Get all interactions
-    var data = ajax_request('detail/getInteractions', { id: id, idMethods: checked}, "POST");
-
-    if(!data)
-    {
-        return;
-    }
-
-    var membrane_count = data.length;
-
-    for (var i = 0; i < membrane_count; i++) 
-    {
-        var mem_detail = data[i];
-        var mem_id = mem_detail.membrane_id;
-        var mem_name = mem_detail.membrane_name;
-
-        var rows = mem_detail.data;
-        var row_count = rows.length;
-
-        var first_row = true;
-
-        for (var j = 0; j < row_count; j++) 
-        {
-            var interaction = rows[j];
-
-            var tr = document.createElement("tr");
-            var td = document.createElement("td");
-            td.innerHTML = mem_name;
-            if (first_row) 
-            {
-                td.setAttribute("rowspan", row_count);
-                td.setAttribute("class", "first-td text-primary");
-                first_row = false;
-            }
-            else
-            {
-                td.hidden = true;
-            }
-        
-            tr.appendChild(td);
-            td = document.createElement("td");
-            td.innerHTML = interaction.method_name;
-            tr.appendChild(td);
-
-            //Fill table
-            var note = make_textfield_td(interaction.comment, true);
-            var charge = make_td(interaction.charge, true);
-            var temp = make_td(interaction.temperature, true);
-            var x_min = make_td(interaction.Position, false, interaction.Position_acc);
-            var g_pen = make_td(interaction.Penetration, false, interaction.Penetration_acc);
-            var g_wat = make_td(interaction.Water, false, interaction.Water_acc);
-            var log_k = make_td(interaction.LogK, false, interaction.LogK_acc);
-            var log_perm = make_td(interaction.LogPerm, false, interaction.LogPerm_acc);
-            var theta = make_td(interaction.theta, false, interaction.theta_acc);
-            var abs_wl = make_td(interaction.abs_wl, false, interaction.abs_wl_acc);
-            var fluo_wl = make_td(interaction.fluo_wl, false, interaction.fluo_wl_acc);
-            var QY = make_td(interaction.QY, false, interaction.QY_acc);
-            var lt = make_td(interaction.lt, false, interaction.lt_acc);
-            var primary_ref = make_ref_td(interaction.id_reference, interaction.primary_reference);
-            var secondary_ref = make_ref_td(interaction.secondary_reference_id, interaction.secondary_reference);
-            
-
-            tr.appendChild(charge);
-            tr.appendChild(temp);
-            tr.appendChild(x_min);
-            tr.appendChild(g_pen);
-            tr.appendChild(g_wat);
-            tr.appendChild(log_k);
-            tr.appendChild(log_perm);
-            tr.appendChild(theta);
-            tr.appendChild(abs_wl);
-            tr.appendChild(fluo_wl);
-            tr.appendChild(QY);
-            tr.appendChild(lt);
-            tr.appendChild(note);
-            tr.appendChild(primary_ref);
-            tr.appendChild(secondary_ref);
-
-            tbody.appendChild(tr);
-        }
-    }
-
-    thead.appendChild(headtr);
-    table.appendChild(thead);
-    table.appendChild(tbody);
-    div.appendChild(table);
-
-    // Process table
-    var deleted = 0;
-
-    if(hide_empty)
-    {
-        $(thead).find('td').each(function (key, th) {
-            var is_empty = true;
-
-            $(tbody).find('tr>td:nth-child(' + (key + 1 - deleted) + ')').each(function(k, td)
-            {
-                var val = $(td).html();
-
-                if(!(val == '' || !val))
-                {
-                    is_empty = false;
-                    return false;
-                }
-            })
-
-            if(is_empty)
-            {
-                $(tbody).find('tr>td:nth-child(' + (key + 1 - deleted) + ')').each(function (k, td) {
-                    $(td).remove();
-                })
-
-                // Hide header
-                $(th).remove();
-
-                deleted++;
-            }
-        });
-    }
+    // // Get all interactions - returns HTML table
+    var content = ajax_request('detail/getInteractionsTable', {id:id, idMethods: checked}, "GET", 'html');
+    append_html_js(content, div);
 }
 
 /**

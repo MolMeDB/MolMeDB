@@ -159,12 +159,13 @@ class UploadController extends Controller
                 $this->addMessageError($ex->getMessage());
             }
         }
+        
+        $this->title = 'Uploader';
 
-        $this->data['methods'] = $methodModel->get_all();
-        $this->data['membranes'] = $membraneModel->get_all();
-        $this->data['navigator'] = $this->createNavigator(self::M_ENERGY);
-        $this->view = 'upload/energyfile';
-        $this->header['title'] = 'Uploader';
+        $this->view = new View('upload/energyfile');
+        $this->view->methods = $methodModel->get_all();
+        $this->view->membranes = $membraneModel->get_all();
+        $this->view->navigator = $this->createNavigator(self::M_ENERGY);
     }
 
 
@@ -175,26 +176,24 @@ class UploadController extends Controller
     {
         $membrane = new Membranes();
 
-        if ($_POST) 
+        if ($this->form->is_post()) 
         {
             try 
             {
                 Db::beginTransaction();
 
-                print_r($_POST);
-
                 // Insert new Membrane
-                $membrane->name = $_POST['name'];
-                $membrane->description = $_POST['descript'];
-                $membrane->keywords = $_POST['keywords'];
-                $membrane->CAM = $_POST['CAM'];
-                $membrane->references = $_POST['references'];
-                $membrane->idTag = $_POST['tags']; 
+                $membrane->name = $this->form->param->name;
+                $membrane->description = $this->form->param->descript;
+                $membrane->keywords = $this->form->param->keywords;
+                $membrane->CAM = $this->form->param->CAM;
+                $membrane->references = $this->form->param->references;
+                $membrane->idTag = $this->form->param->tags; 
 
                 $membrane->save();
 
                 // Save membrane category
-                $membrane->save_membrane_category($_POST['idCat'], $_POST['idSubcat']);
+                $membrane->save_membrane_category($this->form->param->idCat, $this->form->param->idSubcat);
                 
                 Db::commitTransaction();
                 $this->addMessageSuccess('Membrane "' . $membrane->name . '" was inserted.');
@@ -207,11 +206,12 @@ class UploadController extends Controller
             }
         }
 
-        $this->data['categories'] = $membrane->get_all_categories();
-        $this->data['subcategories'] = $membrane->get_all_subcategories();
-        $this->view = 'upload/membrane';
-        $this->data['navigator'] = $this->createNavigator(self::M_MEMBRANE);
-        $this->header['title'] = 'Uploader';
+        $this->title = 'Uploader';
+
+        $this->view = new View('upload/membrane');
+        $this->view->categories = $membrane->get_all_categories();
+        $this->view->subcategories = $membrane->get_all_subcategories();
+        $this->view->navigator = $this->createNavigator(self::M_MEMBRANE);
     }
 
     /**
@@ -221,19 +221,19 @@ class UploadController extends Controller
     {
         $method = new Methods();
 
-        if ($_POST) 
+        if ($this->form->is_post()) 
         {
             try 
             {
                 Db::beginTransaction();
 
                 // Insert new Membrane
-                $method->name = $_POST['name'];
-                $method->description = $_POST['descript'];
-                $method->keywords = $_POST['keywords'];
-                $method->CAM = $_POST['CAM'];
-                $method->references = $_POST['references'];
-                $method->idTag = $_POST['tags'];
+                $method->name = $this->form->param->name;
+                $method->description = $this->form->param->descript;
+                $method->keywords = $this->form->param->keywords;
+                $method->CAM = $this->form->param->CAM;
+                $method->references = $this->form->param->references;
+                $method->idTag = $this->form->param->tags;
 
                 $method->save();
 
@@ -253,9 +253,10 @@ class UploadController extends Controller
 
         // $this->data['categories'] = $method->get_all_categories();
         // $this->data['subcategories'] = $method->get_all_subcategories();
-        $this->view = 'upload/method';
-        $this->data['navigator'] = $this->createNavigator(self::M_METHOD);
-        $this->header['title'] = 'Uploader';
+        $this->title = 'Uploader';
+
+        $this->view = new View('upload/method');
+        $this->view->navigator = $this->createNavigator(self::M_METHOD);
     }
 
     /**
@@ -300,10 +301,11 @@ class UploadController extends Controller
             }
         }
 
-        $this->data['pictures'] = $this->loadPictures();
-        $this->data['navigator'] = $this->createNavigator(self::M_PICTURE);
-        $this->view = 'upload/picture';
-        $this->header['title'] = 'Uploader';
+        $this->title = 'Uploader';
+
+        $this->view = new View('upload/picture');
+        $this->view->pictures = $this->loadPictures();
+        $this->view->navigator = $this->createNavigator(self::M_PICTURE);
     }
 
     /**
@@ -396,10 +398,10 @@ class UploadController extends Controller
             }
         }
 
+        $this->title = 'Uploader';
 
-        $this->view = 'upload/publication';
-        $this->data['navigator'] = $this->createNavigator(self::M_PUBLICATION);
-        $this->header['title'] = 'Uploader';
+        $this->view = new View('upload/publication');
+        $this->view->navigator = $this->createNavigator(self::M_PUBLICATION);
     }
 
     /**
@@ -564,9 +566,10 @@ class UploadController extends Controller
             }
         }
 
-        $this->view = 'upload/smiles';
-        $this->data['navigator'] = $this->createNavigator(self::M_SMILES);
-        $this->header['title'] = 'Uploader';
+        $this->title = 'Uploader';
+
+        $this->view = new View('upload/smiles');
+        $this->view->navigator = $this->createNavigator(self::M_SMILES);
     }
 
     /**
@@ -631,11 +634,12 @@ class UploadController extends Controller
             }
         }
 
-        $this->data['detail'] = $data;
-        $this->data['fileType'] = $fileType;
-        $this->data['navigator'] = $this->createNavigator(self::M_DATASET);
-        $this->view = 'upload/dataset';
-        $this->header['title'] = 'Uploader';
+        $this->title = 'Uploader';
+
+        $this->view = new View('upload/dataset');
+        $this->view->detail = $data;
+        $this->view->fileType = $fileType;
+        $this->view->navigator = $this->createNavigator(self::M_DATASET);
     }
 
     /**

@@ -157,6 +157,18 @@ class Drugbank extends Identifier_loader
         return false;
     }
 
+    /**
+     * Returns title for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_title($substance)
+    {
+        return false;
+    }
+
      /**
      * For given SMILES returns InChIKey
      * 

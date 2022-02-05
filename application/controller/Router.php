@@ -5,7 +5,9 @@
  */
 class RouterController extends Controller
 {
-    protected $controller;
+    public $controller;
+
+    public $messages = [];
 
     /**
      * Constructor
@@ -76,7 +78,7 @@ class RouterController extends Controller
         if($classController == 'ApiController')
         {
             $api_controller = new ApiController(...$parsedURL);
-            $api_controller->parse();
+            $api_controller->index();
             die;
         }
 
@@ -127,7 +129,7 @@ class RouterController extends Controller
         }
         else
         {
-            $targetFunction = 'parse';
+            $targetFunction = 'index';
         }
 
         if (!method_exists($this->controller, $targetFunction)) 
@@ -145,10 +147,11 @@ class RouterController extends Controller
             die($e->getMessage());
         }
 
-        $this->data['title'] = $this->controller->header['title'];
-        $this->data['description'] = $this->controller->header['description'];
-        $this->data['messages'] = $this->alert->get_all();
-        $this->view = 'layout';
+        $this->view = new View('layout');
+        $this->view->title = $this->controller->title;
+        $this->view->controller = $this->controller;
+        $this->view->messages = $this->alert->get_all();
+        $this->view->render(TRUE);
     }
 
 }

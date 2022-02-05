@@ -15,6 +15,17 @@ class Rdkit extends Identifier_loader
     /** Holds info about last used identifier type */
     public $last_identifier = null;
 
+    /** METRICS */
+    const METRIC_TANIMOTO = "Tanimoto";
+    const METRIC_DICE = "Dice";
+    const METRIC_COSINE = "Cosine";
+    const METRIC_SOKAL = "Sokal";
+    const METRIC_RUSSEL = "Russel";
+    const METRIC_KULCZYNSKI = "Kulczynski";
+    const METRIC_MCCONNAUGHEY = "McConnaughey";
+
+    const METRIC_DEFAULT = self::METRIC_KULCZYNSKI;
+
     /**
      * Constructor
      * Checks service status
@@ -168,11 +179,23 @@ class Rdkit extends Identifier_loader
     }
 
     /**
+     * Returns title for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_title($substance)
+    {
+        return false;
+    }
+
+    /**
      * For given SMILES returns it in canonized form
      * 
      * @param string $smiles
      * 
-     * @return $string
+     * @return string|false
      */
     public function canonize_smiles($smiles)
     {
@@ -199,7 +222,7 @@ class Rdkit extends Identifier_loader
                 return $response[0];
             }
 
-            return False;
+            return false;
         }
         catch(Exception $e)
         {
@@ -406,6 +429,45 @@ class Rdkit extends Identifier_loader
         catch(Exception $e)
         {
             return NULL;
+        }
+    }
+
+
+    /**
+     * Computes similarity between two given molecules
+     * 
+     * @param string $smiles_1
+     * @param string $smiles_2
+     * @param string $metric
+     * 
+     * @return false,float
+     */
+    public function compute_similarity($smiles_1, $smiles_2, $metric = self::METRIC_DEFAULT)
+    {
+        $this->last_identifier = Validator_identifiers::ID_SMILES;
+
+        $uri = 'mol/similarity';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'smi1' => $smiles_1,
+            'smi2' => $smiles_2
+        );
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params);
+
+            if($response && $response->similarity && $response->similarity->$metric)
+            {
+                return $response->similarity->$metric;
+            }
+
+            return false;
+        }
+        catch(Exception $e)
+        {
+            return false;
         }
     }
 

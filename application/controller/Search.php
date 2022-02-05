@@ -41,7 +41,7 @@ class SearchController extends Controller
      * 
      * @author Jakub Juračka
      */
-    public function parse($type = self::T_COMPOUND, $pagination = 1) 
+    public function index($type = self::T_COMPOUND, $pagination = 1) 
     {
         // Is type valid?
         if(!in_array($type, $this->valid_types))
@@ -56,15 +56,16 @@ class SearchController extends Controller
         $query = isset($_GET['q']) ? $_GET['q'] : NULL;
 
         // Set main variables
-        $this->view = 'search';
-        $this->header['title'] = 'Search';
-        $this->data['count'] = 0;
-        $this->data['list'] = $list;
-        $this->data['info'] = $info;
-        $this->data['pagination'] = $pagination;
-        $this->data['searchInput'] = $query;
-        $this->data['searchType'] = $type;
-        $this->data['show_detail'] = false;
+        $this->title = 'Search';
+
+        $this->view = new View('search');
+        $this->view->count = 0;
+        $this->view->list = $list;
+        $this->view->info = $info;
+        $this->view->pagination = $pagination;
+        $this->view->searchInput = $query;
+        $this->view->searchType = $type;
+        $this->view->show_detail = false;
 
         // If not sent query, return
         if(!$query)
@@ -124,11 +125,11 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['list'] = $list;
-        $this->data['count'] = $total;
-        $this->data['show_detail'] = True;
+        $this->view->list = $list;
+        $this->view->count = $total;
+        $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->info = $info;
     }
 
     /**
@@ -156,11 +157,11 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['list'] = $list;
-        $this->data['count'] = $total;
-        $this->data['show_detail'] = True;
+        $this->view->list = $list;
+        $this->view->count = $total;
+        $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->info = $info;
     }
 
     /**
@@ -188,11 +189,11 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['list'] = $list;
-        $this->data['count'] = $total;
-        $this->data['show_detail'] = True;
+        $this->view->list = $list;
+        $this->view->count = $total;
+        $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->info = $info;
     }
 
     /**
@@ -231,11 +232,11 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['list'] = $list;
-        $this->data['count'] = $total;
-        $this->data['show_detail'] = True;
+        $this->view->list = $list;
+        $this->view->count = $total;
+        $this->view->show_detail = True;
         $info = "Results for SMILES '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->info = $info;
     }
 
     /**
@@ -263,11 +264,11 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['count'] = $total;
-        $this->data['list'] = $list;
-        $this->data['show_detail'] = True;
+        $this->view->count = $total;
+        $this->view->list = $list;
+        $this->view->show_detail = True;
         $info = "Results for method '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->info = $info;
     }
 
 }

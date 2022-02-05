@@ -112,14 +112,14 @@ class Validator_identifiers extends Db
      */
     private static $enum_servers = array
     (
-        self::SERVER_PUBCHEM => 'pubchem',
-        self::SERVER_DRUGBANK => 'drugbank',
-        self::SERVER_CHEBI  => 'chebi',
-        self::SERVER_PDB    => 'pdb',
-        self::SERVER_CHEMBL => 'chembl',
-        self::SERVER_UNICHEM => 'unichem',
-        self::SERVER_RDKIT => 'rdkit',
-        self::SERVER_MOLMEDB => 'molmedb',
+        self::SERVER_PUBCHEM => 'Pubchem server',
+        self::SERVER_DRUGBANK => 'Drugbank server',
+        self::SERVER_CHEBI  => 'ChEBI server',
+        self::SERVER_PDB    => 'PDB server',
+        self::SERVER_CHEMBL => 'ChEMBL server',
+        self::SERVER_UNICHEM => 'Unichem server',
+        self::SERVER_RDKIT => 'RDkit software',
+        self::SERVER_MOLMEDB => 'MolMeDB server',
     );
 
     /** 
@@ -370,6 +370,26 @@ class Validator_identifiers extends Db
                 'active'        => self::ACTIVE
             ))
             ->get_one();
+    }
+
+    /**
+     * Returns all substance identifiers
+     * 
+     * @param int $id_substance
+     * 
+     * 
+     * @return array
+     */
+    public function get_all_active_substance_values($id_substance)
+    {
+        $result = [];
+
+        foreach(self::$enum_identifiers as $id => $non)
+        {
+            $result[$id] = $this->get_active_substance_value($id_substance, $id);
+        }
+
+        return $result;
     }
 
     /**

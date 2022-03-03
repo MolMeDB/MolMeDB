@@ -174,6 +174,14 @@ class System_config
      */
     public static function autoloadFunction($class)
     {
+        $targets = array
+        (
+            APP_ROOT . 'helpers/',
+            APP_ROOT . 'libraries/',
+            APP_ROOT . 'model/',
+            'system/exceptions/'
+        );
+
         // Default destinations for fast loading
         if (preg_match('/Controller$/', $class))
         {
@@ -181,9 +189,10 @@ class System_config
             {
                 $class = str_replace('Controller', '', $class);
             }
-            require(APP_ROOT . "controller/" . $class . ".php");
+            require_once(APP_ROOT . "controller/" . $class . ".php");
         }
-        else if (preg_match('/^Api/', $class))
+        else if (preg_match('/^Api/', $class) 
+            && file_exists(APP_ROOT . "controller/Api/" . substr($class, 3) . ".php"))
         {
             $class = str_replace('Api', '', $class);
             require(APP_ROOT . "controller/Api/" . $class . ".php");
@@ -193,28 +202,15 @@ class System_config
             $class = ucfirst(str_replace('Mol_', '', $class));
             require(APP_ROOT . "libraries/Mol/" . $class . ".php");
         }
-        else if (file_exists( APP_ROOT . "model/" . $class . ".php"))
+        else
         {
-            require( APP_ROOT . "model/" . $class . ".php");
-        }
-        // Helpers
-        else if (file_exists(APP_ROOT . "helpers/" . $class . ".php"))
-        {
-            require( APP_ROOT . "helpers/" . $class . ".php");
-        }
-        else if (file_exists(APP_ROOT . "helpers/" . strtolower($class) . ".php"))
-        {
-            require( APP_ROOT . "helpers/" . strtolower($class) . ".php");
-        }
-        // Libraries
-        else if (file_exists(APP_ROOT . "libraries/" . $class . ".php"))
-        {
-            require( APP_ROOT . "libraries/" . $class . ".php");
-        }
-        // Exceptions
-        else if (file_exists("system/exceptions/" . $class . ".php"))
-        {
-            require("system/exceptions/" . $class . ".php");
+            foreach($targets as $folder)
+            {
+                if(file_exists($folder . $class . ".php"))
+                {
+                    require_once($folder . $class . ".php");
+                }
+            }
         }
         else if (file_exists("system/" . $class . ".php"))
         {

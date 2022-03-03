@@ -9,14 +9,6 @@ class Config
     private static $db;
 
     /**
-     * Constructor
-     */
-    function __construct()
-    {
-        self::init();
-    }
-
-    /**
      * Initialization
      */
     public static function init()

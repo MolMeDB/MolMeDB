@@ -61,7 +61,7 @@ function loadLineChart(id){
     }
 
     for(var i=0; i<count; i++){
-        var ajax_data = ajax_request('detail/getEnergyValues', { id: id, idMem: mem[i], idMet: met[i], limit: 0});
+        var ajax_data = ajax_request('energy/all', { id_compound: id, id_membrane: mem[i], id_method: met[i], limit: 0});
         res[i] = ajax_data;
 
         if(!ajax_data)
@@ -84,15 +84,20 @@ function loadLineChart(id){
     
     for(var i=0; i<count; i++)
     {
-        var ajax_data = ajax_request('detail/getEnergyLabel', {idMem: mem[i], idMet: met[i]});
-        var label = ajax_data;
+        var membrane_detail = ajax_request('membrane/get', {id: mem[i]});
+        var method_detail = ajax_request('method/get', {id: met[i]});
+        var label = {
+            membrane: membrane_detail ? membrane_detail.CAM : null,
+            method: method_detail ? method_detail.CAM : null
+        };
         
-        if(!ajax_data)
+        if(!label.membrane)
         {
-            label = {
-                membrane: mem[i],
-                method: met[i]
-            }
+            label.membrane = mem[i];
+        }
+        if(!label.method)
+        {
+            label.method = met[i];
         }
 
         dataset[i] = {};
@@ -208,58 +213,59 @@ function renderChart(){
     myChart = new Chart(ctx, config);
 }
 
+// Předělat do PHP a načítat zrovna
 
-function loadChartTable(id)
-{
-    var data = document.querySelectorAll("div.membraneTab");
-    var size = data.length;
-    var list = [];
-    var res;
+// function loadChartTable(id)
+// {
+//     var data = document.querySelectorAll("div.membraneTab");
+//     var size = data.length;
+//     var list = [];
+//     var res;
     
-    for (i = 0; i < size; i++) {
-        data[i].onclick = function() {
-            if(this.className == "active"){
-                this.className = "not-active";
-                loadLineChart(id);
-            }
-            else if (this.className == "not-active"){
-                this.className = "active";
-                loadLineChart(id);
-            }
-        }
-    }
+//     for (i = 0; i < size; i++) {
+//         data[i].onclick = function() {
+//             if(this.className == "active"){
+//                 this.className = "not-active";
+//                 loadLineChart(id);
+//             }
+//             else if (this.className == "not-active"){
+//                 this.className = "active";
+//                 loadLineChart(id);
+//             }
+//         }
+//     }
 
 
-    for (var i = 0; i<size; i++)
-    {
-        var temp = data[i].childNodes[1].value;
-        temp = temp.split(';');
-        list.push({
-            idMembrane: temp[1],
-            idMethod: temp[0]
-        })
-    }
+//     for (var i = 0; i<size; i++)
+//     {
+//         var temp = data[i].childNodes[1].value;
+//         temp = temp.split(';');
+//         list.push({
+//             idMembrane: temp[1],
+//             idMethod: temp[0]
+//         })
+//     }
 
-    list = JSON.stringify(list);
+//     list = JSON.stringify(list);
 
-    var ajax_data = ajax_request('detail/getEnergyData', {list: list, id: id}, "POST");
+//     var ajax_data = ajax_request('detail/getEnergyData', {list: list, id: id}, "POST");
     
-   for(var i=0; i<size; i++)
-   {
-       if (ajax_data[i] != 0)
-       {
-            data[i].setAttribute("class", "not-active");
-            data[i].setAttribute('style', 'display: inline-block;');
-       }
-   }
+//    for(var i=0; i<size; i++)
+//    {
+//        if (ajax_data[i] != 0)
+//        {
+//             data[i].setAttribute("class", "not-active");
+//             data[i].setAttribute('style', 'display: inline-block;');
+//        }
+//    }
    
     
-    data = document.getElementsByClassName("membraneTab");
-    if(data.length == 0){
-        document.getElementById("chart-panel").style.display = "none";
-        document.getElementById("no-data-panel2").style.display = "block";
-    }
-}
+//     data = document.getElementsByClassName("membraneTab");
+//     if(data.length == 0){
+//         document.getElementById("chart-panel").style.display = "none";
+//         document.getElementById("no-data-panel2").style.display = "block";
+//     }
+// }
 
 $("#export_chart_data").click(function(){
     var name = $('#2dInput').val()

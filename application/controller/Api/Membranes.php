@@ -6,26 +6,32 @@
 class ApiMembranes extends ApiController
 {    
     /**
-     * Constructor
-     */
-    function __construct()
-    {
-        
-    }
-
-    /**
-     * Returns membrane detail
+     * Returns membrane detail by given param
+     * Priority: $id > $cam > $tag
      * 
      * @GET
-     * @param id
+     * @param $id
+     * @param $cam
+     * @param $tag
+     * 
+     * @PATH(/detail)
      */
-    public function get($id)
+    public function get_detail($id, $cam, $tag)
     {
         $membrane = new Membranes($id);
 
         if(!$membrane->id)
         {
-            $this->answer(array(), self::CODE_OK_NO_CONTENT);
+            $membrane = $membrane->where('CAM', $cam ? $cam : "NONSENSE!@#")->get_one();
+            if(!$membrane->id)
+            {
+                $membrane = $membrane->where('idTag', $tag ? $tag : "NONSENSE!@#")->get_one();
+            }
+
+            if(!$membrane->id)
+            {
+                ResponseBuilder::not_found('Membrane not found.');
+            }
         }
 
         $result = array
@@ -39,35 +45,32 @@ class ApiMembranes extends ApiController
             'created'   => $membrane->createDateTime
         );
 
-        $this->answer($result);
+        return $result;
     }
 
     /**
-     * Returns all membranes for given 
+     * Returns all membranes for given parameters
      * 
-     * @POST
-     * @param substance_ids Array
-     * @param method_ids  Array
+     * @GET
+     * @param $id_compound
+     * @param $id_method
+     * @PATH(/all)
      */
-    public function getAll($substance_ids, $method_ids)
+    public function getAll($id_compound, $id_method)
     {
-        if(!$substance_ids)
+        if(!is_array($id_compound) && $id_compound)
         {
-            $substance_ids = [];
+            $id_compound = [$id_compound];
         }
 
-        if(!$method_ids)
+        if(!is_array($id_method) && $id_method)
         {
-            $method_ids = [];
+            $id_method = [$id_method];
         }
-
-        // Verify input
-        $substance_ids = $this->remove_empty_values($substance_ids);
-        $method_ids = $this->remove_empty_values($method_ids);
 
         $result = array();
 
-        if(empty($substance_ids) && empty($method_ids))
+        if(!is_array($id_compound) && !is_array($id_method))
         {
             $membrane_model = new Membranes();
 
@@ -88,10 +91,18 @@ class ApiMembranes extends ApiController
             $interaction_model = new Interactions();
 
             $data = $interaction_model
-                ->where('visibility', Interactions::VISIBLE)
-                ->in('id_substance', $substance_ids)
-                ->in('id_method', $method_ids)
-                ->select_list('id_membrane')
+                ->where('visibility', Interactions::VISIBLE);
+
+            if(is_array($id_compound))
+            {
+                $data->in('id_substance', $id_compound);
+            }
+            if(is_array($id_method))
+            {
+                $data->in('id_method', $id_method);
+            }
+
+            $data = $data->select_list('id_membrane')
                 ->distinct()
                 ->get_all();
 
@@ -111,56 +122,57 @@ class ApiMembranes extends ApiController
             }
         }
         
-        $this->answer($result);
+        return $result;
     }
     
-    /**
-     * Returns membrane categories
-     * 
-     * @GET
-     * @param idCategory
-     * @param idSubcategory
-     * @param level
-     */
-    public function getCategories($cat_id, $subcat_id, $level)
-    {   
-        $membraneModel = new Membranes();
+    // /**
+    //  * Returns membrane categories
+    //  * 
+    //  * @GET
+    //  * @param idCategory
+    //  * @param idSubcategory
+    //  * @param level
+    //  */
+    // public function getCategories($cat_id, $subcat_id, $level)
+    // {   
+    //     $membraneModel = new Membranes();
         
-        switch($level)
-        {
-            case 1:
-                $data = $membraneModel->get_all_subcategories();
-                break;
+    //     switch($level)
+    //     {
+    //         case 1:
+    //             $data = $membraneModel->get_all_subcategories();
+    //             break;
             
-            case 2:
-                $data = $membraneModel->get_membranes_by_categories($subcat_id, $cat_id);
-                break;
+    //         case 2:
+    //             $data = $membraneModel->get_membranes_by_categories($subcat_id, $cat_id);
+    //             break;
             
-            default:
-                $data = array();
-                break;
-        }
+    //         default:
+    //             $data = array();
+    //             break;
+    //     }
         
-        $this->answer($data->as_array());
-    }
+    //     //$this->answer($data->as_array());
+    // }
     
-    /**
-     * Return membrane category
-     * 
-     * @GET
-     * @param idMembrane
-     */
-    public function getCategory($idMembrane)
-    {
-        $membrane_model = new Membranes();
+    // /**
+    //  * Return membrane category
+    //  * 
+    //  * @GET
+    //  * @param @required $id
+    //  * @PATH(/category)
+    //  */
+    // public function getCategory($id)
+    // {
+    //     $membrane_model = new Membranes();
         
-        $data = array();
+    //     $data = array();
         
-        $data['membrane_categories'] = $membrane_model->get_membrane_category($idMembrane)->as_array();
+    //     $data['membrane_categories'] = $membrane_model->get_membrane_category($idMembrane)->as_array();
         
-        $data['all_subcategories'] = $membrane_model->get_all_subcategories()->as_array();
+    //     $data['all_subcategories'] = $membrane_model->get_all_subcategories()->as_array();
         
-        $this->answer($data);
-    }
+    //     //$this->answer($data);
+    // }
     
 }

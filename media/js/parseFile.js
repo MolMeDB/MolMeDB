@@ -18,7 +18,7 @@ function parseFile(name, type)
     form.innerHTML = '';
     form.appendChild(uploadName);
     
-    file = ajax_request('uploader/getFile', {fileName: name});
+    file = ajax_request('file/content', {fileName: name});
 
     if(!file)
     {

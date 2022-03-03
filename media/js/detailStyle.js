@@ -108,7 +108,7 @@ async function loadTable(id)
     }
 
     // // Get all interactions - returns HTML table
-    var content = ajax_request('detail/getInteractionsTable', {id:id, idMethods: checked}, "GET", 'html');
+    var content = ajax_request('interactions/all/passive', {id_compound:id, id_method: checked}, "GET", 'html');
     append_html_js(content, div);
 }
 
@@ -233,8 +233,8 @@ function export_detail_data(name)
     rows[0] = ['Membrane', 'Method', 'Note', 'Q', 'Temperature', 'LogP', 'X_min', 'X_min_+/-', 'G_pen', 'G_pen_+/-', 'G_wat', 'G_wat_+/-', 'LogK', 'LogK_+/-',
         'LogPerm', 'LogPerm_+/-', 'Theta', 'Theta_+/-', 'Abs_wl', 'Abs_wl_+/-', 'Fluo_wl', 'Fluo_wl_+/-','QY', 'QY_+/-', 'lt', 'lt_+/-', 'Primary_reference', 'Secondary_reference'];
     
-    detail = ajax_request("detail/getInteractions", {id: id, idMethods: 0, idMembranes: 0}, "POST");
-    
+    detail = ajax_request("interactions/all/passive", {idCompound: id}, "GET");
+
     if(!detail)
     {
         return;

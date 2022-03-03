@@ -294,7 +294,7 @@ class Db extends Iterable_object
      * 
      * @return Iterable_object
      */
-    public function get_all()
+    public function get_all($reinit = true)
     {
         if (!$this->table) 
         {
@@ -325,8 +325,11 @@ class Db extends Iterable_object
 
         $data =  $this->queryAll($query, array(), False);
 
-        $this->reload();
-
+        if($reinit)
+        {
+            $this->reload();
+        }
+        
         return new Iterable_object($data, get_class($this));
     }
 

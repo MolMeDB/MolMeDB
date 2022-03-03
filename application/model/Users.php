@@ -31,7 +31,7 @@ class Users extends Db
      * 
      * @return string
      */
-    public function return_fingerprint($password)
+    public static function return_fingerprint($password)
     {
         $salt = 'fd16sdfd2ew#$%';
         return hash('sha256', $password . $salt);

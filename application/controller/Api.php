@@ -2,132 +2,50 @@
 
 /**
  * API controller
+ * 
+ * Usage:
+ * Api endpoints must be defined in corresponding files in ./Api/ folder.
+ * For defining of the new endpoint, create class method and define following 
+ * params in method documentation:
+ *  - @[METHOD] - required param specifiing HTTP METHOD, e.g. @POST/@GET
+ *  - @path([PATH]) - required param specifiing uri of defined endpoint, e.g. @Path(/get/byId)
+ *  - @param [OPTIONS] $[NAME] - optional param specifiing parameter given by client for method execution
+ *      - can be included multiple times (once for each parameter)
+ *      - $[NAME] - name has to correspond to exactly one method parameter name
+ *      - OPTIONS:
+ *          - @required - specifies, that parameter has to be passed by client side
+ *          - @default[VALUE] - specifies default value of given param
+ *              - if DEFAULT is set, REQUIRED is ignored
+ *              - VALUE must match following regexp [0-9,a-z,_,\,]+
+ *              - if multiple values required, use "," char as sepearator
  */
 class ApiController extends Controller 
 {
+
+    protected $accept_type_methods = array
+    (
+        HeaderParser::JSON  => 'json_response',
+        HeaderParser::CSV   => 'csv_response',
+    );
+
+
     /** Class variables */
-    private $endpoint;
-    private $function;
     protected $user;
     protected $request_method;
+    protected $parsed_request;
+    protected $api_endpoint;
 
-    /** RESPONSE CODES */
-    const CODE_OK = 200;
-    const CODE_OK_NO_CONTENT = 204;
-    const CODE_BAD_REQUEST = 400;
-    const CODE_UNAUTHORIZED = 401;
-    const CODE_FORBIDDEN = 403;
-    const CODE_NOT_FOUND = 404;
-
-    /** API ENDPOINTS */
-    const COMPARATOR = 'comparator';
-    const DETAIL = 'detail';
-    const EDITOR = 'editor';
-    const INTERACTIONS = 'interactions';
-    const MEMBRANES = 'membranes';
-    const METHODS   = 'methods';
-    const PUBLICATION = 'publications';
-    const S_ENGINE = 'searchEngine';
-    const SMILES = 'smiles';
-    const SETTINGS = 'settings';
-    const STATS = 'stats';
-    const UPLOADER = 'uploader';
-
-    // Valid endpoints
-    private $valid_endpoints = array
-    (
-        self::COMPARATOR,
-        self::DETAIL,
-        self::EDITOR,
-        self::INTERACTIONS,
-        self::MEMBRANES,
-        self::METHODS,
-        self::S_ENGINE,
-        self::SETTINGS,
-        self::SMILES,
-        self::STATS,
-        self::PUBLICATION,
-        self::UPLOADER,
-    );
-
-    /** REQUEST METHODS */
-    const METHOD_POST = 'POST';
-    const METHOD_GET = 'GET';
-
-    /** Now allowed just GET/POST requests */
-    private $valid_request_methods = array
-    (
-        self::METHOD_GET,
-        self::METHOD_POST
-    );
+    private $response;
+    private $headers = [];
 
     /**
      * Main constructor
      */
-    function __construct($endPoint = NULL, $function = NULL)
+    function __construct($requested_endpoint = NULL)
     {
         parent::__construct();
-        // If not valid entry
-        if(!$endPoint || !$function)
-        {
-            $this->answer(NULL, self::CODE_NOT_FOUND);
-        }
-
-        // Is endpoint valid?
-        if(!in_array($endPoint, $this->valid_endpoints))
-        {
-            $this->answer(NULL, self::CODE_NOT_FOUND);
-        }
-
-        // Get request method
-        $this->request_method = $_SERVER['REQUEST_METHOD'];
-
-        // Is request method valid?
-        if(!in_array($this->request_method, $this->valid_request_methods))
-        {
-            $this->answer(NULL, self::CODE_BAD_REQUEST);
-        }
-
-        $this->endpoint = $endPoint;
-        $this->function = $function;
-    }
-
-    /**
-     * Return server answer to request
-     * 
-     * @param string $message
-     * @param integer $code
-     * 
-     */
-    protected function answer($message, $code = self::CODE_OK, $type = 'json')
-    {
-        if((!$message || $message == '') && $code == self::CODE_OK)
-        {
-            $code = self::CODE_OK_NO_CONTENT;
-        }
-
-        http_response_code($code);
-
-        switch($type)
-        {
-            case 'json':
-                header('Content-Type: application/json');
-                echo(json_encode($message));
-                die;
-
-            default:
-                header('Content-Type: text/html');
-                echo $message;
-                die;
-        }
-    }
-
-    /**
-     * Sends BAD REQUEST shortcut
-     */
-    protected function bad_request()
-    {
-        return $this->answer(NULL, SELF::CODE_BAD_REQUEST);
+        //Parsing request header
+        $this->parsed_request = new HeaderParser($requested_endpoint);
     }
 
     /**
@@ -137,164 +55,168 @@ class ApiController extends Controller
     {   
         try
         {
-            $file = ucwords($this->endpoint);
-            $className = "Api" . $file;
-            $func = $this->function;
+            $this->api_endpoint = new ApiEndpoint($this->parsed_request);
 
-            if(file_exists(APP_ROOT . 'controller/Api/' . $file . '.php'))
+            //Calling parsed endpoint and its params
+            $this->response = $this->api_endpoint->call();
+            
+            //No content was found
+            if(!$this->response)
             {
-                $class = new $className();
-
-                if(!method_exists($class, $func))
-                {
-                    throw new Exception();
-                }
-
-                // Get function setting and get required params
-                $params = $this->check_validity_endpoint($className, $func);
-
-                $class->$func(...$params);
+                ResponseBuilder::ok_no_content();
             }
-            else
-            {
-                $this->answer(NULL, self::CODE_NOT_FOUND);
-            }
+
+            $this->create_response();
+        }
+        catch(ApiException $ex)
+        {
+            ResponseBuilder::server_error($ex->getMessage());
         }
         catch(Exception $ex)
         {
-            $this->answer($ex->getMessage(), self::CODE_NOT_FOUND);
+            ResponseBuilder::server_error($ex->getMessage());
         }
+             
+        ResponseBuilder::ok($this->response, $this->headers);
     }
     
+
     /**
-     * Checks if request if valid 
-     * by given method params
-     * 
-     * @param string $class_name
-     * @param string $function
-     * 
-     * @throws Exception
-     * @return array
-     */
-    private function check_validity_endpoint($class_name, $function)
+    * Method for creating HTTP response  
+    * 
+    * @author Jaromír Hradil
+    *
+    * @throws ApiException 
+    */
+    protected function create_response()
     {
-        $rf_method = new ReflectionMethod($class_name, $function);
-
-        // Split by "*" char
-        $rf = array_map('trim', explode('*', $rf_method->getDocComment()));
-        // Filter comments
-        $rf = array_filter($rf, array($this, 'filter_comments'));
-
-        $required_method = NULL;
-
-        // Get required method
-        foreach($this->valid_request_methods as $method)
+        foreach ($this->parsed_request->accept_type as $at_item) 
         {
-            foreach($rf as $key => $row)
+            if(array_key_exists($at_item, $this->accept_type_methods))
             {
-                if ($row == "@$method") 
+                $response_method = $this->accept_type_methods[$at_item];
+                $response_encoded = self::$response_method($this->response);
+
+                if($response_encoded !== false)
                 {
-                    $required_method = $method;
-                    unset($rf[$key]);
-                    break;
+                    $this->response = $response_encoded;
+                    $this->headers[] = 'Content-Type: '.$at_item;
+                    return;
                 }
             }
         }
-
-        if(!$required_method || $required_method != $this->request_method)
-        {
-            throw new Exception();
-        }
-
-        $remote_params = array();
-
-        if($required_method === self::METHOD_GET)
-        {
-            $remote_params = $_GET;
-        }
-        else if($required_method === self::METHOD_POST)
-        {
-            $remote_params = $_POST;
-        }
-
-        $params = array();
-
-        // Get required params
-        foreach($rf as $row)
-        {
-            if(substr($row, 0, 6) != '@param')
-            {
-                continue;
-            }
-
-            $key = explode(" ", trim(str_replace('@param', '', $row)))[0];
-
-            if(!isset($remote_params[$key]))
-            {
-                $value = NULL;
-            }
-            else
-            {
-                $value = $this->remove_empty_values($remote_params[$key]);
-            }
-
-            $params[] = $value;
-        }
-
-        return $params;
+        throw new ApiException("Cannot encode output to the required format. Please, try to expand your Accept-Type options.");
     }
+
+    /**
+    * Method for creating JSON output
+    * 
+    * @author Jaromír Hradil
+    * 
+    * @return bool
+    */
+    public static function json_response($response)
+    {
+        if($response instanceof Iterable_object)
+        {
+            $response = $response->as_array();
+        }
+
+        return json_encode($response);
+    } 
+
+    /**
+    * Method for creating CSV output
+    * 
+    * @author Jaromír Hradil
+    * 
+    * @return bool
+    */
+    public static function csv_response($response)
+    {
+        if($response instanceof Iterable_object)
+        {
+            $response = $response->as_array();
+        }
+
+        return self::create_csv($response);
+    } 
+
 
 
     /**
-     * Callback function for filtering comments
-     * 
-     * @param string $string
-     * 
-     * @return boolean
-     */
-    private function filter_comments($string)
+    * Method for creating CSV output
+    * 
+    * @param array $arr
+    *  
+    * @author Jaromír Hradil
+    */
+    private static function create_csv($arr)
     {
-        $string = trim($string);
-
-        if(substr($string, 0, 1) === '@')
+        if(!is_array($arr) || count($arr) === 0)
         {
-            return True;
+            return false;
         }
 
-        return False;
-    }
-    
-    
-    protected function remove_empty_values($arr = array(), $recursive = false)
-    {
-        if(!is_array($arr))
-        {
-            if(!strval($arr) !== "0" && !$arr)
+        $arr_vals = array_values($arr);
+
+        
+        //If input array is 1D it will be converted into 2D array
+        $nested = true; 
+
+        for ($i=0; $i < count($arr_vals); $i++)
+        { 
+            if(!is_array($arr_vals[$i]))
             {
-                return NULL;
+                $nested = false;
+            }
+        }
+        //Converting into 2D array
+        $arr = $nested ? $arr : array($arr);
+        
+        //Preparing for inner values checking
+        $csv_output = "";
+        $keys = array_keys($arr[0]);
+        $key_format_check = array_keys(range(1, count($keys)));
+
+        if($keys !== $key_format_check)
+        {
+            for ($i=0; $i < count($keys); $i++)
+            { 
+                $keys[$i] = strval($keys[$i]);
+            }
+
+            $csv_output = $csv_output.implode(";", $keys).PHP_EOL;  
+        }        
+
+        foreach($arr as $arr_item)
+        {
+            $arr_item_keys = array_keys($arr_item);
+            $csv_content_line = array();
+
+            //Csv keys are not the same
+            if($arr_item_keys != $keys)
+            {
+                return false;
             }
             else
             {
-                return $arr;
-            }
-        }
-
-        for($i = 0; $i < count($arr); $i++)
-        {
-            if($recursive && is_array($arr[$i]))
-            {
-                $arr[$i] = self::remove_empty_values($arr[$i]);
+                foreach($arr_item as $arr_item_content)
+                {
+                    //There are nested elements
+                    if(is_array($arr_item_content))
+                    {
+                        return false;
+                    }
+            
+                    $csv_content_line[] = strval($arr_item_content);
+                }
             }
             
-            $arr[$i] = trim($arr[$i]);
-            
-            if($arr[$i] === '' || $arr[$i] === NULL)
-            {
-                unset($arr[$i]);
-            }
+            $csv_output = $csv_output.implode(";", $csv_content_line).PHP_EOL;
         }
         
-        return $arr;
+        return $csv_output;
     }
     
 }

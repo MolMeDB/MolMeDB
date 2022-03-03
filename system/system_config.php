@@ -179,7 +179,8 @@ class System_config
             APP_ROOT . 'helpers/',
             APP_ROOT . 'libraries/',
             APP_ROOT . 'model/',
-            'system/exceptions/'
+            'system/exceptions/',
+            'system/'
         );
 
         // Default destinations for fast loading
@@ -197,7 +198,8 @@ class System_config
             $class = str_replace('Api', '', $class);
             require(APP_ROOT . "controller/Api/" . $class . ".php");
         }
-        else if (preg_match('/^Mol_/', $class))
+        else if (preg_match('/^Mol_/', $class) 
+            && file_exists(APP_ROOT . "libraries/Mol/" . ucfirst(substr($class, 4)) . ".php"))
         {
             $class = ucfirst(str_replace('Mol_', '', $class));
             require(APP_ROOT . "libraries/Mol/" . $class . ".php");
@@ -211,15 +213,6 @@ class System_config
                     require_once($folder . $class . ".php");
                 }
             }
-        }
-        else if (file_exists("system/" . $class . ".php"))
-        {
-            require("system/" . $class . ".php");
-        }
-        else if (preg_match('/^Validator_/', $class))
-        {
-            $class = ucfirst(str_replace('Validator_', '', $class));
-            require(APP_ROOT . 'libraries/Validator/' . $class . '.php');
         }
     }   
 }

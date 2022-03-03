@@ -41,6 +41,16 @@ class Methods extends Db
     }
 
     /**
+     * Instance
+     * 
+     * @return Methods
+     */
+    public static function instance()
+    {
+        return parent::instance();
+    }
+
+    /**
      * Returns method by type
      * 
      * @param int $type
@@ -94,6 +104,16 @@ class Methods extends Db
 
                     UNION
 
+                    SELECT m.id, m.name, CONCAT("category: ",et2.name, " > ", et1.name) as pattern
+                    FROM methods m
+                    JOIN method_enum_type_links as mtl ON mtl.id_method = m.id
+                    JOIN enum_type_links as etl ON etl.id = mtl.id_enum_type_link
+                    JOIN enum_types et1 ON et1.id = etl.id_enum_type
+                    JOIN enum_types et2 ON et2.id = etl.id_enum_type_parent
+                    WHERE et1.name LIKE ? OR et2.name LIKE ?
+
+                    UNION
+
                     SELECT id, name, description as pattern
                     FROM methods
                     WHERE description LIKE ?
@@ -103,7 +123,7 @@ class Methods extends Db
                     SELECT id, name, keywords as pattern
                     FROM methods
                     WHERE keywords LIKE ?) as tab
-                ', array($q, $q, $q));
+                ', array($q, $q, $q, $q, $q));
 
         $res = array();
         $used = array();

@@ -223,6 +223,16 @@ class Membranes extends Db
                     (SELECT DISTINCT id, name, "" as pattern
                     FROM membranes
                     WHERE name LIKE ?
+
+                    UNION
+
+                    SELECT m.id, m.name, CONCAT("category: ",et2.name, " > ", et1.name) as pattern
+                    FROM membranes m
+                    JOIN membrane_enum_type_links as mtl ON mtl.id_membrane = m.id
+                    JOIN enum_type_links as etl ON etl.id = mtl.id_enum_type_link
+                    JOIN enum_types et1 ON et1.id = etl.id_enum_type
+                    JOIN enum_types et2 ON et2.id = etl.id_enum_type_parent
+                    WHERE et1.name LIKE ? OR et2.name LIKE ?
                     
                     UNION
                     
@@ -234,16 +244,7 @@ class Membranes extends Db
                     
                     SELECT id, name, keywords as pattern
                     FROM membranes
-                    WHERE keywords LIKE ?
-                    
-                    UNION
-                    
-                    SELECT m.id, m.name, CONCAT(cm.name, " - ", csm.name) as pattern
-                    FROM membranes m
-                    LEFT JOIN cat_mem_mem cmm ON cmm.mem_id = m.id
-                    LEFT JOIN cat_membranes cm ON cm.id = cmm.cat_id
-                    LEFT JOIN cat_subcat_membranes csm ON csm.id = cmm.subcat_id
-                    WHERE cm.name LIKE ? OR csm.name LIKE ?) as tab
+                    WHERE keywords LIKE ?) as tab
                 ', array($q, $q, $q, $q, $q));
         
         $res = array();

@@ -5,12 +5,24 @@
  */
 class ApiMethods extends ApiController
 {   
+    
     /**
-     * Constructor
+     * Returns methods with count of available interactions for given substance id
+     * 
+     * @GET
+     * @param @required $id_compound
+     * @Path(/availability/substance)
      */
-    function __construct()
+    public function get_avail_by_substance($id_compound)
     {
-        
+        $s = new Substances($id_compound);
+
+        if(!$s->id)
+        {
+            ResponseBuilder::not_found('Invalid compound id.');
+        }
+
+        return Methods::instance()->check_avail_by_substance($s->id);
     }
 
 
@@ -18,15 +30,27 @@ class ApiMethods extends ApiController
      * Returns method detail
      * 
      * @GET
-     * @param id
+     * @param $id
+     * @param $cam
+     * @param $tag
+     * @PATH(/detail)
      */
-    public function get($id)
+    public function get_detail($id, $cam, $tag)
     {
         $method = new Methods($id);
 
         if(!$method->id)
         {
-            $this->answer(array(), self::CODE_OK_NO_CONTENT);
+            $method = $method->where('CAM', $cam ? $cam : "NONSENSE!@#")->get_one();
+            if(!$method->id)
+            {
+                $method = $method->where('idTag', $tag ? $tag : "NONSENSE!@#")->get_one();
+            }
+
+            if(!$method->id)
+            {
+                ResponseBuilder::not_found('Method not found.');
+            }
         }
 
         $result = array
@@ -40,33 +64,32 @@ class ApiMethods extends ApiController
             'created'   => $method->createDateTime
         );
 
-        $this->answer($result);
+        return $result;
     }
 
     /**
      * Returns all methods for given 
      * 
-     * @POST
-     * @param substance_ids Array
-     * @param membrane_ids  Array
+     * @GET
+     * @param $id_compound 
+     * @param $id_membrane 
+     * @PATH(/all)
      */
-    public function getAll($substance_ids, $membrane_ids)
+    public function getAll($id_compound, $id_membrane)
     {
-        if (!$substance_ids) 
+        if(!is_array($id_compound) && $id_compound)
         {
-            $substance_ids = [];
+            $id_compound = [$id_compound];
         }
 
-        if (!$membrane_ids) {
-            $membrane_ids = [];
+        if(!is_array($id_membrane) && $id_membrane)
+        {
+            $id_membrane = [$id_membrane];
         }
-
-        $substance_ids = $this->remove_empty_values($substance_ids);
-        $membrane_ids = $this->remove_empty_values($membrane_ids);
 
         $result = array();
 
-        if(empty($substance_ids) && empty($membrane_ids))
+        if(!is_array($id_compound) && !is_array($id_membrane))
         {
             $method_model = new Methods();
 
@@ -87,10 +110,18 @@ class ApiMethods extends ApiController
             $interaction_model = new Interactions();
 
             $data = $interaction_model
-                ->where('visibility', Interactions::VISIBLE)
-                ->in('id_substance', $substance_ids)
-                ->in('id_membrane', $membrane_ids)
-                ->select_list('id_method')
+                ->where('visibility', Interactions::VISIBLE);
+
+            if(is_array($id_compound))
+            {
+                $data->in('id_substance', $id_compound);
+            }
+            if(is_array($id_membrane))
+            {
+                $data->in('id_membrane', $id_membrane);
+            }
+                
+            $data = $data->select_list('id_method')
                 ->distinct()
                 ->get_all();
 
@@ -112,7 +143,7 @@ class ApiMethods extends ApiController
             }
         }
 
-        $this->answer($result);
+        return $result;
     }
     
 }

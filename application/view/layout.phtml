@@ -5,10 +5,12 @@
 		<meta charset="UTF-8" />
         <?= GOOGLE_ANALYTICS ?>
 		<title><?= $title ?></title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <meta name="description" content="<?= $description ?>">
         <meta name="URL" id="URL" content="<?= URL ?>"/>
         <link rel="stylesheet" href="css/bootstrap.min.css"/>
         <link rel="stylesheet" href="css/LiteMol-plugin.min.css">
+        <input hidden id="api_internal_token" value="<?= session::instance()->api_internal_token ?>">
         <script src="js/jquery-3.2.1.js"></script>
         <script src="js/LiteMol-plugin.min.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
@@ -31,8 +33,8 @@
         <script src="js/amcharts64/lang/cs_CZ.js"></script>
         <script src="fonts/amchart/notosans-sc.js"></script>
         <link rel="stylesheet" href="css/style.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-        <link rel="stylesheet" href="css/tables.css?ver=<?=CSS_VERSION?>" type="text/css"/>
         <link rel="stylesheet" href="css/tree.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/tables.css?ver=<?=CSS_VERSION?>" type="text/css"/>
         <link rel="stylesheet" href="css/layout.css?ver=<?=CSS_VERSION?>" type="text/css"/>
         <link rel="stylesheet" href="css/flexbox.css?ver=<?=CSS_VERSION?>" type="text/css"/>
         <link rel="stylesheet" href="css/depict.css?ver=<?=CSS_VERSION?>" type="text/css"/>

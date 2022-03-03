@@ -76,11 +76,21 @@ function ajax_request(uri, params, method = "GET", required_content_type = "json
         contentType: 'application/json',
         accepts: accept,
         type: method,
+        headers:{
+            "Authorization": "Basic " + $('#api_internal_token').val(),
+        },
         async: false,
         data: params,
         success: function(data)
         {
-            result = data;
+            if(data)
+            {
+                result = data;
+            }
+            else
+            {
+                result = null;
+            }
         },
         error: function(data)
         {
@@ -204,15 +214,15 @@ function append_html_js(content, parent, js_callbacks = ['init'])
  */
 function addSetToComparator(type, id)
 {
-    var ligands = ajax_request('comparator/getSubstancesToComparator', {type: type, id: id});
+    var ligands = ajax_request('compounds/ids/byPassiveInteractionType', {type: type, id: id});
 
-    if(!ligands)
+    if(ligands === false)
     {
         add_message('Compounds were not added to the comparator list.', 'danger');
         return;
     }
 
-    var count = ligands.length;
+    var count = ligands ? ligands.length : 0;
 
     for(var i = 0; i<count; i++)
     {
@@ -222,7 +232,7 @@ function addSetToComparator(type, id)
         add_to_comparator(ID, name);
     }
 
-    if(count <= 1)
+    if(!count)
     {
         alert("No compounds available.");
     }
@@ -248,7 +258,7 @@ function canonize_smiles(smiles, target_input_id)
 
     var target_element = document.getElementById(target_input_id);
 
-    var result = ajax_request('smiles/canonize', {smi: smiles}, 'GET');
+    var result = ajax_request('smiles/canonize', {smiles: smiles}, 'GET');
 
     if(!target_element || result === false || !result.canonized)
     {
@@ -278,7 +288,7 @@ function get_reference_by_doi(input_id)
         return;
     }
 
-    var result = ajax_request('publications/get_by_doi', {doi: doi});
+    var result = ajax_request('publications/find/remote', {doi: doi});
 
     if(result === false)
     {
@@ -374,7 +384,7 @@ function download_dataset_byRef(idRef)
     var data = [];
      
     // Get data
-    data = ajax_request("interactions/get_by_reference", {id: idRef});
+    data = ajax_request("interactions/all/passive", {id_reference: idRef});
 
     if(!data)
     {
@@ -598,7 +608,7 @@ function redirect(path, params = {}, method = 'GET')
  */
 function get_all_membranes()
 {
-    var result = ajax_request("membranes/getAll", {}, 'POST');
+    var result = ajax_request("membranes/get");
 
     if(result === false)
         return [];
@@ -613,7 +623,7 @@ function get_all_membranes()
  */
 function get_all_methods()
 {
-    var result = ajax_request("methods/getAll", {}, 'POST');
+    var result = ajax_request("methods/all");
 
     if(result === false)
         return [];
@@ -628,7 +638,7 @@ function get_all_methods()
  */
 function get_all_publications()
 {
-    var result = ajax_request("publications/getAll");
+    var result = ajax_request("publications/all");
 
     if(result === false)
         return [];

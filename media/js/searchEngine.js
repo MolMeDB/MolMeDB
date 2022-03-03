@@ -99,8 +99,8 @@
             this.parentNode.appendChild(a);
 
             // Get data
-            var data = ajax_request("searchEngine/search", {
-                q: val,
+            var data = ajax_request("search/all", {
+                query: val,
                 type: type
             });
 

@@ -67,7 +67,6 @@ class ApiController extends Controller
     function __construct($endPoint = NULL, $function = NULL)
     {
         parent::__construct();
-        
         // If not valid entry
         if(!$endPoint || !$function)
         {
@@ -100,7 +99,7 @@ class ApiController extends Controller
      * @param integer $code
      * 
      */
-    protected function answer($message, $code = self::CODE_OK)
+    protected function answer($message, $code = self::CODE_OK, $type = 'json')
     {
         if((!$message || $message == '') && $code == self::CODE_OK)
         {
@@ -108,17 +107,19 @@ class ApiController extends Controller
         }
 
         http_response_code($code);
-        header('Content-Type: application/json');
 
-        if($message || is_array($message))
+        switch($type)
         {
-            echo(json_encode($message));
+            case 'json':
+                header('Content-Type: application/json');
+                echo(json_encode($message));
+                die;
+
+            default:
+                header('Content-Type: text/html');
+                echo $message;
+                die;
         }
-        else
-        {
-            echo($code);
-        }
-        die;
     }
 
     /**
@@ -132,7 +133,7 @@ class ApiController extends Controller
     /**
      * Main function for processing request
      */
-    public function parse() 
+    public function index() 
     {   
         try
         {

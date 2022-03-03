@@ -1,0 +1,458 @@
+<!-- TODO -->
+<!-- Progress indicator? - Some JS operations -->
+
+<link rel="stylesheet" href="http://localhost:1515/media/css/tables.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<link rel="stylesheet" href="http://localhost:1515/media/css/bootstrap.min.css" type="text/css"/>
+<script src="http://localhost:1515/media/js/bootstrap.min.js"></script>
+
+<div style="overflow: auto;">
+    <table class="basic-table" style="<?= $css ?>">
+    <tbody id="order-body">
+        <!-- FILTERS -->
+        <?php if($has_filter): ?>
+            <tr class="table-filters">
+                <td colspan="<?= $total_columns ?>">
+                    <div class="filter-row">
+                        <div class="filter-item">
+                            <span class="glyphicon glyphicon-filter"></span>
+                        </div>
+                        <div class="filter-item">
+                            <div>Hide empty columns:</div>                             
+                            <div>
+                                <label class="switch">
+                                    <input id="hide_empty_columns" type="checkbox" <?= $default_hide_empty_columns ? 'checked' : '' ?>>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>                             
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        <?php endif ?>
+        
+        <tr class="header-row">
+        <!-- <thead> -->
+            <?php if($show_row_numbers) : ?>
+            <th>#</th>
+            <?php endif ?>
+            <?php foreach($columns as $col) : ?>
+            <th title="<?= $col->tooltip ?>" <?= $col->sortable ? 'class="sortable-column"' : '' ?> style="<?= $col->header_css() ?>">
+                <?php if($col->sortable) : ?>
+                <div>
+                    <div><?= $col->name; ?></div>
+                    <div class="sort-arrows">
+                        
+                    </div>
+                </div>
+                <?php else : ?>
+                <?= $col->name; ?>
+                <?php endif ?>
+            </th>
+            <?php endforeach ?>
+        </tr>
+        <!-- </thead> -->
+        <!-- <tbody id="order-body"> -->
+            <?php if($empty_data) :?> 
+<!-- TODO -->
+            <?php else : ?>
+
+            <?php $i = 1; ?>
+            <?php foreach($data as $row) : ?>
+                <?php $visible = $i <= $pag_to && $i >= $pag_from ?>
+            <tr style="<?= $visible ? '' : 'display:none;' ?>" class='basic-row'>
+                <?php if($show_row_numbers) : ?>
+                <td><?= $i ?></td>
+                <?php endif ?>
+                <?php foreach($columns as $col) : ?>
+                <td style="<?= $col->css() ?>">
+                    <?php if($col->is_numeric) : ?>
+                    <div style="white-space: nowrap;">
+                        <?php echo $col->value($row);?>
+                        <div class="accuracy">
+                            <?= $col->acc_value($row); ?> 
+                        </div>
+                    </div>
+                    <?php elseif($col->is_long_text) : ?>
+                    <?php $content = $col->value($row); ?>
+                    <div class="tooltip-helper <?= strlen($content) > 15 ? "long-text" : "" ?>">
+                        <p>
+                            <?php echo $col->value($row);?>
+                        </p>
+                        <div class="tooltip-content">
+                            <?= $col->value($row) ?>
+                        </div>
+                    </div>
+                    <?php else : ?>
+                        <div>
+                            <?php echo $col->value($row);?>
+                        </div>
+                    <?php endif ?>
+                </td>
+                <?php endforeach ?>
+            </tr>
+            <?php $i++ ?>
+            <?php endforeach ?>
+            <?php endif?>
+
+            <tr class="table-pagination">
+                <td colspan="<?= $total_columns ?>">
+                <?php if($show_pagination) : ?>
+                        <div style="<?= $paginator_position == 'left' ? 'justify-content: flex-start;' : 'justify-content: flex-end;' ?>">
+                            
+                            <div class="table-pagination-picker">
+                                <div>
+                                    Rows per page
+                                </div>
+                                <div>
+                                    <select id="items-per-page" name="items-per-page">
+                                        <?php foreach($per_page_options as $num) : ?>
+                                            <option value="<?= $num ?>" <?= $num == $total_per_page ? 'selected' : '' ?>><?= $num ?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="table-pagination-total" class="table-pagination-total">
+                                    <?= $pag_from ?>-<?= $pag_to ?> of <?= $total_rows ?>
+                                </div>
+                                <div class="table-pagination-arrows">
+                                    <div><span id="pag_start" class="glyphicon glyphicon-step-backward"></span></div>
+                                    <div><span id="pag_prev" class="glyphicon glyphicon-triangle-left"></span></div>
+                                    <div><span id="pag_next" class="glyphicon glyphicon-triangle-right"></span></div>
+                                    <div><span id="pag_end" class="glyphicon glyphicon-step-forward	"></span></div>
+                                </div>
+                            </div>
+                <?php endif ?>
+                </td>
+            </tr>
+            </tbody>
+        <!-- </tbody> -->
+    </table>
+</div>
+
+<!-- Add javascript functions -->
+<script>
+    var active_color = '#222';
+    var inactive_color = '#999';
+    var default_order = null;
+    var active_index = null;
+    var active_direction = null;
+    var active_rows = null;
+    var active_pagination = null;
+    var tbody = null;
+    
+    var start_index = parseInt('<?= $pag_from ?>')-1;
+    var end_index = parseInt('<?= $pag_to ?>')-1;
+    var total_rows = parseInt('<?= $total_rows ?>');
+
+    var pag_per_page = parseInt('<?= $total_per_page ?>');
+    var pag_page = parseInt('<?= $active_page ?>');
+    var pag_min_page = 1;
+    var pag_max_page = total_rows/pag_per_page;
+
+    if(pag_max_page != parseInt(pag_max_page))
+    {
+        pag_max_page = parseInt(pag_max_page)+1;
+    }
+
+    function init() 
+    {
+        // Set init tbody
+        tbody = $('#order-body');
+        active_rows = $(tbody).find('tr.basic-row');
+        active_pagination = $(tbody).find('tr.table-pagination');
+
+        function hide_empty_columns()
+        {
+            let el = $('#hide_empty_columns');
+
+            if(!el)
+            {
+                return;
+            }
+
+            let hidden = $(el).is(':checked');
+
+            if(!hidden) // Show all
+            {
+                $('tr.header-row').find('th').show();
+                $(active_rows).find('td').show();
+                return;
+            }
+
+            let non_empty = {};
+
+            // Find empty column in visible rows
+            $(active_rows).each((i,e) => {
+                if(i >= start_index && i <= end_index) // visible
+                {
+                    let tds = $(e).find('td');
+
+                    $(tds).each((k, td) => 
+                    {
+                        let nonsense = document.createElement('div');
+                        let content = $(nonsense).html($(td).html()).text();
+
+                        if(!content)
+                        {
+                            return;
+                        }
+
+                        content = content.toString();
+
+                        // Trim
+                        content = content.trim();
+
+                        if(content != '')
+                        {
+                            non_empty[k] = true;
+                        }
+                    });
+                }
+            });
+
+            // Hide empty columns
+            let indices = Object.keys(non_empty);
+
+            // First, show all
+            $('tr.header-row').find('th').hide();
+            $(active_rows).find('td').hide();
+
+            // Hide by index
+            indices.forEach((x,i) => {
+                x = parseInt(x) + 1;
+                $('.header-row').find('th:nth-child(' + x + ')').show();
+                $(active_rows).find('td:nth-child(' + x + ')').show();
+            });
+        }
+
+        function update_paginator()
+        {
+            // Update total info
+            let e = end_index+1;
+            e = e > total_rows ? total_rows : e;
+            $('#table-pagination-total').html((start_index+1).toString() + '-' + (e).toString() + " of " + total_rows);
+
+            // Update selector
+            $('#items-per-page').val(pag_per_page);
+
+            // Update button colors
+            if(pag_page == pag_min_page)
+            {
+                $('#pag_start, #pag_prev').css('color', inactive_color);
+                $('#pag_start, #pag_prev').css('cursor', 'default');
+            }
+            else
+            {
+                $('#pag_start, #pag_prev').css('color', active_color); 
+                $('#pag_start, #pag_prev').css('cursor', 'pointer');
+            }
+
+            if(pag_page == pag_max_page)
+            {
+                $('#pag_end, #pag_next').css('color', inactive_color);
+                $('#pag_end, #pag_next').css('cursor', 'default');
+            }
+            else
+            {
+                $('#pag_end, #pag_next').css('color', active_color);
+                $('#pag_end, #pag_next').css('cursor', 'pointer');
+            }
+        }
+
+        update_paginator();
+
+        function update_table()
+        {
+            // Update indices
+            start_index = (pag_page-1) * pag_per_page;
+            end_index = (pag_page) * pag_per_page - 1;
+
+            $(active_rows).each((i,e) => {
+                if(i >= start_index && i <= end_index)
+                {
+                    $(e).show();
+                }
+                else
+                {
+                    $(e).hide();
+                }
+            });
+
+            // Append new sorted list
+            let filters = $(tbody).find('.table-filters');
+            let header = $(tbody).find('.header-row');
+
+            $(tbody).html('');
+
+            $(tbody).append(filters);
+            $(tbody).append(header);
+            $(tbody).append(active_rows);
+            $(tbody).append(active_pagination);
+
+            hide_empty_columns();
+
+            init_callbacks();
+        }
+
+        $('.sort').on('click', function(element)
+        {
+            var ascending = true;
+
+            if($(this).hasClass('sort-asc'))
+            {
+                ascending = true;
+            }
+            else if($(this).hasClass('sort-desc'))
+            {
+                ascending = false;
+            }
+            else
+            {
+                return;
+            }
+
+            // Set all as inactive
+            $('.sort-asc, .sort-desc').each(function(i, el)
+            {
+                $(this).css('color', inactive_color);
+                $(this).parent('.sort-arrows').css('display', '');
+            });
+
+            var td_parent = $(this).closest('td');
+            var td_index = $(td_parent).index();
+
+            var table = $(this).closest('table');
+            tbody = $(table).find('tbody');
+            var rows = $(table).find('tr.basic-row');
+            var pagination = $(table).find('tr.table-pagination');
+
+            active_pagination = pagination;
+
+            // Is already ordered by this selection?
+            if(td_index == active_index && active_direction == ascending && default_order !== null)
+            {
+                // Return to default ordering
+                // Hide all and display only first n rows
+                active_rows = default_order;
+                update_table();
+
+                active_index = null;
+                active_direction = null;
+
+                return;
+            }
+            
+            if(default_order === null)
+            {
+                default_order = $(rows).clone();
+            }
+
+            var sortList = Array.prototype.sort.bind(rows);
+
+            sortList(function(a,b){
+                let a_td = $(a).find('td')[td_index];
+                let b_td = $(b).find('td')[td_index];
+
+                let a_content = $(a_td).html().toString().toLowerCase();
+                let b_content = $(b_td).html().toString().toLowerCase();
+
+                if(a_content < b_content)
+                {
+                    return ascending ? -1 : 1;
+                }
+
+                if(a_content > b_content)
+                {
+                    return ascending ? 1 : -1;
+                }
+
+                return 0;
+            });
+
+            active_index = td_index;
+            active_direction = ascending;
+            active_rows = rows;
+
+            // Hide all and display only first n rows
+            update_table();
+
+            // Set as active
+            $(this).css('color', active_color);
+            $(this).parent('.sort-arrows').css('display', 'flex');
+        });
+
+        function init_callbacks()
+        {
+            $('#pag_start').on('click', function(element)
+            {
+                pag_page = 1;
+                update_table();
+                update_paginator();
+            });
+
+            $('#pag_prev').on('click', function(element)
+            {
+                if(pag_page > 1)
+                {
+                    pag_page = pag_page-1;
+                }
+                else
+                {
+                    pag_page = 1;
+                }
+                update_table();
+                update_paginator();
+            });
+
+            $('#pag_end').on('click', function(element)
+            {
+                pag_page = pag_max_page;
+                update_table();
+                update_paginator();
+            });
+
+            $('#pag_next').on('click', function(element)
+            {
+                if(pag_page < pag_max_page)
+                {
+                    pag_page = pag_page+1;
+                }
+                else
+                {
+                    pag_page = pag_max_page;
+                }
+                update_table();
+                update_paginator();
+            });
+
+            $('#items-per-page').on('change', (e) => {
+                let v = $('#items-per-page').val();
+                pag_per_page = parseInt(v);
+                pag_max_page = parseInt(total_rows/pag_per_page)+1;
+
+                let max_poss_index = total_rows+1;
+
+                // Update indices
+                pag_page = parseInt(start_index / pag_per_page) + 1;
+                pag_page = pag_page > pag_max_page ? pag_max_page : pag_page;
+
+                update_table();
+                update_paginator();
+            });
+
+            $('#hide_empty_columns').change(function(e)
+            {
+                hide_empty_columns();
+            });
+        }
+
+        init_callbacks();
+        hide_empty_columns();
+    };
+
+    window.onload = function()
+    {
+        init();
+    };
+</script>

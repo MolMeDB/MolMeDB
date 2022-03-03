@@ -195,7 +195,12 @@ class System_config
             && file_exists(APP_ROOT . "controller/Api/" . substr($class, 3) . ".php"))
         {
             $class = str_replace('Api', '', $class);
-            require_once(APP_ROOT . "controller/Api/" . $class . ".php");
+            require(APP_ROOT . "controller/Api/" . $class . ".php");
+        }
+        else if (preg_match('/^Mol_/', $class))
+        {
+            $class = ucfirst(str_replace('Mol_', '', $class));
+            require(APP_ROOT . "libraries/Mol/" . $class . ".php");
         }
         else
         {
@@ -206,6 +211,15 @@ class System_config
                     require_once($folder . $class . ".php");
                 }
             }
+        }
+        else if (file_exists("system/" . $class . ".php"))
+        {
+            require("system/" . $class . ".php");
+        }
+        else if (preg_match('/^Validator_/', $class))
+        {
+            $class = ucfirst(str_replace('Validator_', '', $class));
+            require(APP_ROOT . 'libraries/Validator/' . $class . '.php');
         }
     }   
 }

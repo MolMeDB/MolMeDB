@@ -48,12 +48,21 @@ class Html
      * 
      * @param string $url
      * @param string $title
+     * @param boolean $new_tab
      * 
      * @return string
      */
     public static function anchor($url, $title, $new_tab = FALSE)
     {
-        $url = PROTOCOL . URL . '/' . $url;
+        if(!preg_match('/^http/', $url))
+        {
+            $url = PROTOCOL . URL . '/' . $url;
+        }
+
+        if(!strlen(trim($title)))
+        {
+            $title = '[_LINK]';
+        }
 
         return "<a href='$url'" . ($new_tab ? 'target="_blank"' : '') . ">$title</a>";
     }
@@ -132,7 +141,12 @@ class Html
      */
     public static function image($src, $class = "")
     {
-        return "<img class='$class' src='" . self::$IMG . $src . "'>";
+        if(!preg_match('/^http/', $src, $m))
+        {
+            $src = self::$IMG . $src;
+        }
+
+        return "<img class='$class' src='" . $src . "'>";
     }
 
 

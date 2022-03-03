@@ -74,6 +74,7 @@ class ApiDetail extends ApiController
     /**
      * Returns methods with available interactions for given substance ID
      * 
+     * @deprecated
      * @GET
      * @param id Compound ID
      */
@@ -232,6 +233,313 @@ class ApiDetail extends ApiController
         }
 
         return $this->answer($result);
+    }
+
+    /**
+     * Shows molecular fragments of molecule
+     * 
+     * @param id - Substance ID
+     * @GET
+     */
+    public function getFragments($id)
+    {
+        $s = new Substances($id);
+
+        if(!$s->id)
+        {
+            $this->answer(NULL, SELF::CODE_NOT_FOUND);
+        }
+
+        $fragments = $s->get_all_fragments();
+
+        $view = new View('fragments/grid');
+        $view->fragments = $fragments;
+
+        $this->answer($view->__toString(), self::CODE_OK, 'html');
+    }
+
+    /**
+     * Returns similiar molecules
+     * 
+     * @param id - Substance ID
+     * @GET
+     */
+    public function find_similiar($id)
+    {
+        $s = new Substances($id);
+
+        if(!$s->id)
+        {
+            $this->answer(NULL, SELF::CODE_NOT_FOUND);
+        }
+
+        $similarity_limit = 0.1;
+
+        $options = $s->get_similar_entries(null, $similarity_limit);
+
+        $view = new View('fragments/similarity');
+        $view->options = $options;
+        $view->substance = $s;
+
+        $this->answer($view->__toString(), self::CODE_OK, 'html');
+    }
+
+    // /**
+    //  * Returns similiar molecules
+    //  * 
+    //  * @param id - Substance ID
+    //  * @GET
+    //  */
+    // public function find_similiar_stats()
+    // {
+    //     $ss = Substances::instance()->limit(300000000)->get_all();
+
+    //     $result = [];
+
+    //     foreach($ss as $s)
+    //     {
+    //         $limit = 0.8;
+
+    //         $data = Substances::instance()->queryAll('
+    //             SELECT DISTINCT id, id_fragment, id_substance, similarity
+    //             FROM substances_fragments sf
+    //             WHERE id_fragment IN 
+    //                 (SELECT fo.id_child
+    //                 FROM `substances_fragments` sf
+    //                 LEFT JOIN fragments_options fo ON fo.id_parent = sf.id_fragment
+    //                 WHERE sf.id_substance = ? AND sf.similarity > ?)
+    //             AND similarity > ?
+    //             ORDER BY similarity DESC, id_substance ASC
+    //         ', array($s->id, $limit, $limit));
+
+    //         $options = [];
+
+    //         foreach($data as $row)
+    //         {
+    //             if(isset($options[$row->id_substance]))
+    //             {
+    //                 continue;
+    //             }
+
+    //             $options[$row->id_substance] = 1;
+    //         }
+
+    //         if(!count($options))
+    //         {
+    //             continue;
+    //         }
+
+    //         $result[$s->id] = count($options);
+    //     }
+
+    //     arsort($result);
+
+    //     print_r($result);
+    //     die;
+
+    //     $this->answer(NULL);
+    // }
+    
+	/**
+	 * Returns all interactions for given
+     * substance - method - membrane combinations
+     * 
+     * @GET
+	 * @param id - Substance ID
+     * @param idMethods array
+     * @param idMembranes array
+	 */
+    public function getInteractionsTable($idSubstance, $idMethods, $idMembranes)
+    {
+        $interaction_model = new Interactions();
+        $membrane_model = new Membranes();
+        $method_model = new Methods();
+        $membranes = $this->is_wrong_input($idMembranes) ? $membrane_model->select_list('id')->get_all() : $idMembranes;
+        $methods = $this->is_wrong_input($idMethods) ? $method_model->select_list('id')->get_all() : $idMethods;
+        $result = $mems = $meths = array();
+
+        $membranes = is_array($membranes) || is_object($membranes) ? $membranes : array($membranes);
+        $methods = is_array($methods) || is_object($methods) ? $methods : array($methods);
+
+        foreach($membranes as $key => $m)
+        {
+            $mems[$key] = is_object($m) ? $m->id : $m;
+        }
+
+        foreach($methods as $key => $m)
+        {
+            $meths[$key] = is_object($m) ? $m->id : $m;
+        }
+
+        $t = new Table([
+            Table::S_PAGINATIOR_POSITION => 'left',
+            Table::FILTER_HIDE_COLUMNS => true,
+            Table::FILTER_HIDE_COLUMNS_DEFAULT => true,
+        ]);
+
+        $t->column('membrane.name')
+            ->sortable()
+            ->numeric()
+            ->link('browse/membranes?target=', 'membrane.id')
+            ->css(array
+            (
+                'text-align' => 'center' // Centering - flex - justify-content: center;
+            ))
+            ->title('Membrane');
+
+        $t->column('method.name')
+            ->link('browse/methods?target=', 'method.id')
+            ->numeric()
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->title('Method');
+
+        $t->column('Q')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->numeric()
+            ->title('Q', 'Charge');
+
+        $t->column('temperature')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ), true)
+            ->title('T <br/><label class="units">[°C]</label>', "Temperature"); 
+
+        $t->column('Position')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('Position_acc')
+            ->title('X<sub>min</sub> <br/><label class="units">[nm]</label>', "Position of minima along the membrane normal from the membrane center");
+
+        $t->column('Penetration')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('Penetration_acc')
+            ->title('&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>', "Penetration barrier (maximum - minimum)");
+
+        $t->column('Water')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('Water_acc')
+            ->title('&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', "A depth of minima within membrane");
+
+        $t->column('LogK')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('LogK_acc')
+            ->title('LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub>]</label>', "Partition coefficient membrane/water");
+
+        $t->column('LogPerm')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('LogPerm_acc')
+            ->title('LogPerm <br/><label class="units">[cm/s]</label>', "Permeability coefficient");
+
+        $t->column('theta')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('theta_acc')
+            ->title('Theta<br/><label class="units">[°]</label>', "Contact angle in membrane");
+
+        $t->column('abs_wl')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('abs_wl_acc')
+            ->title('Abs_wl<br/><label class="units">[nm]</label>', "Peak absorption wavelenght");
+
+        $t->column('fluo_wl')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('fluo_wl_acc')
+            ->title('Fluo_wl<br/><label class="units">[nm]</label>', "Peak fluorescence wavelenght");
+
+        $t->column('qy')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('qy_acc')
+            ->title('QY<br/><label class="units"></label>', "Quantum yield");
+
+        $t->column('lt')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('lt_acc')
+            ->title('lt<br/><label class="units">[ns]</label>', "Fluorescence lifetime");
+
+        $t->column('note')
+            ->long_text()
+            ->title('Note');
+
+        $t->column('primary_reference')
+            ->long_text()
+            ->title('Primary<br/> reference', "Original source");
+
+        $t->column('secondary_reference')
+            ->long_text()
+            ->title('Secondary<br/> reference', "Source of input into databse if different from original");
+
+        foreach($mems as $mem_id)
+        {
+            $interactions = $interaction_model->where(array
+                (
+                    'id_substance'  => $idSubstance,
+                    'id_membrane'   => $mem_id,
+                    'visibility'    => Interactions::VISIBLE
+                ))
+                ->in('id_method', $meths)
+                ->get_all();
+
+            if(!count($interactions))
+            {
+                continue;
+            }
+
+            foreach($interactions as $i)
+            {
+                // Prepare data
+                $i->substance = $i->substance ? $i->substance->as_array() : NULL;
+                $i->membrane_name = $i->membrane->name;
+                $i->membrane_idTag = $i->membrane->idTag;
+                $i->membrane_CAM = $i->membrane->CAM;
+                $i->method_name = $i->method->name;
+                $i->method_idTag = $i->method->idTag;
+                $i->method_CAM = $i->membrane->CAM;
+                $i->primary_reference = $i->reference ? $i->reference->citation : NULL;
+                $i->secondary_reference = $i->dataset && $i->dataset->publication ? $i->dataset->publication->citation : NULL;
+                $i->secondary_reference_id = $i->dataset && $i->dataset->publication ? $i->dataset->publication->id : NULL;
+
+                $result[] = $i;;
+            }
+        }
+
+        $t->datasource($result);
+
+        $this->answer($t->html(), self::CODE_OK, 'html');
     }
     
 

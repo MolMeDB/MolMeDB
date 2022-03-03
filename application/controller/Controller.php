@@ -8,30 +8,41 @@ abstract class Controller
     CONST MESSAGE_TYPE_WARNING = 'warning';
     
     /** Shared controller data */
-    protected $data = array();
-    protected $view = "";
-    protected $header = array
-    (
-        'title'         => '', 
-        'description'   => '',
-        'token'         => ''
-    );
+    /**
+     * @var View
+     */
+    public $view;
+
+    /**
+     * @var string 
+     */
+    public $title = '';
+
+    /**
+     * @var string
+     */
+    public $token = '';
 
     /** 
-     * Class attributes 
+     * Config handler
+     * 
+     * @var Config
      */
     protected $config;
 
-    /** Alerts handler */
+    /** 
+     * Alerts handler 
+     * 
+     * @var Alert
+     */
     protected $alert;
 
-    /** Form submit handler */
-    protected $form;
-
-    /**
-     * Session info holder
+    /** 
+     * Form submit handler 
+     * 
+     * @var Form
      */
-    protected $session;
+    protected $form;
 
     /**
      * Constructor
@@ -41,20 +52,6 @@ abstract class Controller
         $this->config = new Config();
         $this->alert = new Alert();
         $this->form = new Form();
-        $this->session = new Iterable_object($_SESSION, true);
-    }
-
-    /**
-     * Shows current view
-     */
-    public function showView()
-    {
-        if($this->view)
-        {
-            extract($this->protect($this->data));
-            extract($this->data, EXTR_PREFIX_ALL, "nonsec"); 
-            require(APP_ROOT . "view/" . $this->view . ".phtml");
-        }
     }
     
     /**
@@ -136,43 +133,6 @@ abstract class Controller
         } 
     }
         
-    /**
-     * Protects given param against XSS
-     * 
-     * @param string|array $output
-     * 
-     * @return string|array
-     */
-    private function protect($output = null)
-    { 
-        if($output === FALSE)
-        {
-            return 0;
-        }
-
-        if($output === TRUE)
-        {
-            return 1;
-        }
-
-        if (is_string($output))
-        {
-            return htmlspecialchars($output, ENT_QUOTES);
-        }
-        else if(is_array($output))
-        {
-            foreach($output as $k => $txt)
-            {
-                $output[$k] = $this->protect($txt);
-            }
-            return $output;
-        }
-        else
-        {
-            return $output;
-        }
-    }
-
     /**
      * Transforms exception to short text string
      * 

@@ -28,6 +28,14 @@ class Enum_types extends Db
     );
 
     /**
+     * @return Enum_types
+     */
+    public static function instance()
+    {
+        return parent::instance();
+    }
+
+    /**
      * Check, if type is valid
      */
     public static function is_type_valid($type)
@@ -388,6 +396,7 @@ class Enum_types extends Db
                 ))
                 ->join('enum_types et ON et.id = enum_type_links.id_enum_type')
                 ->select_list('enum_type_links.id as id, et.name as name, et.type as type')
+                ->order_by('name')
                 ->get_all();
 
             if($link->enum_type->type == Enum_types::TYPE_MEMBRANE_CATS)
@@ -427,6 +436,7 @@ class Enum_types extends Db
 
                 if(count($ch))
                 {
+                    $ch = Arr::sort_by_key($ch, 'name');
                     $d['children'] = $ch;
                 }
 
@@ -449,6 +459,7 @@ class Enum_types extends Db
                     }
                 }
 
+                $d['children'] = Arr::sort_by_key($d['children'], 'name');
                 $res[] = $d;
             }
 

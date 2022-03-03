@@ -13,7 +13,7 @@ class LoginController extends Controller
         parent::__construct();
     }
 
-    public function parse()
+    public function index()
     {
         if($_POST)
         {
@@ -37,7 +37,7 @@ class LoginController extends Controller
             
         }
 
-        $this->header['title'] = 'LogIn';
-        $this->view = 'login';
+        $this->title = 'LogIn';
+        $this->view = new View('login');
     }
 }

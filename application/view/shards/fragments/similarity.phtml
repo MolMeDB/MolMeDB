@@ -1,0 +1,65 @@
+<div style="display:flex; flex-direction: column;">
+    <h3>Query:</h3>
+    <div style="display:flex; flex-direction: row; border-bottom: 1px solid black;">
+        <div>
+            <?= Html::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($substance->SMILES)) ?>
+        </div>
+        <div style="margin-left: 50px;">
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <td><?= $substance->id ?></td>
+                </tr>
+                <tr>
+                    <th>Identifier</th>
+                    <td><?= $substance->identifier ?></td>
+                </tr>
+                <tr>
+                    <th>Name</th>
+                    <td><?= $substance->name ?></td>
+                </tr>
+                <tr>
+                    <th>Smiles</th>
+                    <td><?= $substance->SMILES ?></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <?php foreach($options as $o) : ?>
+        <h4>Fragment of <?= $o->substance->name ?></h4>
+        <div style="display:flex; flex-direction: row; border-bottom: 1px solid black;">
+            <div style="display:flex; flex-direction:column; margin-right: 20px;">
+                Common fragment
+                <?= Html::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($o->fragment->add_hydrogens())) ?>
+            </div>
+            <div style="display:flex; flex-direction:column;">
+                Molecule
+                <?= Html::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($o->substance->SMILES)) ?>
+            </div>
+            <div style="margin-left: 50px;">
+                <table>
+                    <tr>
+                        <th>ID</th>
+                        <td><?= $o->substance->id ?></td>
+                    </tr>
+                    <tr>
+                        <th>Identifier</th>
+                        <td><?= $o->substance->identifier ?></td>
+                    </tr>
+                    <tr>
+                        <th>Name</th>
+                        <td><?= $o->substance->name ?></td>
+                    </tr>
+                    <tr>
+                        <th>Smiles</th>
+                        <td><?= $o->substance->SMILES ?></td>
+                    </tr>
+                    <tr>
+                        <th>Similarity</th>
+                        <td><?= $o->similarity ?></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    <?php endforeach ?>
+</div>

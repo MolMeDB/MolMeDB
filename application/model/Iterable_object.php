@@ -91,23 +91,23 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS ONE parsing
             if($type == $this->valid_link_types[self::T_HAS_ONE])
             {
-                foreach($values as $key => $values)
+                foreach($values as $key => $vals)
                 {
-                    if(is_array($values))
+                    if(is_array($vals))
                     {
                         // IS STRUCTURE VALID ?
-                        if(!isset($values['var']) || !isset($values['class']))
+                        if(!isset($vals['var']) || !isset($vals['class']))
                         {
                             $this->$key = NULL;
                             continue;
                         }
 
-                        $class_name = $values['class'];
-                        $new_key = $values['var'];
+                        $class_name = $vals['class'];
+                        $new_key = $vals['var'];
                     }
                     else // Is set only value
                     {
-                        $val = $values;
+                        $val = $vals;
 
                         $key = $val;
 
@@ -116,14 +116,16 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                         $class_name = ucwords($new_key . 's');
                     }
 
+                    $k = 'id_' . $new_key;
+                    
                     // Not valid input, set value to NULL
-                    if (!class_exists($class_name) || !$this->$key) 
+                    if (!class_exists($class_name) || !$this->$k) 
                     {
                         $this->$new_key = NULL;
                     } 
                     else 
                     {
-                        $this->$new_key = new $class_name($this->$key);
+                        $this->$new_key = new $class_name($this->$k);
                     }
                 
                 }
@@ -131,19 +133,19 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS MANY AND BELONGS TO parsing
             else if($type == $this->valid_link_types[self::T_HAS_MANY_AND_BELONGS_TO])
             {
-                foreach($values as $table => $values)
+                foreach($values as $table => $vals)
                 {
                     // IS STRUCTURE VALID ?
-                    if(!is_array($values) || !isset($values['var']) || !isset($values['class']) || 
-                        !isset($values['own']) || !isset($values['remote']))
+                    if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
+                        !isset($vals['own']) || !isset($vals['remote']))
                     {
                         continue;
                     }
 
-                    $class_name = $values['class'];
-                    $new_key = $values['var'];
-                    $remote_key = $values['remote'];
-                    $own_key = $values['own'];
+                    $class_name = $vals['class'];
+                    $new_key = $vals['var'];
+                    $remote_key = $vals['remote'];
+                    $own_key = $vals['own'];
 
                     // Not valid input, set value to NULL
                     if (!class_exists($class_name) || !$this->id) 
@@ -173,18 +175,18 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS MANY parsing
             else if($type == $this->valid_link_types[self::T_HAS_MANY])
             {
-                foreach($values as $table => $values)
+                foreach($values as $table => $vals)
                 {
                     // IS STRUCTURE VALID ?
-                    if(!is_array($values) || !isset($values['var']) || !isset($values['class']) || 
-                        !isset($values['own']))
+                    if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
+                        !isset($vals['own']))
                     {
                         continue;
                     }
 
-                    $class_name = $values['class'];
-                    $new_key = $values['var'];
-                    $own_key = $values['own'];
+                    $class_name = $vals['class'];
+                    $new_key = $vals['var'];
+                    $own_key = $vals['own'];
 
 
                     // Not valid input, set value to NULL
@@ -193,7 +195,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                         $this->$new_key = NULL;
                         continue;
                     } 
-                    
+
                     $new_class = new $class_name();
                     $this->$new_key = $new_class->where($own_key, $this->id)->get_all();
                 }
@@ -497,8 +499,6 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
         $curr_data = new Iterable_object($this->data);
         $diff = array();
         $mss = "x@#sd#";
-
-        // print_r($curr_data);
 
         foreach($prev_data as $p_key => $p_val)
         {

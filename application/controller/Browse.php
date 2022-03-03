@@ -37,12 +37,12 @@ class BrowseController extends Controller
             $this->redirect('error');
         }
 
-        $this->data['membranes'] = $membranes;
-        $this->data['active_categories'] = $active_categories;
-        $this->data['side_list'] = self::get_side_list($categories);
-        $this->data['categories'] = json_encode($categories);
-        $this->header['title'] = 'Membranes';
-        $this->view = 'browse/membranes';
+        $this->title = 'Membranes';
+        $this->view = new View('browse/membranes');
+        $this->view->membranes = $membranes;
+        $this->view->active_categories = $active_categories;
+        $this->view->side_list = self::get_side_list($categories);
+        $this->view->categories = json_encode($categories);
     }
 
     /**
@@ -68,12 +68,12 @@ class BrowseController extends Controller
             $this->redirect('error');
         }
 
-        $this->data['methods'] = $methods;
-        $this->data['active_categories'] = $active_categories;
-        $this->data['side_list'] = self::get_side_list($categories);
-        $this->data['categories'] = json_encode($categories);
-        $this->header['title'] = 'Methods';
-        $this->view = 'browse/methods';
+        $this->title = 'Methods';
+        $this->view = new View('browse/methods');
+        $this->view->methods = $methods;
+        $this->view->active_categories = $active_categories;
+        $this->view->side_list = self::get_side_list($categories);
+        $this->view->categories = json_encode($categories);
     }
 
 
@@ -95,6 +95,8 @@ class BrowseController extends Controller
         {
             $pagination = 1;
         }
+
+        $this->view = new View('browse/transporters');
 
         if($element_id)
         {
@@ -129,11 +131,11 @@ class BrowseController extends Controller
                     $total = $data->total;
                 }
 
-                $this->data['element'] = $is_last ? $target : $enum_type_link;
-                $this->data['is_last'] = $is_last;
-                $this->data['pagination'] = $pagination;
-                $this->data['list'] = $substances;
-                $this->data['total'] = $total;
+                $this->view->element = $is_last ? $target : $enum_type_link;
+                $this->view->is_last = $is_last;
+                $this->view->pagination = $pagination;
+                $this->view->list = $substances;
+                $this->view->total = $total;
             }
             catch(Exception $e)
             {
@@ -141,9 +143,8 @@ class BrowseController extends Controller
             }
         }
 
-        $this->data['chart_data'] = $stats->get(Statistics::TYPE_INTER_ACTIVE);
-        $this->header['title'] = 'Transporters';
-        $this->view = 'browse/transporters';
+        $this->view->chart_data = $stats->get(Statistics::TYPE_INTER_ACTIVE);
+        $this->title = 'Transporters';
     }
 
 
@@ -164,6 +165,8 @@ class BrowseController extends Controller
             $pagination = 1;
         }
 
+        $this->view = new View('browse/sets');
+
         try
         {
             if ($reference_id) 
@@ -176,15 +179,15 @@ class BrowseController extends Controller
                     $this->redirect('browse/sets');
                 }
 
-                $this->data['publication'] = $publication;
-                $this->data['pagination'] = $pagination;
+                $this->view->publication = $publication;
+                $this->view->pagination = $pagination;
 
-                $this->data['list'] = $publication->get_assigned_substances($pagination);
-                $this->data['list_total'] = $publication->count_assigned_substances();
+                $this->view->list = $publication->get_assigned_substances($pagination);
+                $this->view->list_total = $publication->count_assigned_substances();
             }
 
-            $this->data['publications'] = $publicationModel->get_nonempty_refs();
-            $this->data['publications'] = self::transform_publications($this->data['publications']);
+            $this->view->publications = $publicationModel->get_nonempty_refs();
+            $this->view->publications = self::transform_publications($this->view->publications);
         }
         catch(Exception $e)
         {
@@ -192,8 +195,7 @@ class BrowseController extends Controller
             $this->redirect('browse/sets');
         }
 
-        $this->header['title'] = 'Datasets';
-        $this->view = 'browse/sets';
+        $this->title = 'Datasets';
     }
 
 

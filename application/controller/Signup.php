@@ -13,16 +13,16 @@ class SignupController extends Controller
         parent::__construct();
     }
 
-    public function parse() 
+    public function index() 
     {    
-        if($_POST)
+        if($this->form->is_post())
         {
             $usermanager = new Users();
 
             try
             {
-                $usermanager->sign_up($_POST['name'], $_POST['password'], $_POST['passwordConfirm'], $_POST['year']);
-                $usermanager->login($_POST['name'], $_POST['password']);
+                $usermanager->sign_up($this->form->param->name, $this->form->param->password, $this->form->param->passwordConfirm, $this->form->param->year);
+                $usermanager->login($this->form->param->name, $this->form->param->password);
                 $this->addMessageSuccess('Successfully signed up');
                 $this->redirect('detail/intro');
             } 
@@ -32,7 +32,7 @@ class SignupController extends Controller
             }
         }
         
-        $this->header['title'] = 'Sign up';
-        $this->view = 'signup';
+        $this->title = 'Sign up';
+        $this->view = new View('signup');
     }
 }

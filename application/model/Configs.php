@@ -41,9 +41,6 @@ class Configs extends Db
     const S_CHECK_PUBLICATIONS_TIME = 'scheduler_check_publications_time';
     const S_CHECK_MEMBRANES_METHODS = 'scheduler_check_membranes_methods';
     const S_CHECK_MEMBRANES_METHODS_TIME = 'scheduler_check_membranes_methods_time';
-    const S_CHECK_REVALIDATE_3D_STRUCTURES = 'scheduler_revalidate_3d_structures';
-    const S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID = 'scheduler_revalidate_3d_structures_last_id';
-    const S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING = 'scheduler_revalidate_3d_structures_is_running';
 
     // Email attributes
     const EMAIL_ENABLED = "email_enabled";
@@ -87,9 +84,6 @@ class Configs extends Db
         self::S_CHECK_PUBLICATIONS_TIME,
         self::S_CHECK_MEMBRANES_METHODS,
         self::S_CHECK_MEMBRANES_METHODS_TIME,
-        self::S_CHECK_REVALIDATE_3D_STRUCTURES,
-        self::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID,
-        self::S_CHECK_REVALIDATE_3D_STRUCTURES_IS_RUNNING,
         self::EMAIL_ENABLED,
         self::EMAIL,
         self::EMAIL_SERVER_USERNAME,

@@ -118,13 +118,6 @@ class DeleteController extends Controller
         $this->redirect('detail/intro');
     }
 
-    // /**
-    //  * Deletes interadataset
-    //  */
-    // public function dataset($type, $id)
-    // {
-        
-    // }
 
     /**
      * Deletes interaction 

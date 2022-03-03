@@ -3,13 +3,19 @@
 /**
  * Pubchem api handler
  */
-class Pubchem
+class Pubchem extends Identifier_loader
 {
     /** Holds connection */
     private $client;
 
     /** STATUS */
     private $STATUS = false;
+
+    /** Data holder */
+    private $data = [];
+
+    /** Holds info about last used identifier type */
+    public $last_identifier = null;
 
     /** INTERACTION DATA DETAIL */
     const logP_MEMBRANE_TYPE = Membranes::LOGP_TYPE;
@@ -41,10 +47,7 @@ class Pubchem
     {
         try 
         {
-            $config = new Config();
-
             // Add to the system setting in next update
-            // $this->client = new Http_request($config->get(Configs::RDKIT_URI));
             $this->client = new Http_request('https://pubchem.ncbi.nlm.nih.gov/rest/pug/');
 
             // Try to connect
@@ -54,6 +57,217 @@ class Pubchem
         {
             $this->STATUS = false;
         }
+    }
+
+    /**
+     * Checks, if given identifier is valid
+     * 
+     * @param string $identifier
+     * 
+     * @return boolean
+     */
+    public function is_valid_identifier($identifier)
+    {
+        if(!$this->is_connected())
+        {
+            throw new Exception('Cannot connect to Pubchem server.');
+        }
+
+        $this->last_identifier = Validator_identifiers::ID_PUBCHEM;
+
+        $format = 'JSON';
+
+        $uri = "compound/cid/$identifier/property/Title/$format";
+        $method = Http_request::METHOD_GET;
+
+        try 
+        {
+            $response = $this->client->request($uri, $method);
+
+            if($response && $response->PropertyTable && 
+                $response->PropertyTable->Properties && 
+                count($response->PropertyTable->Properties))
+            {
+                return true;
+            }
+
+            return false;
+        } 
+        catch (Exception $e) 
+        {
+            return false;
+        } 
+    }   
+
+    /**
+     * Checks, if given remote server is reachable
+     * 
+     * @return boolean
+     */
+    function is_reachable()
+    {
+        return $this->is_connected();
+    }
+
+     /**
+     * Returns name for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_name($substance)
+    {
+        $data = $this->get_data($substance->pubchem);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return $data->name;
+    }
+
+    /**
+     * Returns title for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_title($substance)
+    {
+        $data = $this->get_data($substance->pubchem);
+
+        if(!$data)
+        {
+            return false;
+        }
+
+        return $data->name;
+    }
+
+    /**
+     * Returns PDB id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_pdb($substance)
+    {
+        return FALSE;
+    }
+
+    /**
+     * Returns Pubchem id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_pubchem($substance)
+    {
+        // TODO
+        return FALSE;   
+    }
+
+    /**
+     * Returns drugbank id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_drugbank($substance)
+    {
+        // TODO
+        return FALSE;
+    }
+
+    /**
+     * Returns chembl id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_chembl($substance)
+    {
+        // TODO
+        return FALSE;
+    }
+
+    /**
+     * Returns chebi id for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_chebi($substance)
+    {
+        // TODO
+        return FALSE;
+    }
+
+    /**
+     * Returns inchikey for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_inchikey($substance)
+    {
+        return false;
+    }
+
+    /**
+     * Returns SMILES for given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return string|false - False, if not found
+     */
+    function get_smiles($substance)
+    {
+        if(!$substance || !$substance->pubchem)
+        {
+            return NULL;
+        }
+
+        $this->last_identifier = Validator_identifiers::ID_PUBCHEM;
+
+        $identifier = $substance->pubchem;
+        $properties = 'CanonicalSMILES,IsomericSMILES';
+        $format = 'JSON';
+
+        $uri = "compound/cid/$identifier/property/$properties/$format";
+        $method = Http_request::METHOD_GET;
+
+        try 
+        {
+            $response = $this->client->request($uri, $method);
+
+            if($response && $response->PropertyTable && 
+                $response->PropertyTable->Properties && 
+                count($response->PropertyTable->Properties))
+            {
+                $data = $response->PropertyTable->Properties[0];
+
+                $smiles = $data->IsomericSMILES ? $data->IsomericSMILES : NULL;
+                $smiles = !$smiles && $data->CanonicalSMILES ? $data->CanonicalSMILES : $smiles;
+
+                return $smiles;
+            }
+
+            return NULL;
+        } 
+        catch (Exception $e) 
+        {
+            return NULL;
+        } 
     }
 
     /**
@@ -113,6 +327,8 @@ class Pubchem
         {
             return NULL;
         }
+
+        $this->last_identifier = Validator_identifiers::ID_PUBCHEM;
 
         $uri = "compound/CID/$substance->pubchem/record/SDF/?record_type=3d&response_type=save";
         $method = Http_request::METHOD_GET;
@@ -231,7 +447,14 @@ class Pubchem
             return NULL;
         }
 
-        $properties = 'XLogP,CanonicalSMILES,IsomericSMILES,InChIKey,IUPACName,MolecularWeight';
+        if(isset($this->data[$pubchem_id]))
+        {
+            return $this->data[$pubchem_id];
+        }
+
+        $this->last_identifier = Validator_identifiers::ID_PUBCHEM;
+
+        $properties = 'XLogP,CanonicalSMILES,IsomericSMILES,InChIKey,IUPACName,Title,MolecularWeight';
         $format = 'JSON';
 
         $uri = "compound/cid/$pubchem_id/property/$properties/$format";
@@ -250,15 +473,18 @@ class Pubchem
                 $smiles = $data->CanonicalSMILES ? $data->CanonicalSMILES : NULL;
                 $smiles = !$smiles && $data->IsomericSMILES ? $data->IsomericSMILES : $smiles;
 
-                return new Iterable_object(array
+                $this->data[$pubchem_id] = new Iterable_object(array
                 (
-                    'pubchem_id'    => $data->CID,
-                    'MW'            => $data->MolecularWeight,
+                    'pubchem_id'    => property_exists($data, "CID") ? $data->CID : null,
+                    'MW'            => property_exists($data, "MolecularWeight") ? $data->MolecularWeight : null,
                     'SMILES'        => $smiles,
-                    'inchikey'      => $data->InChIKey,
-                    'name'          => $data->IUPACName,
-                    'logP'          => $data->XLogP
+                    'inchikey'      => property_exists($data, "InChIKey") ? $data->InChIKey : null,
+                    'title'         => property_exists($data, "Title") ? $data->Title : null,
+                    'name'          => property_exists($data, "IUPACName") ? $data->IUPACName : null,
+                    'logP'          => property_exists($data, "XLogP") ? $data->XLogP : null
                 ));
+
+                return $this->data[$pubchem_id];
             }
 
             return NULL;

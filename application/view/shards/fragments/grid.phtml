@@ -1,0 +1,12 @@
+<div style="display: flex; flex-direction: column;">
+    <?php foreach($fragments as $number => $group): ?>
+        <div style="display: flex; padding: 20px; flex-direction: row; flex-wrap: nowrap;  border-bottom: 1px solid black;">
+            <div style="font-weight: bold; margin-right: 40px">Order: <?= $number ?></div>
+            <?php foreach($group as $rec) : ?>
+                <div style="padding-right: 10px; padding-left: 10px; border-right: 1px solid black;">
+                    <?= Html::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($rec->smiles)) ?>
+                </div>
+            <?php endforeach ?>
+        </div>
+    <?php endforeach ?>
+</div>

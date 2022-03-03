@@ -179,24 +179,115 @@ class Methods extends Db
             ');
         }
     }
+
+    /**
+     * Returns all methods structured by categories
+     * 
+     * @return array
+     */
+    public function get_all_structured() : array
+    {
+        return Enum_types::instance()->get_categories(Enum_types::TYPE_METHOD_CATS);
+    }
+
+    /**
+     * Returns all methods structured by categories
+     * 
+     * @return array
+     */
+    public function get_structured_for_substance(int $id_substance, bool $only_visible = true) : array
+    {
+        // Get all methods
+        $all = Enum_types::instance()->get_categories(Enum_types::TYPE_METHOD_CATS);
+
+        // Filter for just available
+        $required = $this->check_avail_by_substance($id_substance, $only_visible)->as_array();
+        $required = array_column($required, 'id_method');
+
+        function check_category(array $cat, array $required)
+        {
+            if(isset($cat['children']) && 
+                is_array($cat['children']) && 
+                count($cat['children']))
+            {
+                $res = $cat;
+
+                foreach($cat['children'] as $k => $c)
+                {
+                    if(($protected_cat = check_category($c, $required)) === false)
+                    {
+                        unset($res['children'][$k]);
+                    }
+                    else
+                    {
+                        $res['children'][$k] = $protected_cat;
+                    }
+                }
+
+                if(!count($res['children']))
+                {
+                    return false;
+                }
+                else
+                {
+                    // Reload indices
+                    $res['children'] = array_values($res['children']);
+                    return $res;
+                }
+            }
+            else if(isset($cat['last']) && $cat['last'])
+            {
+                // Check
+                if(!in_array($cat['id_element'], $required))
+                {
+                    return false;
+                }
+                
+                return $cat;
+            }
+
+            // invalid structure
+            return false;
+        }
+
+        $result = $all;
+
+        // Filtering
+        foreach($all as $key => $category)
+        {
+            if(($protected_cat = check_category($category, $required)) === false)
+            {
+                unset($result[$key]);
+            }
+            else
+            {
+                $result[$key] = $protected_cat;
+            }
+        }
+
+        return array_values($result);
+    }
     
     /**
      * Checks method availability of interaction
      * for given substance - used in API
      * 
      * @param integer $substance_id
+     * @param bool $only_visible
      * 
-     * @return Iterable
+     * @return Iterable_object
      */
-    public function check_avail_by_substance($substance_id)
+    public function check_avail_by_substance(int $substance_id, bool $only_visible = true) : Iterable_object
     {
+        $only_visible = $only_visible ? Interactions::VISIBLE : Interactions::INVISIBLE;
+
         $sql = "
             SELECT COUNT(*) as count, id_method 
             FROM interaction
-            WHERE id_substance = ? AND visibility = 1 
+            WHERE id_substance = ? AND visibility = ?
             GROUP BY id_method";
 
-        return $this->queryAll($sql, array($substance_id));
+        return $this->queryAll($sql, array($substance_id, $only_visible));
     }
 
 

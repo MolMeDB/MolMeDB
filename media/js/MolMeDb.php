@@ -43,10 +43,20 @@ function add_message(message, type="success")
  * @param {object} params
  * @param {string} method - GET/POST only
  */
-function ajax_request(uri, params, method = "GET")
+function ajax_request(uri, params, method = "GET", required_content_type = "json")
 {
     method = method.toUpperCase();
     var valid_methods = ['GET', 'POST'];
+
+    switch(required_content_type.toLowerCase())
+    {
+        case 'html':
+            accept = 'text/html';
+            break;
+
+        default:
+            accept = 'application/json';
+    }
 
     if(!valid_methods.includes(method))
     {
@@ -55,16 +65,7 @@ function ajax_request(uri, params, method = "GET")
     }
 
     // Make uri
-    uri = url_prefix + "/api/" + uri + "?";
-    
-    if(method == "GET")
-    {
-        $.each(params, function(key, value)
-        {                   
-            uri += key + "=" + value + "&";
-        });
-    }
-
+    uri = url_prefix + "/api/" + uri;
     uri = uri.replace(/\&+$/, '');
     
     var result;
@@ -72,6 +73,8 @@ function ajax_request(uri, params, method = "GET")
     // Send request
     $.ajax({
         url: uri,
+        contentType: 'application/json',
+        accepts: accept,
         type: method,
         async: false,
         data: params,
@@ -140,8 +143,27 @@ $(document).ready(function()
     }
 })
 
+/**
+ * Appends html content to the given parent
+ * + init all <script> contents
+ * + executes functions given in js_callbacks
+ */
+function append_html_js(content, parent, js_callbacks = ['init'])
+{
+    if(!parent)
+    {
+        return;
+    }
 
-
+    $(parent).append(content);
+    $(parent).find('script').each(function(i,e)
+    {
+        eval($(e).html());
+        js_callbacks.forEach((fun, i) => {
+            eval(fun+"()");
+        });
+    });
+}
 
 // /**
 //  * 

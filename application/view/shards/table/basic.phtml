@@ -21,7 +21,7 @@
                             <div>Hide empty columns:</div>                             
                             <div>
                                 <label class="switch">
-                                    <input id="hide_empty_rows" type="checkbox" <?= $default_hide_empty_rows ? 'checked' : '' ?>>
+                                    <input id="hide_empty_columns" type="checkbox" <?= $default_hide_empty_columns ? 'checked' : '' ?>>
                                     <span class="slider round"></span>
                                 </label>
                             </div>                             
@@ -54,7 +54,7 @@
         <!-- </thead> -->
         <!-- <tbody id="order-body"> -->
             <?php if($empty_data) :?> 
-
+<!-- TODO -->
             <?php else : ?>
 
             <?php $i = 1; ?>
@@ -74,7 +74,8 @@
                         </div>
                     </div>
                     <?php elseif($col->is_long_text) : ?>
-                    <div class="tooltip-helper long-text">
+                    <?php $content = $col->value($row); ?>
+                    <div class="tooltip-helper <?= strlen($content) > 15 ? "long-text" : "" ?>">
                         <p>
                             <?php echo $col->value($row);?>
                         </p>
@@ -83,7 +84,9 @@
                         </div>
                     </div>
                     <?php else : ?>
-                        <?php echo $col->value($row);?>
+                        <div>
+                            <?php echo $col->value($row);?>
+                        </div>
                     <?php endif ?>
                 </td>
                 <?php endforeach ?>
@@ -145,7 +148,12 @@
     var pag_per_page = parseInt('<?= $total_per_page ?>');
     var pag_page = parseInt('<?= $active_page ?>');
     var pag_min_page = 1;
-    var pag_max_page = parseInt(total_rows/pag_per_page)+1;
+    var pag_max_page = total_rows/pag_per_page;
+
+    if(pag_max_page != parseInt(pag_max_page))
+    {
+        pag_max_page = parseInt(pag_max_page)+1;
+    }
 
     function init() 
     {
@@ -154,9 +162,9 @@
         active_rows = $(tbody).find('tr.basic-row');
         active_pagination = $(tbody).find('tr.table-pagination');
 
-        function hide_empty_rows()
+        function hide_empty_columns()
         {
-            let el = $('#hide_empty_rows');
+            let el = $('#hide_empty_columns');
 
             if(!el)
             {
@@ -182,13 +190,8 @@
 
                     $(tds).each((k, td) => 
                     {
-                        let last_child = td;
-                        while($(last_child).children().length > 0)
-                        {
-                            last_child = $(last_child).children()[0];
-                        }
-
-                        let content = $(last_child).html();
+                        let nonsense = document.createElement('div');
+                        let content = $(nonsense).html($(td).html()).text();
 
                         if(!content)
                         {
@@ -287,7 +290,7 @@
             $(tbody).append(active_rows);
             $(tbody).append(active_pagination);
 
-            hide_empty_rows();
+            hide_empty_columns();
 
             init_callbacks();
         }
@@ -438,14 +441,14 @@
                 update_paginator();
             });
 
-            $('#hide_empty_rows').change(function(e)
+            $('#hide_empty_columns').change(function(e)
             {
-                hide_empty_rows();
+                hide_empty_columns();
             });
         }
 
         init_callbacks();
-        hide_empty_rows();
+        hide_empty_columns();
     };
 
     window.onload = function()

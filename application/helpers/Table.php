@@ -51,8 +51,8 @@ class Table
     
     // SETTING FILTERS
     const FILTER_VISIBLE        = 'filter_visible';
-    const FILTER_HIDE_ROWS      = 'hide_empty_rows';
-    const FILTER_HIDE_ROWS_DEFAULT      = 'hide_empty_rows_default';
+    const FILTER_HIDE_COLUMNS      = 'hide_empty_columns';
+    const FILTER_HIDE_COLUMNS_DEFAULT      = 'hide_empty_columns_default';
 
     /**
      * Filters holder
@@ -95,9 +95,9 @@ class Table
             $this->paginator_position = $s->paginator_position;
         }
 
-        if($s->hide_empty_rows)
+        if($s->hide_empty_columns)
         {
-            $this->filters[self::FILTER_HIDE_ROWS] = $s->hide_empty_rows;
+            $this->filters[self::FILTER_HIDE_COLUMNS] = $s->hide_empty_columns;
         }
 
         if($s->filter_visible)
@@ -105,9 +105,9 @@ class Table
             $this->filters[self::FILTER_VISIBLE] = $s->filter_visible;
         }
 
-        if($s->hide_empty_rows_default)
+        if($s->hide_empty_columns_default)
         {
-            $this->filters[self::FILTER_HIDE_ROWS_DEFAULT] = $s->hide_empty_rows_default;
+            $this->filters[self::FILTER_HIDE_COLUMNS_DEFAULT] = $s->hide_empty_columns_default;
         }
 
         if($s->per_page_options && 
@@ -148,8 +148,8 @@ class Table
     {
         return (isset($this->fitlers[self::FILTER_VISIBLE]) && 
             $this->filters[self::FILTER_VISIBLE]) || 
-            (isset($this->filters[self::FILTER_HIDE_ROWS]) && 
-                $this->filters[self::FILTER_HIDE_ROWS]);
+            (isset($this->filters[self::FILTER_HIDE_COLUMNS]) && 
+                $this->filters[self::FILTER_HIDE_COLUMNS]);
     }
 
     /**
@@ -250,7 +250,7 @@ class Table
         $output->css = $this->css();
         $output->paginator_position = $this->paginator_position;
         $output->has_filter = $this->has_filter();
-        $output->default_hide_empty_rows = isset($this->filters[self::FILTER_HIDE_ROWS_DEFAULT]) ? $this->filters[self::FILTER_HIDE_ROWS_DEFAULT] : false;
+        $output->default_hide_empty_columns = isset($this->filters[self::FILTER_HIDE_COLUMNS_DEFAULT]) ? $this->filters[self::FILTER_HIDE_COLUMNS_DEFAULT] : false;
         
         $output->total_columns = count($this->columns);
         

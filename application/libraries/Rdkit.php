@@ -24,7 +24,7 @@ class Rdkit extends Identifier_loader
     const METRIC_KULCZYNSKI = "Kulczynski";
     const METRIC_MCCONNAUGHEY = "McConnaughey";
 
-    const METRIC_DEFAULT = self::METRIC_KULCZYNSKI;
+    const METRIC_DEFAULT = self::METRIC_COSINE;
 
     /**
      * Constructor
@@ -188,6 +188,47 @@ class Rdkit extends Identifier_loader
     function get_title($substance)
     {
         return false;
+    }
+
+    /**
+     * Returns fingerprint of given substance
+     * 
+     * @param Substances $substance
+     * 
+     * @return Vector|false - False, if not found.
+     *  - Returned fingerprint must have lenght equal to 2048
+     */
+    function get_fingerprint($substance)
+    {
+        if(!self::$STATUS || !$substance->SMILES)
+        {
+            return null;
+        }
+
+        $this->last_identifier = Validator_identifiers::ID_SMILES;
+
+        $uri = 'mol/fingerprint';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'mol' => $substance->SMILES
+        );
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params);
+
+            if($response && strlen($response->fingerprint) === 2048)
+            {
+                return new Vector(str_split($response->fingerprint), true);
+            }
+
+            return false;
+        }
+        catch(Exception $e)
+        {
+            return false;
+        }
     }
 
     /**

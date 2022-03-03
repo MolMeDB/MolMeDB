@@ -77,6 +77,59 @@ class MolController extends Controller
 
             $identifiers = $substance->get_active_identifiers();
 
+            $similar_entries = $substance->get_similar_entries();
+
+            // Show max 10 records
+            $total_similar_entries = count($similar_entries);
+            $similar_entries = array_slice($similar_entries, 0,3,TRUE);
+
+            // Add stats info
+            foreach($similar_entries as $key => $row)
+            {
+                $s = $row->substance;
+
+                $total_passive = Interactions::instance()->where(array
+                    (
+                        'visibility' => Interactions::VISIBLE,
+                        'id_substance' => $s->id
+                    ))
+                    ->count_all();
+
+                $total_active = Transporters::instance()->where(array
+                    (
+                        'id_substance' => $s->id,
+                        'td.visibility' => Transporter_datasets::VISIBLE
+                    ))
+                    ->join('JOIN transporter_datasets td ON td.id = transporters.id_dataset')
+                    ->select_list('transporters.id')
+                    ->distinct()
+                    ->count_all();
+
+                $row->interactions = (object)array
+                (
+                    'total_passive' => $total_passive,
+                    'total_active'  => $total_active
+                );
+            }
+
+            // Stat for current molecule
+            $total_passive = Interactions::instance()->where(array
+                (
+                    'visibility' => Interactions::VISIBLE,
+                    'id_substance' => $substance->id
+                ))
+                ->count_all();
+
+            $total_active = Transporters::instance()->where(array
+                (
+                    'id_substance' => $substance->id,
+                    'td.visibility' => Transporter_datasets::VISIBLE
+                ))
+                ->join('JOIN transporter_datasets td ON td.id = transporters.id_dataset')
+                ->select_list('transporters.id')
+                ->distinct()
+                ->count_all();
+
             if($by_link)
             {
                 $this->addMessageWarning('Your request has been redirected from record ' . $identifier);
@@ -97,6 +150,17 @@ class MolController extends Controller
 
         // 3D structure
         $this->view->structures_3d = $substance->get_all_3D_structures();
+
+        // Similar entries
+        $this->view->similar_entries = $similar_entries;
+        $this->view->similar_entries_load_all = count($similar_entries) !== $total_similar_entries;
+
+        //
+        $this->view->stats_interactions = (object)array
+        (
+            'total_passive' => $total_passive,
+            'total_active'  => $total_active
+        );
         
         // Membranes and methods
         $this->view->membranes = $membranes;

@@ -43,9 +43,13 @@
                                 </div>
                                 <div>
                                     <select id="3D_structure_select">
+                                        <?php if(count($structures_3d)) : ?>
                                         <?php foreach($structures_3d as $server_id => $structure) : ?>
                                         <option value="<?= $structure['id'] ?>"><?= Validator_identifiers::get_enum_server($server_id) ?></option>
                                         <?php endforeach ?>
+                                        <?php else : ?>
+                                        <option>N/A</option>
+                                        <?php endif ?>
                                     </select>
                                 </div>
                             </div>
@@ -66,9 +70,7 @@
                                 $('#3D_structure_select').change(function()
                                 {
                                     var id = $('#3D_structure_select').val();
-
                                     plugin.clear();
-
                                     plugin.loadMolecule({
                                         id: '<?= $substance->identifier ?>',
                                         url: '<?= Url::base() . 'file/show/' ?>' + id,
@@ -315,6 +317,106 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+            <div class="flex-column general-info" style="width: 100%">
+                <div class="heading flex-row" style="justify-content: space-between;">
+                    <div><b>Similar entries</b></div>
+                    <div>
+                        <?php if($similar_entries_load_all) : ?>
+                            <button class="btn btn-sm btn-info">Show all</button>
+                        <?php endif ?>
+                    </div>
+                </div>
+                <div class="flex-row" style="width: 100%; overflow-x: auto; padding-bottom: 40px;">
+                    <?php foreach($similar_entries as $record) : ?>
+                    <a class="anchor-no-effect" href="<?= Url::base() . "mol/" . $record->substance->identifier?>">
+                        <div class="similar-entry-record">
+                            <div class="similar-entry-structure">
+                                <img src="<?= Url::get_2d_structure_source($record->substance->SMILES) ?>">
+                            </div>
+                            <div class="similar-entry-name ellipsis" title="<?= $record->substance->name ?>">
+                                <?= $record->substance->name ?>
+                            </div>
+                            <div class="similar-entry-similarity">
+                                <b>Similarity:</b> <?= $record->similarity ?>
+                                <span class="glyphicon glyphicon-question-sign popup-hover">
+                                    <div class="similarity-popup-content">
+                                        <div class="title">Similarity to <span class="ellipsis"><?= $substance->name ?></span></div>
+                                        <div>
+                                            <table>
+                                                <?php foreach($record->all_similarities as $t => $v): ?>
+                                                    <tr>
+                                                        <th><?= Mol_similarity::enum($t) ?></th>
+                                                        <td><?= $v ?></td>
+                                                    </tr>
+                                                <?php endforeach ?>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </span>
+                            </div>
+                            <div class="similar-entry-data">
+                                <table>
+                                    <tr>
+                                        <th>MW:</th>
+                                        <td><div><?= $record->substance->MW ?></div></td>
+                                    </tr>
+                                    <tr>
+                                        <th title="Total passive interaction records">PI:</th>
+                                        <td><div><?= $record->interactions->total_passive ?></div> 
+                                            <span class="glyphicon glyphicon-question-sign popup-hover">
+                                                <div class="similarity-popup-content">
+                                                    <div class="title">Total passive interactions</div>
+                                                    <div>
+                                                        <table>
+                                                            <tr>
+                                                                <th><div class="ellipsis"><?= $substance->name ?></div></th>
+                                                                <td><?= $stats_interactions->total_passive ?></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th><div class="ellipsis"><?= $record->substance->name ?></div></th>
+                                                                <td><?= $record->interactions->total_passive ?></td>
+                                                            </tr>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <table>
+                                    <tr>
+                                        <th>LogP:</th>
+                                        <td><div><?= $record->substance->LogP ?></div></td>
+                                    </tr>
+                                    <tr>
+                                        <th title="Total active interaction (transporter) records">AI:</th>
+                                        <td><div><?= $record->interactions->total_active ?></div> 
+                                            <span class="glyphicon glyphicon-question-sign popup-hover">
+                                                <div class="similarity-popup-content">
+                                                    <div class="title">Total active interactions</div>
+                                                    <div>
+                                                        <table>
+                                                            <tr>
+                                                                <th><div class="ellipsis"><?= $substance->name ?></div></th>
+                                                                <td><?= $stats_interactions->total_active ?></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <th><div class="ellipsis"><?= $record->substance->name ?></div></th>
+                                                                <td><?= $record->interactions->total_active ?></td>
+                                                            </tr>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </a>
+                    <?php endforeach ?>
                 </div>
             </div>
         </div>

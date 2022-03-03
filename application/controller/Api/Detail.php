@@ -257,6 +257,88 @@ class ApiDetail extends ApiController
 
         $this->answer($view->__toString(), self::CODE_OK, 'html');
     }
+
+    /**
+     * Returns similiar molecules
+     * 
+     * @param id - Substance ID
+     * @GET
+     */
+    public function find_similiar($id)
+    {
+        $s = new Substances($id);
+
+        if(!$s->id)
+        {
+            $this->answer(NULL, SELF::CODE_NOT_FOUND);
+        }
+
+        $similarity_limit = 0.1;
+
+        $options = $s->get_similar_entries(null, $similarity_limit);
+
+        $view = new View('fragments/similarity');
+        $view->options = $options;
+        $view->substance = $s;
+
+        $this->answer($view->__toString(), self::CODE_OK, 'html');
+    }
+
+    // /**
+    //  * Returns similiar molecules
+    //  * 
+    //  * @param id - Substance ID
+    //  * @GET
+    //  */
+    // public function find_similiar_stats()
+    // {
+    //     $ss = Substances::instance()->limit(300000000)->get_all();
+
+    //     $result = [];
+
+    //     foreach($ss as $s)
+    //     {
+    //         $limit = 0.8;
+
+    //         $data = Substances::instance()->queryAll('
+    //             SELECT DISTINCT id, id_fragment, id_substance, similarity
+    //             FROM substances_fragments sf
+    //             WHERE id_fragment IN 
+    //                 (SELECT fo.id_child
+    //                 FROM `substances_fragments` sf
+    //                 LEFT JOIN fragments_options fo ON fo.id_parent = sf.id_fragment
+    //                 WHERE sf.id_substance = ? AND sf.similarity > ?)
+    //             AND similarity > ?
+    //             ORDER BY similarity DESC, id_substance ASC
+    //         ', array($s->id, $limit, $limit));
+
+    //         $options = [];
+
+    //         foreach($data as $row)
+    //         {
+    //             if(isset($options[$row->id_substance]))
+    //             {
+    //                 continue;
+    //             }
+
+    //             $options[$row->id_substance] = 1;
+    //         }
+
+    //         if(!count($options))
+    //         {
+    //             continue;
+    //         }
+
+    //         $result[$s->id] = count($options);
+    //     }
+
+    //     arsort($result);
+
+    //     print_r($result);
+    //     die;
+
+    //     $this->answer(NULL);
+    // }
     
 	/**
 	 * Returns all interactions for given
@@ -291,8 +373,8 @@ class ApiDetail extends ApiController
 
         $t = new Table([
             Table::S_PAGINATIOR_POSITION => 'left',
-            Table::FILTER_HIDE_ROWS => true,
-            Table::FILTER_HIDE_ROWS_DEFAULT => true,
+            Table::FILTER_HIDE_COLUMNS => true,
+            Table::FILTER_HIDE_COLUMNS_DEFAULT => true,
         ]);
 
         $t->column('membrane.name')

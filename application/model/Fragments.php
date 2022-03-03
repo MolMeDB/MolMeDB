@@ -22,6 +22,21 @@ class Fragments extends Db
     }
 
     /**
+     * Adds hydrogens to current fragment
+     * 
+     * @return string
+     */
+    public function add_hydrogens()
+    {
+        if(!$this->smiles)
+        {
+            return;
+        }
+
+        return preg_replace('/\[\*:\]/', '[H]', $this->smiles);
+    }
+
+    /**
      * Prepares fragment
      * 
      * @param string $smiles
@@ -65,6 +80,12 @@ class Fragments extends Db
         // After adding new fragment, create options
         if($this->id)
         {
+            $new = new Fragments_options();
+            $new->id_parent = $this->id;
+            $new->id_child = $this->id;
+            $new->deletions = NULL;
+            $new->save();
+
             if(!preg_match_all('/\[\*:\]/', $this->smiles))
             {
                 return;

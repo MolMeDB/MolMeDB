@@ -32,6 +32,128 @@ class SchedulerController extends Controller
     );
 
 
+    /**
+     * Main scheduler funtion
+     * 
+     */
+    public function run()
+    {
+        // Holds info about run time
+        $time = $this->time = new Time();
+
+        echo '--- RUN ' . $time->get_string() . " ---\n";
+        try
+        {
+            if(!$this->config->get(Configs::S_ACTIVE))
+            {
+                echo 'Scheduler is not active.';
+                return;
+            }
+
+            // Send all unsent emails
+            if($this->config->get(Configs::EMAIL_ENABLED))
+            {
+                $this->send_emails();
+                echo "Emails sent. \n";
+            }
+
+            // Delete substances without interactions
+            if($this->debug_DES || 
+                ($this->check_time($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)) && 
+                $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
+            {
+                echo "Deleting empty substances. \n";
+                $this->delete_empty_substances();
+            }
+
+            // Checks interactions datasets
+            if($this->debug_CID || 
+                ($this->check_time($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME)) && 
+                $this->config->get(Configs::S_VALIDATE_PASSIVE_INT)))
+            {
+                echo "Checking interaction datasets.\n";
+                $this->check_interaction_datasets();
+            }
+
+            // Fragment molecules
+            if($this->check_time("06:00"))
+            {
+                echo "Checking interaction datasets.\n";
+                $this->fragment_molecules();
+            }
+
+            // Checks transporter datasets - NOW INACTIVATED
+            if($this->debug_CTD ||
+                ($this->check_time($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME)) && 
+                $this->config->get(Configs::S_VALIDATE_ACTIVE_INT)))
+            {
+                // TODO
+                // $this->check_transporter_datasets();
+                // echo "Transporter datasets checked.\n";
+            }
+
+            // ---- Molecules data autofill ---- //
+            if($this->debug_FMD || 
+                ($this->check_time($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME)) && 
+                $this->config->get(Configs::S_VALIDATE_SUBSTANCES))) // Run only once per hour and only at night
+            {
+                echo "Subtance validations is running. \n";
+                $this->validate_substance_identifiers(); // PARAM TODO
+            }
+
+            // Once per day, update stats data
+            if(($this->check_time($this->config->get(Configs::S_UPDATE_STATS_TIME)) && 
+                $this->config->get(Configs::S_UPDATE_STATS)))
+            {
+                echo "Updating stats data. \n";
+                $this->update_stats();
+            }
+
+            // Once per day, update stats data
+            if(($this->check_time($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME)) && 
+                $this->config->get(Configs::S_CHECK_PUBLICATIONS)))
+            {
+                echo "Updating publications data. \n";
+                $this->update_publications();
+                echo "Deleting empty publications. \n";
+                $this->delete_empty_publications();
+            }
+
+            // Delete empty membranes and methods
+            if(($this->check_time($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME)) && 
+                $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
+            {
+                echo "Deleting empty membranes/methods. \n";
+                $this->delete_empty_membranes_methods();
+            }
+
+            echo "DONE \n";
+        }
+        catch(Exception $e)
+        {
+            $text = "General error occured while scheduler was running.<br/><br/>" . $e->getMessage();
+            echo $text . ' in ' . $time->get_string();
+
+            try
+            {
+                $report = new File();
+                $filePath = MEDIA_ROOT . 'files/schedulerReports/general_' . $report->generateName() . '.log';
+                $report->create($filePath);
+                $report->writeLine($e->getMessage());
+            }
+            catch(Exception $e)
+            {
+                echo 'Cannot make report file - ' . $e->getMessage();
+                $this->send_email_to_admins($text, 'Scheduler error');
+                return;
+            }
+            
+            $this->send_email_to_admins($text, 'Scheduler error', $filePath);
+        }
+
+        echo '-------------------------';
+    }
+
     public function log_sub_changes()
     {
         // Deletes
@@ -276,138 +398,6 @@ class SchedulerController extends Controller
         return FALSE;
     }
 
-
-    /**
-     * Main scheduler funtion
-     * 
-     */
-    public function run()
-    {
-        // Holds info about run time
-        $time = $this->time = new Time();
-
-        echo '--- RUN ' . $time->get_string() . " ---\n";
-        try
-        {
-            $this->fragment_molecules();
-            die;
-
-            if(!$this->config->get(Configs::S_ACTIVE))
-            {
-                echo 'Scheduler is not active.';
-                return;
-            }
-
-            // Send all unsent emails
-            if($this->config->get(Configs::EMAIL_ENABLED))
-            {
-                $this->send_emails();
-                echo "Emails sent. \n";
-            }
-
-            // Delete substances without interactions
-            if($this->debug_DES || 
-                ($this->check_time($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)) && 
-                $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
-            {
-                echo "Deleting empty substances. \n";
-                // $this->delete_empty_substances();
-            }
-
-            // Checks interactions datasets
-            if($this->debug_CID || 
-                ($this->check_time($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME)) && 
-                $this->config->get(Configs::S_VALIDATE_PASSIVE_INT)))
-            {
-                echo "Checking interaction datasets.\n";
-                // $this->check_interaction_datasets();
-            }
-
-            // Checks transporter datasets - NOW INACTIVATED
-            if($this->debug_CTD ||
-                ($this->check_time($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME)) && 
-                $this->config->get(Configs::S_VALIDATE_ACTIVE_INT)))
-            {
-                // $this->check_transporter_datasets();
-                echo "Transporter datasets checked.\n";
-            }
-
-            // ---- Molecules data autofill ---- //
-            if($this->debug_FMD || 
-                ($this->check_time($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME)) && 
-                $this->config->get(Configs::S_VALIDATE_SUBSTANCES))) // Run only once per hour and only at night
-            {
-                echo "Subtance validations is running. \n";
-                // $this->substance_validation($time->get_hour() % 2);
-            }
-
-            // Once per day, update stats data
-            if(($this->check_time($this->config->get(Configs::S_UPDATE_STATS_TIME)) && 
-                $this->config->get(Configs::S_UPDATE_STATS)))
-            {
-                echo "Updating stats data. \n";
-                // $this->update_stats();
-            }
-
-            // Once per day, update stats data
-            if(($this->check_time($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME)) && 
-                $this->config->get(Configs::S_CHECK_PUBLICATIONS)))
-            {
-                echo "Updating publications data. \n";
-                // $this->update_publications();
-                echo "Deleting empty publications. \n";
-                // $this->delete_empty_publications();
-            }
-
-            // Delete empty membranes and methods
-            if(($this->check_time($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME)) && 
-                $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
-            {
-                echo "Deleting empty membranes/methods. \n";
-                // $this->delete_empty_membranes_methods();
-            }
-
-            // Revalidate 3D structures
-            if($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES))
-            {
-                echo "Revalidating 3D structures. \n";
-                // $this->revalidate_3d_structures();
-            }
-
-            // Once per day, try to find identifiers
-            if($this->debug_FMD || ($time->is_minute(1) && $time->is_hour(5))) // Run only once per hour and only at night
-            {
-                echo "`Filling missing identifiers` is running. \n";
-                // $this->fill_substance_identifiers();
-            }
-
-            echo "DONE \n";
-        }
-        catch(Exception $e)
-        {
-            $text = "General error occured while scheduler was running.<br/><br/>" . $e->getMessage();
-            echo $text . ' in ' . $time->get_string();
-
-            try
-            {
-                $report = new File();
-                $filePath = MEDIA_ROOT . 'files/schedulerReports/general_' . $report->generateName() . '.log';
-                $report->create($filePath);
-                $report->writeLine($e->getMessage());
-            }
-            catch(Exception $e)
-            {
-                echo 'Cannot make report file - ' . $e->getMessage();
-                $this->send_email_to_admins($text, 'Scheduler error');
-                return;
-            }
-            
-            $this->send_email_to_admins($text, 'Scheduler error', $filePath);
-        }
-
-        echo '-------------------------';
-    }
-
     /**
      * Fragments molecules
      * 
@@ -538,6 +528,7 @@ class SchedulerController extends Controller
      */
     private function find_substance_duplicities()
     {
+        return; // TODO
         $vi_model = new Validator_identifiers();
 
         $duplicities = $vi_model->get_duplicate_identifiers();
@@ -827,7 +818,23 @@ class SchedulerController extends Controller
                                     $log->update_state($s->id, $log->type, $log::STATE_DONE);
                                 }
                             }
-                            else if($smiles_o->flag == Validator_identifiers::SMILES_FLAG_CANONIZED)
+                            
+                            // Save structure fingerprint
+                            if(!$s->fingerprint)
+                            {
+                                $fp = $rdkit->get_fingerprint($s);
+
+                                if($fp !== false)
+                                {
+                                    // Encode FP
+                                    $encoded = Mol_fingerprint::encode($fp);
+                                    // Save
+                                    $s->fingerprint = $encoded;
+                                    $s->save();
+                                }
+                            }
+                            
+                            if($smiles_o->flag == Validator_identifiers::SMILES_FLAG_CANONIZED && $s->fingerprint)
                             {
                                 $log->update_state($s->id, $log->type, $log::STATE_DONE);
                             }
@@ -901,6 +908,7 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
+                        echo $e->getMessage();
                         if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
                         {
                             $count = $log->count ? $log->count : 0;
@@ -1338,6 +1346,8 @@ class SchedulerController extends Controller
                                 $found = true;
 
                                 $new = new Validator_identifiers();
+
+                                $found_value = ucfirst(strtolower($found_value));
 
                                 $new->id_substance = $s->id;
                                 $new->id_source = $source->id;
@@ -1845,436 +1855,6 @@ class SchedulerController extends Controller
     }
 
     /**
-     * Fills missing identifiers
-     * 
-     * @author Jakub Juracka
-     */
-    private function fill_substance_identifiers()
-    {
-        $substance_model = new Substances();
-        $unichem = new UniChem();
-
-        if(!$unichem->is_connected())
-        {
-            echo "Cannot connect to Unichem server.\n";
-            return;
-        }
-
-        $substances = $substance_model->where(
-            array
-            (
-                'pubchem IS NULL',
-                'drugbank IS NULL',
-                'chEMBL IS NULL',
-                'pdb IS NULL',
-                'chEBI IS NULL',
-            ))
-            ->get_all();
-
-        if(count($substances))
-        {
-            echo "Processing " . count($substances) . " substances.\n";
-        }
-
-        foreach($substances as $s)
-        {
-            try
-            {
-                $ignore_dupl_ids = $s->get_non_duplicities();
-
-                // Find identifiers by inchikey in unichem
-                if($s->inchikey)
-                {
-                    // Get identifiers by Unichem service
-                    $identifiers = $unichem->get_identifiers($s->inchikey);
-
-                    if($identifiers)
-                    {
-                        $filled = false;
-
-                        // Check duplicities
-                        if($pubchem = $s->pubchem ? $s->pubchem : Upload_validator::get_attr_val(Upload_validator::PUBCHEM, $identifiers->pubchem))
-                        {
-                            $filled = $pubchem !== $s->pubchem ? true : $filled;
-
-                            // Add info about new found identifier
-                            if($pubchem !== $s->pubchem)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found pubchem_id = ' . $pubchem . ' on remote server.');
-
-                                if(self::check_identifiers_waiting_state($identifiers, $s))
-                                {
-                                    $s->validated = Validator::IDENTIFIERS_FILLED;
-                                    $s->waiting = 1;
-                                    $s->pubchem = $pubchem;
-                                    $s->save();
-                                    throw new Exception("Found pubchem_id on unichem. Waiting for validation.");
-                                }
-                            }
-                            else if($s->pubchem && $identifiers->pubchem && $s->pubchem !== $identifiers->pubchem)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found different pubchem_id = ' . $identifiers->pubchem . ' [saved = ' . $s->pubchem . '] on remote server.');
-                            }
-
-                            $exists = $substance_model->where(array
-                                (
-                                'pubchem' => $pubchem,
-                                'id !=' => $s->id
-                                ))
-                                ->in('id NOT', $ignore_dupl_ids)
-                                ->get_one();
-
-                            if($exists->id)
-                            {
-                                $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pubchem_id = $pubchem.";
-                                $s->add_duplicity($exists->id, $err_text);
-
-                                throw new Exception($err_text);
-                            }
-                        }
-                        if($drugbank = $s->drugbank ? $s->drugbank : Upload_validator::get_attr_val(Upload_validator::DRUGBANK, $identifiers->drugbank))
-                        {
-                            $filled = $drugbank !== $s->drugbank ? true : $filled;
-
-                            // Add info about new found identifier
-                            if($drugbank !== $s->drugbank)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found drugbank_id = ' . $drugbank . ' on remote server.');
-
-                                if(self::check_identifiers_waiting_state($identifiers, $s))
-                                {
-                                    $s->validated = Validator::IDENTIFIERS_FILLED;
-                                    $s->waiting = 1;
-                                    $s->drugbank = $drugbank;
-                                    $s->save();
-                                    throw new Exception("Found drugbank_id on unichem. Waiting for validation.");
-                                }
-                            }
-                            else if($s->drugbank && $identifiers->drugbank && $s->drugbank !== $identifiers->drugbank)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found different drugbank_id = ' . $identifiers->drugbank . ' [saved = ' . $s->drugbank . '] on remote server.');
-                            }
-
-                            $exists = $substance_model->where(array
-                                (
-                                'drugbank' => $drugbank,
-                                'id !=' => $s->id
-                                ))
-                                ->in('id NOT', $ignore_dupl_ids)
-                                ->get_one();
-
-                            if($exists->id)
-                            {
-                                $err_text = "Found possible duplicity. Found [$exists->identifier] with the same drugbank_id = $drugbank.";
-                                $s->add_duplicity($exists->id, $err_text);
-
-                                throw new Exception($err_text);
-                            }
-                        }
-                        if($chebi = $s->chEBI ? $s->chEBI : Upload_validator::get_attr_val(Upload_validator::CHEBI_ID, $identifiers->chebi))
-                        {
-                            $filled = $chebi !== $s->chEBI ? true : $filled;
-
-                            // Add info about new found identifier
-                            if($chebi !== $s->chEBI)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found chebi = ' . $chebi . ' on remote server.');
-
-                                if(self::check_identifiers_waiting_state($identifiers, $s))
-                                {
-                                    $s->validated = Validator::IDENTIFIERS_FILLED;
-                                    $s->waiting = 1;
-                                    $s->chEBI = $chebi;
-                                    $s->save();
-                                    throw new Exception("Found chebi_id on unichem. Waiting for validation.");
-                                }
-                            }
-                            else if($s->chEBI && $identifiers->chebi && $s->chEBI !== $identifiers->chebi)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found different chebi_id = ' . $identifiers->chebi . ' [saved = ' . $s->chEBI . '] on remote server.');
-                            }
-
-                            $exists = $substance_model->where(array
-                                (
-                                'chEBI' => $chebi,
-                                'id !=' => $s->id
-                                ))
-                                ->in('id NOT', $ignore_dupl_ids)
-                                ->get_one();
-
-                            if($exists->id)
-                            {
-                                $err_text = "Found possible duplicity. Found [$exists->identifier] with the same chebi_id = $chebi.";
-                                $s->add_duplicity($exists->id, $err_text);
-
-                                throw new Exception($err_text);
-                            }
-                        }
-                        if($chembl = $s->chEMBL ? $s->chEMBL : Upload_validator::get_attr_val(Upload_validator::CHEMBL_ID, $identifiers->chembl))
-                        {
-                            $filled = $chembl !== $s->chEMBL ? true : $filled;
-
-                            // Add info about new found identifier
-                            if($chembl !== $s->chEMBL)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found chembl_id = ' . $chembl . ' on remote server.');
-
-                                if(self::check_identifiers_waiting_state($identifiers, $s))
-                                {
-                                    $s->validated = Validator::IDENTIFIERS_FILLED;
-                                    $s->waiting = 1;
-                                    $s->chEMBL = $chembl;
-                                    $s->save();
-                                    throw new Exception("Found chembl_id on unichem. Waiting for validation.");
-                                }
-                            }
-                            else if($s->chEMBL && $identifiers->chembl && $s->chEMBL !== $identifiers->chembl)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found different chembl_id = ' . $identifiers->chembl . ' [saved = ' . $s->chEMBL . '] on remote server.');
-                            }
-
-                            $exists = $substance_model->where(array
-                                (
-                                'chEMBL' => $chembl,
-                                'id !=' => $s->id
-                                ))
-                                ->in('id NOT', $ignore_dupl_ids)
-                                ->get_one();
-
-                            if($exists->id)
-                            {
-                                $err_text = "Found possible duplicity. Found [$exists->identifier] with the same chembl_id = $chembl.";
-                                $s->add_duplicity($exists->id, $err_text);
-
-                                throw new Exception($err_text);
-                            }
-                        }
-                        if($pdb = $s->pdb ? $s->pdb : Upload_validator::get_attr_val(Upload_validator::PDB, $identifiers->pdb))
-                        {
-                            $filled = $pdb !== $s->pdb ? true : $filled;
-
-                            // Add info about new found identifier
-                            if($pdb !== $s->pdb)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found pdb_id = ' . $pdb . ' on remote server.');
-
-                                if(self::check_identifiers_waiting_state($identifiers, $s))
-                                {
-                                    $s->validated = Validator::IDENTIFIERS_FILLED;
-                                    $s->waiting = 1;
-                                    $s->pdb = $pdb;
-                                    $s->save();
-                                    throw new Exception("Found pdb_id on unichem. Waiting for validation.");
-                                }
-                            }
-                            else if($s->pdb && $identifiers->pdb && $s->pdb !== $identifiers->pdb)
-                            {
-                                $error_record = new Scheduler_errors();
-                                $error_record->add($s->id, 'Found different pdb_id = ' . $identifiers->pdb . ' [saved = ' . $s->pdb . '] on remote server.');
-                            }
-
-                            $exists = $substance_model->where(array
-                                (
-                                'pdb' => $pdb,
-                                'id !=' => $s->id
-                                ))
-                                ->in('id NOT', $ignore_dupl_ids)
-                                ->get_one();
-
-                            if($exists->id)
-                            {
-                                $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pdb_id = $pdb.";
-                                $s->add_duplicity($exists->id, $err_text);
-
-                                throw new Exception($err_text);
-                            }
-                        }
-
-                        $s->pubchem = $s->pubchem ? $s->pubchem : $identifiers->pubchem;
-                        $s->drugbank = $s->drugbank ? $s->drugbank : $identifiers->drugbank;
-                        $s->chEBI = $s->chEBI ? $s->chEBI : $identifiers->chebi;
-                        $s->chEMBL = $s->chEMBL ? $s->chEMBL : $identifiers->chembl;
-                        $s->pdb = $s->pdb ? $s->pdb : $identifiers->pdb;
-                        $s->prev_validation_state = $s->validated;
-                        $s->validated = Validator::IDENTIFIERS_FILLED;
-
-                        $s->save();
-                    }
-                    else if(!$s->pubchem && !$s->chEMBL)
-                    {
-                        $text = "Cannot find identifiers. ";
-                        $s->save();
-
-                        throw new Exception($text);
-                    }
-                }
-                else
-                {
-                    $s->prev_validation_state = $s->validated;
-                    $s->save();
-
-                    throw new Exception("Invalid inchikey. Cannot find identifiers.");
-                }
-            }
-            catch(Exception $e)
-            {
-                $error_record = new Scheduler_errors();
-                $error_record->add($s->id, $e->getMessage());
-            }
-        }
-    }
-
-
-    /**
-     * Auto validator
-     * 
-     * @author Jakub Juracka
-     */
-    private function auto_validation()
-    {
-        // Get info about last run
-        $is_running = Config::get('scheduler_autovalidation_running'); // Co kdyby to spadlo?
-        $last_substance_id = Config::get('scheduler_autovalidation_last_id');
-        $last_substance_id = is_numeric($last_substance_id) ? $last_substance_id : 1;
-
-        if($is_running)
-        {
-            return;
-        }
-
-        $substance_model = new Substances();
-        $rdkit = new Rdkit();
-        $fileModel = new File();
-        $unichem = new UniChem();
-        $pubchem_model = new Pubchem();
-
-        $pch_membrane = $pubchem_model->get_logP_membrane();
-        $pch_method = $pubchem_model->get_logP_method();
-        $pch_dataset = $pubchem_model->get_dataset();
-        $pch_publication = $pubchem_model->get_publication();
-
-        if(!$pch_membrane || !$pch_membrane->id || !$pch_method || !$pch_method->id ||
-            !$pch_dataset || !$pch_dataset->id || !$pch_publication || !$pch_publication->id)
-        {
-            // Add log
-            echo "Cannot find pubchem dataset default values.";
-        }
-
-        // Global scheduler log
-        $scheduler_log = new Log_scheduler();
-
-        $substances = $substance_model->where(array
-            (
-                'id >' => $last_substance_id
-            ))
-            ->limit(1000)
-            ->get_all();
-
-        // Hold report with errors
-        $report = new Scheduler_report(Scheduler_report::T_SUBSTANCE);
-
-        foreach($substances as $s)
-        {
-            $s = new Substances($s->id);
-            try
-            {
-                // Check, if molecule has filled DB identifier
-                if(!$s->identifier)
-                {
-                    $s->identifier = Identifiers::generate_substance_identifier($s->id);
-                    $s->save();
-                }
-
-                $identifiers = Identifiers::check_name_for_identifiers($s->name);
-
-                // If found
-                if(count($identifiers) == 1)
-                {
-                    // Save info about found identifier
-                    if(isset($identifiers['chembl']))
-                    {
-                        $s->chEMBL = $s->name;
-                        $s->name = $s->identifier;
-                        $s->save();
-                    }
-                    elseif(isset($identifiers['drugbank']))
-                    {
-
-                        $s->drugbank = $s->name;
-                        $s->name = $s->identifier;
-                        $s->save();
-                    }
-                }
-                elseif(count($identifiers) > 1)
-                {
-                    // Fatal error
-                    throw new Exception('Name contains more than one identifier.');
-                }
-            }
-            catch(Exception $e)
-            {
-
-            }
-        }
-    }
-
-
-   ######### Substances->find_3d_structure()
-    // /**
-    //  * Tries to find 3D structure for given substance
-    //  * 
-    //  * @param Substances $substance
-    //  * 
-    //  * @return string
-    //  */
-    // public function find_3d_structure($substance)
-    // {
-    //     $pdb = new PDB();
-    //     $drugbank = new Drugbank();
-    //     $rdkit = new Rdkit();
-    //     $pubchem = new Pubchem();
-    //     $report = new Scheduler_errors();
-
-    //     // Persist priority!
-    //     $sources = array
-    //     (
-    //         'pubchem' => $pubchem,
-    //         'drugbank' => $drugbank,
-    //         'rdkit' => $rdkit,
-    //         'pdb' => $pdb,
-    //     );
-
-    //     $structure = NULL;
-
-    //     foreach($sources as $type => $source)
-    //     {
-    //         if(!$source->is_connected())
-    //         {
-    //             continue;
-    //         }
-
-    //         $structure = $source->get_3d_structure($substance);
-
-    //         if($structure)
-    //         {
-    //             $report->add($substance->id, 'Found 3D structure on ' . $type . ' server.');
-    //             break;
-    //         }
-    //     }
-
-    //     return $structure;
-    // }
-
-    /**
      * Sends emails to the admins
      * 
      * @param string $message
@@ -2308,235 +1888,79 @@ class SchedulerController extends Controller
     }
 
 
-    // /**
-    //  * Fills logPs for given substance
-    //  * 
-    //  * @param Substances $s
-    //  */
-    // private function fill_logP($s)
-    // {
-    //     $interaction_model = new Interactions();
-    //     $log = new Scheduler_errors();
+    /**
+     * Fills logPs for given substance
+     * 
+     * @param Substances $s
+     */
+    private function fill_logP($s)
+    {
+        $interaction_model = new Interactions();
+        $log = new Scheduler_errors();
 
-    //     // Try to find LogPs in another DBs
-    //     if($s->pubchem)
-    //     {
-    //         $pubchem = new Pubchem();
+        // Try to find LogPs in another DBs
+        if($s->pubchem)
+        {
+            $pubchem = new Pubchem();
 
-    //         if($pubchem->is_connected())
-    //         {
-    //             $data = $pubchem->get_data($s->pubchem);
+            if($pubchem->is_connected())
+            {
+                $data = $pubchem->get_data($s->pubchem);
 
-    //             if($data && $data->logP && $data->logP != '')
-    //             {
-    //                 $membrane = $pubchem->get_logP_membrane();
-    //                 $method = $pubchem->get_logP_method();
-    //                 $dataset = $pubchem->get_dataset();
-    //                 $publication = $pubchem->get_publication();
+                if($data && $data->logP && $data->logP != '')
+                {
+                    $membrane = $pubchem->get_logP_membrane();
+                    $method = $pubchem->get_logP_method();
+                    $dataset = $pubchem->get_dataset();
+                    $publication = $pubchem->get_publication();
 
-    //                 if(!$membrane || !$membrane->id || !$method || !$method->id ||
-    //                     !$dataset || !$dataset->id || !$publication || !$publication->id)
-    //                 {
-    //                     $s->prev_validation_state = $s->validated;
-    //                     $s->save();
-    //                     throw new Exception('Cannot fill Pubchem LogP. Pubchem default membrane/method/dataset/publication was not found!');
-    //                 }
+                    if(!$membrane || !$membrane->id || !$method || !$method->id ||
+                        !$dataset || !$dataset->id || !$publication || !$publication->id)
+                    {
+                        $s->save();
+                        throw new Exception('Cannot fill Pubchem LogP. Pubchem default membrane/method/dataset/publication was not found!');
+                    }
 
-    //                 // Exists yet in DB?
-    //                 $exists = $interaction_model->where(
-    //                     array
-    //                     (
-    //                         'id_substance'  => $s->id,
-    //                         'id_membrane'   => $membrane->id,
-    //                         'id_method'     => $method->id,
-    //                         'id_reference'  => $publication->id,
-    //                         'id_dataset'    => $dataset->id
-    //                     ))
-    //                     ->get_one();
+                    // Exists yet in DB?
+                    $exists = $interaction_model->where(
+                        array
+                        (
+                            'id_substance'  => $s->id,
+                            'id_membrane'   => $membrane->id,
+                            'id_method'     => $method->id,
+                            'id_reference'  => $publication->id,
+                            'id_dataset'    => $dataset->id
+                        ))
+                        ->get_one();
 
-    //                 if($exists->id)
-    //                 {
-    //                     $exists->LogK = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->logP);
-    //                     $exists->save();
-    //                 }
-    //                 else
-    //                 {
-    //                     $interaction = new Interactions();
+                    if($exists->id)
+                    {
+                        $exists->LogK = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->logP);
+                        $exists->save();
+                    }
+                    else
+                    {
+                        $interaction = new Interactions();
 
-    //                     $interaction->id_substance = $s->id;
-    //                     $interaction->id_membrane = $membrane->id;
-    //                     $interaction->id_method = $method->id;
-    //                     $interaction->id_dataset = $dataset->id;
-    //                     $interaction->id_reference = $publication->id;
-    //                     $interaction->LogK = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->logP);
-    //                     $interaction->temperature = NULL;
-    //                     $interaction->charge = NULL;
-    //                     $interaction->user_id = NULL;
-    //                     // $interaction->validated = Validator::VALIDATED;
-    //                     $interaction->visibility = Interactions::VISIBLE;
+                        $interaction->id_substance = $s->id;
+                        $interaction->id_membrane = $membrane->id;
+                        $interaction->id_method = $method->id;
+                        $interaction->id_dataset = $dataset->id;
+                        $interaction->id_reference = $publication->id;
+                        $interaction->LogK = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->logP);
+                        $interaction->temperature = NULL;
+                        $interaction->charge = NULL;
+                        $interaction->user_id = NULL;
+                        $interaction->visibility = Interactions::VISIBLE;
 
-    //                     $interaction->save();
+                        $interaction->save();
 
-    //                     $log->add($s->id, 'Filled Pubchem_LogP value.');
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     if($s->chEMBL && FALSE) // Temporary not required
-    //     {
-    //         $chembl = new Chembl();
+                        $log->add($s->id, 'Filled Pubchem_LogP value.');
+                    }
+                }
+            }
+        }
 
-    //         if($chembl->is_connected())
-    //         {
-    //             $data = $chembl->get_molecule_data($s->chEMBL);
-
-    //             if($data && $data->LogP && $data->LogP != '')
-    //             {
-    //                 $membrane = $chembl->get_logP_membrane();
-    //                 $method = $chembl->get_logP_method();
-    //                 $dataset = $chembl->get_dataset();
-    //                 $publication = $chembl->get_publication();
-
-    //                 if(!$membrane || !$membrane->id || !$method || !$method->id ||
-    //                     !$dataset || !$dataset->id || !$publication || !$publication->id)
-    //                 {
-    //                     $s->prev_validation_state = $s->validated;
-    //                     $s->save();
-    //                     throw new Exception('Cannot fill LogP. ChEMBL default membrane/method/dataset/publication was not found!');
-    //                 }
-
-    //                 // Exists yet in DB?
-    //                 $exists = $interaction_model->where(
-    //                     array
-    //                     (
-    //                         'id_substance'  => $s->id,
-    //                         'id_membrane'   => $membrane->id,
-    //                         'id_method'     => $method->id,
-    //                         'id_reference'  => $publication->id,
-    //                         'id_dataset'    => $dataset->id
-    //                     ))
-    //                     ->get_one();
-
-    //                 if($exists->id)
-    //                 {
-    //                     $exists->LogK = $data->LogP;
-    //                     $exists->save();
-    //                 }
-    //                 else
-    //                 {
-    //                     $interaction = new Interactions();
-
-    //                     $interaction->id_substance = $s->id;
-    //                     $interaction->id_membrane = $membrane->id;
-    //                     $interaction->id_method = $method->id;
-    //                     $interaction->id_dataset = $dataset->id;
-    //                     $interaction->id_reference = $publication->id;
-    //                     $interaction->LogK = $data->LogP;
-    //                     $interaction->temperature = NULL;
-    //                     $interaction->charge = NULL;
-    //                     $interaction->user_id = NULL;
-    //                     // $interaction->validated = Validator::VALIDATED;
-    //                     $interaction->visibility = Interactions::VISIBLE;
-
-    //                     $interaction->save();
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     $s->save();
-    // }
-
-
-    // /**
-    //  * Finds smiles in another DBs for given substance IDs
-    //  * 
-    //  * @param Substances $substance
-    //  * 
-    //  * @return string
-    //  */
-    // private function find_smiles($substance, $ignore = array())
-    // {
-    //     $pubchem = new Pubchem();
-    //     $chembl = new Chembl();
-    //     $substance_model = new Substances();
-    //     $log = new Scheduler_errors();
-
-    //     if(!$pubchem->is_connected() && !$chembl->is_connected())
-    //     {
-    //         throw new Exception('Cannot connect to the remote servers.');
-    //     }
-
-    //     // If missing identifiers, try to find by name on remote servers
-    //     if(!$substance->pubchem && $pubchem->is_connected())
-    //     {
-    //         $remote_data = NULL;
-
-    //         if($substance->inchikey)
-    //         {
-    //             $remote_data = $pubchem->search($substance->inchikey, Pubchem::INCHIKEY);
-    //         }
-
-    //         if(!$remote_data && !Identifiers::is_valid($substance->name))
-    //         {
-    //             $remote_data = $pubchem->search($substance->name, Pubchem::NAME);
-    //         }
-
-    //         if($remote_data && $remote_data->pubchem_id)
-    //         {
-    //             $log->add($substance->id, 'Found pubchem_id = ' . $remote_data->pubchem_id . ' on remote server by inchikey/name.');
-
-    //             $exists = $substance_model->where(array
-    //                 (
-    //                 'pubchem' => $remote_data->pubchem_id,
-    //                 'id !=' => $substance->id
-    //                 ))
-    //                 ->in('id NOT', $ignore)
-    //                 ->get_one();
-
-    //             $substance->pubchem = $remote_data->pubchem_id;
-    //             $substance->waiting = 1;
-    //             $substance->save();
-
-    //             if($exists->id)
-    //             {
-    //                 $err_text = "Found possible duplicity. Found [$exists->identifier] with the same pubchem_id = $remote_data->pubchem_id.";
-    //                 $substance->add_duplicity($exists->id, $err_text);
-
-    //                 throw new Exception($err_text);
-    //             }
-
-    //             throw new Exception("Added pubchem_id. Waiting for validation.");
-    //         }
-    //     }
-
-    //     // try to find on pubchem
-    //     if($pubchem->is_connected() && $substance->pubchem)
-    //     {
-    //         $data = $pubchem->get_data($substance->pubchem);
-
-    //         if($data->SMILES && $data->SMILES !== '')
-    //         {
-    //             $log->add($substance->id, 'Found SMILES = ' . $data->SMILES . ' on pubchem server.');
-    //             return $data->SMILES;
-    //         }
-    //     }
-
-    //     // try to find on chembl
-    //     if($chembl->is_connected() && $substance->chEMBL)
-    //     {
-    //         $data = $chembl->get_molecule_data($substance->chEMBL);
-            
-    //         if($data && $data->SMILES && $data->SMILES !== '')
-    //         {
-    //             $log->add($substance->id, 'Found SMILES = ' . $data->SMILES . ' on chembl server.');
-    //             return $data->SMILES;
-    //         }
-    //     }
-
-    //     $substance->prev_validation_state = $substance->validated;
-    //     $substance->save();
-
-    //     throw new Exception("Cannot find SMILES.");
-    // }
+        $s->save();
+    }
 }

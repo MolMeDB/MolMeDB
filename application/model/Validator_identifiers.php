@@ -131,8 +131,8 @@ class Validator_identifiers extends Db
     (
         self::ID_NAME => array
         (
+            self::SERVER_PDB,
             self::SERVER_PUBCHEM,
-            self::SERVER_PDB
         ),
         self::ID_SMILES => array
         (

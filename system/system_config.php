@@ -188,6 +188,11 @@ class System_config
             $class = str_replace('Api', '', $class);
             require(APP_ROOT . "controller/Api/" . $class . ".php");
         }
+        else if (preg_match('/^Mol_/', $class))
+        {
+            $class = ucfirst(str_replace('Mol_', '', $class));
+            require(APP_ROOT . "libraries/Mol/" . $class . ".php");
+        }
         else if (file_exists( APP_ROOT . "model/" . $class . ".php"))
         {
             require( APP_ROOT . "model/" . $class . ".php");
@@ -196,6 +201,10 @@ class System_config
         else if (file_exists(APP_ROOT . "helpers/" . $class . ".php"))
         {
             require( APP_ROOT . "helpers/" . $class . ".php");
+        }
+        else if (file_exists(APP_ROOT . "helpers/" . strtolower($class) . ".php"))
+        {
+            require( APP_ROOT . "helpers/" . strtolower($class) . ".php");
         }
         // Libraries
         else if (file_exists(APP_ROOT . "libraries/" . $class . ".php"))

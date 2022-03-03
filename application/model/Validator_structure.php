@@ -27,7 +27,7 @@ class Validator_structure extends Db
         Validator_identifiers::SERVER_PUBCHEM,
         Validator_identifiers::SERVER_RDKIT,
         Validator_identifiers::SERVER_PDB,
-        Validator_identifiers::SERVER_DRUGBANK,
+        // Validator_identifiers::SERVER_DRUGBANK,
     );
 
     /**

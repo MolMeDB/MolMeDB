@@ -75,4 +75,14 @@ class Url
 	{
         return server::http_host();
 	}
+
+    /**
+     * Returns url for generating 2d structure
+     * 
+     * @return string
+     */
+    public static function get_2d_structure_source($smiles)
+    {
+        return "https://molmedb.upol.cz/depict/cow/svg?smi=" . urlencode($smiles);
+    }
 }

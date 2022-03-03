@@ -8,6 +8,7 @@
  * @property string $name
  * @property string $uploadName
  * @property string $SMILES
+ * @property string $fingerprint
  * @property string $inchikey
  * @property float $MW
  * @property float $Area
@@ -35,7 +36,6 @@ class Substances extends Db
         parent::__construct($id);
     }    
 
-
     /**
      * Returns all molecule fragments
      * 
@@ -44,6 +44,135 @@ class Substances extends Db
     public function get_all_fragments()
     {
         return Substances_fragments::instance()->get_all_substance_fragments($this->id);
+    }
+
+    /**
+     * Returns similar molecules
+     * 
+     * @param int|null $id
+     * 
+     * @return Iterable_object[]|false - False if error
+     */
+    public function get_similar_entries($id = null, $similarity_limit = 0.2)
+    {
+        if(!$id && !$this->id)
+        {
+            return false;
+        }
+
+        if(!$id)
+        {
+            $id = $this->id;
+        }
+        
+        $db_limit = 0.6;
+
+        $substance = new Substances($id);
+
+        $temp = $substance->queryOne('
+            SELECT GROUP_CONCAT(DISTINCT id_fragment) as ids
+            FROM 
+                (SELECT DISTINCT 1 as id, id_fragment
+                    FROM substances_fragments
+                    WHERE id_substance = ? AND similarity > ?
+                
+                UNION 
+                
+                SELECT DISTINCT 1 as id, fo.id_parent
+                                FROM `substances_fragments` sf
+                                JOIN fragments_options fo ON fo.id_child = sf.id_fragment
+                                WHERE sf.id_substance = ? AND sf.similarity > ?
+                
+                UNION
+                
+                SELECT DISTINCT 1 as id, fo.id_child
+                                FROM `substances_fragments` sf
+                                JOIN fragments_options fo ON fo.id_parent = sf.id_fragment
+                                WHERE sf.id_substance = ? AND sf.similarity > ?) as t
+            GROUP BY id
+        ', array($substance->id, $db_limit, $substance->id, $db_limit, $substance->id, $db_limit));
+
+        if(!$temp->ids)
+        {
+            return [];
+        }
+
+        $t = $temp->ids;
+        $temp = $substance->queryOne("
+            SELECT GROUP_CONCAT(DISTINCT id_fragment) as ids
+            FROM
+                (SELECT DISTINCT 1 as id, id_parent as id_fragment
+                FROM fragments_options
+                WHERE id_child IN (" . $temp->ids . ")
+                UNION 
+                SELECT DISTINCT 1 as id, id_child as id_fragment
+                FROM fragments_options
+                WHERE id_parent IN (" . $temp->ids . ")
+                ) as t
+            GROUP BY id
+        ");
+
+        $t = $t . ',' . $temp->ids;
+        $t = preg_replace('/\,+$/', '', $t);
+
+        if(!$t)
+        {
+            return [];
+        }
+
+        $rows = $substance->queryAll("
+            SELECT DISTINCT id, id_fragment, id_substance, similarity
+            FROM substances_fragments sf
+            WHERE id_fragment IN 
+                (" . $t . ")
+              AND similarity > ? AND id_substance != ?
+            ORDER BY similarity DESC, id_substance ASC
+        ", array($db_limit, $substance->id));
+
+        $options = $similarities = [];
+
+        foreach($rows as $row)
+        {
+            if(isset($options[$row->id_substance]))
+            {
+                continue;
+            }
+
+            $t = new Fragments($row->id_fragment);
+            $sub = new Substances($row->id_substance);
+
+            if(!$t->id || !$sub->id)
+            {
+                continue;
+            }
+
+            $sim = Mol_similarity::compute($substance, $sub);
+
+            if($sim < $similarity_limit)
+            {
+                continue;
+            }
+
+            $similarities[$row->id_substance] = $sim;
+
+            $options[$row->id_substance] = (object)array
+            (
+                'fragment' => $t,
+                'substance' => $sub,
+                'similarity' => $sim,
+                'all_similarities'  => array
+                (
+                    Mol_similarity::TANIMOTO => Mol_similarity::compute($substance, $sub, Mol_similarity::TANIMOTO),
+                    Mol_similarity::COSINE => Mol_similarity::compute($substance, $sub, Mol_similarity::COSINE),
+                    Mol_similarity::DICE => Mol_similarity::compute($substance, $sub, Mol_similarity::DICE),
+                ),
+            );
+        }
+
+        // Order by similarities
+        array_multisort($similarities, SORT_DESC, $options);
+
+        return $options;
     }
 
     /**

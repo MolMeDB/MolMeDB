@@ -217,7 +217,6 @@ class SettingController extends Controller
             Configs::S_UPDATE_STATS,
             Configs::S_CHECK_PUBLICATIONS,
             Configs::S_CHECK_MEMBRANES_METHODS,
-            Configs::S_CHECK_REVALIDATE_3D_STRUCTURES
         );
 
         $forge = new Forge('Settings');
@@ -297,16 +296,6 @@ class SettingController extends Controller
         $forge->add(Configs::S_CHECK_MEMBRANES_METHODS_TIME)
             ->title('Runtime')
             ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME));
-
-        $forge->add(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES)
-            ->title('Revalidate 3D structures')
-            ->type('checkbox')
-            ->value(1)
-            ->checked($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES));
-
-        $forge->add(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID)
-            ->title('Starting ID for the next validation')
-            ->value($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID));
 
         $forge->submit('Save');
 

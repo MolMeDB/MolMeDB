@@ -13,6 +13,8 @@ class MolController extends Controller
         parent::__construct();
     }
 
+    const VISIBLE_BY_PAGE = 3;
+
     /**
      * Shows substance detail
      * 
@@ -24,7 +26,6 @@ class MolController extends Controller
     {
         $energyModel = new Energy();
         $methodModel = new Methods();
-        $membraneModel = new Membranes();
         $substanceModel = new Substances();
         $transporterModel = new Transporters();
         $transporter_dataset_model = new Transporter_datasets();
@@ -51,29 +52,13 @@ class MolController extends Controller
             }
 
             // Get all membranes/methods
-            $membranes = $membraneModel->get_all();
-            $methods = $methodModel->get_all();
             $methods_cat = $methodModel->get_structured_for_substance($substance->id, true);
 
-            // Get all transporters
-            $visible_datasets = $transporter_dataset_model
-                ->where('visibility', Datasets::VISIBLE)
-                ->select_list('id')
-                ->get_all();
+            // Get available energy data
+            $energy_membranes_methods = $substance->get_available_energy();
 
-            $dataset_ids = array();
-
-            foreach($visible_datasets as $d)
-            {
-                $dataset_ids[] = $d->id;
-            }
-
-            $transporters = $transporterModel->where(array
-                (
-                    'id_substance' => $substance->id,
-                ))
-                ->in('id_dataset', $dataset_ids)
-                ->get_all();
+            // Load transporters table
+            $transporters_html = self::get_active_interaction_table($substance->id);
 
             $identifiers = $substance->get_active_identifiers();
 
@@ -81,7 +66,7 @@ class MolController extends Controller
 
             // Show max 10 records
             $total_similar_entries = count($similar_entries);
-            $similar_entries = array_slice($similar_entries, 0,3,TRUE);
+            $similar_entries = array_slice($similar_entries, 0, self::VISIBLE_BY_PAGE,TRUE);
 
             // Add stats info
             foreach($similar_entries as $key => $row)
@@ -144,6 +129,7 @@ class MolController extends Controller
         $this->title = $substance->name;
 
         $this->view = new View('detail');
+
         // Substance detail
         $this->view->substance = $substance;
         $this->view->identifiers = $identifiers;
@@ -153,7 +139,10 @@ class MolController extends Controller
 
         // Similar entries
         $this->view->similar_entries = $similar_entries;
-        $this->view->similar_entries_load_all = count($similar_entries) !== $total_similar_entries;
+        $this->view->total_similar_entries = $total_similar_entries;
+
+        // Energy data
+        $this->view->energy = $energy_membranes_methods;
 
         //
         $this->view->stats_interactions = (object)array
@@ -163,14 +152,114 @@ class MolController extends Controller
         );
         
         // Membranes and methods
-        $this->view->membranes = $membranes;
-        $this->view->methods = $methods;
         $this->view->methods_cat = $methods_cat;
 
         // Transporters
-        $this->view->transporters = $transporters;
+        $this->view->transporters_html = $transporters_html;
         
         // Energy data
         $this->view->availableEnergy = $energyModel->get_available_by_substance($substance->id);
+    }
+
+    /**
+     * Loads html of transporter table for given substance
+     * 
+     * @param int $id
+     * 
+     * @return string
+     * 
+     * @throws Exception
+     */
+    private static function get_active_interaction_table($id)
+    {
+        $s = new Substances($id);
+
+        if(!$s->id)
+        {
+            throw new Exception('Invalid substance id.');
+        }
+
+        $transporters = Transporters::instance()->queryAll('
+            SELECT t.*
+            FROM transporters t
+            JOIN transporter_datasets td ON td.id = t.id_dataset
+            WHERE td.visibility = ? AND t.id_substance = ?
+        ', array(Transporter_datasets::VISIBLE, $s->id));
+
+        $dataset = [];
+
+        foreach($transporters as $t)
+        {
+            $dataset[] = new Transporters($t->id);
+        }
+
+        // Make table
+        $table = new Table(array
+        (
+            // Table::S_PAGINATIOR_POSITION => 'left',
+            Table::S_SHOW_PAGINATION => false,
+            Table::FILTER_HIDE_COLUMNS => true
+        ));
+
+        $table->column('target.name')
+            ->sortable()
+            ->numeric()
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->title('Target');
+
+        $table->column('target.uniprot_id')
+            ->sortable()
+            ->numeric()
+            ->link('https://www.uniprot.org/uniprot/', 'target.uniprot_id', true)
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->title('Uniprot ID');
+
+        $table->column('type')
+            ->sortable()
+            ->numeric()
+            ->callback('Callback::transporter_type')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->title('Type');
+
+        $table->column('Km')
+            ->numeric()
+            ->title('pKm', 'Negative logarithm of Michaelis constant');
+
+        $table->column('EC50')
+            ->numeric()
+            ->title('pEC<sub>50</sub>', 'Negative logarithm of effective concentration');
+
+        $table->column('Ki')
+            ->numeric()
+            ->title('pK<sub>i</sub>', 'Negative logarithm of inhibition constant');
+
+        $table->column('IC50')
+            ->numeric()
+            ->title('pIC<sub>50</sub>', 'Negative logarithm of inhibition concentration');
+
+        $table->column('reference.citation')
+            ->long_text()
+            ->title('Primary<br/> reference', "Original source");
+
+        $table->column('dataset.reference.citation')
+            ->long_text()
+            ->title('Secondary<br/> reference', "Source of input into databse if different from original");
+
+        $table->column('note')
+            ->long_text()
+            ->title('Note');
+
+        $table->datasource($dataset);
+
+        return $table->html();
     }
 }

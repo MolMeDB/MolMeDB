@@ -21,22 +21,17 @@
  */
 class ApiController extends Controller 
 {
-
-    protected $accept_type_methods = array
-    (
-        HeaderParser::JSON  => 'json_response',
-        HeaderParser::CSV   => 'csv_response',
-    );
-
-
     /** Class variables */
     protected $user;
     protected $request_method;
     protected $parsed_request;
     protected $api_endpoint;
+    private $encoded_response;
 
-    private $response;
     private $headers = [];
+
+    /** Holds different return type data */
+    public $responses = [];
 
     /**
      * Main constructor
@@ -58,33 +53,47 @@ class ApiController extends Controller
             $this->api_endpoint = new ApiEndpoint($this->parsed_request);
 
             //Calling parsed endpoint and its params
-            $this->response = $this->api_endpoint->call();
-            
+            $res = $this->api_endpoint->call();
+
+            if($res)
+            {
+                $this->responses = ['default' => $res];
+            }
+            else
+            {
+                $this->responses = $this->api_endpoint->responses();
+            }
+
             //No content was found
-            if(!$this->response)
+            if(empty($this->responses))
             {
                 ResponseBuilder::ok_no_content();
             }
 
             $this->create_response();
+
+            if($this->encoded_response === null)
+            {
+                ResponseBuilder::ok_no_content();
+            }
         }
         catch(ApiException $ex)
         {
             ResponseBuilder::server_error($ex->getMessage());
         }
-        catch(Exception $ex)
+        catch(Exception $ex) // TODO LOG
         {
             ResponseBuilder::server_error($ex->getMessage());
         }
              
-        ResponseBuilder::ok($this->response, $this->headers);
+        ResponseBuilder::ok($this->encoded_response, $this->headers);
     }
     
 
     /**
     * Method for creating HTTP response  
     * 
-    * @author Jaromír Hradil
+    * @author Jakub Juracka
     *
     * @throws ApiException 
     */
@@ -92,131 +101,65 @@ class ApiController extends Controller
     {
         foreach ($this->parsed_request->accept_type as $at_item) 
         {
-            if(array_key_exists($at_item, $this->accept_type_methods))
+            if(array_key_exists($at_item, HeaderParser::$accept_type_method))
             {
-                $response_method = $this->accept_type_methods[$at_item];
-                $response_encoded = self::$response_method($this->response);
-
-                if($response_encoded !== false)
+                try
                 {
-                    $this->response = $response_encoded;
-                    $this->headers[] = 'Content-Type: '.$at_item;
-                    return;
-                }
-            }
-        }
-        throw new ApiException("Cannot encode output to the required format. Please, try to expand your Accept-Type options.");
-    }
+                    $to_encode = isset($this->responses[$at_item]) ? $this->responses[$at_item] : (isset($this->responses['default']) ? $this->responses['default'] : null);
 
-    /**
-    * Method for creating JSON output
-    * 
-    * @author Jaromír Hradil
-    * 
-    * @return bool
-    */
-    public static function json_response($response)
-    {
-        if($response instanceof Iterable_object)
-        {
-            $response = $response->as_array();
-        }
-
-        return json_encode($response);
-    } 
-
-    /**
-    * Method for creating CSV output
-    * 
-    * @author Jaromír Hradil
-    * 
-    * @return bool
-    */
-    public static function csv_response($response)
-    {
-        if($response instanceof Iterable_object)
-        {
-            $response = $response->as_array();
-        }
-
-        return self::create_csv($response);
-    } 
-
-
-
-    /**
-    * Method for creating CSV output
-    * 
-    * @param array $arr
-    *  
-    * @author Jaromír Hradil
-    */
-    private static function create_csv($arr)
-    {
-        if(!is_array($arr) || count($arr) === 0)
-        {
-            return false;
-        }
-
-        $arr_vals = array_values($arr);
-
-        
-        //If input array is 1D it will be converted into 2D array
-        $nested = true; 
-
-        for ($i=0; $i < count($arr_vals); $i++)
-        { 
-            if(!is_array($arr_vals[$i]))
-            {
-                $nested = false;
-            }
-        }
-        //Converting into 2D array
-        $arr = $nested ? $arr : array($arr);
-        
-        //Preparing for inner values checking
-        $csv_output = "";
-        $keys = array_keys($arr[0]);
-        $key_format_check = array_keys(range(1, count($keys)));
-
-        if($keys !== $key_format_check)
-        {
-            for ($i=0; $i < count($keys); $i++)
-            { 
-                $keys[$i] = strval($keys[$i]);
-            }
-
-            $csv_output = $csv_output.implode(";", $keys).PHP_EOL;  
-        }        
-
-        foreach($arr as $arr_item)
-        {
-            $arr_item_keys = array_keys($arr_item);
-            $csv_content_line = array();
-
-            //Csv keys are not the same
-            if($arr_item_keys != $keys)
-            {
-                return false;
-            }
-            else
-            {
-                foreach($arr_item as $arr_item_content)
-                {
-                    //There are nested elements
-                    if(is_array($arr_item_content))
+                    if(!$to_encode)
                     {
-                        return false;
+                        continue;
                     }
-            
-                    $csv_content_line[] = strval($arr_item_content);
+
+                    $response_method = HeaderParser::$accept_type_method[$at_item];
+                    $response_encoded = $response_method($to_encode);
+
+                    if($response_encoded !== false)
+                    {
+                        $this->encoded_response = $response_encoded;
+                        $this->headers[] = 'Content-Type: '.$at_item;
+                        return;
+                    }
+                }
+                catch(Exception $e)
+                {
+                    continue;
                 }
             }
-            
-            $csv_output = $csv_output.implode(";", $csv_content_line).PHP_EOL;
         }
-        
-        return $csv_output;
+
+        // If no response
+        if(in_array(HeaderParser::ALL_TYPES, $this->parsed_request->accept_type))
+        {
+            // Try all
+            foreach(HeaderParser::$accept_type_method as $type => $method)
+            {
+                try
+                {
+                    $to_encode = isset($this->responses[$type]) ? $this->responses[$type] : (isset($this->responses['default']) ? $this->responses['default'] : null);
+
+                    if(!$to_encode)
+                    {
+                        continue;
+                    }
+
+                    $response_encoded = $method($to_encode);
+
+                    if($response_encoded !== false)
+                    {
+                        $this->encoded_response = $response_encoded;
+                        $this->headers[] = 'Content-Type: '. $type;
+                        return;
+                    }
+                }
+                catch(Exception $e)
+                {
+                    continue;
+                }
+            }
+        }
+
+        throw new ApiException("Cannot encode output to the required format. Please, try to expand your `Accept` request header options.");
     }
-    
 }

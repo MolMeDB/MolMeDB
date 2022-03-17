@@ -151,4 +151,138 @@ class ResponseBuilder
         die;
     } 
 
+    /**
+     * Parses final response to CSV format (2D-array)
+     * 
+     * @param string $content
+     * 
+     * @return array
+     * @throws Exception
+     */
+    public static function csv($content)
+    {
+        if($content instanceof Iterable_object)
+        {
+            $content = $content->as_array();
+        }
+
+        return self::create_csv($content);
+        
+    }
+
+    /**
+     * Parses final response to json format
+     * 
+     * @param string $content
+     * 
+     * @return string
+     * @throws Exception
+     */
+    public static function json($content)
+    {
+        if($content instanceof Iterable_object)
+        {
+            $content = $content->as_array();
+        }
+
+        return json_encode($content);
+    }
+
+    /**
+     * Parses final response to HTML format
+     * 
+     * @param string $content
+     * 
+     * @return string
+     * @throws Exception
+     */
+    public static function html($content)
+    {
+        print_r($content);
+        die;
+
+        if(is_object($content) && method_exists($content, '__toString'))
+        {
+            return $content->__toString();
+        }
+        else if(is_string($content))
+        {
+            return $content;
+        }
+        return false;
+    }
+
+    /**
+    * Method for creating CSV output
+    * 
+    * @param array $arr
+    *  
+    * @author Jaromír Hradil
+    */
+    private static function create_csv($arr)
+    {
+        if(!$arr || !is_array($arr) || count($arr) === 0)
+        {
+            throw new Exception('Only 2D arrays can be converted to CSV format.');
+        }
+
+        $arr_vals = array_values($arr);
+        
+        //If input array is 1D it will be converted into 2D array
+        $nested = true; 
+
+        for ($i=0; $i < count($arr_vals); $i++)
+        { 
+            if(!is_array($arr_vals[$i]))
+            {
+                $nested = false;
+            }
+        }
+        //Converting into 2D array
+        $arr = $nested ? $arr : array($arr);
+        
+        //Preparing for inner values checking
+        $csv_output = "";
+        $keys = array_keys($arr[0]);
+        $key_format_check = array_keys(range(1, count($keys)));
+
+        if($keys !== $key_format_check)
+        {
+            for ($i=0; $i < count($keys); $i++)
+            { 
+                $keys[$i] = strval($keys[$i]);
+            }
+
+            $csv_output = $csv_output.implode(";", $keys).PHP_EOL;  
+        }        
+
+        foreach($arr as $arr_item)
+        {
+            $arr_item_keys = array_keys($arr_item);
+            $csv_content_line = array();
+
+            //Csv keys are not the same
+            if($arr_item_keys != $keys)
+            {
+                return false;
+            }
+            else
+            {
+                foreach($arr_item as $arr_item_content)
+                {
+                    //There are nested elements
+                    if(is_array($arr_item_content))
+                    {
+                        return false;
+                    }
+            
+                    $csv_content_line[] = strval($arr_item_content);
+                }
+            }
+            
+            $csv_output = $csv_output.implode(";", $csv_content_line).PHP_EOL;
+        }
+        
+        return $csv_output;
+    }
 }

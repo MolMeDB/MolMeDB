@@ -5,7 +5,6 @@
  */
 class ApiSmiles extends ApiController
 {
-
     /**
      * Canonize given smiles string
      * 
@@ -16,8 +15,6 @@ class ApiSmiles extends ApiController
      */
     public function canonize($smiles)
     {
-        $smiles = strtoupper($smiles);
-
         $RDKIT = new Rdkit();
 
         // Is RDKIT running?
@@ -39,6 +36,6 @@ class ApiSmiles extends ApiController
             return $result;
         }
 
-        ResponseBuilder::server_error('Cannot canonize SMILES.');
+        ResponseBuilder::server_error('Cannot canonize SMILES. Please, try again.');
     }
 }

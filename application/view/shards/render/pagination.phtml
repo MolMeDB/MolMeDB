@@ -1,0 +1,43 @@
+<?php 
+    $total_pages = intval($total_items / $items_per_page);
+
+    // Max items
+    if($total_pages <= Render_pagination::MAX_OPTIONS)
+    {
+        $max = $total_pages;
+        $min = 1;
+    }
+    else
+    {
+        if($active_page < 7)
+        {
+            $min = 1;
+            $max = Render_pagination::MAX_OPTIONS-3;
+        }
+        else if($active_page > ($total_pages - 7))
+        {
+            $max = $total_pages;
+            $min = $total_pages - Render_pagination::MAX_OPTIONS+3;
+        }
+        else
+        {
+            $min = $active_page - 2;
+            $max = $active_page + 2;
+        }
+    }
+
+    $s = false;
+?>
+
+<div class="text-center">
+    <ul class="pagination pagination-lg">
+        <?php for($i = 1; $i <= $total_pages; $i++) : ?>
+            <?php if(($i > 2 && $i < $min) || ($i <= $total_pages-2 && $i > $max)){$s = true; continue;}?>
+            <?php if($s) : ?>
+            <li class="disabled"><a>...</a></li>
+            <?php $s = false ?>
+            <?php endif ?>
+            <li <?= $i == $active_page ? 'class="active"' : '' ?>><a href="<?= Render_pagination::prepare_callback($callback, $i) ?>"><?= $i ?></a></li>
+        <?php endfor ?>
+    </ul>
+</div>

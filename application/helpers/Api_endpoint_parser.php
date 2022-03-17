@@ -328,7 +328,7 @@ class Api_endpoint_parser
 
             // Check default value
             $has_default = FALSE;
-            preg_match('/\s*@param.*@default\[([0-9,\s,a-z,_,\,]+)\].+\$/i', $row, $def);
+            preg_match('/\s*@param.*@default\[([0-9,\s,a-z,_,\,,\.]+)\].+\$/i', $row, $def);
             if(count($def) > 1)
             {
                 $default = [];
@@ -355,6 +355,10 @@ class Api_endpoint_parser
                     {
                         $default[] = NULL;
                         continue;
+                    }
+                    if(is_numeric($d))
+                    {
+                        $d = floatval($d);
                     }
                     $default[] = $d;
                     continue;

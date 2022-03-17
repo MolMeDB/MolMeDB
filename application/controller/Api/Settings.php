@@ -2,11 +2,11 @@
 
 class ApiSettings extends ApiController
 {    
-
     /**
      * Unlink item
      * 
      * @POST
+     * @PRIVATE
      * 
      * @param $id
      * @param $type
@@ -69,10 +69,13 @@ class ApiSettings extends ApiController
      * Moves enum type
      * 
      * @POST
+     * @PRIVATE
+     * 
      * @param $source_id
      * @param $target_link_id
      * @param $item_type
      * @param $item_id
+     * 
      * @PATH(/move/enum_type)
      */
     public function move_enum_type($source_id, $target_link_id, $item_type, $item_id)

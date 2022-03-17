@@ -125,6 +125,21 @@ class ApiEndpoint
     }
 
     /**
+     * Returns api endpoint responses
+     * 
+     * @return array
+     */
+    public function responses()
+    {
+        if(!$this->class_to_call)
+        {
+            return;
+        }
+
+        return $this->class_to_call->responses;
+    }
+
+    /**
     * Checks if requested endpoint really exists
     * 
     * @author Jaromir Hradil

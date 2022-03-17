@@ -74,10 +74,10 @@ function ajax_request(uri, params, method = "GET", required_content_type = "json
     $.ajax({
         url: uri,
         contentType: 'application/json',
-        accepts: accept,
         type: method,
         headers:{
             "Authorization": "Basic " + $('#api_internal_token').val(),
+            Accept: accept
         },
         async: false,
         data: params,
@@ -608,7 +608,7 @@ function redirect(path, params = {}, method = 'GET')
  */
 function get_all_membranes()
 {
-    var result = ajax_request("membranes/get");
+    var result = ajax_request("membranes/all");
 
     if(result === false)
         return [];
@@ -930,88 +930,5 @@ function flush_comparator_list()
     {
         btn.classList.toggle("btn-danger"); btn.classList.toggle("btn-primary");
         btn.innerHTML = "Add all to comparator";
-    }
-}
-
-
-/**
- * Verify paginations under the search lists
- * 
- */
-function verifyPagination(id_paginator)
-{
-    if(!id_paginator)
-    {
-        id_paginator = 'paginator';
-    }
-
-    var paginator = document.getElementById(id_paginator);
-    var childs = paginator.children;
-    var count = childs.length;
-    var active;
-
-    if(count < 6) return;
-    
-    for(var i=0; i<count; i++)
-    {
-        if(childs[i].className == 'active')
-            active = i;
-    }
-    
-    if(active < 5)
-    {
-        for(var i = 6; i<count-1; i++){
-            childs[i].remove();
-            i--;
-            count--;
-        }
-        var element = document.createElement("li");
-        element.className = "disabled";
-        var a = document.createElement("a");
-        a.innerHTML = "...";
-        element.appendChild(a);
-        paginator.insertBefore(element, childs[childs.length-1]);
-    }
-    else if(active > count-5)
-    {
-        for(var i = 1; i<count-6; i++){
-            childs[i].remove();
-            i--;
-            count--;
-        }
-        var element = document.createElement("li");
-        element.className = "disabled";
-        var a = document.createElement("a");
-        a.innerHTML = "...";
-        element.appendChild(a);
-        childs[0].after(element);
-    }
-    else 
-    {
-        for(var i = 1; i<active-2; i++)
-        {
-            childs[i].remove();
-            i--;
-            active--; count--;
-        }
-        for(var i = active+3; i<count-1; i++)
-        {
-            childs[i].remove();
-            i--;
-            active--; count--;
-        }
-        var element = document.createElement("li");
-        element.className = "disabled";
-        var a = document.createElement("a");
-        a.innerHTML = "...";
-        element.appendChild(a);
-        childs[0].after(element);
-        
-        var element = document.createElement("li");
-        element.className = "disabled";
-        var a = document.createElement("a");
-        a.innerHTML = "...";
-        element.appendChild(a);
-        childs[count-1].after(element);
     }
 }

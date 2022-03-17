@@ -7,8 +7,10 @@ class ApiPublications extends ApiController
      * Returns publication detail
      * 
      * @GET
+     * 
      * @param $id
      * @param $doi
+     * 
      * @Path(/detail)
      */
     public function detail($id, $doi)
@@ -49,6 +51,7 @@ class ApiPublications extends ApiController
      * Returns all publications
      * 
      * @GET
+     * 
      * @Path(/all)
      */
     public function getAll()
@@ -64,6 +67,7 @@ class ApiPublications extends ApiController
      * Gets publication detail by param from remote server
      * 
      * @GET
+     * 
      * @param $doi
      * @param @DEFAULT[FALSE] $all - Return all results?
      * 

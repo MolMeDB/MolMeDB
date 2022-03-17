@@ -45,7 +45,7 @@ class Datasets extends Db
     );
 
     /** Foreign keys to other tables */
-    public $has_one = array
+    protected $has_one = array
     (
         'id_membrane',
         'id_method',

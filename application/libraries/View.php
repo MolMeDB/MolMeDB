@@ -37,9 +37,13 @@ class View
     /**
      * Constructor
      */
-    function __construct($name, $suffix = null)
+    function __construct($name = null, $suffix = null)
     {
-        if($suffix)
+        if(!$name)
+        {
+            $this->name = 'empty';
+        }
+        else if($suffix)
         {
             $this->suffix = '.' . preg_replace('/^\s*\.+/', '', $suffix);
         }
@@ -140,10 +144,22 @@ class View
         else
         {
             ob_start();
-            require($this->active_path . $this->view_name . $this->suffix);
-            $s = ob_get_contents();
-            ob_end_clean();
-            return $s;
+            try
+            {
+                require($this->active_path . $this->view_name . $this->suffix);
+                $s = ob_get_contents();
+                ob_end_clean();
+                return $s;
+            }
+            catch(Exception $e)
+            {
+                if(!DEBUG)
+                {
+                    ob_end_clean();
+                    return '';
+                }
+                return $e->getMessage();
+            }
         }
     }
 

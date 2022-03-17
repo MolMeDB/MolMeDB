@@ -8,12 +8,78 @@
 class ApiCompounds extends ApiController
 {
     /**
-     * Returns substances with interactions for given membrane/method/publication
+     * Returns molecular fragments of molecule
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id - Substance ID
+     * 
+     * @PATH(/fragments)
+     */
+    public function getFragments($id)
+    {
+        $s = new Substances($id);
+
+        if(!$s->id)
+        {
+            ResponseBuilder::not_found('Invalid substance id.');
+        }
+
+        $fragments = $s->get_all_fragments();
+
+        // Get HTML RESPONSE
+        $view = new View('fragments/grid');
+        $view->fragments = $fragments;
+
+        $this->responses = array
+        (
+            HeaderParser::HTML => $view->__toString(),
+            // 'default' => $fragments
+        );
+    }
+
+    /**
+     * Returns similiar molecules
+     * 
+     * @GET
+     * @public
+     * 
+     * @param @required $id - Substance ID
+     * @param @default[0.1] $limit
+     * 
+     * @PATH(/similarEntry)
+     */
+    public function find_similiar($id, $limit)
+    {
+        $s = new Substances($id);
+
+        if(!$s->id)
+        {
+            ResponseBuilder::not_found('Invalid substance id.');
+        }
+
+        $options = $s->get_similar_entries(null, $limit);
+
+        $view = new View('fragments/similarity');
+        $view->options = $options;
+        $view->substance = $s;
+
+        $this->responses = array
+        (
+            HeaderParser::HTML => $view->__toString()
+        );
+    }
+
+    /**
+     * Returns substances with interactions for given membrane/method/publication combination
      * 
      * @GET
      * @internal
+     * 
      * @param @required $id
      * @param @required $type
+     * 
      * @PATH(/ids/byPassiveInteractionType)
      */
     public function get_by_type($id, $type)
@@ -129,7 +195,7 @@ class ApiCompounds extends ApiController
                     (
                         'membrane' => $i->membrane->name,
                         'method' => $i->method->name,
-                        "id_dataset_reference" => $i->dataset->id_publication
+                        "id_dataset_reference" => $i->dataset ? $i->dataset->id_publication : null
                     );
                 }
             }
@@ -154,47 +220,173 @@ class ApiCompounds extends ApiController
         return $result;
     }
     
-    // /**
-    //  * Returns availability of energy profile 
-    //  * for given dataset
-    //  * 
-    //  * DEPRECATED
-    //  * 
-    //  * @POST
-    // //  * @param list - LIST OF membrane;method combinations
-    // //  * @param id - ID of substance
-    // //  */
-    // public function getEnergyData($list, $id)
-    // {
-    //     // Parse list
-    //     $list = json_decode($list);
+    /**
+     * Returns similar entries
+     * 
+     * @GET 
+     * @internal
+     * 
+     * @param @required $id
+     * @param @default[0] $offset
+     * @param @default[null] $limit
+     * 
+     * @PATH(/similar)
+     */
+    public function get_all_similar_entries($id, $offset, $limit)
+    {
+        $s = new Substances($id);
 
-    //     if(!$id)
-    //     {
-    //         //$this->answer(NULL, self::CODE_BAD_REQUEST);
-    //     }
+        if(!$s->id)
+        {
+            ResponseBuilder::not_found('Invalid substance id.');
+        }
 
-    //     $energy_model = new Energy();
-        
-    //     $result = [];
+        $options = $s->get_similar_entries();
 
-    //     foreach($list as $row)
-    //     {
-    //         if(!$row->idMembrane || !$row->idMethod)
-    //         {
-    //             $result = 0;
-    //             continue;
-    //         }
+        $result = [];
+        $i = 0;
+        $offset = intval($offset);
+        $added = 0;
 
-    //         $idMembrane = $row->idMembrane;
-    //         $idMethod = $row->idMethod;
-            
-    //         $data = $energy_model->getEnergyValues($id, $idMembrane, $idMethod, True);
-            
-    //         $result[] = $data->id ? 1 : 0;
-    //     }
-        
-    //     //$this->answer($result);
-    // }
+        foreach($options as $o)
+        {
+            if($i < $offset)
+            {
+                $i++;
+                continue;
+            }
+
+            $result[] = array
+            (
+                'similarity' => $o->similarity,
+                'substance' => $o->substance->as_array(),
+                'fragment'  => $o->fragment->as_array()
+            );
+            $added++;
+
+            if($limit && $added == $limit)
+            {
+                break;
+            }
+        }
+
+        return $result;
+    }
     
+    /**
+     * Returns all similar entries
+     * 
+     * @GET 
+     * @internal
+     * 
+     * @param @required $id
+     * @param @default[0] $offset
+     * @param @default[null] $limit
+     * 
+     * @PATH(/similar/html)
+     */
+    public function get_all_similar_entries_html($id, $offset, $limit)
+    {
+        $s = new Substances($id);
+
+        if(!$s->id)
+        {
+            ResponseBuilder::not_found('Invalid substance id.');
+        }
+
+        $options = $s->get_similar_entries();
+
+        $data = $result = [];
+        $i = 0;
+        $offset = intval($offset);
+        $added = 0;
+
+        foreach($options as $o)
+        {
+            if($i < $offset)
+            {
+                $i++;
+                continue;
+            }
+
+            $s = $o->substance;
+
+            $total_passive = Interactions::instance()->where(array
+                (
+                    'visibility' => Interactions::VISIBLE,
+                    'id_substance' => $s->id
+                ))
+                ->count_all();
+
+            $total_active = Transporters::instance()->where(array
+                (
+                    'id_substance' => $s->id,
+                    'td.visibility' => Transporter_datasets::VISIBLE
+                ))
+                ->join('JOIN transporter_datasets td ON td.id = transporters.id_dataset')
+                ->select_list('transporters.id')
+                ->distinct()
+                ->count_all();
+
+            $o->interactions = (object)array
+            (
+                'total_passive' => $total_passive,
+                'total_active'  => $total_active
+            );
+
+            $data[] = $o;
+            $added++;
+
+            if($limit && $added >= $limit)
+            {
+                break;
+            }
+        }
+
+        $total_passive = Interactions::instance()->where(array
+            (
+                'visibility' => Interactions::VISIBLE,
+                'id_substance' => $s->id
+            ))
+            ->count_all();
+
+        $total_active = Transporters::instance()->where(array
+            (
+                'id_substance' => $s->id,
+                'td.visibility' => Transporter_datasets::VISIBLE
+            ))
+            ->join('JOIN transporter_datasets td ON td.id = transporters.id_dataset')
+            ->select_list('transporters.id')
+            ->distinct()
+            ->count_all();
+
+        $stats = (object)array
+        (
+            'total_passive' => $total_passive,
+            'total_active'  => $total_active
+        );
+
+        foreach($data as $row)
+        {
+            $result[] = Render_similar_entry_item::print($row, $stats);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Returns "load-next" similar entries
+     * 
+     * @GET
+     * @internal
+     * 
+     * @param @required $total
+     * @param @required $visible
+     * 
+     * @PATH(/similar/next/html)
+     */
+    public function get_next_similar_html($total, $visible)
+    {
+        return Render_similar_entry_item::print_next($total, $visible);
+    }
 }

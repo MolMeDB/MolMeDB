@@ -104,19 +104,19 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
 
                         $class_name = $vals['class'];
                         $new_key = $vals['var'];
+                        $k = $key;
                     }
                     else // Is set only value
                     {
                         $val = $vals;
-
                         $key = $val;
 
                         $new_key = ltrim($val, 'id_');
+                        $k = 'id_' . $new_key;
 
                         $class_name = ucwords($new_key . 's');
                     }
 
-                    $k = 'id_' . $new_key;
                     
                     // Not valid input, set value to NULL
                     if (!class_exists($class_name) || !$this->$k) 

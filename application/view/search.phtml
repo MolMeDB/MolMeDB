@@ -177,18 +177,7 @@
           </li>
         <?php endforeach ?>
       </ul>
-      <div class="text-center">
-        <ul class="pagination pagination-lg" id="paginator">
-          <?php for ($i = 1; $i < ($count / 10) + 1; $i++) : ?>
-            <?php if ($i == $pagination) : ?>
-              <li class="active" id="activePag"><a href="/search/<?= $searchType ?>/<?= $i ?>?q=<?= $searchInput ?>"><?= $i ?></a></li>
-            <?php else : ?>
-              <li><a href="/search/<?= $searchType ?>/<?= $i ?>?q=<?= $searchInput ?>"><?= $i ?></a></li>
-            <?php endif ?>
-          <?php endfor ?>
-          <script>verifyPagination('<?=$count?>');</script>
-        </ul>
-      </div>
+      <?= Render_pagination::print_arr($pagination_setting) ?>
     <?php endif ?>
   </div>
 

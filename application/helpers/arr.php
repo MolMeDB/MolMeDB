@@ -6,6 +6,28 @@
 class arr
 {
     /**
+     * Counts dimension of array
+     * 
+     * @param array $input
+     * 
+     * @return int
+     */
+    public static function dimension($input)
+    {
+        if (is_array(reset($array)))
+        {
+            $return = self::dimension(reset($array)) + 1;
+        }
+
+        else
+        {
+            $return = 1;
+        }
+
+        return $return;
+    }
+
+    /**
     * Removes empty values from array
     * 
     * @param array $arr

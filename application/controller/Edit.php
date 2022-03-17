@@ -817,7 +817,6 @@ class EditController extends Controller
         if($dataset->id)
         {
             $interaction_model = new Interactions();
-            $validation = new Validator();
 
             $items = 100;
 
@@ -830,16 +829,20 @@ class EditController extends Controller
                 ->where('id_dataset', $dataset->id)
                 ->count_all();
 
-            $this->view->total_duplicity = $validation->get_inter_dataset_duplicity_count($dataset->id);
-            $this->view->info = $dataset;
+            $this->view->pagination_setting = array
+            (
+                'total_items' => $total,
+                'items_per_page' => $items,
+                'active_page'   => $pagination,
+                'callback' => 'edit/dsInteractions/' . $dataset->id . '/{pagination}'
+            );
+            $this->view->dataset = $dataset;
             $this->view->interaction_table = self::createInteractionTable($dataset_interactions, $dataset->id);
             $this->view->total = $total;
             $this->view->pagination = $pagination;
             $this->view->rights_users = $dataset->get_rights();
             $this->view->rights_groups = $dataset->get_rights(true);
         }
-
-        $this->view = new View('edit/interaction_dataset');
 
         $this->view->show_detail = $show_detail;
         // Get all datasets

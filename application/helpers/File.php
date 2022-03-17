@@ -278,6 +278,11 @@ class File
             return null;
         }
 
+        if(!$prefix)
+        {
+            $prefix = '';
+        }
+
         if(!$file_name)
         {
             $file_name = strtotime('now') . '.csv';
@@ -335,6 +340,11 @@ class File
         if(file_exists($target))
         {
             unlink($target);
+        }
+
+        if(!preg_match('/\.zip$/', $target))
+        {
+            $target .= '.zip';
         }
 
         if ($zip->open($target, ZIPARCHIVE::CREATE) != TRUE) 

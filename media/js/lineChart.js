@@ -35,43 +35,13 @@ var fun = function (){};
 var myChart = fun;
 
 
-function loadLineChart(id){
+function loadLineChart(data){
     var labelsSet = [];
     var color = ['rgba(50,230,21,1)', 'rgba(255,99,132,1)', 'rgba(80,99,210,1)', 'rgba(255,220,100,1)', 'rgba(0,50,255,1)' , 'rgba(229,146,0,1)', 'rgba(150,0,255,1)', 'rgba(110,200,132,1)', 
                  'rgba(215,99,255,1)', 'rgba(25,99,160,1)', 'rgba(255,150,0,1)', 'rgba(0,255,132,1)', 'rgba(100,150,0,1)', 'rgba(20,130,250,1)'];
-    var data = document.querySelectorAll("div.tabBlock");
-    var size = data.length;
-    var mem = [];
-    var met = [];
-    var count = 0;
     export_data = [];
     export_data[0] = [];
     export_data[0][0] = 'Distance [nm]';
-    
-    for (var i = 0; i<size; i++){
-        for(var j = 0; j<data[i].children.length; j++){
-            if(data[i].children[j].className === "active"){
-                var t = data[i].children[j].childNodes[1].value;
-                t = t.split(";");
-                met[count] = t[0];
-                mem[count] = t[1];
-                count++;
-            }
-        }
-    }
-
-    for(var i=0; i<count; i++){
-        var ajax_data = ajax_request('energy/all', { id_compound: id, id_membrane: mem[i], id_method: met[i], limit: 0});
-        res[i] = ajax_data;
-
-        if(!ajax_data)
-        {
-            res[i] = [{
-                energy: 0,
-                distance: 0
-            }]
-        }
-    }
     
     for(var i=0; i<36; i++)
     {
@@ -80,26 +50,19 @@ function loadLineChart(id){
         export_data[i+1][0] = i/10;
     }
     
+    var keys = Object.keys(data);
+    var count = keys.length;
+
     dataset = [];
     
     for(var i=0; i<count; i++)
     {
-        var membrane_detail = ajax_request('membrane/get', {id: mem[i]});
-        var method_detail = ajax_request('method/get', {id: met[i]});
+        var key = keys[i];
         var label = {
-            membrane: membrane_detail ? membrane_detail.CAM : null,
-            method: method_detail ? method_detail.CAM : null
+            membrane: data[key].membrane_cam ? data[key].membrane_cam : data[key].membrane,
+            method: data[key].method_cam ? data[key].method_cam : data[key].method,
         };
         
-        if(!label.membrane)
-        {
-            label.membrane = mem[i];
-        }
-        if(!label.method)
-        {
-            label.method = met[i];
-        }
-
         dataset[i] = {};
         dataset[i].label = label.method + "(" + label.membrane + ")";
         dataset[i].borderWidth = 1;
@@ -110,10 +73,10 @@ function loadLineChart(id){
         
         var index; var x_main = []; var y_main = []; var X = []; var Y = []; var values = [];
         
-        var size = res[i].length;
+        var size = data[key].data.length;
         for(var j=0; j<size; j++){ //Copying values of free energy profile to the arrays
-            x_main[j] = res[i][j].distance;
-            y_main[j] = res[i][j].energy;
+            x_main[j] = data[key].data[j].distance;
+            y_main[j] = data[key].data[j].energy;
         }
         
         if(x_main.length === 1){
@@ -139,6 +102,8 @@ function loadLineChart(id){
                 export_data[j+1][i+1] = values[j];
             }
         }
+
+        console.log(values);
 
         dataset[i].data = values;
         dataset[i].spanGaps = true;

@@ -61,7 +61,7 @@
 
         $this->view->identifiers = (object)$stats->get(Statistics::TYPE_IDENTIFIERS);
         $this->view->interactions_pa = (object)$stats->get(Statistics::TYPE_INTER_PASSIVE_ACITVE);
-        $this->view->update_available = $this->session->user ? $this->session->user->admin : FALSE;
+        $this->view->update_available = session::is_admin();
         $this->view->detail = "";
     }
 

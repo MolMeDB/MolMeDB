@@ -52,4 +52,16 @@ class Callback
 
         return $new_text . '...';
     }
+
+    /**
+     * Returns enum type for transpoter type
+     * 
+     * @param $type
+     * 
+     * @return string
+     */
+    protected static function transporter_type($type)
+    {
+        return Transporters::instance()->get_enum_type($type);
+    }
 }

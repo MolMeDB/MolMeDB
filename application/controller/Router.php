@@ -80,7 +80,7 @@ class RouterController extends Controller
         // REST API direct redirection
         if($classController == 'ApiController')
         {
-            $api_controller = new ApiController(...$parsedURL);
+            $api_controller = new ApiController($parsedURL);
             $api_controller->index();
             die;
         }

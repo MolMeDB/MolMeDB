@@ -10,6 +10,7 @@ class ApiMembranes extends ApiController
      * Priority: $id > $cam > $tag
      * 
      * @GET
+     * 
      * @param $id
      * @param $cam
      * @param $tag
@@ -52,8 +53,10 @@ class ApiMembranes extends ApiController
      * Returns all membranes for given parameters
      * 
      * @GET
+     * 
      * @param $id_compound
      * @param $id_method
+     * 
      * @PATH(/all)
      */
     public function getAll($id_compound, $id_method)
@@ -123,56 +126,5 @@ class ApiMembranes extends ApiController
         }
         
         return $result;
-    }
-    
-    // /**
-    //  * Returns membrane categories
-    //  * 
-    //  * @GET
-    //  * @param idCategory
-    //  * @param idSubcategory
-    //  * @param level
-    //  */
-    // public function getCategories($cat_id, $subcat_id, $level)
-    // {   
-    //     $membraneModel = new Membranes();
-        
-    //     switch($level)
-    //     {
-    //         case 1:
-    //             $data = $membraneModel->get_all_subcategories();
-    //             break;
-            
-    //         case 2:
-    //             $data = $membraneModel->get_membranes_by_categories($subcat_id, $cat_id);
-    //             break;
-            
-    //         default:
-    //             $data = array();
-    //             break;
-    //     }
-        
-    //     //$this->answer($data->as_array());
-    // }
-    
-    // /**
-    //  * Return membrane category
-    //  * 
-    //  * @GET
-    //  * @param @required $id
-    //  * @PATH(/category)
-    //  */
-    // public function getCategory($id)
-    // {
-    //     $membrane_model = new Membranes();
-        
-    //     $data = array();
-        
-    //     $data['membrane_categories'] = $membrane_model->get_membrane_category($idMembrane)->as_array();
-        
-    //     $data['all_subcategories'] = $membrane_model->get_all_subcategories()->as_array();
-        
-    //     //$this->answer($data);
-    // }
-    
+    }    
 }

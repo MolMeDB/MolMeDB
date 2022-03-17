@@ -4,47 +4,11 @@ class ApiEnergy extends ApiController
 {    
 
     /**
-     * Get all energy values for given param combination
-     * 
-     * @GET
-     * @INTERNAL
-     * @param @required $id_compound
-     * @param @required $id_membrane
-     * @param @required $id_method
-     * @param $limit
-     * 
-     * @PATH(/all)
-     */
-    public function get_all_energy_values($id_compound, $id_membrane, $id_method, $limit)
-    {
-        if(!is_numeric($limit))
-        {
-            $limit = NULL;
-        }
-
-        if(!is_numeric($id_compound) || !is_numeric($id_membrane) || !is_numeric($id_membrane))
-        {
-            ResponseBuilder::bad_request("Invalid input parameters.");
-        }
-
-        $data = Energy::instance()->where(array
-            (
-                'id_substance'  => $id_compound,
-                'id_membrane'   => $id_membrane,
-                'id_method'     => $id_method
-            ))
-            ->limit($limit)
-            ->select_list('distance, energy')
-            ->get_all();
-
-        return $data->as_array();
-    }
-
-    /**
      * Returns energy values for given ids
      * 
      * @GET
      * @INTERNAL
+     * 
      * @param @required $id - array|numeric
      * @param @default[true] $group
      * 

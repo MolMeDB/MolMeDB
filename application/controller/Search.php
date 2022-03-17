@@ -125,6 +125,14 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/transporter/{pagination}?q=' . $query
+        );
+
         $this->view->list = $list;
         $this->view->count = $total;
         $this->view->show_detail = True;
@@ -157,6 +165,14 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/compound/{pagination}?q=' . $query
+        );
+
         $this->view->list = $list;
         $this->view->count = $total;
         $this->view->show_detail = True;
@@ -188,6 +204,14 @@ class SearchController extends Controller
             $this->addMessageError($ex);
             $this->redirect('search');
         }
+
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/membrane/{pagination}?q=' . $query
+        );
 
         $this->view->list = $list;
         $this->view->count = $total;
@@ -232,6 +256,14 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/smiles/{pagination}?q=' . $query
+        );
+
         $this->view->list = $list;
         $this->view->count = $total;
         $this->view->show_detail = True;
@@ -263,6 +295,14 @@ class SearchController extends Controller
             $this->addMessageError($ex);
             $this->redirect('search');
         }
+
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/method/{pagination}?q=' . $query
+        );
 
         $this->view->count = $total;
         $this->view->list = $list;

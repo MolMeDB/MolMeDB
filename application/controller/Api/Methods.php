@@ -5,34 +5,16 @@
  */
 class ApiMethods extends ApiController
 {   
-    
     /**
-     * Returns methods with count of available interactions for given substance id
+     * Returns method detail by given param
+     * Priority: $id > $cam > $tag
      * 
      * @GET
-     * @param @required $id_compound
-     * @Path(/availability/substance)
-     */
-    public function get_avail_by_substance($id_compound)
-    {
-        $s = new Substances($id_compound);
-
-        if(!$s->id)
-        {
-            ResponseBuilder::not_found('Invalid compound id.');
-        }
-
-        return Methods::instance()->check_avail_by_substance($s->id);
-    }
-
-
-     /**
-     * Returns method detail
      * 
-     * @GET
      * @param $id
      * @param $cam
      * @param $tag
+     * 
      * @PATH(/detail)
      */
     public function get_detail($id, $cam, $tag)
@@ -58,7 +40,7 @@ class ApiMethods extends ApiController
             'id'    => $method->id,
             'name'  => $method->name,
             'keywords' => $method->keywords,
-            'description'  => $method->description,
+            'description'   => $method->description,
             'reference' => $method->references,
             'CAM'   => $method->CAM,
             'created'   => $method->createDateTime
@@ -67,12 +49,14 @@ class ApiMethods extends ApiController
         return $result;
     }
 
+
     /**
      * Returns all methods for given 
      * 
      * @GET
      * @param $id_compound 
      * @param $id_membrane 
+     * 
      * @PATH(/all)
      */
     public function getAll($id_compound, $id_membrane)

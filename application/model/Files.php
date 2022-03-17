@@ -4,6 +4,7 @@
  * Files model
  * 
  * @property int $id
+ * @property int $type
  * @property string $name
  * @property string $comment
  * @property string $mime
@@ -20,6 +21,28 @@
  */
 class Files extends Db
 {
+    /** SPECIAL TYPES OF FILES FOR EASY FINDING */
+    const T_STATS_INTERACTIONS_ALL = 1;
+    const T_STATS_ACTIVE_PASSIVE = 2;
+    const T_STATS_IDENTIFIERS = 3;
+    const T_STATS_SUBST_INTERACTIONS = 4;
+
+    private static $valid_types = array
+    (
+        self::T_STATS_INTERACTIONS_ALL,
+        self::T_STATS_ACTIVE_PASSIVE,
+        self::T_STATS_IDENTIFIERS,
+        self::T_STATS_SUBST_INTERACTIONS
+    );
+
+    private static $type_path = array
+    (
+        self::T_STATS_INTERACTIONS_ALL  => File::FOLDER_STATS_DOWNLOAD . 'interactions_all',
+        self::T_STATS_ACTIVE_PASSIVE    => File::FOLDER_STATS_DOWNLOAD . 'active_passive_interactions',
+        self::T_STATS_IDENTIFIERS       => File::FOLDER_STATS_DOWNLOAD . 'identifiers',
+        self::T_STATS_SUBST_INTERACTIONS => File::FOLDER_STATS_DOWNLOAD . 'substances_interactions'
+    );
+
     /**
      * Constructor
      */
@@ -27,6 +50,56 @@ class Files extends Db
     {
         $this->table = 'files';
         parent::__construct($id);
+    }
+
+    /**
+     * Instance
+     * 
+     * @return Files
+     */
+    public static function instance()
+    {
+        return parent::instance();
+    }
+
+    /**
+     * Checks, if given type is valid
+     * 
+     * @param $type
+     * 
+     * @return bool
+     */
+    public static function valid_type($type)
+    {
+        return in_array($type, self::$valid_types);
+    }
+
+    /**
+     * Returns default path of file for given type
+     * 
+     * @param $type
+     * 
+     * @return string|null
+     */
+    public static function get_type_path($type)
+    {
+        if(!self::valid_type($type) || !array_key_exists($type, self::$type_path))
+        {
+            return null;
+        }
+        return self::$type_path[$type];
+    }
+
+    /**
+     * Returns file record by type
+     * 
+     * @param $type
+     * 
+     * @return Files
+     */
+    public static function get_by_type($type)
+    {
+        return Files::instance()->where('type', $type)->get_one();
     }
 
     /**

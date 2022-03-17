@@ -287,7 +287,7 @@ class Table
         {
             return '';
         }
-
+        
         return $output->__toString();
     }
 
@@ -637,7 +637,7 @@ class Table_column
      */
     public function value($object, $invoke_callback = true)
     {
-        if(!($object instanceof Iterable_object))
+        if(!is_object($object))
         {
             throw new Exception('Invalid instance of object.');
         }

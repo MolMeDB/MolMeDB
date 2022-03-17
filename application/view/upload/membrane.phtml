@@ -21,22 +21,6 @@
                     <td><b>CAM (ID)</b></td>
                     <td><input class="form-control" type="text" name="CAM" required/></td>
                 </tr> 
-                <tr>
-                    <td><b>Category</b></td>
-                    <td><select name="idCat">
-                        <?php foreach($categories as $cat) : ?>
-                        <option value="<?=$cat['id'] ?>"><?=$cat['name']?></option>
-                        <?php endforeach ?>
-                    </select></td>
-                </tr> 
-                <tr>
-                    <td><b>Subcategory</b></td>
-                    <td><select name="idSubcat">
-                        <?php foreach($subcategories as $cat) : ?>
-                        <option value="<?=$cat['id'] ?>"><?=$cat['name']?></option>
-                        <?php endforeach ?>
-                    </select></td>
-                </tr> 
             </table>
         </div>
 

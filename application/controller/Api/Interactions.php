@@ -11,7 +11,9 @@ class ApiInteractions extends ApiController
      * 
      * @POST
      * @INTERNAL
+     * 
      * @param @required $id
+     * 
      * @PATH(/detail/passive)
      */
     public function get_passive_interactions_POST($id)
@@ -24,7 +26,9 @@ class ApiInteractions extends ApiController
      * 
      * @GET
      * @INTERNAL
+     * 
      * @param @required $id
+     * 
      * @PATH(/detail/passive)
      */
     public function get_passive_interactions($id)
@@ -113,7 +117,9 @@ class ApiInteractions extends ApiController
      * Returns active interactions details
      * 
      * @GET
+     * 
      * @param @required $id
+     * 
      * @PATH(/detail/active)
      */
     public function get_active_interactions($id)
@@ -177,10 +183,12 @@ class ApiInteractions extends ApiController
      * 
      * @POST - used because of possible big number of parameters' values
      * @INTERNAL
+     * 
      * @param $id_method
      * @param $id_membrane
 	 * @param $id_compound
 	 * @param $charge
+     * 
      * @PATH(/ids)
      */
     public function get_ids_for_params($id_method, $id_membrane, $id_compound, $charge)
@@ -250,6 +258,7 @@ class ApiInteractions extends ApiController
      * Returns all passive interaction for given compound x membrane x method combination
      * 
      * @GET
+     * 
      * @param $id_compound
      * @param $id_method
      * @param $id_membrane
@@ -322,6 +331,139 @@ class ApiInteractions extends ApiController
             ResponseBuilder::bad_request('Invalid input parameters.');
         }
 
+        // HTML content template
+        $t = new Table([
+            Table::S_PAGINATIOR_POSITION => 'left',
+            Table::FILTER_HIDE_COLUMNS => true,
+            Table::FILTER_HIDE_COLUMNS_DEFAULT => true,
+        ]);
+
+        $t->column('membrane_name')
+            ->sortable()
+            ->numeric()
+            ->link('browse/membranes?target=', 'membrane_id')
+            ->css(array
+            (
+                'text-align' => 'center' // Centering - flex - justify-content: center;
+            ))
+            ->title('Membrane');
+
+        $t->column('method_name')
+            ->numeric()
+            ->link('browse/methods?target=', 'method_id')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->title('Method');
+
+        $t->column('Q')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->numeric()
+            ->title('Q', 'Charge');
+
+        $t->column('temperature')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ), true)
+            ->title('T <br/><label class="units">[°C]</label>', "Temperature"); 
+
+        $t->column('Position')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('Position_acc')
+            ->title('X<sub>min</sub> <br/><label class="units">[nm]</label>', "Position of minima along the membrane normal from the membrane center");
+
+        $t->column('Penetration')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('Penetration_acc')
+            ->title('&Delta;G<sub>pen</sub> <br/><label class="units">[kcal / mol]</label>', "Penetration barrier (maximum - minimum)");
+
+        $t->column('Water')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('Water_acc')
+            ->title('&Delta;G<sub>wat</sub> <br/><label class="units">[kcal / mol]</label>', "A depth of minima within membrane");
+
+        $t->column('LogK')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('LogK_acc')
+            ->title('LogK<sub>m</sub> <br/><label class="units">[mol<sub>m</sub>/mol<sub>w</sub>]</label>', "Partition coefficient membrane/water");
+
+        $t->column('LogPerm')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('LogPerm_acc')
+            ->title('LogPerm <br/><label class="units">[cm/s]</label>', "Permeability coefficient");
+
+        $t->column('theta')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('theta_acc')
+            ->title('Theta<br/><label class="units">[°]</label>', "Contact angle in membrane");
+
+        $t->column('abs_wl')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('abs_wl_acc')
+            ->title('Abs_wl<br/><label class="units">[nm]</label>', "Peak absorption wavelenght");
+
+        $t->column('fluo_wl')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('fluo_wl_acc')
+            ->title('Fluo_wl<br/><label class="units">[nm]</label>', "Peak fluorescence wavelenght");
+
+        $t->column('qy')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('qy_acc')
+            ->title('QY<br/><label class="units"></label>', "Quantum yield");
+
+        $t->column('lt')
+            ->css(array
+            (
+                'text-align' => 'center'
+            ))
+            ->accuracy('lt_acc')
+            ->title('lt<br/><label class="units">[ns]</label>', "Fluorescence lifetime");
+
+        $t->column('note')
+            ->long_text()
+            ->title('Note');
+
+        $t->column('primary_reference')
+            ->long_text()
+            ->title('Primary<br/> reference', "Original source");
+
+        $t->column('secondary_reference')
+            ->long_text()
+            ->title('Secondary<br/> reference', "Source of input into databse if different from original");
+
         $result = [];
         
         if(!$group_by)
@@ -332,8 +474,10 @@ class ApiInteractions extends ApiController
             {
                 // Prepare data
                 $i->substance = $i->substance ? $i->substance->as_array() : NULL;
+                $i->membrane_id = $i->membrane->id;
                 $i->membrane_name = $i->membrane->name;
                 $i->membrane_CAM = $i->membrane->CAM;
+                $i->method_id = $i->method->id;
                 $i->method_name = $i->method->name;
                 $i->method_CAM = $i->membrane->CAM;
                 $i->primary_reference = $i->reference ? $i->reference->citation : NULL;
@@ -341,11 +485,6 @@ class ApiInteractions extends ApiController
                 $i->secondary_reference_id = $i->dataset && $i->dataset->publication ? $i->dataset->publication->id : NULL;
 
                 $result[] = $i->as_array(NULL, TRUE);
-            }
-
-            if(count($result) == 1)
-            {
-                return $result[0];
             }
         }
         else
@@ -478,35 +617,16 @@ class ApiInteractions extends ApiController
             }
         }
 
-        return $result;
+        $t->datasource(new Iterable_object($result, true));
+
+        $this->responses = array
+        (
+            'default'   => $result,
+        );
+
+        if(!$group_by)
+        {
+            $this->responses[HeaderParser::HTML] = $t->html();
+        }
     }
-
-    /**
-     * 
-     * 
-     * @GET
-     * @param $id_compound
-     * @param $id_method
-     * @param $id_membrane
-     * 
-     * @PATH(/count/passive)
-     */
-    public function count_passive_by_params($id_compound, $id_method, $id_membrane)
-    {
-        $interaction_model = new Interactions();
-
-        $count = $interaction_model->where(array
-            (
-                'id_substance'  => $id_compound,
-                'id_membrane'   => $id_membrane,
-                'id_method'     => $id_method,
-                'visibility'    => Interactions::VISIBLE
-            ))
-            ->select_list('COUNT(*) as count')
-            ->get_one()
-            ->count;
-
-        return array('count' => $count);
-    }
-    
 }

@@ -175,6 +175,7 @@ class UploadController extends Controller
     public function membrane()
     {
         $membrane = new Membranes();
+        $et_model = new Enum_types();
 
         if ($this->form->is_post()) 
         {
@@ -192,11 +193,9 @@ class UploadController extends Controller
 
                 $membrane->save();
 
-                // Save membrane category
-                $membrane->save_membrane_category($this->form->param->idCat, $this->form->param->idSubcat);
-                
                 Db::commitTransaction();
-                $this->addMessageSuccess('Membrane "' . $membrane->name . '" was inserted.');
+
+                $this->addMessageSuccess('Membrane "' . $membrane->name . '" was saved.');
                 $this->redirect("upload/membrane");
             } 
             catch (Exception $ex) 
@@ -209,8 +208,8 @@ class UploadController extends Controller
         $this->title = 'Uploader';
 
         $this->view = new View('upload/membrane');
-        $this->view->categories = $membrane->get_all_categories();
-        $this->view->subcategories = $membrane->get_all_subcategories();
+        $this->view->categories = $et_model->get_categories($et_model::TYPE_MEMBRANE_CATS);
+
         $this->view->navigator = $this->createNavigator(self::M_MEMBRANE);
     }
 
@@ -237,9 +236,6 @@ class UploadController extends Controller
 
                 $method->save();
 
-                // Save method category
-                // $method->save_method_category($_POST['idCat'], $_POST['idSubcat']);
-                
                 Db::commitTransaction();
                 $this->addMessageSuccess('Method "' . $method->name  . '" was inserted.');
                 $this->redirect("upload/method");
@@ -251,8 +247,6 @@ class UploadController extends Controller
             }
         }
 
-        // $this->data['categories'] = $method->get_all_categories();
-        // $this->data['subcategories'] = $method->get_all_subcategories();
         $this->title = 'Uploader';
 
         $this->view = new View('upload/method');

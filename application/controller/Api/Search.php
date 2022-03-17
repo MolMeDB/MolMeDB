@@ -29,8 +29,10 @@ class ApiSearch extends ApiController
      * 
      * @GET
      * @INTERNAL
+     * 
      * @param $query
      * @param @required $type
+     * 
      * @PATH(/all)
      */
     public function search($query, $type)

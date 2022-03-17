@@ -10,8 +10,9 @@ class ApiFile
 	 * 
 	 * @GET
      * @internal
+	 * 
 	 * @param @required $file_name
-	 * @param @DEFAULT[;] $delimiter - Default is ';'
+	 * @param @DEFAULT[;] $delimiter
 	 * 
 	 * @PATH(/content)
 	 */

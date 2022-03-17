@@ -243,6 +243,66 @@ class Substances extends Db
     }
 
     /**
+     * Gets all ids of membranes and methods, with available energy data
+     * 
+     * @param int $id_substance
+     * 
+     * @return array
+     * @throws Exception
+     */
+    public function get_available_energy($id_substance = null)
+    {
+        if(!$id_substance && !$this && !$this->id)
+        {
+            throw new Exception('Invalid id_substance parameter');
+        }
+
+        if(!$id_substance)
+        {
+            $id_substance = $this->id;
+        }
+
+        $all = $this->queryAll("SELECT id, CONCAT(id_membrane, ',', id_method) as ids, COUNT(*) as total
+            FROM energy
+            WHERE id_substance = ?
+            GROUP BY (ids)
+            ORDER BY ids ASC
+        ", array($id_substance));
+
+        $result = [];
+
+        foreach($all as $row)
+        {
+            $ids = explode(',', $row->ids);
+
+            $mem = new Membranes($ids[0]);
+            $met = new Methods($ids[1]);
+            $id = $row->id;
+            $total = $row->total;
+
+            if(!$mem->id || !$met->id || $total < 20)
+            {
+                continue;
+            }
+
+            if(!isset($result[$met->id]))
+            {
+                $result[$met->id] = [];
+            }
+
+            $result[$met->id][] = new Iterable_object([
+                'id_energy' => $id,
+                'id_membrane' => $mem->id,
+                'membrane_name' => $mem->name,
+                'id_method'   => $met->id,
+                'method_name' => $met->name
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
      * Checks, if substance identifiers are persistent
      * 
      * @throws Exception

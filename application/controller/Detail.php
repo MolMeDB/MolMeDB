@@ -22,7 +22,6 @@ class DetailController extends Controller
         $this->view->content = $intro->content;
     }
 
-
     /**
      * Show contact
      */

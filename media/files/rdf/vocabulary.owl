@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:obo="http://purl.obolibrary.org/obo/"
+         xmlns:owl="http://www.w3.org/2002/07/owl#">
+  
+  
+  <!--
+   ////////////////////////////////////
+   // TRANSPORTER ENDPOINT CLASSES
+   ////////////////////////////////////
+    -->
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#PKm">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0000477"/>
+    <obo:IAO_0000115>pKm is -log pKm, where pKm is the concentration of substrate at ½ Vmax,
+      according to the Henri-Michaelis-Menten kinetic model.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">pKm</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#InhibitionAssay">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0080024"/>
+    <obo:IAO_0000115>Result of the assay whether the measured entity acts as inhibitor of the target enzyme.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">inhibition assay</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#SubstrateBindingAssay">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0080024"/>
+    <obo:IAO_0000115>Result of the assay whether the measured entity acts as substrate of the target enzyme.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">substrate assay</rdfs:label>
+  </owl:Class>
+
+ <!--
+   ////////////////////////////////////
+   // INTERACTION ENDPOINT CLASSES
+   ////////////////////////////////////
+   -->
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#LogK">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0002128"/>
+    <obo:IAO_0000115>Logarithm of partition coefficient membrane/water.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">LogK</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#LogPerm">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0002808"/>
+    <obo:IAO_0000115>Logarithm of membrane permeability.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">LogPerm</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#PositionOfMinima">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0002118"/>
+    <!--graphical calculation endpoint - values obtained from curve? --> 
+    <obo:IAO_0000115>Position of minima along the membrane normal from the membrane center.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">position of minima</rdfs:label>
+  </owl:Class> 
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#PenetrationBarrier">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0002118"/>
+    <obo:IAO_0000115>Penetration barrier (maximum - minimum).</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">penetration barrier</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#DepthOfMinima">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0002118"/>
+    <obo:IAO_0000115>A depth of minima within membrane.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">depth of minima</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#ContactAngle">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0080028"/>
+    <!--perhaps different endpoint superclass, maybe just endpoint BAO_0000179-->
+    <obo:IAO_0000115>Contact angle in membrane.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">contact angle</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#AbsorbtionWavelength">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0002118"/>
+    <obo:IAO_0000115>Peak absorbtion wavelength.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">peak absrobtion wavelength</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#FluorescenceWavelength">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0002118"/>
+    <obo:IAO_0000115>Peak fluorescence wavelength.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">peak fluorescence wavelength</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#QuantumYield">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0000179"/>
+    <!--just subclass of endpoint, not sure about closer classification-->
+    <obo:IAO_0000115>Number of times a specific event occurs per photon absorbed by the system.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">quantum yield</rdfs:label>
+  </owl:Class>
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#FluorescenceLifetime">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0002114"/>
+    <obo:IAO_0000115>The time a fluorophore spends in the excited state before emitting a photon and returning to the ground state.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">fluorescence lifetime</rdfs:label>
+  </owl:Class>
+
+   <!--
+   ////////////////////////////////////
+   // OTHER CLASSES
+   ////////////////////////////////////
+   --> 
+
+  <owl:Class rdf:about="http://rdf.molmedb.upol.cz/vocabulary#MembraneModel">
+    <rdfs:subClassOf rdf:resource="http://www.bioassayontology.org/bao#BAO_0003114"/>
+    <!-- should be subclass of BAO_0003111 to comply with BAO_0000015 restrictions but it is not macromolecule -->
+    <obo:IAO_0000115>Model of biological membrane used in experimental and computational assays of interactions of molecular entities
+      with membranes. Contains biological membranes, lipid membrane models, nonlipid membrane models (eg. octanol) etc.</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">membrane model</rdfs:label>
+  </owl:Class>
+
+ <!--
+   ////////////////////////////////////
+   // UNIT INSTANCES
+   ////////////////////////////////////
+   --> 
+  <obo:NCIT_C70444 rdf:about="http://rdf.molmedb.upol.cz/vocabulary#kcalMol">
+    <obo:IAO_0000115>A derived unit of molar thermodynamic energy defined as the energy equal to 1000 calories in one mole of substance..</obo:IAO_0000115>
+    <rdfs:label rdf:datatype="http://www.w3.org/2001/XMLSchema#string">kcal/mol</rdfs:label>
+  </obo:NCIT_C70444>
+
+
+
+
+</rdf:RDF>

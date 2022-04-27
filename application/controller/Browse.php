@@ -31,9 +31,9 @@ class BrowseController extends Controller
             $active_categories = $membraneModel->get_active_categories();
             $membranes = $membraneModel->order_by('name')->get_all();
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
-            $this->addMessageError($e->getMessage());
+            $this->alert->error($e);
             $this->redirect('error');
         }
 

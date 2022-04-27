@@ -58,7 +58,7 @@ class RouterController extends Controller
         // If maintenance is in progress, show directly this site
         if(MAINTENANCE && !isset($_SESSION['user']))
         {
-            $this->view = 'maintenance';
+            $this->view = new View('maintenance');
             return;
         }
 
@@ -143,11 +143,13 @@ class RouterController extends Controller
 
         try
         {
+            ob_start();
             $this->controller->$targetFunction(...$parsedURL);
         }
         catch(Exception $e)
         {
-            die($e->getMessage());
+            ob_clean();
+            Server::print_global_exception($e);
         }
 
         $this->view = new View('layout');

@@ -69,6 +69,10 @@ class View
         {
             $this->active_path = self::$shard_path;
         }
+        else if(file_exists($name . $this->suffix))
+        {
+            $this->active_path = '';
+        }
         else
         {
             throw new Exception('Cannot create View instance. View not found.');

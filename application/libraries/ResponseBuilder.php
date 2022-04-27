@@ -130,15 +130,15 @@ class ResponseBuilder
     /**
      * Method for creating HTTP 500 response code and error message
      * 
-     * @param string|Exception $err_text - OPTIONAL
+     * @param string|MmdbException $err_text - OPTIONAL
      *  
      * @author Jaromír Hradil
      */
     public static function server_error($err_text = NULL)
     {
-        if($err_text instanceof Exception)
+        if($err_text instanceof MmdbException)
         {
-            $err_text = $err_text->getMessage();
+            $err_text = $err_text->getPrintable();
         }
 
         http_response_code(self::CODE_SERVER_ERROR);
@@ -147,7 +147,6 @@ class ResponseBuilder
             echo('500 Server error: Internal error occured. ');
             echo $err_text;
         }
-        //TODO logging of errors
         die;
     } 
 

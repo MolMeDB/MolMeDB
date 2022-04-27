@@ -196,4 +196,24 @@ class Server
     {
         return dirname(dirname(__FILE__));
     }
+
+    /**
+     * Global exception viewer
+     * 
+     * @param Exception $exception
+     */
+    public static function print_global_exception($exception)
+    {
+        $view = new View('system/view/exception');
+        $view->code = $exception->getCode();
+        $view->file = $exception->getFile();
+        $view->message = $exception->getMessage();
+        $view->line = $exception->getLine();
+        $view->class = get_class($exception);
+        $view->trace = debug_backtrace();
+
+        echo $view;
+        die;
+    }
+
 }

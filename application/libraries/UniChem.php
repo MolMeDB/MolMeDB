@@ -41,7 +41,7 @@ class UniChem extends Identifier_loader
         catch (Exception $e) 
         {
             $this->STATUS = false;
-            throw new Exception('Unichem service is unreachable.');
+            throw new MmdbException('Unichem service is unreachable.');
         }
     }
 

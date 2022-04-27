@@ -23,6 +23,6 @@ try
 } 
 catch (Exception $e) 
 {
-    echo($e->getMessage());
+    echo SERVER_GLOBAL_ERROR;
     die;
 }

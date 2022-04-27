@@ -111,7 +111,7 @@
             $this->view->total_substances = $substanceModel->get_all_count();
             $this->view->total_interactions = $interactionModel->get_all_count();
         }
-        catch(Exception $ex)
+        catch(MmdbException $ex)
         {
             $this->addMessageError('Error ocurred during getting stats detail.');
             $this->redirect('error');
@@ -145,7 +145,7 @@
             $this->view->total_substances = $substanceModel->get_all_count();
             $this->view->total_interactions = $interactionModel->get_all_count();
         }
-        catch(Exception $ex)
+        catch(MmdbException $ex)
         {
             $this->addMessageError('Error ocurred during getting stats detail.');
             $this->redirect('error');

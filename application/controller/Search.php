@@ -31,8 +31,6 @@ class SearchController extends Controller
         parent::__construct();
     }
 
-
-
     /**
      * Main search engine parser
      * 

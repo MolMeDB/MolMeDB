@@ -6,6 +6,8 @@
 class Db extends Iterable_object
 {
     private static $connection;
+
+    private static $active_transaction = false;
     
     private static $setting = array
     (
@@ -224,25 +226,32 @@ class Db extends Iterable_object
      */
     public function queryOne($query, $parameters = array(), $as_object = True)
     {
-        $return = self::$connection->prepare($query);
-        $return->execute($parameters);
-
-        $result = $return->fetch();
-
-        $result = $this->remove_numeric_keys($result);
-
-        if(!$result)
+        try
         {
-            $result = array();
+            $return = self::$connection->prepare($query);
+            $return->execute($parameters);
+
+            $result = $return->fetch();
+
+            $result = $this->remove_numeric_keys($result);
+
+            if(!$result)
+            {
+                $result = array();
+            }
+
+            if (!$as_object) 
+            {
+                return $result;
+            } 
+            else 
+            {
+                return new Iterable_object($result);
+            }
         }
-
-        if (!$as_object) 
+        catch(Exception $e)
         {
-            return $result;
-        } 
-        else 
-        {
-            return new Iterable_object($result);
+            throw new DbException($e->getMessage(), $query, $e->getCode(), $e);
         }
     }
 
@@ -256,20 +265,27 @@ class Db extends Iterable_object
      */
     public function queryAll($query, $parameters = array(), $as_object = True)
     {
-        $return = self::$connection->prepare($query);
-        $return->execute($parameters);
-
-        $result = $return->fetchAll();
-
-        $result = $this->remove_numeric_keys($result);
-
-        if (!$as_object) 
+        try
         {
-            return $result;
-        } 
-        else 
+            $return = self::$connection->prepare($query);
+            $return->execute($parameters);
+
+            $result = $return->fetchAll();
+
+            $result = $this->remove_numeric_keys($result);
+
+            if (!$as_object) 
+            {
+                return $result;
+            } 
+            else 
+            {
+                return new Iterable_object($result, True);
+            }
+        }
+        catch(Exception $e)
         {
-            return new Iterable_object($result, True);
+            throw new DbException($e->getMessage(), $query, $e->getCode(), $e);
         }
     }
 
@@ -280,12 +296,25 @@ class Db extends Iterable_object
      * @param array $parameters
      * 
      * @return integer
+     * @throws DbException
      */
-    public function query($query, $parameters = array())
+    public function query($query, $parameters = array(), $ignore_exception = false)
     {
-        $return = self::$connection->prepare($query);
-        $return->execute($parameters);
-        return $return->rowCount();
+        try
+        {
+            $return = self::$connection->prepare($query);
+            $return->execute($parameters);
+            return $return->rowCount();
+        }
+        catch(Exception $e)
+        {
+            if($ignore_exception)
+            {
+                return;
+            }
+            throw new DbException($e->getMessage(), $query, $e->getCode(), $e);
+        }
+        
     }
 
 
@@ -296,41 +325,52 @@ class Db extends Iterable_object
      */
     public function get_all($reinit = true)
     {
-        if (!$this->table) 
+        try
         {
-            throw new Exception('No table name was set.');
-        }
+            if (!$this->table) 
+            {
+                throw new MmdbException('No table name was set.');
+            }
 
-        if(!$this->select_list)
+            if(!$this->select_list)
+            {
+                $this->select_list = '*';
+            }
+
+            // Prepare query
+            $query = '
+                SELECT ' . ($this->distinct ? ' DISTINCT ' : '') . 
+                $this->select_list . ' 
+                FROM ' . $this->table .
+                ' ' . $this->join .
+                ' ' . $this->where . ' ' .
+                ' ' . $this->group_by .
+                $this->order_by
+                . $this->limit;
+
+            if($this->debug) // DEBUG
+            {
+                echo($query);
+                die;
+            }
+
+            $data =  $this->queryAll($query, array(), False);
+
+            if($reinit)
+            {
+                $this->reload();
+            }
+            
+            return new Iterable_object($data, get_class($this));
+        }
+        catch(DbException $e)
         {
-            $this->select_list = '*';
+            throw $e;
         }
-
-        // Prepare query
-        $query = '
-            SELECT ' . ($this->distinct ? ' DISTINCT ' : '') . 
-            $this->select_list . ' 
-            FROM ' . $this->table .
-            ' ' . $this->join .
-            ' ' . $this->where . ' ' .
-            ' ' . $this->group_by .
-            $this->order_by
-            . $this->limit;
-
-        if($this->debug) // DEBUG
+        catch(MmdbException $e)
         {
-            echo($query);
-            die;
+            throw new DbException($e->getMessage(), 'Error occured during processing database query. Please, contact server administrator.', $e->getCode(), $e);
         }
-
-        $data =  $this->queryAll($query, array(), False);
-
-        if($reinit)
-        {
-            $this->reload();
-        }
-        
-        return new Iterable_object($data, get_class($this));
     }
 
     /**
@@ -340,38 +380,49 @@ class Db extends Iterable_object
      */
     public function count_all()
     {
-        if (!$this->table) 
+        try
         {
-            throw new Exception('No table name was set.');
-        }
+            if (!$this->table) 
+            {
+                throw new Exception('No table name was set.');
+            }
 
-        if(!$this->select_list)
+            if(!$this->select_list)
+            {
+                $this->select_list = '*';
+            }
+
+            // Prepare query
+            $query = '
+                SELECT COUNT(*) as count 
+                FROM (
+                    SELECT ' . ($this->distinct ? ' DISTINCT ' : '') . $this->select_list .
+                    ' FROM '. $this->table .
+                    ' ' . $this->join .
+                    ' ' . $this->where . ' ' .
+                    ' ' . $this->group_by
+                . ') as tab';
+
+            if($this->debug) // DEBUG
+            {
+                echo($query);
+                die;
+            }
+
+            $data = $this->queryOne($query);
+
+            $this->reload();
+
+            return $data->count;
+        }
+        catch(DbException $e)
         {
-            $this->select_list = '*';
+            throw $e;
         }
-
-        // Prepare query
-        $query = '
-            SELECT COUNT(*) as count 
-            FROM (
-                SELECT ' . ($this->distinct ? ' DISTINCT ' : '') . $this->select_list .
-                ' FROM '. $this->table .
-                ' ' . $this->join .
-                ' ' . $this->where . ' ' .
-                ' ' . $this->group_by
-            . ') as tab';
-
-        if($this->debug) // DEBUG
+        catch(MmdbException $e)
         {
-            echo($query);
-            die;
+            throw new DbException($e->getMessage(), 'Error occured during processing database query. Please, contact server administrator.', $e->getCode(), $e);
         }
-
-        $data = $this->queryOne($query);
-
-        $this->reload();
-
-        return $data->count;
     }
 
     /**
@@ -381,37 +432,48 @@ class Db extends Iterable_object
      */
     public function get_one()
     {
-        if (!$this->table) {
-            throw new Exception('No table name was set.');
-        }
-
-        if (!$this->select_list) 
+        try
         {
-            $this->select_list = '*';
+            if (!$this->table) {
+                throw new Exception('No table name was set.');
+            }
+
+            if (!$this->select_list) 
+            {
+                $this->select_list = '*';
+            }
+
+            $query = '
+                SELECT ' . $this->select_list . ' 
+                FROM ' . $this->table .
+                ' ' . $this->join .
+                ' ' . $this->where . ' ' .
+                ' ' . $this->group_by .
+                $this->order_by
+                . ' LIMIT 1';
+
+            if($this->debug)
+            {
+                echo($query);
+                die;
+            }
+
+            $data =  $this->queryOne($query, array(), False);
+
+            $class = get_class($this);
+
+            $this->reload();
+
+            return new $class($data);
         }
-
-        $query = '
-            SELECT ' . $this->select_list . ' 
-            FROM ' . $this->table .
-            ' ' . $this->join .
-            ' ' . $this->where . ' ' .
-            ' ' . $this->group_by .
-            $this->order_by
-            . ' LIMIT 1';
-
-        if($this->debug)
+        catch(DbException $e)
         {
-            echo($query);
-            die;
+            throw $e;
         }
-
-        $data =  $this->queryOne($query, array(), False);
-
-        $class = get_class($this);
-
-        $this->reload();
-
-        return new $class($data);
+        catch(MmdbException $e)
+        {
+            throw new DbException($e->getMessage(), 'Error occured during processing database query. Please, contact server administrator.', $e->getCode(), $e);
+        }
     }
 
     /**
@@ -447,23 +509,25 @@ class Db extends Iterable_object
      */
     public function delete()
     {
-        if (!$this->table) 
-        {
-            throw new Exception('No table name was set.');
-        }
-
-        if (!$this->id) 
-        {
-            throw new Exception('Not valid class instance.');
-        }
+        $query = "
+            DELETE FROM $this->table
+            WHERE id = $this->id
+        ";
 
         try
         {
+            if (!$this->table) 
+            {
+                throw new MmdbException('No table name was set.');
+            }
+
+            if (!$this->id) 
+            {
+                throw new MmdbException('Invalid class instance.');
+            }
+
             // Delete record
-            $this->query("
-                DELETE FROM $this->table
-                WHERE id = $this->id
-            ");
+            $this->query($query);
 
             // Destroy object data
             $this->data = [];
@@ -473,7 +537,7 @@ class Db extends Iterable_object
         }
         catch(Exception $e)
         {
-            throw new Exception($e->getMessage());
+            throw new DbException($e->getMessage(), $query, $e->getCode(), $e);
         }
     }
 
@@ -980,14 +1044,19 @@ class Db extends Iterable_object
      */
     protected function insert($table, $parameters = array(), $onDuplicate = "", $onDuplicateParams = array())
     {
-        $params = array_merge(array_values($parameters), $onDuplicateParams);
+        $query = "INSERT INTO `$table` (`" .
+            implode('`, `', array_keys($parameters)) .
+            "`) VALUES (" . str_repeat('?,', sizeOf($parameters) - 1) . "?) " . $onDuplicate;
 
-        $this->query(
-            "INSERT INTO `$table` (`" .
-                implode('`, `', array_keys($parameters)) .
-                "`) VALUES (" . str_repeat('?,', sizeOf($parameters) - 1) . "?) " . $onDuplicate,
-            $params
-        );
+        try
+        {
+            $params = array_merge(array_values($parameters), $onDuplicateParams);
+            $this->query($query,$params);
+        }
+        catch(Exception $e)
+        {
+            throw new DbException($e->getMessage(), $query, $e->getCode(), $e, "Invalid database request - cannot save new item.");
+        }
 
         try
         {
@@ -1084,10 +1153,13 @@ class Db extends Iterable_object
      */
     public static function beginTransaction()
     {
-        // First commit old transaction if exists
-        // self::$connection->commit(); 
+        if(self::$active_transaction)
+        {
+            return;
+        }
 
         self::$connection->beginTransaction();
+        self::$active_transaction = true;
     }
     
     /**
@@ -1095,7 +1167,13 @@ class Db extends Iterable_object
      */
     public static function commitTransaction()
     {
+        if(!self::$active_transaction)
+        {
+            return;
+        }
+
         self::$connection->commit();
+        self::$active_transaction = false;
     }
     
     /**
@@ -1103,7 +1181,13 @@ class Db extends Iterable_object
      */
     public static function rollbackTransaction()
     {
+        if(!self::$active_transaction)
+        {
+            return;
+        }
+
         self::$connection->rollBack();
+        self::$active_transaction = false;
     }
     
     /**
@@ -1116,7 +1200,7 @@ class Db extends Iterable_object
      */
     public function verify_user($type, $data = array())
     {
-        $id_user = $_SESSION['user']['id'];
+        $id_user = session::user_id();
         $id_groups = $this->queryAll("SELECT DISTINCT id_group FROM gp_usr WHERE id_user = ?", array($id_user));
 
         switch($type)
@@ -1143,33 +1227,6 @@ class Db extends Iterable_object
                 break;
         }
     }
-
-    // /** DEPRECATED
-    //  * Returns current object
-    //  */
-    // protected function as_object($params, $class_params = False)
-    // {
-    //     $obj = $this;
-
-    //     if (!$class_params) 
-    //     {
-    //         $obj = (object) array();
-    //     }
-
-    //     foreach ($params as $key => $val) 
-    //     {
-    //         if (is_array($val)) 
-    //         {
-    //             $obj->key = $this->as_object($val);
-    //         } 
-    //         else 
-    //         {
-    //             $obj->$key = $val;
-    //         }
-    //     }
-
-    //     return $obj;
-    // }
 }
 
 

@@ -153,10 +153,10 @@ class UploadController extends Controller
                     }
                 }
             }
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
                 $this->addMessageError('Problem ocurred during uploading energy file.');
-                $this->addMessageError($ex->getMessage());
+                $this->addMessageError($ex);
             }
         }
         
@@ -198,10 +198,10 @@ class UploadController extends Controller
                 $this->addMessageSuccess('Membrane "' . $membrane->name . '" was saved.');
                 $this->redirect("upload/membrane");
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
                 Db::rollbackTransaction();
-                $this->addMessageError($ex->getMessage());
+                $this->addMessageError($ex);
             }
         }
 
@@ -240,10 +240,10 @@ class UploadController extends Controller
                 $this->addMessageSuccess('Method "' . $method->name  . '" was inserted.');
                 $this->redirect("upload/method");
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
                 Db::rollbackTransaction();
-                $this->addMessageError($ex->getMessage());
+                $this->addMessageError($ex);
             }
         }
 
@@ -289,9 +289,9 @@ class UploadController extends Controller
                 $this->redirect("upload/picture");
 
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
-                $this->addMessageError($ex->getMessage());
+                $this->addMessageError($ex);
             }
         }
 
@@ -345,7 +345,7 @@ class UploadController extends Controller
 
                     if($check_doi->id)
                     {
-                        throw new Exception('Publication with given DOI already exists.');
+                        throw new MmdbException('Publication with given DOI already exists.');
                     }
                 }
 
@@ -361,7 +361,7 @@ class UploadController extends Controller
     
                     if($check_pmid->id)
                     {
-                        throw new Exception('Publication with given PmID already exists.');
+                        throw new MmdbException('Publication with given PmID already exists.');
                     }
                 }
                 
@@ -385,10 +385,10 @@ class UploadController extends Controller
 
                 $this->addMessageSuccess("Saved!");
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
                 $this->addMessageError('Error ocurred during saving record.');
-                $this->addMessageError($ex->getMessage());
+                $this->addMessageError($ex);
             }
         }
 
@@ -409,9 +409,9 @@ class UploadController extends Controller
             $smiles_model->checkSmiles();
             $this->addMessageSuccess("Smiles table was successfully updated");
         } 
-        catch (Exception $ex) 
+        catch (MmdbException $ex) 
         {
-            $this->addMessageError($ex->getMessage());
+            $this->addMessageError($ex);
         }
 
         $this->redirect("upload/smiles");
@@ -514,11 +514,11 @@ class UploadController extends Controller
 
                 $smilesModel->commitTransaction();
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {   
                 $smilesModel->rollbackTransaction();
                 $this->addMessageError('Cannot update smiles table.');
-                $this->addMessageError($e->getMessage());
+                $this->addMessageError($e);
             }
             
             $this->redirect($redirection);
@@ -554,9 +554,9 @@ class UploadController extends Controller
                 $this->addMessageSuccess('Saved');
                 $this->redirect($redirection);
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
-                $this->addMessageError($ex->getMessage());
+                $this->addMessageError($ex);
             }
         }
 
@@ -594,14 +594,14 @@ class UploadController extends Controller
                     }
                     else
                     {
-                        throw new Exception('Invalid form type.');
+                        throw new MmdbException('Invalid form type.');
                     }
 
                     $this->addMessageSuccess($message);
                 }
-                catch (Exception $ex)
+                catch (MmdbException $ex)
                 {
-                    $this->addMessageError($ex->getMessage());
+                    $this->addMessageError($ex);
                 }
             } 
             // Upload new file and return path
@@ -614,9 +614,9 @@ class UploadController extends Controller
                 {
                     $data = $this->uploadFile($file, $valid_format);
                 } 
-                catch (Exception $ex) 
+                catch (MmdbException $ex) 
                 {
-                    $this->addMessageError($ex->getMessage());
+                    $this->addMessageError($ex);
                     $data = False;
                 }
 
@@ -641,7 +641,7 @@ class UploadController extends Controller
      * 
      * @return string - Result message
      * 
-     * @throws Exception
+     * @throws MmdbException
      */
     private function save_transporters()
     {
@@ -676,7 +676,7 @@ class UploadController extends Controller
                 // Check if exists
                 if(!$this->form->param->$a)
                 {
-                    throw new Exception(PHP_POST_LIMIT);
+                    throw new MmdbException(PHP_POST_LIMIT);
                 }
                 
                 $r = $this->form->param->$a;
@@ -684,7 +684,7 @@ class UploadController extends Controller
                 //Check number of columns
                 if(count($r) != $colCount)
                 {
-                    throw new Exception(PHP_POST_LIMIT);
+                    throw new MmdbException(PHP_POST_LIMIT);
                 }
 
                 $rows[] = $r;
@@ -696,7 +696,7 @@ class UploadController extends Controller
             if(!$this->form->param->attr || !is_array($this->form->param->attr) || 
                 count($this->form->param->attr) != $colCount)
             {
-                throw new Exception('Attributes are not defined.');
+                throw new MmdbException('Attributes are not defined.');
             }
 
             // Checks, if attributes are valid
@@ -709,7 +709,7 @@ class UploadController extends Controller
 
                 if(!in_array($a, $types))
                 {
-                    throw new Exception("Invalid attribute '$a'. Please, contact your administrator.");
+                    throw new MmdbException("Invalid attribute '$a'. Please, contact your administrator.");
                 }
 
                 $attrs[$order] = $a;
@@ -791,10 +791,10 @@ class UploadController extends Controller
 
             return "$total_saved lines successfully saved!";
         }
-        catch (Exception $ex)
+        catch (MmdbException $ex)
         {
             Db::rollbackTransaction();
-            throw new Exception($ex->getMessage());
+            throw new MmdbException($ex);
         }
     }
 
@@ -803,13 +803,13 @@ class UploadController extends Controller
      * 
      * @return string - Result message
      * 
-     * @throws Exception
+     * @throws MmdbException
      */
     private function save_dataset()
     {
         if(!$this->form->is_post())
         {
-            throw new Exception('Invalid post form.');
+            throw new MmdbException('Invalid post form.');
         }
 
         $line = 0;
@@ -861,7 +861,7 @@ class UploadController extends Controller
                 // Check if exists
                 if(!$this->form->param->$a)
                 {
-                    throw new Exception(PHP_POST_LIMIT);
+                    throw new MmdbException(PHP_POST_LIMIT);
                 }
                 
                 $r = $this->form->param->$a;
@@ -869,7 +869,7 @@ class UploadController extends Controller
                 //Check number of columns
                 if(count($r) != $colCount)
                 {
-                    throw new Exception(PHP_POST_LIMIT);
+                    throw new MmdbException(PHP_POST_LIMIT);
                 }
 
                 $rows[] = $r;
@@ -881,7 +881,7 @@ class UploadController extends Controller
             if(!isset($this->form->param->attr) || !is_array($this->form->param->attr) || 
                 count($this->form->param->attr) != $colCount)
             {
-                throw new Exception('Attributes are not defined.');
+                throw new MmdbException('Attributes are not defined.');
             }
 
             // Checks, if attributes are valid
@@ -894,7 +894,7 @@ class UploadController extends Controller
 
                 if(!in_array($a, $types))
                 {
-                    throw new Exception("Invalid attribute '$a'. Please, contact your administrator.");
+                    throw new MmdbException("Invalid attribute '$a'. Please, contact your administrator.");
                 }
 
                 $attrs[$order] = $a;
@@ -1018,11 +1018,11 @@ class UploadController extends Controller
             
             return NULL;
         }
-        catch (Exception $ex)
+        catch (MmdbException $ex)
         {
             Db::rollbackTransaction();
             $this->addMessageError('Error occured while uploading dataset.');
-            throw new Exception($ex->getMessage());
+            throw $ex;
         }
     }
 

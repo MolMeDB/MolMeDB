@@ -29,9 +29,9 @@ class LoginController extends Controller
                 $this->addMessageError($ex->getMessage());
                 $this->redirect('login');
             }
-            catch (Exception $e)
+            catch (MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->addMessageError($e);
                 $this->redirect('login');
             }
             

@@ -8,7 +8,7 @@
  * For defining of the new endpoint, create class method and define following 
  * params in method documentation:
  *  - @[METHOD] - required param specifiing HTTP METHOD, e.g. @POST/@GET
- *  - @path([PATH]) - required param specifiing uri of defined endpoint, e.g. @Path(/get/byId)
+ *  - @path([PATH]) - required param specifying uri of defined endpoint, e.g. @Path(/get/byId)
  *  - @param [OPTIONS] $[NAME] - optional param specifiing parameter given by client for method execution
  *      - can be included multiple times (once for each parameter)
  *      - $[NAME] - name has to correspond to exactly one method parameter name
@@ -77,13 +77,13 @@ class ApiController extends Controller
                 ResponseBuilder::ok_no_content();
             }
         }
-        catch(ApiException $ex)
+        catch(MmdbException $ex)
         {
-            ResponseBuilder::server_error($ex->getMessage());
+            ResponseBuilder::server_error($ex);
         }
-        catch(Exception $ex) // TODO LOG
+        catch(Exception $e)
         {
-            ResponseBuilder::server_error($ex->getMessage());
+            ResponseBuilder::server_error(new ApiException($e->getMessage(), '500 SERVER ERROR', $e->getCode(), $e));
         }
              
         ResponseBuilder::ok($this->encoded_response, $this->headers);

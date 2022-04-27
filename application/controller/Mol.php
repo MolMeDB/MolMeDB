@@ -48,7 +48,7 @@ class MolController extends Controller
 
             if(!$substance->id)
             {
-                throw new Exception('Record was not found.');
+                throw new MmdbException('Record was not found.');
             }
 
             // Get all membranes/methods
@@ -120,9 +120,9 @@ class MolController extends Controller
                 $this->addMessageWarning('Your request has been redirected from record ' . $identifier);
             }
         } 
-        catch (Exception $ex) 
+        catch (MmdbException $ex) 
         {
-            $this->addMessageError($ex->getMessage());
+            $this->alert->error($ex);
             $this->redirect('error');
         }
 
@@ -168,7 +168,7 @@ class MolController extends Controller
      * 
      * @return string
      * 
-     * @throws Exception
+     * @throws MmdbException
      */
     private static function get_active_interaction_table($id)
     {
@@ -176,7 +176,7 @@ class MolController extends Controller
 
         if(!$s->id)
         {
-            throw new Exception('Invalid substance id.');
+            throw new MmdbException('Invalid substance id.');
         }
 
         $transporters = Transporters::instance()->queryAll('

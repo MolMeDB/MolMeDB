@@ -27,6 +27,8 @@ class Files extends Db
     const T_STATS_IDENTIFIERS = 3;
     const T_STATS_SUBST_INTERACTIONS = 4;
 
+    const T_EXAMPLE_ENERGY = 51;
+
     private static $valid_types = array
     (
         self::T_STATS_INTERACTIONS_ALL,

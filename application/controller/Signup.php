@@ -26,9 +26,9 @@ class SignupController extends Controller
                 $this->addMessageSuccess('Successfully signed up');
                 $this->redirect('detail/intro');
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
-                $this->addMessageError($ex->getMessage());
+                $this->addMessageError($ex);
             }
         }
         

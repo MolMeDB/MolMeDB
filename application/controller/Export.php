@@ -281,9 +281,9 @@ class ExportController extends Controller
             readfile("$file_path");
             die;
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
-            $this->alert->error($e->getMessage());
+            $this->alert->error($e);
         }
         
         $this->redirect('browse/transporters');

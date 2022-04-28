@@ -15,260 +15,276 @@
 ###############################
 
 
-/******* 
- * 
- * get HTML string from SPARQL
- * 
-*/
-
-
-
-function html_sparql($uri, $out)
+class UriDeref extends SparqllibBase
 {
-    //require_once __DIR__ . "../../libraries/Sparqllib.php" ;
-    $db = sparql_connect( "https://idsm.elixir-czech.cz/sparql/endpoint/molmedb" );
-    if( !$db ) { print sparql_errno() . ": " . sparql_error(). "\n"; exit; }
-
-    if( $out )
-    {
-        $sparql = "SELECT DISTINCT * WHERE { <$uri> ?predicate ?object }";
-    }
-    else
-    {
-        $sparql = "SELECT DISTINCT ?predicate ?subject WHERE { ?subject ?predicate <$uri> }";
-    }
-    $result = sparql_query( $sparql ); 
-    if( !$result ) { print sparql_errno() . ": " . sparql_error(). "\n"; exit; }
-
-    $fields = sparql_field_array( $result );
-    if( $out )
-    {
-        print "<h3>outgoing triples</h3>";
-        print "<p>Number of outgoing triples: ".sparql_num_rows( $result )." results.</p>";       
-    }
-    else
-    {
-        print "<h3>incoming triples</h3>";
-        print "<p>Number of incoming triples: ".sparql_num_rows( $result )." results.</p>";  
-    }
-    print "<table style='width:100%'>";
-    print "<tr>";
-    foreach( $fields as $field )
-    {
-        print "<th>$field</th>";
-    }
-    print "</tr>";
-    while( $row = sparql_fetch_array( $result ) )
-    {
-        print "<tr>";
-        foreach( $fields as $field )
-        {
-            if (substr( $row[$field], 0, 4 ) === "http")
-            {
-                print "<td><a href='$row[$field]'>$row[$field]</a></td>";
-            }
-            else
-            {
-                print "<td>$row[$field]</td>"; 
-            }
-        }
-        print "</tr>";
-    }
-    print "</table>";
 
 
-}
 
-/******* 
- * 
- * get string of rdf triples and object types from SPARQL
- * 
-*/
-function rdf_sparql($uri, $out)
-{
-    //require_once __DIR__ . "../../libraries/sparqllib.php" ;
-    $db = sparql_connect( "https://idsm.elixir-czech.cz/sparql/endpoint/molmedb" );
-    if( !$db ) { print sparql_errno() . ": " . sparql_error(). "\n"; exit; }
+	function __construct()
+	{
+		$this->db = $this->sparql_connect( "https://idsm.elixir-czech.cz/sparql/endpoint/molmedb" );
+	}
 
-    if( $out )
-    {
-        $sparql = "SELECT DISTINCT ?subject ?predicate ?object ?type WHERE { <$uri> ?predicate ?object 
-            BIND(datatype(?object) AS ?type) BIND(<$uri> AS ?subject) }";
-    }
-    else
-    {
-        $sparql = "SELECT DISTINCT ?subject ?predicate ?object WHERE { ?subject ?predicate <$uri>
-            BIND(<$uri> AS ?object) }";
-    }
-    $result = sparql_query( $sparql );
-    return $result;
-}
+	/******* 
+	 * 
+	 * get HTML string from SPARQL
+	 * 
+	*/
 
-/******* 
- * 
- * transform string of rdf triples and object types into N-triples format
- * 
-*/
-function nt_sparql($uri, $out)
-{ 
-    $result = rdf_sparql($uri, $out);
-    if( !$result ) { print sparql_errno() . ": " . sparql_error(). "\n"; exit; }
+	function html_sparql($uri, $out)
+	{
+		if( !$this->db ) { print $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; exit; }
 
-    $fields = sparql_field_array( $result );
-    $resstring = "";
-    while( $row = sparql_fetch_array( $result ) )
-    {
-        foreach( $fields as $field )
-        {
-            if (array_key_exists($field, $row))
-            {
-                if($field == "type")
-                {
-                    $resstring = $resstring . "^^<$row[$field]> ";
-                }
-                elseif (substr( $row[$field], 0, 4 ) === "http")
-                {
-                    $resstring = $resstring . "<$row[$field]> ";
-                }
-                else
-                {
-                    $resstring = $resstring . '"' . $row[$field] . '"';
-                }
-            }
-            else
-            {
-                continue;
-            }
-        }
-        $resstring = $resstring . ".\n";
-    }
-    return $resstring;
-}
-/**
-*takes URI and shortens inti CURI
-*/
-function shorten_uri($uri)
-{
-    $namespace = array(
-        "http://www.w3.org/1999/02/22-rdf-syntax-ns" => "rdf:",
-        "http://www.bioassayontology.org/bao" => "bao:",
-        "http://purl.org/spar/cito/" => "cito:",
-        "http://www.w3.org/2000/01/rdf-schema" => "rdfs:",
-        "https://w3id.org/reproduceme" => "repr:",
-        "http://purl.org/dc/elements/1.1" => "dc:",
-        "http://purl.org/dc/terms" => "dcterms:",
-        "http://semanticscience.org/resource" => "sio:",
-        "http://purl.org/ontology/bibo" => "bibo:",
-        "http://purl.obolibrary.org/obo" => "obo:",
-        "http://www.w3.org/2004/02/skos/core" => "skos:",
-    );
-    if (strrpos($uri,"#"))
-    {
-        $splituri = explode("#",$uri);
-        $prefix = $splituri[0];
-        $localname = $splituri[1];
-    }
-    else
-    {
-    $splituri = explode("/",$uri);
-    $localname = array_pop($splituri);
-    $prefix = implode('/',$splituri);
-    }
-    $curi = $namespace[$prefix] . $localname;
-    return $curi;
-}
+		if( $out )
+		{
+			$sparql = "SELECT DISTINCT * WHERE 
+						{
+							<$uri> ?predicate ?node
+							BIND(?predicate AS ?url_predicate)
+							BIND(?node AS ?url_node)
+						}";
+		}
+		else
+		{
+			$sparql = "SELECT DISTINCT * WHERE
+						{
+							?node ?predicate <$uri>
+							BIND(?node as ?url_node)
+							BIND(?predicate as ?url_predicate)
+						}";
+		}
+		$result = $this->sparql_query( $sparql ); 
+		$res_array = array();
+		while($row = $this->sparql_fetch_array($result))
+		{
+			array_push($res_array, $row);
+		}
+		sort($res_array);
+		$last_pred = "";
+		foreach($res_array as &$row)
+		{
+			if($last_pred === $row["predicate"])
+			{
+				$row["predicate"] = $row["url_predicate"] = "";
 
-/******* 
- * 
- * transform string of rdf triples and object types into RDF/XML format
- * 
-*/
-function xml_sparql($uri, $out)
-{ 
+			}
+			else
+			{
+				$last_pred = $row["predicate"];
+				$row["url_predicate"] = $this->html_uri_redir($row["url_predicate"]);
+				$row["predicate"] = $this->shorten_uri($row["predicate"]);
+			}
+			$row["url_node"] = $this->html_uri_redir($row["url_node"]);
+			$row["node"] = $this->shorten_uri($row["node"]);
+		}
+		return $res_array;
+	}
 
-    $result = rdf_sparql($uri, $out);
-    if( !$result ) { print sparql_errno() . ": " . sparql_error(). "\n"; exit; }
+	function html_uri_redir($uri)
+	{
+		if(DEBUG)
+		{
+			return preg_replace("/rdf\.molmedb\.upol\.cz/", Url::domain() . "/rdf", "$uri");
+		}
+		return $uri;
+	}
 
-    //$fields = sparql_field_array( $result );
-    $resstring = "";
-    if ($out)
-    {//neumim delat XML tohle mmi pridje prasacky
-        $resstring .= '<?xml version="1.0" encoding="utf-8"?>
+
+	/******* 
+	 * 
+	 * get string of rdf triples and object types from SPARQL
+	 * 
+	*/
+	function rdf_sparql($uri, $out)
+	{
+		if( !$this->db ) { print $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; exit; }
+
+		if( $out )
+		{
+			$sparql = "SELECT DISTINCT ?subject ?predicate ?object ?type WHERE { <$uri> ?predicate ?object 
+				BIND(datatype(?object) AS ?type) BIND(<$uri> AS ?subject) }";
+		}
+		else
+		{
+			$sparql = "SELECT DISTINCT ?subject ?predicate ?object WHERE { ?subject ?predicate <$uri>
+				BIND(<$uri> AS ?object) }";
+		}
+		$result = $this->sparql_query( $sparql );
+		return $result;
+	}
+
+	/******* 
+	 * 
+	 * transform string of rdf triples and object types into N-triples format
+	 * 
+	*/
+	function nt_sparql($uri, $out)
+	{ 
+		$result = $this->rdf_sparql($uri, $out);
+		if( !$result ) { print $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; exit; }
+
+		$fields = $this->sparql_field_array( $result );
+		$resstring = "";
+		while( $row = $this->sparql_fetch_array( $result ) )
+		{
+			foreach( $fields as $field )
+			{
+				if (array_key_exists($field, $row))
+				{
+					if($field == "type")
+					{
+						$resstring = $resstring . "^^<$row[$field]> ";
+					}
+					elseif (substr( $row[$field], 0, 4 ) === "http")
+					{
+						$resstring = $resstring . "<$row[$field]> ";
+					}
+					else
+					{
+						$resstring = $resstring . '"' . $row[$field] . '"';
+					}
+				}
+				else
+				{
+					continue;
+				}
+			}
+			$resstring = $resstring . ".\n";
+		}
+		return $resstring;
+	}
+	/**
+	*takes URI and shortens inti CURI
+	*/
+	function shorten_uri($uri)
+	{
+		$namespace = array(
+			"http://www.w3.org/1999/02/22-rdf-syntax-ns" => "rdf:",
+			"http://www.bioassayontology.org/bao" => "bao:",
+			"http://purl.org/spar/cito" => "cito:",
+			"http://www.w3.org/2000/01/rdf-schema" => "rdfs:",
+			"https://w3id.org/reproduceme" => "repr:",
+			"http://purl.org/dc/elements/1.1" => "dc:",
+			"http://purl.org/dc/terms" => "dcterms:",
+			"http://semanticscience.org/resource" => "sio:",
+			"http://purl.org/ontology/bibo" => "bibo:",
+			"http://purl.obolibrary.org/obo" => "obo:",
+			"http://www.w3.org/2004/02/skos/core" => "skos:",
+			"http://rdf.molmedb.upol.cz/substance" => "mmdbsub:",
+			"http://rdf.molmedb.upol.cz/interaction" => "mmdbint:",
+			"http://rdf.molmedb.upol.cz/transporter" => "mmdbtra:",
+			"http://rdf.molmedb.upol.cz/reference" => "mmdbref:",
+			"http://rdf.molmedb.upol.cz/vocabulary" => "mmdbvoc:",
+			"http://rdf.ncbi.nlm.nih.gov/pubchem/compound" => "pubchem:",
+			"http://rdf.ebi.ac.uk/resource/chembl/molecule" => "ebi:",
+			"http://purl.uniprot.org/uniprot/" => "uniprot:"
+		);
+		if (strrpos($uri,"#"))
+		{
+			$splituri = explode("#",$uri);
+			$prefix = $splituri[0];
+			$localname = $splituri[1];
+		}
+		else
+		{
+		$splituri = explode("/",$uri);
+		$localname = array_pop($splituri);
+		$prefix = implode('/',$splituri);
+		}
+		if (array_key_exists($prefix,$namespace))
+		{
+			return $namespace[$prefix] . $localname;
+		}
+		return $uri;
+	}
+
+	/******* 
+	 * 
+	 * transform string of rdf triples and object types into RDF/XML format
+	 * 
+	*/
+	function xml_sparql($uri, $out)
+	{ 
+		$result = $this->rdf_sparql($uri, $out);
+		if( !$result ) { print $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; exit; }
+
+		//$fields = sparql_field_array( $result );
+		$resstring = "";
+		if ($out)
+		{//neumim delat XML tohle mmi pridje prasacky
+			$resstring .= '<?xml version="1.0" encoding="utf-8"?>
 <rdf:RDF
-        xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-        xmlns:bao="http://www.bioassayontology.org/bao#"
-        xmlns:cito="http://purl.org/spar/cito/"
-        xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-        xmlns:repr="https://w3id.org/reproduceme#"
-        xmlns:dc="http://purl.org/dc/elements/1.1/"
-        xmlns:dcterms="http://purl.org/dc/terms/"
-        xmlns:sio="http://semanticscience.org/resource/"
-        xmlns:bibo="http://purl.org/ontology/bibo/"
-        xmlns:obo="http://purl.obolibrary.org/obo/"
-        xmlns:skos="http://www.w3.org/2004/02/skos/core#" >
-  <rdf:Description rdf:about="' . $uri . '">
+	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+	xmlns:bao="http://www.bioassayontology.org/bao#"
+	xmlns:cito="http://purl.org/spar/cito/"
+	xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+	xmlns:repr="https://w3id.org/reproduceme#"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:dcterms="http://purl.org/dc/terms/"
+	xmlns:sio="http://semanticscience.org/resource/"
+	xmlns:bibo="http://purl.org/ontology/bibo/"
+	xmlns:obo="http://purl.obolibrary.org/obo/"
+	xmlns:skos="http://www.w3.org/2004/02/skos/core#" >
+<rdf:Description rdf:about="' . $uri . '">
 ';
-    
+		
 
-        while( $row = sparql_fetch_array( $result ) )
-        {
-            $cpred = shorten_uri($row["predicate"]);
-            
-            if (substr( $row["object"], 0, 4 ) === "http")
-            {
-                $resstring .= '    <' . $cpred . ' rdf:resource="' . $row["object"] . '" />
+			while( $row = $this->sparql_fetch_array( $result ) )
+			{
+				$cpred = $this->shorten_uri($row["predicate"]);
+				
+				if (substr( $row["object"], 0, 4 ) === "http")
+				{
+					$resstring .= '    <' . $cpred . ' rdf:resource="' . $row["object"] . '" />
 ';
-            }
-            else
-            {
-                $resstring .= '    <' . $cpred;
-                if (array_key_exists("type", $row))
-                {
-                    $resstring .= ' rdf:datatype="' . $row["type"] . '"';
-                }
-                $resstring .= '>' . $row["object"] . '</'. $cpred .'>
+				}
+				else
+				{
+					$resstring .= '    <' . $cpred;
+					if (array_key_exists("type", $row))
+					{
+						$resstring .= ' rdf:datatype="' . $row["type"] . '"';
+					}
+					$resstring .= '>' . $row["object"] . '</'. $cpred .'>
 ';
-            }
-        }
-        $resstring .= '  </rdf:Description>
+				}
+			}
+			$resstring .= '  </rdf:Description>
 ';
-    }
-    else
-    {
-        while( $row = sparql_fetch_array( $result ) )
-        {
-            $cpred = shorten_uri($row["predicate"]);
-            $resstring .= '  <rdf:Description rdf:about="' . $row["subject"] . '">
+		}
+		else
+		{
+			while( $row = $this->sparql_fetch_array( $result ) )
+			{
+				$cpred = $this->shorten_uri($row["predicate"]);
+				$resstring .= '  <rdf:Description rdf:about="' . $row["subject"] . '">
 ';
-            $resstring .= '    <' . $cpred . ' rdf:resource="' . $uri . '" />
-  </rdf:Description>
+				$resstring .= '    <' . $cpred . ' rdf:resource="' . $uri . '" />
+</rdf:Description>
 ';
-        }
-        $resstring .= "</rdf:RDF>";
-    }
-    return $resstring;
+			}
+			$resstring .= "</rdf:RDF>";
+		}
+		return $resstring;
+	}
+
+	/******* 
+	 * 
+	 * create and publish rdf file in selected mime format
+	 * 
+	*/
+	function rdf_publish($filename, $resstring, $mime)
+	{
+
+		//nejsem si jisty hlavickama na response
+		header("Content-Type: " . $mime);
+		header("Content-Length: " . strlen($resstring));
+		header('Content-Disposition: inline; filename=' . $filename);
+		echo $resstring;
+
+	}
+
 }
-
-/******* 
- * 
- * create and publish rdf file in selected mime format
- * 
-*/
-function rdf_publish($filename, $resstring, $mime)
-{
-    $filepath = "media/files/rdf/$filename";
-    $file = fopen($filepath,"w") or die("Unable to open file!");
-    fwrite($file,$resstring);
-    fclose($file);
-    //nejsem si jisty hlavickama na response
-    header("Content-Type: " . $mime);
-    header("Content-Length: " . filesize($filepath));
-    header('Content-Disposition: inline; filename=' . basename($filepath));
-    readfile($filepath);
-    unlink($filepath);
-}
-
-
 
 
 
@@ -283,45 +299,46 @@ function rdf_publish($filename, $resstring, $mime)
 ###############################
 
 # to document: CGIParams
-
-function sparql_connect( $endpoint ) { return new sparql_connection( $endpoint ); }
-
-function sparql_ns( $short, $long, $db = null ) { return _sparql_a_connection( $db )->ns( $short, $long ); }
-function sparql_query( $sparql, $db = null ) { return _sparql_a_connection( $db )->query( $sparql ); }
-function sparql_errno( $db = null ) { return _sparql_a_connection( $db )->errno(); }
-function sparql_error( $db = null ) { return _sparql_a_connection( $db )->error(); }
-
-function sparql_fetch_array( $result ) { return $result->fetch_array(); }
-function sparql_num_rows( $result ) { return $result->num_rows(); }
-function sparql_field_array( $result ) { return $result->field_array(); }
-function sparql_field_name( $result, $i ) { return $result->field_name( $i ); }
-
-function sparql_fetch_all( $result ) { return $result->fetch_all(); }
-
-function sparql_get( $endpoint, $sparql ) 
-{ 
-	$db = sparql_connect( $endpoint );
-	if( !$db ) { return; }
-	$result = $db->query( $sparql );
-	if( !$result ) { return; }
-	return $result->fetch_all(); 
-}
-
-function _sparql_a_connection( $db )
+class SparqllibBase
 {
-	global $sparql_last_connection;
-	if( !isset( $db ) )
-	{
-		if( !isset( $sparql_last_connection ) )
-		{
-			print( "No currect SPARQL connection (connection) in play!" );
-			return;
-		}
-		$db = $sparql_last_connection;
+	function sparql_connect( $endpoint ) { return new sparql_connection( $endpoint ); }
+
+	function sparql_ns( $short, $long, $db = null ) { return $this->_sparql_a_connection( $db )->ns( $short, $long ); }
+	function sparql_query( $sparql, $db = null ) { return $this->_sparql_a_connection( $db )->query( $sparql ); }
+	function sparql_errno( $db = null ) { return $this->_sparql_a_connection( $db )->errno(); }
+	function sparql_error( $db = null ) { return $this->_sparql_a_connection( $db )->error(); }
+
+	function sparql_fetch_array( $result ) { return $result->fetch_array(); }
+	function sparql_num_rows( $result ) { return $result->num_rows(); }
+	function sparql_field_array( $result ) { return $result->field_array(); }
+	function sparql_field_name( $result, $i ) { return $result->field_name( $i ); }
+
+	function sparql_fetch_all( $result ) { return $result->fetch_all(); }
+
+	function sparql_get( $endpoint, $sparql ) 
+	{ 
+		$db = $this->sparql_connect( $endpoint );
+		if( !$db ) { return; }
+		$result = $db->query( $sparql );
+		if( !$result ) { return; }
+		return $result->fetch_all(); 
 	}
-	return $db;
-}
-		
+
+	function _sparql_a_connection( $db )
+	{
+		global $sparql_last_connection;
+		if( !isset( $db ) )
+		{
+			if( !isset( $sparql_last_connection ) )
+			{
+				print( "No currect SPARQL connection (connection) in play!" );
+				return;
+			}
+			$db = $sparql_last_connection;
+		}
+		return $db;
+	}
+}		
 
 #	$timeout = 20;
 #	$old = ini_set('default_socket_timeout', $timeout);

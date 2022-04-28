@@ -1,0 +1,48 @@
+<h2><?php echo $this->uri; ?></h2>
+
+<h3>outgoing triples</h3>
+Number of outgoing triples: <?php echo $this->n_out; ?>
+<table style='width:100%'>
+<tr>
+    <th>predicate</th>
+    <th>object</th>
+</tr>
+<?php
+	foreach($this->out as $row)
+	{
+		print "<tr>";
+		print "<td><a href='".$row["url_predicate"]."'>".$row["predicate"]."</a></td>";
+		if (substr( $row["url_node"], 0, 4 ) === "http")
+		{
+			print "<td><a href='".$row["url_node"]."'>".$row["node"]."</a></td>";
+		}
+		else
+		{
+			print "<td>".$row["node"]."</td>"; 
+		}
+		print "</tr>";
+		unset($row);
+	}
+?>
+
+
+</table>
+
+<h3>incoming triples</h3>
+Number of incoming triples: <?php echo $this->n_in; ?>
+<table style='width:100%'>
+<tr>
+    <th>predicate</th>
+    <th>subject</th>
+</tr>
+<?php
+	foreach( $this->in as $row )
+	{
+		print "<tr>";
+		print "<td><a href='".$row["url_predicate"]."'>".$row["predicate"]."</a></td>";
+		print "<td><a href='".$row["url_node"]."'>".$row["node"]."</a></td>";
+		print "</tr>";
+	}
+?>
+
+</table>

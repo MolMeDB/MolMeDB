@@ -1,7 +1,7 @@
 <h2><?php echo $this->uri; ?></h2>
 
 <h3>outgoing triples</h3>
-Number of outgoing triples: <?php echo $this->n_out; ?>
+Number of outgoing triples: <?php echo count($out); ?>
 <table style='width:100%'>
 <tr>
     <th>predicate</th>
@@ -29,7 +29,7 @@ Number of outgoing triples: <?php echo $this->n_out; ?>
 </table>
 
 <h3>incoming triples</h3>
-Number of incoming triples: <?php echo $this->n_in; ?>
+Number of incoming triples: <?php echo count($in); ?>
 <table style='width:100%'>
 <tr>
     <th>predicate</th>

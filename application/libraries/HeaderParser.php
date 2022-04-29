@@ -15,6 +15,8 @@ class HeaderParser
     const JSON = 'application/json';
     const CSV = 'text/csv';
     const HTML = 'text/html';
+    const XML = 'application/xml';
+    const RDF_XML = 'application/rdf+xml';
     const MULTIPART = 'multipart/form-data';
     const APP_WWW_FORM = "application/x-www-form-urlencoded";
     const GZIP = 'gzip';
@@ -47,7 +49,9 @@ class HeaderParser
         self::CSV,
         self::ALL_TYPES,
         self::JSON,
-        self::HTML
+        self::HTML,
+        self::RDF_XML,
+        self::XML
     );
 
     /**
@@ -61,7 +65,9 @@ class HeaderParser
     (
         self::JSON  => 'ResponseBuilder::json',
         self::CSV   => 'ResponseBuilder::csv',
-        self::HTML  => 'ResponseBuilder::html'
+        self::HTML  => 'ResponseBuilder::html',
+        self::XML   => 'ResponseBuilder::xml',
+        self::RDF_XML => 'ResponseBuilder::xml'
     );
 
     /**

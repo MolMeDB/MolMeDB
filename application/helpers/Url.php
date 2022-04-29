@@ -77,6 +77,16 @@ class Url
 	}
 
     /**
+	 * Returns RDF prefix
+	 * @return string
+	 */
+	public static function rdf_domain()
+	{
+        // TODO
+        return "http://rdf.molmedb.upol.cz/";
+	}
+
+    /**
      * Returns url for generating 2d structure
      * 
      * @return string

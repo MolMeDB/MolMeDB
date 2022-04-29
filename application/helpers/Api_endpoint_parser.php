@@ -81,7 +81,7 @@ class Api_endpoint_parser
 	* @param string $endpoint
 	* @param bool $fast_check
     *
-	* @author Jaromir Hradil
+	* @author Jaromir Hradil, Jakub Juracka
 	*/
 	public function find($endpoint, $method, $fast_check = FALSE)
 	{
@@ -108,6 +108,8 @@ class Api_endpoint_parser
 
         $endpoint_path = $method . "@" . $endpoint;
 
+        $endpoint_arr = explode("/", $endpoint);
+
 		if(array_key_exists($endpoint_path, $endpoints))
 		{
             $data = $endpoints[$endpoint_path];
@@ -125,6 +127,35 @@ class Api_endpoint_parser
             file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
 			return $endpoints[$endpoint_path];
 		}
+        else if($method == HeaderParser::METHOD_GET)
+        {
+            $backslash_params = [];
+            while(count($endpoint_arr) > 2)
+            {
+                $backslash_params[] = array_pop($endpoint_arr);
+                $endpoint_path = $method . "@" . implode('/', $endpoint_arr);
+
+                if(array_key_exists($endpoint_path, $endpoints))
+                {
+                    $data = $endpoints[$endpoint_path];
+                    // Check for changes
+                    $r = $this->get_method_detail($data['class_name'], $data['function_name']);
+
+                    // Update
+                    if(!$r || strtolower(preg_replace('/^Api/', '', $r['class_name'])) . $r['path'] !== implode('/', $endpoint_arr))
+                    {
+                        file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
+                        return NULL;
+                    }
+
+                    $endpoints[$endpoint_path] = $r;
+                    file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
+
+                    $endpoints[$endpoint_path]['backslash_params'] = $backslash_params;
+                    return $endpoints[$endpoint_path];
+                }
+            }
+        }
 		else if(!$fast_check)
 		{
 			$this->update_all();

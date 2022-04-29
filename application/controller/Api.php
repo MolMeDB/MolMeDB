@@ -79,10 +79,12 @@ class ApiController extends Controller
         }
         catch(ApiException $ex)
         {
+            // TODO printable message
             ResponseBuilder::server_error($ex->getMessage());
         }
         catch(Exception $ex) // TODO LOG
         {
+            // TODO server message
             ResponseBuilder::server_error($ex->getMessage());
         }
              

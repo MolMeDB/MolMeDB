@@ -189,34 +189,43 @@ class ApiEndpoint
         $remote_params = array_change_key_case($remote_params, CASE_LOWER);
         $params = array();
 
-        //Checking method params
-        foreach($endpoint_details['params'] as $param)
-        {
-            $key = $param['name'];
-            $value = NULL;;
-            $required =  $param['required'];
+        $backslash_params = isset($endpoint_details['backslash_params']) ? $endpoint_details['backslash_params'] : [];
 
-            if(!isset($remote_params[$key]))
+        //Checking method params
+        if(empty($remote_params) && count($backslash_params) == count($endpoint_details['params']))
+        {
+            $params = $backslash_params;
+        }
+        else 
+        {
+            foreach($endpoint_details['params'] as $param)
             {
-                if(isset($param['default']))
+                $key = $param['name'];
+                $value = NULL;;
+                $required =  $param['required'];
+
+                if(!isset($remote_params[$key]))
                 {
-                    $value = $param['default'];
-                }
-                else if($required)
-                {
-                    ResponseBuilder::bad_request(sprintf("Parameter %s is required", $key));                
+                    if(isset($param['default']))
+                    {
+                        $value = $param['default'];
+                    }
+                    else if($required)
+                    {
+                        ResponseBuilder::bad_request(sprintf("Parameter %s is required", $key));                
+                    }
+                    else
+                    {
+                        $value = NULL;
+                    }
                 }
                 else
                 {
-                    $value = NULL;
+                    $value = arr::remove_empty_values($remote_params[$key]);
                 }
-            }
-            else
-            {
-                $value = arr::remove_empty_values($remote_params[$key]);
-            }
 
-            $params[] = $value;
+                $params[] = $value;
+            }
         }
 
         $this->function_params = $params;

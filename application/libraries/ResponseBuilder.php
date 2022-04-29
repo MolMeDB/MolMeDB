@@ -152,6 +152,18 @@ class ResponseBuilder
     } 
 
     /**
+     * Parses final response to XML format
+     * 
+     * @param string $content
+     * 
+     * @return array
+     */
+    public static function xml($content)
+    {
+        return $content;
+    }
+
+    /**
      * Parses final response to CSV format (2D-array)
      * 
      * @param string $content

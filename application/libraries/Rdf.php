@@ -12,28 +12,62 @@
 #  LGPL License 
 #  http://graphite.ecs.soton.ac.uk/sparqllib/
 #  https://github.com/cgutteridge/PHP-SPARQL-Lib
-###############################
-
-
-class UriDeref extends SparqllibBase
+##############################
+/**
+ * @author Dominik Martinát <dominiki.martinat@gmail.com>
+ */
+class Rdf extends SparqllibBase
 {
+	/**
+	 * IDSM database connection handler
+	 * @var sparql_connection
+	 */
+	private $db;
 
-
-
+	/**
+	 * Class constructor
+	 */
 	function __construct()
 	{
-		$this->db = $this->sparql_connect( "https://idsm.elixir-czech.cz/sparql/endpoint/molmedb" );
+		$this->connect();
 	}
 
-	/******* 
+	/**
+	 * Tries to connect to IDSM server
+	 */
+	public function connect()
+	{
+		if($this->db)
+		{
+			return true;
+		}
+
+		$this->db = $this->sparql_connect("https://idsm.elixir-czech.cz/sparql/endpoint/molmedb");
+
+		if(!$this->db)
+		{
+			throw new ApiException('Cannot connect to the idsm server.');
+			// TODO Exception logging
+			// $this->sparql_errno() . ": " . $this->sparql_error().
+		}
+	}
+
+	/**
 	 * 
-	 * get HTML string from SPARQL
+	 * Get HTML string from SPARQL
+	 * 
+	 * @param string $uri
+	 * @param bool $out
+	 * 
+	 * @return array
 	 * 
 	*/
-
 	function html_sparql($uri, $out)
 	{
-		if( !$this->db ) { print $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; exit; }
+		/** Check DB connection */
+		$this->connect();
+
+		// TODO - check $uri content. !injection attack!
 
 		if( $out )
 		{
@@ -53,14 +87,18 @@ class UriDeref extends SparqllibBase
 							BIND(?predicate as ?url_predicate)
 						}";
 		}
+
 		$result = $this->sparql_query( $sparql ); 
 		$res_array = array();
+
 		while($row = $this->sparql_fetch_array($result))
 		{
 			array_push($res_array, $row);
 		}
+
 		sort($res_array);
 		$last_pred = "";
+
 		foreach($res_array as &$row)
 		{
 			if($last_pred === $row["predicate"])
@@ -80,24 +118,33 @@ class UriDeref extends SparqllibBase
 		return $res_array;
 	}
 
+	/**
+	 * Adjusts uri for redirections in DEBUG mode
+	 * 
+	 * @param string $uri
+	 * 
+	 * @return string
+	 */
 	function html_uri_redir($uri)
 	{
 		if(DEBUG)
 		{
-			return preg_replace("/rdf\.molmedb\.upol\.cz/", Url::domain() . "/rdf", "$uri");
+			return preg_replace("/rdf\.molmedb\.upol\.cz/", Url::domain() . "/api/rdf", "$uri");
 		}
 		return $uri;
 	}
 
 
-	/******* 
+	/**	 
+	 * Get string of rdf triples and object types from SPARQL
 	 * 
-	 * get string of rdf triples and object types from SPARQL
-	 * 
+	 * @param string $uri
+	 * @param bool $out
 	*/
 	function rdf_sparql($uri, $out)
 	{
-		if( !$this->db ) { print $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; exit; }
+		/** Check DB connection */
+		$this->connect();
 
 		if( $out )
 		{
@@ -121,7 +168,12 @@ class UriDeref extends SparqllibBase
 	function nt_sparql($uri, $out)
 	{ 
 		$result = $this->rdf_sparql($uri, $out);
-		if( !$result ) { print $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; exit; }
+
+		if( !$result && DEBUG ) 
+		{ 
+			echo $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; 
+			exit; 
+		}
 
 		$fields = $this->sparql_field_array( $result );
 		$resstring = "";
@@ -153,8 +205,9 @@ class UriDeref extends SparqllibBase
 		}
 		return $resstring;
 	}
+
 	/**
-	*takes URI and shortens inti CURI
+	* Takes URI and shortens inti CURI
 	*/
 	function shorten_uri($uri)
 	{
@@ -187,9 +240,9 @@ class UriDeref extends SparqllibBase
 		}
 		else
 		{
-		$splituri = explode("/",$uri);
-		$localname = array_pop($splituri);
-		$prefix = implode('/',$splituri);
+			$splituri = explode("/",$uri);
+			$localname = array_pop($splituri);
+			$prefix = implode('/',$splituri);
 		}
 		if (array_key_exists($prefix,$namespace))
 		{
@@ -213,20 +266,20 @@ class UriDeref extends SparqllibBase
 		if ($out)
 		{//neumim delat XML tohle mmi pridje prasacky
 			$resstring .= '<?xml version="1.0" encoding="utf-8"?>
-<rdf:RDF
-	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-	xmlns:bao="http://www.bioassayontology.org/bao#"
-	xmlns:cito="http://purl.org/spar/cito/"
-	xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-	xmlns:repr="https://w3id.org/reproduceme#"
-	xmlns:dc="http://purl.org/dc/elements/1.1/"
-	xmlns:dcterms="http://purl.org/dc/terms/"
-	xmlns:sio="http://semanticscience.org/resource/"
-	xmlns:bibo="http://purl.org/ontology/bibo/"
-	xmlns:obo="http://purl.obolibrary.org/obo/"
-	xmlns:skos="http://www.w3.org/2004/02/skos/core#" >
-<rdf:Description rdf:about="' . $uri . '">
-';
+				<rdf:RDF
+					xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+					xmlns:bao="http://www.bioassayontology.org/bao#"
+					xmlns:cito="http://purl.org/spar/cito/"
+					xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+					xmlns:repr="https://w3id.org/reproduceme#"
+					xmlns:dc="http://purl.org/dc/elements/1.1/"
+					xmlns:dcterms="http://purl.org/dc/terms/"
+					xmlns:sio="http://semanticscience.org/resource/"
+					xmlns:bibo="http://purl.org/ontology/bibo/"
+					xmlns:obo="http://purl.obolibrary.org/obo/"
+					xmlns:skos="http://www.w3.org/2004/02/skos/core#" >
+				<rdf:Description rdf:about="' . $uri . '">
+				';
 		
 
 			while( $row = $this->sparql_fetch_array( $result ) )

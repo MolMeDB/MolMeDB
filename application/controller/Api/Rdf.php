@@ -281,4 +281,19 @@ class ApiRdf extends ApiController
 
         return $view->render(FALSE);
     }
+
+    /**
+     * Time test for tripples generator 
+     */
+    private function rdf_sparql_test($uri)
+    {
+        print $uri." ";
+        $t = time();
+        $deref = new Rdf();
+        $out_trips = $deref->rdf_sparql($uri, True);
+        $in_trips = $deref->rdf_sparql($uri, False);
+        print time()-$t;
+        die;
+    }
+
 }

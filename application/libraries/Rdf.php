@@ -54,7 +54,7 @@ class Rdf extends SparqllibBase
 
 	/**
 	 * 
-	 * Get HTML string from SPARQL
+	 * Get array [$size_warning, array of predicate description (url, label, nodes) with predicate compact uri as key] from SPARQL
 	 * 
 	 * @param string $uri
 	 * @param bool $out
@@ -67,55 +67,86 @@ class Rdf extends SparqllibBase
 		/** Check DB connection */
 		$this->connect();
 
+		/** Set namespace for rdfs:label */
+		#$this->sparql_ns( "rdfs","http://www.w3.org/2000/01/rdf-schema#" );
+
 		// TODO - check $uri content. !injection attack!
 
+		/**find predicates and their possible labels */
 		if( $out )
 		{
-			$sparql = "SELECT DISTINCT * WHERE 
+			$sparql = "SELECT DISTINCT ?predicate ?url_predicate ?label WHERE 
 						{
 							<$uri> ?predicate ?node
 							BIND(?predicate AS ?url_predicate)
-							BIND(?node AS ?url_node)
+							OPTIONAL {?predicate rdfs:label ?label}
 						}";
 		}
 		else
 		{
-			$sparql = "SELECT DISTINCT * WHERE
+			$sparql = "SELECT DISTINCT ?predicate ?url_predicate ?label WHERE
 						{
 							?node ?predicate <$uri>
-							BIND(?node as ?url_node)
 							BIND(?predicate as ?url_predicate)
+							OPTIONAL {?predicate rdfs:label ?label}
 						}";
 		}
+		$result = $this->sparql_query( $sparql );
 
-		$result = $this->sparql_query( $sparql ); 
-		$res_array = array();
-
-		while($row = $this->sparql_fetch_array($result))
+	 	$pred_array = array();
+	 	while($row = $this->sparql_fetch_array($result))
+	 	{
+	 		array_push($pred_array, $row);
+	 	}
+		/** for each predicate find nodes up to limit
+		 * if size_limit is hit, then set size_warning to True
+		 */
+		$size_warning = False;
+		$size_limit = 300;
+		foreach($pred_array as $pred)
 		{
-			array_push($res_array, $row);
-		}
-
-		sort($res_array);
-		$last_pred = "";
-
-		foreach($res_array as &$row)
-		{
-			if($last_pred === $row["predicate"])
+			$predicate = $pred["predicate"];
+			if( $out )
 			{
-				$row["predicate"] = $row["url_predicate"] = "";
-
+				$sparql = "SELECT DISTINCT * WHERE 
+							{
+								<$uri> <$predicate> ?node
+								BIND(?node AS ?url_node)
+								BIND(datatype(?node) AS ?type)
+								OPTIONAL {?node rdfs:label ?label}
+							} LIMIT $size_limit";
 			}
 			else
 			{
-				$last_pred = $row["predicate"];
-				$row["url_predicate"] = $this->html_uri_redir($row["url_predicate"]);
-				$row["predicate"] = $this->shorten_uri($row["predicate"]);
+				$sparql = "SELECT DISTINCT * WHERE
+							{
+								?node <$predicate> <$uri>
+								BIND(?node AS ?url_node)
+								OPTIONAL {?node rdfs:label ?label}
+							} LIMIT $size_limit";
 			}
-			$row["url_node"] = $this->html_uri_redir($row["url_node"]);
-			$row["node"] = $this->shorten_uri($row["node"]);
+			$result = $this->sparql_query( $sparql );
+			if( $this->sparql_num_rows( $result ) == $size_limit ){ $size_warning = True; }
+
+			/**prepare array of nodes */
+			$node_array = array();
+			while($row = $this->sparql_fetch_array($result))
+			{
+				$row["node"] = $this->shorten_uri($row["node"]);
+				$row["url_node"] = $this->html_uri_redir($row["url_node"]);
+				array_push($node_array, $row);
+			}
+			sort($node_array);
+
+			/** create array with predicate description - url, label and array of nodes */
+			$pred_desc_array = ["url_predicate" => $pred["url_predicate"], "nodes" => $node_array];
+			if(array_key_exists("label",$pred)) {$pred_desc_array["label"] = $pred["label"];}
+
+			/**insert description array with predicate compact uri key into result array */
+			$res_array = array();
+			$res_array[$this->shorten_uri($pred["predicate"])] = $pred_desc_array;
 		}
-		return $res_array;
+		return [$size_warning, $res_array];
 	}
 
 	/**
@@ -134,9 +165,8 @@ class Rdf extends SparqllibBase
 		return $uri;
 	}
 
-
 	/**	 
-	 * Get string of rdf triples and object types from SPARQL
+	 * Get array [predicate1 =>[["node"=> node1, "type" => type1],...],...]  from SPARQL
 	 * 
 	 * @param string $uri
 	 * @param bool $out
@@ -145,21 +175,63 @@ class Rdf extends SparqllibBase
 	{
 		/** Check DB connection */
 		$this->connect();
-
+		
+		/** find predicates*/
 		if( $out )
 		{
-			$sparql = "SELECT DISTINCT ?subject ?predicate ?object ?type WHERE { <$uri> ?predicate ?object 
-				BIND(datatype(?object) AS ?type) BIND(<$uri> AS ?subject) }";
+			$sparql = "SELECT DISTINCT ?predicate WHERE 
+						{
+							<$uri> ?predicate ?node
+						}";
 		}
 		else
 		{
-			$sparql = "SELECT DISTINCT ?subject ?predicate ?object WHERE { ?subject ?predicate <$uri>
-				BIND(<$uri> AS ?object) }";
+			$sparql = "SELECT DISTINCT ?predicate WHERE
+						{
+							?node ?predicate <$uri>
+						}";
 		}
 		$result = $this->sparql_query( $sparql );
-		return $result;
+		$pred_array = array();
+		while($row = $this->sparql_fetch_array($result))
+		{
+			array_push($pred_array, $row["predicate"]);
+		}
+
+
+		/** fill  result array with predicate_uri=>[["node"=>node1,"type"=>node1_type]...] */
+		$res_array = array();
+		foreach($pred_array as $predicate)
+		{
+			if( $out )
+			{
+				$sparql = "SELECT DISTINCT * WHERE 
+							{
+								<$uri> <$predicate> ?node
+								BIND(datatype(?node) AS ?type)
+							}";
+			}
+			else
+			{
+				$sparql = "SELECT DISTINCT * WHERE
+							{
+								?node <$predicate> <$uri>
+								BIND(datatype(?node) AS ?type)
+							}";
+			}
+			$result = $this->sparql_query( $sparql );
+			$node_array = array();
+			while($row = $this->sparql_fetch_array($result))
+			{
+				array_push($node_array, $row);
+			}
+			$res_array[$predicate] = $node_array;
+		}
+		return $res_array;
 	}
 
+
+	//TODO - rework file generators to work with new rdf_sparql()
 	/******* 
 	 * 
 	 * transform string of rdf triples and object types into N-triples format
@@ -167,7 +239,7 @@ class Rdf extends SparqllibBase
 	*/
 	function nt_sparql($uri, $out)
 	{ 
-		$result = $this->rdf_sparql($uri, $out);
+		$result = $this->rdf_sparql($uri, $out); //still old!!
 
 		if( !$result && DEBUG ) 
 		{ 
@@ -258,7 +330,7 @@ class Rdf extends SparqllibBase
 	*/
 	function xml_sparql($uri, $out)
 	{ 
-		$result = $this->rdf_sparql($uri, $out);
+		$result = $this->rdf_sparql($uri, $out); //still old!!!
 		if( !$result ) { print $this->sparql_errno() . ": " . $this->sparql_error(). "\n"; exit; }
 
 		//$fields = sparql_field_array( $result );

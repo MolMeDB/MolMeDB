@@ -1,48 +1,118 @@
+<style>
+table, th, td {
+  border:1px solid black;
+}
+</style>
+
 <h2><?php echo $this->uri; ?></h2>
 
 <h3>outgoing triples</h3>
-Number of outgoing triples: <?php echo count($out); ?>
+<?php 
+/** size warning check */
+if ($this->out[0])
+{
+	$query_url = "https://idsm.elixir-czech.cz/sparql/endpoint/molmedb#query=SELECT%20DISTINCT%20*%20WHERE%0A%7B%0A%20%20%3C".preg_replace(["/:/","/\//"],["%3A","%2F"],$this->uri)."%3E%20%3FSUBJECT%20%3FPREDICATE%0A%7D%0A&endpoint=https%3A%2F%2Fidsm.elixir-czech.cz%2Fsparql%2Fendpoint%2Fmolmedb&requestMethod=POST&tabTitle=Query&headers=%7B%7D&contentTypeConstruct=application%2Fn-triples%2C*%2F*%3Bq%3D0.9&contentTypeSelect=application%2Fsparql-results%2Bjson%2C*%2F*%3Bq%3D0.9&outputFormat=table";
+	print "<b>WARNING:</b> There are more objects, than can be shown here.<br>
+	To see all the outgoing triples refer to SPARQL endpoint <a href='".$query_url."'>HERE</a>.";
+}
+?>
 <table style='width:100%'>
 <tr>
     <th>predicate</th>
     <th>object</th>
 </tr>
 <?php
-	foreach($this->out as $row)
+$out = $this->out[1];
+
+/**priority predicates should be topmost */
+$pred_priority = ["rdfs:label","dcterms:bibliographicCitation","rdf:type","bibo:doi","bibo:pmid","rdfs:seeAlso"];
+$pred_array = array_keys($out);
+$priority = [];
+foreach($pred_priority as $p)
+{
+	$key = array_search($p,$pred_array);
+	if($key)
+	{
+		$priority = array_merge($priority,[$p]);
+		unset($pred_array[$key]);
+	}
+}
+$pred_array = array_merge($priority,array_values($pred_array));
+
+/** print only first occurence of predicate */
+$print_pred = True;
+foreach($pred_array as $pred)
+{
+	foreach($out[$pred]["nodes"] as $nodes)
 	{
 		print "<tr>";
-		print "<td><a href='".$row["url_predicate"]."'>".$row["predicate"]."</a></td>";
-		if (substr( $row["url_node"], 0, 4 ) === "http")
+		print "<td>";
+		if ($print_pred)
 		{
-			print "<td><a href='".$row["url_node"]."'>".$row["node"]."</a></td>";
+			$print_pred = False;
+			print "<a href='".$out[$pred]["url_predicate"]."'>".$pred."</a>";
+			if (array_key_exists("label",$out[$pred])) {print " (".$out[$pred]["label"].")";}
+		}
+		print "</td><td>";
+		if (substr( $nodes["url_node"], 0, 4 ) === "http")
+		{
+			print "<a href='".$nodes["url_node"]."'>".$nodes["node"]."</a>";
+			if (array_key_exists("label",$nodes)) {print " (".$nodes["label"].")";}
 		}
 		else
 		{
-			print "<td>".$row["node"]."</td>"; 
+			print '"'.strip_tags($nodes["node"]).'"';
+			if (array_key_exists("type",$nodes)) {print "^^".$nodes["type"];}
 		}
+		print "</td>";
 		print "</tr>";
-		unset($row);
 	}
+	$print_pred = True;
+}
 ?>
 
 
 </table>
 
 <h3>incoming triples</h3>
-Number of incoming triples: <?php echo count($in); ?>
+<?php
+/** size warning check */ 
+if ($this->in[0])
+{
+	$query_url = "https://idsm.elixir-czech.cz/sparql/endpoint/molmedb#query=SELECT%20DISTINCT%20*%20WHERE%0A%7B%0A%20%20%3FSUBJECT%20%3FPREDICATE%20%3C".preg_replace(["/:/","/\//"],["%3A","%2F"],$this->uri)."%3E%0A%7D%0A&endpoint=https%3A%2F%2Fidsm.elixir-czech.cz%2Fsparql%2Fendpoint%2Fmolmedb&requestMethod=POST&tabTitle=Query&headers=%7B%7D&contentTypeConstruct=application%2Fn-triples%2C*%2F*%3Bq%3D0.9&contentTypeSelect=application%2Fsparql-results%2Bjson%2C*%2F*%3Bq%3D0.9&outputFormat=table";
+	print "<b>WARNING:</b> There are more subjects, than can be shown here.<br>
+	To see all the incoming triples refer to SPARQL endpoint <a href='".$query_url."'>HERE</a>.";
+}
+?>
 <table style='width:100%'>
 <tr>
     <th>predicate</th>
     <th>subject</th>
 </tr>
+
 <?php
-	foreach( $this->in as $row )
+$in = $this->in[1];
+$pred_array = array_keys($in);
+foreach($pred_array as $pred)
+{
+	foreach($in[$pred]["nodes"] as $nodes)
 	{
 		print "<tr>";
-		print "<td><a href='".$row["url_predicate"]."'>".$row["predicate"]."</a></td>";
-		print "<td><a href='".$row["url_node"]."'>".$row["node"]."</a></td>";
+		print "<td>";
+		if ($print_pred)
+		{
+			$print_pred = False;
+			print "<a href='".$in[$pred]["url_predicate"]."'>".$pred."</a>";
+			if (array_key_exists("label",$in[$pred])) {print " (".$in[$pred]["label"].")";}
+		}
+		print "</td><td>";
+		print "<a href='".$nodes["url_node"]."'>".$nodes["node"]."</a>";
+		if (array_key_exists("label",$nodes)) {print " (".$nodes["label"].")";}
+		print "</td>";
 		print "</tr>";
 	}
+	$print_pred = True;
+}
 ?>
 
 </table>

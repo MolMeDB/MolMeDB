@@ -403,7 +403,7 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka
      */
-    private function fragment_molecules()
+    public function fragment_molecules()
     {
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
@@ -523,10 +523,9 @@ class SchedulerController extends Controller
     /**
      * Tries to find duplicities in DB
      * 
-     * 
      * @author Jakub Juracka
      */
-    private function find_substance_duplicities()
+    public function find_substance_duplicities()
     {
         return; // TODO
         $vi_model = new Validator_identifiers();
@@ -641,7 +640,7 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka
      */
-    private function validate_substance_identifiers($include_ignored = FALSE)
+    public function validate_substance_identifiers($include_ignored = FALSE)
     {
         $logs = new Validator_identifier_logs();
         
@@ -654,12 +653,12 @@ class SchedulerController extends Controller
         {
             $new_order = 1;
         }
-        else if($running_cores >= $max_cores)
+        else if($running_cores >= $max_cores && !DEBUG)
         {
             echo 'Max number of runs reached.';
             return;
         }
-        else
+        else if(!DEBUG)
         {
             $new_order = $running_cores+1;
         }
@@ -667,11 +666,19 @@ class SchedulerController extends Controller
         Config::set('scheduler_substance_validation_running_cores', $new_order);
 
         $limit = 1000;
-        $offset = ($new_order-1)*$limit;
+        $offset = $new_order ? ($new_order-1)*$limit : 0;
 
-        $substances = $logs->get_substances_for_validation($limit, $offset, TRUE, $include_ignored);
+        try
+        {
+            $substances = $logs->get_substances_for_validation($limit, $offset, TRUE, $include_ignored);
 
-        if(!count($substances))
+            if(!count($substances))
+            {
+                Config::set('scheduler_substance_validation_running_cores', $new_order-1);
+                return;
+            }
+        }
+        catch(Exception $e)
         {
             Config::set('scheduler_substance_validation_running_cores', $new_order-1);
             return;
@@ -1508,7 +1515,7 @@ class SchedulerController extends Controller
     /**
      * Updates stats data
      */
-    private function update_stats()
+    public function update_stats()
     {
         $stats_model = new Statistics();
         $stats_model->update_all();
@@ -1517,7 +1524,7 @@ class SchedulerController extends Controller
     /**
      * Updates publications
      */
-    private function update_publications()
+    public function update_publications()
     {
         $publication_model = new Publications();
         $all_publications = $publication_model->get_all();
@@ -1531,7 +1538,7 @@ class SchedulerController extends Controller
     /**
      * Deletes empty publications
      */
-    private function delete_empty_publications()
+    public function delete_empty_publications()
     {
         $publication_model = new Publications();
         $empty_publications = $publication_model->get_empty_publications();
@@ -1659,7 +1666,7 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka      
      */
-    private function check_interaction_datasets()
+    public function check_interaction_datasets()
     {
         $dataset_model = new Datasets();
         $interaction_model = new Interactions();
@@ -1756,7 +1763,7 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka      
      */
-    private function check_transporter_datasets()
+    public function check_transporter_datasets()
     {
         return;
         $dataset_model = new Transporter_datasets();
@@ -1809,7 +1816,7 @@ class SchedulerController extends Controller
      /**
      * Sends unsent emails
      */
-    private function send_emails()
+    public function send_emails()
     {
         $email_model = new Email_queue();
         $sender = new Email();
@@ -1859,7 +1866,7 @@ class SchedulerController extends Controller
      * 
      * @param string $message
      */
-    private function send_email_to_admins($message, $subject = 'Scheduler run report', $file_path = NULL)
+    public function send_email_to_admins($message, $subject = 'Scheduler run report', $file_path = NULL)
     {
         $email_addresses = explode(';', $this->config->get(Configs::EMAIL_ADMIN_EMAILS));
 

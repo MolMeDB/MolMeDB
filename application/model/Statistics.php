@@ -102,29 +102,29 @@ class Statistics extends Db
         parent::__construct($id);
     }
 
-    /**
-     * Checks, if stat file is available for given type
-     * 
-     * @param int $type
-     * 
-     * @return boolean
-     */
-    public static function exists_stat_file($type)
-    {
-        if(!self::is_valid($type))
-        {
-            return false;
-        }
+    // /**
+    //  * Checks, if stat file is available for given type
+    //  * 
+    //  * @param int $type
+    //  * 
+    //  * @return boolean
+    //  */
+    // public static function exists_stat_file($type)
+    // {
+    //     if(!self::is_valid($type))
+    //     {
+    //         return false;
+    //     }
 
-        $record = self::instance()->where('type' , $type)->get_one();
+    //     $record = self::instance()->where('type' , $type)->get_one();
 
-        if(!$record->id)
-        {
-            return false;
-        }
+    //     if(!$record->id)
+    //     {
+    //         return false;
+    //     }
 
-        return $record->file && $record->file->id ? True : False;
-    }
+    //     return $record->file && $record->file->id ? True : False;
+    // }
 
     /**
      * Checks, if type is valid
@@ -211,6 +211,38 @@ class Statistics extends Db
     }
 
     /**
+     * Returns all files related to statistics
+     * 
+     * @return Files[]
+     */
+    public function get_stat_files()
+    {
+        function gbt($t)
+        {
+            return Files::instance()
+                ->join('JOIN stats s ON s.id_file = files.id')
+                ->where('s.type', $t)
+                ->select_list('files.*')
+                ->get_one();
+        }
+
+        return array
+        (
+            self::TYPE_INTER_ACTIVE => gbt(self::TYPE_INTER_ACTIVE),
+            self::TYPE_INTER_ADD => gbt(self::TYPE_INTER_ADD),
+            self::TYPE_MEMBRANES_DATA => gbt(self::TYPE_MEMBRANES_DATA),
+            self::TYPE_METHODS_DATA => gbt(self::TYPE_METHODS_DATA),
+            self::TYPE_IDENTIFIERS => gbt(self::TYPE_IDENTIFIERS),
+            self::TYPE_INTER_PASSIVE_ACITVE => gbt(self::TYPE_INTER_PASSIVE_ACITVE),
+            self::TYPE_INTER_TOTAL => gbt(self::TYPE_INTER_TOTAL),
+            self::TYPE_SUBST_TOTAL => gbt(self::TYPE_SUBST_TOTAL),
+            self::TYPE_METHODS_TOTAL => gbt(self::TYPE_METHODS_TOTAL),
+            self::TYPE_MEMBRANES_TOTAL => gbt(self::TYPE_MEMBRANES_TOTAL),
+            self::TYPE_REFERENCES => gbt(self::TYPE_REFERENCES)
+        );
+    }
+
+    /**
      * Updates stats by type
      * 
      * @param int $type
@@ -285,6 +317,10 @@ class Statistics extends Db
 
             case self::TYPE_INTER_ACTIVE:
                 $obj->content = self::get_active_interactions_stats();
+                break;
+
+            case self::TYPE_REFERENCES:
+                $obj->content = NULL;
                 break;
 
             default:
@@ -884,6 +920,7 @@ class Statistics extends Db
 
         $path = Files::get_type_path(Files::T_STATS_IDENTIFIERS) . ".csv";
         $path = $file->transform_to_CSV($data, $path, NULL);
+
         $path = $file->zip($path, Files::get_type_path(Files::T_STATS_IDENTIFIERS) . '.zip', TRUE);
 
         if(!$path)
@@ -892,13 +929,9 @@ class Statistics extends Db
         }
 
         // Save DB record
-        if(!$f->id)
-        {
-            $f->type = Files::T_STATS_IDENTIFIERS;
-            $f->name = basename($path);
-        }
-
-        $f->path = Files::get_type_path(Files::T_STATS_IDENTIFIERS);
+        $f->type = Files::T_STATS_IDENTIFIERS;
+        $f->name = basename($path);
+        $f->path = $path;
         $f->save();
 
         return $f->id;

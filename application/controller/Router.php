@@ -149,6 +149,7 @@ class RouterController extends Controller
         catch(Exception $e)
         {
             ob_clean();
+
             Server::print_global_exception($e);
         }
 

@@ -239,6 +239,7 @@ class Table
     {
         $output = new View('table/basic');
 
+        $output->id = sha1(strtotime('now') . rand(0,1000000));
         $output->columns = $this->columns;
         $output->data = $this->datasource;
         $output->sorting_enabled = $this->sorting;

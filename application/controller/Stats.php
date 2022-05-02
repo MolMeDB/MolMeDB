@@ -35,9 +35,14 @@
         $this->view = new View('stats');
         $this->view->last_update = date('d-m-Y', strtotime($stats->get_last_update_date()));
 
+        $this->view->files = $stats->get_stat_files();
+
+        // print_r($stats->get(Statistics::TYPE_IDENTIFIERS));
+        // die;
+
         $this->view->interactions = (object)array
         (
-            'adding' => (object)$stats->get(Statistics::TYPE_INTER_ADD),
+            'adding' => $stats->get(Statistics::TYPE_INTER_ADD),
             'total' => $stats->get(Statistics::TYPE_INTER_TOTAL),
             'active' => $stats->get(Statistics::TYPE_INTER_ACTIVE)
         );

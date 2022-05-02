@@ -12,7 +12,7 @@ for (i = 0; i < acc.length; i++) {
       panel.style.maxHeight = null;
       panel.style.minHeight = null;
     } else {
-      panel.style.maxHeight = panel.scrollHeight + "px";
+      panel.style.maxHeight = (panel.scrollHeight+300) + "px";
       panel.style.minHeight = "250px";
     } 
   }

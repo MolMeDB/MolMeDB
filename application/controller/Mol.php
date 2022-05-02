@@ -31,6 +31,19 @@ class MolController extends Controller
         $transporter_dataset_model = new Transporter_datasets();
         $link_model = new Substance_links();
 
+        // Make identifier if not
+        if(is_numeric($identifier))
+        {
+            $identifier = Identifiers::get_identifier(intval($identifier));
+        }
+
+        if(preg_match('/^MM[0-9]+/', $identifier))
+        {
+            $identifier = preg_replace('/^MM/', '', $identifier);
+            $identifier = intval($identifier);
+            $identifier = Identifiers::get_identifier($identifier);
+        }
+
         try
         {
             // Get substance detail
@@ -259,6 +272,9 @@ class MolController extends Controller
             ->title('Note');
 
         $table->datasource($dataset);
+
+        // echo $table->html();
+        // die;
 
         return $table->html();
     }

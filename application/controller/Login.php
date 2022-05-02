@@ -22,6 +22,12 @@ class LoginController extends Controller
             {
                 $userManager->login($_POST['name'], $_POST['password']);
                 $this->addMessageSuccess('Success!');
+
+                if(session::is_admin())
+                {
+                    $this->redirect('administration');
+                }
+
                 $this->redirect('detail/intro');
             } 
             catch (ErrorUser $ex) 

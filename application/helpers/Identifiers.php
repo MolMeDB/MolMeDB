@@ -43,7 +43,7 @@ class Identifiers
 	 * 
 	 * @return string
 	 */
-	private static function get_identifier($id)
+	public static function get_identifier($id)
 	{
 		// Get string value
 		$id = strval($id);

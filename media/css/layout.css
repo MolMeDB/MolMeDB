@@ -234,7 +234,7 @@ footer{
     min-height: 350px;
     padding: 30px 30px 30px 30px;
     color: white;
-    display: flex;
+    display: flex !important;
     justify-content: space-between;
     position: relative;
     z-index: 251;

@@ -103,6 +103,7 @@ class Rdf extends SparqllibBase
 		 */
 		$size_warning = False;
 		$size_limit = 300;
+		$res_array = array();
 		foreach($pred_array as $pred)
 		{
 			$predicate = $pred["predicate"];
@@ -137,13 +138,11 @@ class Rdf extends SparqllibBase
 				array_push($node_array, $row);
 			}
 			sort($node_array);
-
 			/** create array with predicate description - url, label and array of nodes */
 			$pred_desc_array = ["url_predicate" => $pred["url_predicate"], "nodes" => $node_array];
 			if(array_key_exists("label",$pred)) {$pred_desc_array["label"] = $pred["label"];}
 
 			/**insert description array with predicate compact uri key into result array */
-			$res_array = array();
 			$res_array[$this->shorten_uri($pred["predicate"])] = $pred_desc_array;
 		}
 		return [$size_warning, $res_array];

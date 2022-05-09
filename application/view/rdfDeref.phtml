@@ -27,47 +27,50 @@ $out = $this->out[1];
 /**priority predicates should be topmost */
 $pred_priority = ["rdfs:label","dcterms:bibliographicCitation","rdf:type","bibo:doi","bibo:pmid","rdfs:seeAlso"];
 $pred_array = array_keys($out);
-$priority = [];
+/** remove priority predricates from predicate array */
 foreach($pred_priority as $p)
 {
 	$key = array_search($p,$pred_array);
-	if($key)
+	if(is_int($key))
 	{
-		$priority = array_merge($priority,[$p]);
 		unset($pred_array[$key]);
 	}
+
 }
-$pred_array = array_merge($priority,array_values($pred_array));
 
 /** print only first occurence of predicate */
 $print_pred = True;
-foreach($pred_array as $pred)
+foreach(array_merge($pred_priority,$pred_array) as $pred)
 {
-	foreach($out[$pred]["nodes"] as $nodes)
+	//print $pred." ";
+	if (array_key_exists($pred,$out))
 	{
-		print "<tr>";
-		print "<td>";
-		if ($print_pred)
+		foreach($out[$pred]["nodes"] as $nodes)
 		{
-			$print_pred = False;
-			print "<a href='".$out[$pred]["url_predicate"]."'>".$pred."</a>";
-			if (array_key_exists("label",$out[$pred])) {print " (".$out[$pred]["label"].")";}
+			print "<tr>";
+			print "<td>";
+			if ($print_pred)
+			{
+				$print_pred = False;
+				print "<a href='".$out[$pred]["url_predicate"]."'>".$pred."</a>";
+				if (array_key_exists("label",$out[$pred])) {print " (".$out[$pred]["label"].")";}
+			}
+			print "</td><td>";
+			if (substr( $nodes["url_node"], 0, 4 ) === "http")
+			{
+				print "<a href='".$nodes["url_node"]."'>".$nodes["node"]."</a>";
+				if (array_key_exists("label",$nodes)) {print " (".$nodes["label"].")";}
+			}
+			else
+			{
+				print '"'.strip_tags($nodes["node"]).'"';
+				if (array_key_exists("type",$nodes)) {print "^^".$nodes["type"];}
+			}
+			print "</td>";
+			print "</tr>";
 		}
-		print "</td><td>";
-		if (substr( $nodes["url_node"], 0, 4 ) === "http")
-		{
-			print "<a href='".$nodes["url_node"]."'>".$nodes["node"]."</a>";
-			if (array_key_exists("label",$nodes)) {print " (".$nodes["label"].")";}
-		}
-		else
-		{
-			print '"'.strip_tags($nodes["node"]).'"';
-			if (array_key_exists("type",$nodes)) {print "^^".$nodes["type"];}
-		}
-		print "</td>";
-		print "</tr>";
+		$print_pred = True;
 	}
-	$print_pred = True;
 }
 ?>
 

@@ -43,7 +43,7 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $id
      * 
-     * @Path(/compound)
+     * @Path(/compound/<id:^MM[0-9]{5,}>)
      */
     public function compound($id=NULL)
     {

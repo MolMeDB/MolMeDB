@@ -120,8 +120,8 @@ class ApiEndpoint
         $this->class_to_call = new $this->class_to_call();
         //Calling requested function
         $function = $this->function_to_call;
-        
-        return $this->class_to_call->$function(...$this->function_params);
+
+        return $this->class_to_call->$function(...array_values($this->function_params));
     }
 
     /**
@@ -184,51 +184,76 @@ class ApiEndpoint
     {
         $this->class_to_call = $endpoint_details['class_name'];
         $this->function_to_call = $endpoint_details['function_name'];
-       
+
+        $r = new ReflectionMethod($this->class_to_call, $this->function_to_call);
+        $method_params = $r->getParameters();
+
         $remote_params = $this->request->content;
         $remote_params = array_change_key_case($remote_params, CASE_LOWER);
-        $params = array();
 
-        $backslash_params = isset($endpoint_details['backslash_params']) ? $endpoint_details['backslash_params'] : [];
+        $uri_params = $endpoint_details['uri_params'];
+        $params = [];
 
-        //Checking method params
-        if(empty($remote_params) && count($backslash_params) == count($endpoint_details['params']))
+        foreach($endpoint_details['path_params'] as $p)
         {
-            $params = $backslash_params;
+            $params[$p['name']] = array_shift($uri_params);
         }
-        else 
-        {
-            foreach($endpoint_details['params'] as $param)
-            {
-                $key = $param['name'];
-                $value = NULL;;
-                $required =  $param['required'];
 
-                if(!isset($remote_params[$key]))
+        foreach($endpoint_details['params'] as $param)
+        {
+            $key = $param['name'];
+            $value = NULL;;
+            $required =  $param['required'];
+
+            if(isset($params[$key]) && $params[$key])
+            {
+                continue;
+            }
+
+            if(!isset($remote_params[$key]))
+            {
+                if(isset($param['default']))
                 {
-                    if(isset($param['default']))
-                    {
-                        $value = $param['default'];
-                    }
-                    else if($required)
-                    {
-                        ResponseBuilder::bad_request(sprintf("Parameter %s is required", $key));                
-                    }
-                    else
-                    {
-                        $value = NULL;
-                    }
+                    $value = $param['default'];
+                }
+                else if($required)
+                {
+                    ResponseBuilder::bad_request(sprintf("Parameter %s is required", $key));                
                 }
                 else
                 {
-                    $value = arr::remove_empty_values($remote_params[$key]);
+                    $value = NULL;
                 }
-
-                $params[] = $value;
             }
+            else
+            {
+                $value = arr::remove_empty_values($remote_params[$key]);
+            }
+
+            $params[$key] = $value;
         }
 
-        $this->function_params = $params;
+        // reorder by method specification
+        $final_params = [];
+
+        foreach($method_params as $p)
+        {
+            $name = $p->name;
+
+            if(!isset($params[$name]))
+            {
+                if(DEBUG)
+                {
+                    throw new Exception('Method parameters count doesn\'t match endpoint specified parameters.');
+                }
+
+                ResponseBuilder::server_error("Invalid endpoint definition.");
+            }
+
+            $final_params[$name] = $params[$name];
+        }
+        
+        $this->function_params = $final_params;
     }
 }   
 

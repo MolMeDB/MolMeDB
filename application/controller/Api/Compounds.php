@@ -15,7 +15,7 @@ class ApiCompounds extends ApiController
      * 
      * @param @required $id - Substance ID
      * 
-     * @PATH(/fragments)
+     * @PATH(/fragments/<id:^MM\d+>)
      */
     public function getFragments($id)
     {
@@ -23,7 +23,10 @@ class ApiCompounds extends ApiController
 
         if(!$s->id)
         {
-            ResponseBuilder::not_found('Invalid substance id.');
+            $s = Substances::instance()->where('identifier LIKE', $id)->get_one();
+
+            if(!$s->id)
+                ResponseBuilder::not_found('Invalid substance id.');
         }
 
         $fragments = $s->get_all_fragments();

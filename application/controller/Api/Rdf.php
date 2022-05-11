@@ -62,7 +62,7 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $suffix
      * 
-     * @Path(/substance)
+     * @Path(/substance/<suffix:\w+>)
      */
     public function substance($suffix=NULL)
     {
@@ -81,7 +81,7 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $suffix
      * 
-     * @Path(/interaction)
+     * @Path(/interaction/<suffix:\w+>)
      */
     public function interaction($suffix=NULL)
     {
@@ -99,7 +99,7 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $suffix
      * 
-     * @Path(/transporter)
+     * @Path(/transporter/<suffix:\w+>)
      */
     public function transporter($suffix=NULL)
     {
@@ -117,7 +117,7 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $suffix
      * 
-     * @Path(/reference)
+     * @Path(/reference/<suffix:\w+>)
      */
     public function reference($suffix=NULL)
     {

@@ -20,11 +20,15 @@ class Enum_types extends Db
     /** TYPE - TRANSPORTER CATEGORIES */
     const TYPE_TRANSPORTER_CATS = 3;
 
+    /** TYPE - FUNCTIONAL GROUPS of chemical compounds */
+    const TYPE_FRAGMENT_CATS = 11;
+
     public static $valid_types = array
     (
         self::TYPE_MEMBRANE_CATS,
         self::TYPE_METHOD_CATS,
-        self::TYPE_TRANSPORTER_CATS
+        self::TYPE_TRANSPORTER_CATS,
+        self::TYPE_FRAGMENT_CATS
     );
 
     /**

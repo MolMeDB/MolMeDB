@@ -50,10 +50,7 @@ class ApiRdf extends ApiController
         $id = strtoupper($id);
 
         $uri = "http://identifiers.org/molmedb/" . $id;
-        
-        $this->responses = [
-            HeaderParser::HTML => $this->make_view($uri)
-        ];
+        $this->dereference_response($uri);
     }
 
     /**
@@ -69,10 +66,7 @@ class ApiRdf extends ApiController
         $suffix = $this->format_parameter($suffix);
 
         $uri = Url::rdf_domain() . "substance/" . $suffix;
-
-        $this->responses = [
-            HeaderParser::HTML => $this->make_view($uri)
-        ];
+        $this->dereference_response($uri);
     }
 
     /**
@@ -86,11 +80,9 @@ class ApiRdf extends ApiController
     public function interaction($suffix=NULL)
     {
         $suffix = $this->format_parameter($suffix);
-        $uri = Url::rdf_domain() . "interaction/" . $suffix;
 
-        $this->responses = [
-            HeaderParser::HTML => $this->make_view($uri)
-        ];
+        $uri = Url::rdf_domain() . "interaction/" . $suffix;
+        $this->dereference_response($uri);
     }
 
     /**
@@ -104,11 +96,9 @@ class ApiRdf extends ApiController
     public function transporter($suffix=NULL)
     {
         $suffix = $this->format_parameter($suffix);
-        $uri = Url::rdf_domain() . "transporter/" . $suffix;
 
-        $this->responses = [
-            HeaderParser::HTML => $this->make_view($uri)
-        ];
+        $uri = Url::rdf_domain() . "transporter/" . $suffix;
+        $this->dereference_response($uri);
     }
 
     /**
@@ -122,11 +112,9 @@ class ApiRdf extends ApiController
     public function reference($suffix=NULL)
     {
         $suffix = $this->format_parameter($suffix);
+        
         $uri = Url::rdf_domain() . "reference/" . $suffix;
-
-        $this->responses = [
-            HeaderParser::HTML => $this->make_view($uri)
-        ];
+        $this->dereference_response($uri);
     }
 
     /**
@@ -157,113 +145,6 @@ class ApiRdf extends ApiController
 
 
     /**
-     * get N-triples file
-     */
-    // public function nt_compound($suffix = NULL)
-    // {
-    //     $uri = "http://identifiers.org/molmedb/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->nt_sparql($uri, True) . $deref->nt_sparql($uri, False);
-    //     $filename = "mmdbsub_$suffix.nt";
-    //     $deref->rdf_publish($filename, $resstring, "application/n-triples");
-    //     die;
-    // }
-
-    // public function nt_substance_attr($suffix = NULL)
-    // {
-    //     $uri = "http://rdf.molmedb.upol.cz/substance/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->nt_sparql($uri, True) . $deref->nt_sparql($uri, False);
-    //     $filename = "mmdbsub_$suffix.nt";
-    //     $deref->rdf_publish($filename, $resstring, "application/n-triples");
-    //     die;
-    // }
-
-    // public function nt_membrane_interaction($suffix = NULL)
-    // {
-    //     $uri = "http://rdf.molmedb.upol.cz/interaction/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->nt_sparql($uri, True) . $deref->nt_sparql($uri, False);
-    //     $filename = "mmdbint_$suffix.nt";
-    //     $deref->rdf_publish($filename, $resstring, "application/n-triples");
-    //     die;
-    // }
-
-    // public function nt_transporter_interaction($suffix = NULL)
-    // {
-    //     $uri = "http://rdf.molmedb.upol.cz/transporter/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->nt_sparql($uri, True) . $deref->nt_sparql($uri, False);
-    //     $filename = "mmdbtra_$suffix.nt";
-    //     $deref->rdf_publish($filename, $resstring, "application/n-triples");
-    //     die;
-    // }
-
-    // public function nt_reference($suffix = NULL)
-    // {
-    //     $uri = "http://rdf.molmedb.upol.cz/reference/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->nt_sparql($uri, True) . $deref->nt_sparql($uri, False);
-    //     $filename = "mmdbref_$suffix.nt";
-    //     $deref->rdf_publish($filename, $resstring, "application/n-triples");
-    //     die;
-    // }
-
-    // /**
-    //  * get RDF/XML file
-    //  */
-    // public function xml_compound($suffix = NULL)
-    // {
-    //     $uri = "http://identifiers.org/molmedb/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->xml_sparql($uri, True) . $deref->xml_sparql($uri, False);
-    //     $filename = "mmdbsub_$suffix.rdf";
-    //     $deref->rdf_publish($filename, $resstring, "application/rdf+xml");
-    //     die;
-    // }
-
-    // public function xml_substance_attr($suffix = NULL)
-    // {
-    //     $uri = "http://rdf.molmedb.upol.cz/substance/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->xml_sparql($uri, True) . $deref->xml_sparql($uri, False);
-    //     $filename = "mmdbsub_$suffix.rdf";
-    //     $deref->rdf_publish($filename, $resstring, "application/rdf+xml");
-    //     die;
-    // }
-
-    // public function xml_membrane_interaction($suffix = NULL)
-    // {
-    //     $uri = "http://rdf.molmedb.upol.cz/interaction/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->xml_sparql($uri, True) . $deref->xml_sparql($uri, False);
-    //     $filename = "mmdbint_$suffix.rdf";
-    //     $deref->rdf_publish($filename, $resstring, "application/rdf+xml");
-    //     die;
-    // }
-
-    // public function xml_transporter_interaction($suffix = NULL)
-    // {
-    //     $uri = "http://rdf.molmedb.upol.cz/transporter/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->xml_sparql($uri, True) . $deref->xml_sparql($uri, False);
-    //     $filename = "mmdbtra_$suffix.rdf";
-    //     $deref->rdf_publish($filename, $resstring, "application/rdf+xml");
-    //     die;
-    // }
-
-    // public function xml_reference($suffix = NULL)
-    // {
-    //     $uri = "http://rdf.molmedb.upol.cz/reference/" . $suffix;
-    //     $deref = new Rdf();
-    //     $resstring = $deref->xml_sparql($uri, True) . $deref->xml_sparql($uri, False);
-    //     $filename = "mmdbref_$suffix.rdf";
-    //     $deref->rdf_publish($filename, $resstring, "application/rdf+xml");
-    //     die;
-    // }
-
-
-    /**
      * Makes final html representation
      * 
      * @return string 
@@ -282,18 +163,22 @@ class ApiRdf extends ApiController
         return $view->render(FALSE);
     }
 
+
     /**
-     * Time test for tripples generator 
+     * Creates dereference response according to Accept header
      */
-    private function rdf_sparql_test($uri)
+    private function dereference_response($uri)
     {
-        print $uri." ";
-        $t = time();
-        $deref = new Rdf();
-        $out_trips = $deref->rdf_sparql($uri, True);
-        $in_trips = $deref->rdf_sparql($uri, False);
-        print time()-$t;
-        die;
+        $this->responses = [
+            HeaderParser::HTML => $this->make_view($uri),
+            HeaderParser::RDF_XML => $uri,
+            HeaderParser::NTriples => $uri,
+            HeaderParser::NQuads => $uri,
+            HeaderParser::Turtle => $uri,
+            HeaderParser::TSV => $uri,
+            HeaderParser::TriG => $uri,
+            HeaderParser::RDF_CSV => $uri
+        ];
     }
 
 }

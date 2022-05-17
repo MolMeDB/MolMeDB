@@ -16,13 +16,21 @@ class HeaderParser
     const CSV = 'text/csv';
     const HTML = 'text/html';
     const XML = 'application/xml';
-    const RDF_XML = 'application/rdf+xml';
     const MULTIPART = 'multipart/form-data';
     const APP_WWW_FORM = "application/x-www-form-urlencoded";
     const GZIP = 'gzip';
     const COMPRESS = 'compress';
     const DEFLATE = 'deflate';
     const UTF8 = 'utf-8';
+
+    /** Constants for machine readable RDF dereference */
+    const RDF_XML = 'application/rdf+xml';
+    const NTriples = 'application/n-triples';
+    const NQuads = 'application/n-quads';
+    const Turtle = 'text/turtle';
+    const TSV = 'text/tab-separated-values';
+    const TriG = 'application/trig';
+    const RDF_CSV = 'text/csv';
 
     /** ALLOWED AUTHORIZATION TYPES */
     const AUTH_BASIC = 1;
@@ -51,7 +59,12 @@ class HeaderParser
         self::JSON,
         self::HTML,
         self::RDF_XML,
-        self::XML
+        self::XML,
+        self::NTriples,
+        self::NQuads,
+        self::Turtle,
+        self::TSV,
+        self::TriG,
     );
 
     /**
@@ -67,7 +80,13 @@ class HeaderParser
         self::CSV   => 'ResponseBuilder::csv',
         self::HTML  => 'ResponseBuilder::html',
         self::XML   => 'ResponseBuilder::xml',
-        self::RDF_XML => 'ResponseBuilder::xml'
+        self::RDF_XML => 'ResponseBuilder::RDF',
+        self::NTriples => 'ResponseBuilder::RDF',
+        self::NQuads => 'ResponseBuilder::RDF',
+        self::Turtle => 'ResponseBuilder::RDF',
+        self::TSV => 'ResponseBuilder::RDF',
+        self::TriG => 'ResponseBuilder::RDF',
+        self::RDF_CSV => 'ResponseBuilder::RDF',
     );
 
     /**

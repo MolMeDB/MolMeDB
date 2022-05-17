@@ -9,6 +9,7 @@ class ResponseBuilder
     /** RESPONSE CODES */
     const CODE_OK = 200;
     const CODE_OK_NO_CONTENT = 204;
+    const CODE_SEE_OTHER = 303;
     const CODE_BAD_REQUEST = 400;
     const CODE_UNAUTHORIZED = 401;
     const CODE_FORBIDDEN = 403;
@@ -296,5 +297,14 @@ class ResponseBuilder
         }
         
         return $csv_output;
+    }
+
+    /** method for machine readable RDF formats */
+    public static function RDF($uri)
+    {
+        $deref = new Rdf(); //to test connection to endpoint
+        http_response_code(self::CODE_SEE_OTHER);
+        header("Location: https://idsm.elixir-czech.cz/sparql/endpoint/molmedb?query=DESCRIBE%20%3C".preg_replace(["/:/","/\//"],["%3A","%2F"],$uri)."%3E");
+        die;
     }
 }

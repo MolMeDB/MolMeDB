@@ -113,7 +113,7 @@ class ApiRdf extends ApiController
             ResponseBuilder::bad_request('Invalid accept type parameter.');
         }
 
-        $uri = Url::rdf_domain(true) . "compound/" . $suffix;
+        $uri = 'http://identifiers.org/molmedb/' . $suffix;
 
         if($accept_type == HeaderParser::HTML)
         {
@@ -136,12 +136,12 @@ class ApiRdf extends ApiController
     public function substance($suffix=NULL)
     {
         // Check compound id
-        $substance = Substances::instance()->where('identifier', $suffix)->get_one();
+        // $substance = Substances::instance()->where('identifier', strtok($suffix,'_'))->get_one();
 
-        if(!$substance->id)
-        {
-            ResponseBuilder::not_found('Compound not found.');
-        }
+        // if(!$substance->id)
+        // {
+        //     ResponseBuilder::not_found('Compound not found.');
+        // }
 
         // Get requested type
         $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
@@ -192,49 +192,206 @@ class ApiRdf extends ApiController
      * Returns ...
      * 
      * @GET
-     * @param @required $suffix
+     * @param @required $suffix - Substance identifier
      * 
      * @Path(/interaction/<suffix:\w+>)
      */
     public function interaction($suffix=NULL)
     {
-        $suffix = $this->format_parameter($suffix);
+        // $item_type = substr($suffix,0,3);
+        // // Check item id
+        // if($item_type == 'int')
+        // {
+        //     $item = Interactions::instance()->where('id', strtok(substr($suffix,3),'_'))->get_one();
+        // }
+        // elseif($item_type == 'mem')
+        // {
+        //     $item = Membranes::instance()->where('id', substr($suffix,8))->get_one();
+        // }
+        // else
+        // {
+        //     $item = Methods::instance()->where('id', substr($suffix,6))->get_one();
+        // }
 
-        $uri = Url::rdf_domain() . "interaction/" . $suffix;
-        $this->dereference_response($uri);
+        // if(!$item->id)
+        // {
+        //     ResponseBuilder::not_found('item not found.');
+        // }
+
+        // Get requested type
+        $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
+        $accept_type_enum = HeaderParser::get_enum_accept_type($accept_type);
+
+        if(!$accept_type || !$accept_type_enum)
+        {
+            ResponseBuilder::bad_request('Invalid accept type header.');
+        }
+
+        // Redirect by type
+        ResponseBuilder::see_other(Url::rdf_domain() . 'interaction/' . $suffix . '/' . $accept_type_enum);
+    }
+
+
+    /**
+     * Returns ...
+     * 
+     * @GET
+     * @param @required $suffix - Substance identifier
+     * @param @reqiured $type
+     * 
+     * @Path(/interaction/<suffix:\w+>/<type:\w+>)
+     */
+    public function interaction_print($suffix, $type)
+    {
+        $suffix = $this->format_parameter($suffix);
+        
+        $accept_type = HeaderParser::get_accept_type_by_enum($type);
+
+        if(!$accept_type)
+        {
+            ResponseBuilder::bad_request('Invalid accept type parameter.');
+        }
+
+        $uri = Url::rdf_domain(true) . "interaction/" . $suffix;
+
+        if($accept_type == HeaderParser::HTML)
+        {
+            $this->responses[$accept_type] = $this->make_html_response($uri);
+        }
+        else
+        {
+            $this->responses[$accept_type] = $uri;
+        }
     }
 
     /**
      * Returns ...
      * 
      * @GET
-     * @param @required $suffix
+     * @param @required $suffix - Substance identifier
      * 
      * @Path(/transporter/<suffix:\w+>)
      */
     public function transporter($suffix=NULL)
     {
-        $suffix = $this->format_parameter($suffix);
+        // Check compound id
+        // $transporter = Transporters::instance()->where('id', strtok(substr($suffix, 3),'_'))->get_one();
 
-        $uri = Url::rdf_domain() . "transporter/" . $suffix;
-        $this->dereference_response($uri);
+        // if(!$transporter->id)
+        // {
+        //     ResponseBuilder::not_found('Transporter interaction not found.');
+        // }
+
+        // Get requested type
+        $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
+        $accept_type_enum = HeaderParser::get_enum_accept_type($accept_type);
+
+        if(!$accept_type || !$accept_type_enum)
+        {
+            ResponseBuilder::bad_request('Invalid accept type header.');
+        }
+
+        // Redirect by type
+        ResponseBuilder::see_other(Url::rdf_domain() . 'transporter/' . $suffix . '/' . $accept_type_enum);
+    }
+
+
+    /**
+     * Returns ...
+     * 
+     * @GET
+     * @param @required $suffix - Substance identifier
+     * @param @reqiured $type
+     * 
+     * @Path(/transporter/<suffix:\w+>/<type:\w+>)
+     */
+    public function transporter_print($suffix, $type)
+    {
+        $suffix = $this->format_parameter($suffix);
+        
+        $accept_type = HeaderParser::get_accept_type_by_enum($type);
+
+        if(!$accept_type)
+        {
+            ResponseBuilder::bad_request('Invalid accept type parameter.');
+        }
+
+        $uri = Url::rdf_domain(true) . "transporter/" . $suffix;
+
+        if($accept_type == HeaderParser::HTML)
+        {
+            $this->responses[$accept_type] = $this->make_html_response($uri);
+        }
+        else
+        {
+            $this->responses[$accept_type] = $uri;
+        }
     }
 
     /**
      * Returns ...
      * 
      * @GET
-     * @param @required $suffix
+     * @param @required $suffix - Substance identifier
      * 
      * @Path(/reference/<suffix:\w+>)
      */
     public function reference($suffix=NULL)
     {
+        // Check compound id
+        // $publication = Publications::instance()->where('id', substr($suffix, 3))->get_one();
+
+        // if(!$publication->id)
+        // {
+        //     ResponseBuilder::not_found('Compound not found.');
+        // }
+
+        // Get requested type
+        $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
+        $accept_type_enum = HeaderParser::get_enum_accept_type($accept_type);
+
+        if(!$accept_type || !$accept_type_enum)
+        {
+            ResponseBuilder::bad_request('Invalid accept type header.');
+        }
+
+        // Redirect by type
+        ResponseBuilder::see_other(Url::rdf_domain() . 'reference/' . $suffix . '/' . $accept_type_enum);
+    }
+
+
+    /**
+     * Returns ...
+     * 
+     * @GET
+     * @param @required $suffix - Substance identifier
+     * @param @reqiured $type
+     * 
+     * @Path(/reference/<suffix:\w+>/<type:\w+>)
+     */
+    public function reference_print($suffix, $type)
+    {
         $suffix = $this->format_parameter($suffix);
         
-        $uri = Url::rdf_domain() . "reference/" . $suffix;
-        $this->dereference_response($uri);
+        $accept_type = HeaderParser::get_accept_type_by_enum($type);
+
+        if(!$accept_type)
+        {
+            ResponseBuilder::bad_request('Invalid accept type parameter.');
+        }
+
+        $uri = Url::rdf_domain(true) . "reference/" . $suffix;
+
+        if($accept_type == HeaderParser::HTML)
+        {
+            $this->responses[$accept_type] = $this->make_html_response($uri);
+        }
+        else
+        {
+            $this->responses[$accept_type] = $uri;
+        }
     }
+
 
     /**
      * Changes parameter to final format

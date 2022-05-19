@@ -80,9 +80,13 @@ class Url
 	 * Returns RDF prefix
 	 * @return string
 	 */
-	public static function rdf_domain()
+	public static function rdf_domain($strict_remote = false)
 	{
         // TODO
+        if(DEBUG && !$strict_remote)
+        {
+            return self::base() . 'api/rdf/';
+        }
         return "http://rdf.molmedb.upol.cz/";
 	}
 

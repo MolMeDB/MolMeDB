@@ -118,6 +118,7 @@ class ApiEndpoint
     {
         //Creating instance of requested class
         $this->class_to_call = new $this->class_to_call();
+        $this->class_to_call->parsed_request = $this->request;
         //Calling requested function
         $function = $this->function_to_call;
 

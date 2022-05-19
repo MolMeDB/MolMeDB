@@ -34,6 +34,21 @@ class ResponseBuilder
     }
 
     /**
+     * Method for creating HTTP 303 response code with corresponding header
+     * 
+     * @param string $target - Where to redirect request
+     * 
+     * @author Jakub Juracka
+     */
+    public static function see_other($target)
+    {
+        http_response_code(self::CODE_SEE_OTHER);
+        // TODO
+        header("Location: " . $target);
+        die;
+    }
+
+    /**
      * 
      * Method for creating HTTP 401 response code and error message
      * 
@@ -302,9 +317,10 @@ class ResponseBuilder
     /** method for machine readable RDF formats */
     public static function RDF($uri)
     {
-        $deref = new Rdf(); //to test connection to endpoint
         http_response_code(self::CODE_SEE_OTHER);
-        header("Location: https://idsm.elixir-czech.cz/sparql/endpoint/molmedb?query=DESCRIBE%20%3C".preg_replace(["/:/","/\//"],["%3A","%2F"],$uri)."%3E");
+        $query = "DESCRIBE <" . $uri . ">";
+        $query = rawurlencode($query);
+        header("Location: https://idsm.elixir-czech.cz/sparql/endpoint/molmedb?query=$query");
         die;
     }
 }

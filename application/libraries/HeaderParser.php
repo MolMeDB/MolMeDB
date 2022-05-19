@@ -30,7 +30,6 @@ class HeaderParser
     const Turtle = 'text/turtle';
     const TSV = 'text/tab-separated-values';
     const TriG = 'application/trig';
-    const RDF_CSV = 'text/csv';
 
     /** ALLOWED AUTHORIZATION TYPES */
     const AUTH_BASIC = 1;
@@ -68,6 +67,25 @@ class HeaderParser
     );
 
     /**
+     * Enums of accept types
+     * 
+     * @var array
+     */
+    public static $enum_accept_types = array
+    (
+        self::CSV => "CSV",
+        self::JSON => "JSON",
+        self::HTML => "HTML",
+        self::RDF_XML => "RDFXML",
+        self::XML => "XML",
+        self::NTriples => "NTRIPLE",
+        self::NQuads => "NQUAD",
+        self::Turtle => "TURTLE",
+        self::TSV => "TSV",
+        self::TriG => "TRIG"
+    );
+
+    /**
      * Holds info about methods for processing final response
      * 
      * PRESERVE ORDER!
@@ -86,7 +104,6 @@ class HeaderParser
         self::Turtle => 'ResponseBuilder::RDF',
         self::TSV => 'ResponseBuilder::RDF',
         self::TriG => 'ResponseBuilder::RDF',
-        self::RDF_CSV => 'ResponseBuilder::RDF',
     );
 
     /**
@@ -147,6 +164,40 @@ class HeaderParser
     {
         $this->requested_endpoint = $requested_endpoint;
         $this->parse_headers();
+    }
+
+
+    /**
+     * Returns enum type for accept header
+     * 
+     * @param $enum_type
+     * 
+     * @return string|null
+     */
+    public static function get_accept_type_by_enum($enum_type)
+    {
+        $enum_type = strtoupper($enum_type);
+        if(!in_array($enum_type, self::$enum_accept_types))
+        {
+            return null;
+        }
+        return array_flip(self::$enum_accept_types)[$enum_type];
+    }
+
+    /**
+     * Returns enum type for accept header
+     * 
+     * @param $accept_type
+     * 
+     * @return string|null
+     */
+    public static function get_enum_accept_type($accept_type)
+    {
+        if(!array_key_exists($accept_type, self::$enum_accept_types))
+        {
+            return null;
+        }
+        return self::$enum_accept_types[$accept_type];
     }
 
     /**

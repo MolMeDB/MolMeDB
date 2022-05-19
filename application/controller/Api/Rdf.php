@@ -5,6 +5,23 @@
  */
 class ApiRdf extends ApiController
 {   
+    /**
+     * Defines allowed data format
+     * 
+     * @var array
+     */
+    private static $method_allowed_types = array
+    (
+        HeaderParser::RDF_XML,
+        HeaderParser::HTML,
+        HeaderParser::NTriples, 
+        HeaderParser::NQuads, 
+        HeaderParser::Turtle, 
+        HeaderParser::TSV, 
+        HeaderParser::TriG, 
+        HeaderParser::CSV
+    );
+
     // TODO - Add "allowed" param - e.g. @allowed XML
 
     /**
@@ -45,28 +62,130 @@ class ApiRdf extends ApiController
      * 
      * @Path(/compound/<id:^MM[0-9]{5,}>)
      */
-    public function compound($id=NULL)
+    public function compound($id)
     {
-        $id = strtoupper($id);
+        // Check compound id
+        $substance = Substances::instance()->where('identifier', $id)->get_one();
 
-        $uri = "http://identifiers.org/molmedb/" . $id;
-        $this->dereference_response($uri);
+        if(!$substance->id)
+        {
+            ResponseBuilder::not_found('Compound not found.');
+        }
+
+        // Get requested type
+        $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
+        $accept_type_enum = HeaderParser::get_enum_accept_type($accept_type);
+
+        if(!$accept_type || !$accept_type_enum)
+        {
+            ResponseBuilder::bad_request('Invalid accept type header.');
+        }
+
+        // Redirect by type
+        ResponseBuilder::see_other(Url::rdf_domain() . 'compound/' . $id . '/' . $accept_type_enum);
     }
 
     /**
      * Returns ...
      * 
      * @GET
-     * @param @required $suffix
+     * @param @required $id
+     * @param @required $type
+     * 
+     * @Path(/compound/<id:^MM[0-9]{5,}>/<type:\w+>)
+     */
+    public function compound_print($id, $type)
+    {
+        $suffix = $this->format_parameter($id);
+
+        // Check if compound exists
+        $substance = Substances::instance()->where('identifier', $suffix)->get_one();
+
+        if(!$substance->id)
+        {
+            ResponseBuilder::not_found('Compound not found.');
+        }
+        
+        $accept_type = HeaderParser::get_accept_type_by_enum($type);
+
+        if(!$accept_type)
+        {
+            ResponseBuilder::bad_request('Invalid accept type parameter.');
+        }
+
+        $uri = Url::rdf_domain(true) . "compound/" . $suffix;
+
+        if($accept_type == HeaderParser::HTML)
+        {
+            $this->responses[$accept_type] = $this->make_html_response($uri);
+        }
+        else
+        {
+            $this->responses[$accept_type] = $uri;
+        }
+    }
+
+    /**
+     * Returns ...
+     * 
+     * @GET
+     * @param @required $suffix - Substance identifier
      * 
      * @Path(/substance/<suffix:\w+>)
      */
     public function substance($suffix=NULL)
     {
-        $suffix = $this->format_parameter($suffix);
+        // Check compound id
+        $substance = Substances::instance()->where('identifier', $suffix)->get_one();
 
-        $uri = Url::rdf_domain() . "substance/" . $suffix;
-        $this->dereference_response($uri);
+        if(!$substance->id)
+        {
+            ResponseBuilder::not_found('Compound not found.');
+        }
+
+        // Get requested type
+        $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
+        $accept_type_enum = HeaderParser::get_enum_accept_type($accept_type);
+
+        if(!$accept_type || !$accept_type_enum)
+        {
+            ResponseBuilder::bad_request('Invalid accept type header.');
+        }
+
+        // Redirect by type
+        ResponseBuilder::see_other(Url::rdf_domain() . 'substance/' . $suffix . '/' . $accept_type_enum);
+    }
+
+    /**
+     * Returns ...
+     * 
+     * @GET
+     * @param @required $suffix - Substance identifier
+     * @param @reqiured $type
+     * 
+     * @Path(/substance/<suffix:\w+>/<type:\w+>)
+     */
+    public function substance_print($suffix, $type)
+    {
+        $suffix = $this->format_parameter($suffix);
+        
+        $accept_type = HeaderParser::get_accept_type_by_enum($type);
+
+        if(!$accept_type)
+        {
+            ResponseBuilder::bad_request('Invalid accept type parameter.');
+        }
+
+        $uri = Url::rdf_domain(true) . "substance/" . $suffix;
+
+        if($accept_type == HeaderParser::HTML)
+        {
+            $this->responses[$accept_type] = $this->make_html_response($uri);
+        }
+        else
+        {
+            $this->responses[$accept_type] = $uri;
+        }
     }
 
     /**
@@ -149,7 +268,7 @@ class ApiRdf extends ApiController
      * 
      * @return string 
      */
-    private function make_view($uri)
+    private function make_html_response($uri)
     {
         $deref = new Rdf();
         $out_trips = $deref->html_sparql($uri, True);
@@ -170,16 +289,14 @@ class ApiRdf extends ApiController
     private function dereference_response($uri)
     {
         $this->responses = [
-            HeaderParser::HTML => $this->make_view($uri),
+            HeaderParser::HTML => $this->make_html_response($uri),
             HeaderParser::RDF_XML => $uri,
             HeaderParser::NTriples => $uri,
             HeaderParser::NQuads => $uri,
             HeaderParser::Turtle => $uri,
             HeaderParser::TSV => $uri,
             HeaderParser::TriG => $uri,
-            HeaderParser::RDF_CSV => $uri
+            HeaderParser::CSV => $uri
         ];
     }
-    /** testy testy znova... funguj funguj potvoro */
-
 }

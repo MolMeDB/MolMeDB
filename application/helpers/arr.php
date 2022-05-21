@@ -28,6 +28,53 @@ class arr
     }
 
     /**
+     * Union of multiple arrays
+     * 
+     * @param array $arrs
+     * 
+     * @return array
+     */
+    public static function union(...$arrs)
+    {
+        $result = [];
+
+        foreach($arrs as $arr)
+        {
+            foreach($arr as $v)
+            {
+                $result[] = $v;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Returns values from multidimensional array on given key (merged)
+     * 
+     * @param array $input
+     * @param string $key
+     * 
+     * @return array
+     */
+    public static function get_values($input, $key)
+    {
+        if(!is_iterable($input) || !count($input) || !is_iterable($input[0]))
+        {
+            return [];
+        }
+
+        $result = [];
+
+        foreach($input as $row)
+        {
+            $result[] = $row[$key];
+        }
+
+        return $result;
+    }
+
+    /**
     * Removes empty values from array
     * 
     * @param array $arr

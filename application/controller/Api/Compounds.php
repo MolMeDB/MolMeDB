@@ -72,6 +72,20 @@ class ApiCompounds extends ApiController
     }
 
     /**
+     * @GET
+     * 
+     * @Path(/test)
+     */
+    public function test()
+    {
+        $id = 40;
+
+        $s = new Substances($id);
+
+        $s->get_functional_relatives();
+    }
+
+    /**
      * Returns substances with interactions for given membrane/method/publication combination
      * 
      * @GET

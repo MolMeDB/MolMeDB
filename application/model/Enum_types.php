@@ -57,6 +57,21 @@ class Enum_types extends Db
     }
 
     /**
+     * Returns enum types by type
+     * 
+     * @return Enum_types[]|null
+     */
+    public static function get_by_type($type)
+    {
+        if(!self::is_type_valid($type))
+        {
+            return null;
+        }
+
+        return self::instance()->where('type', $type)->get_all();
+    }
+
+    /**
      * Returns enum type structure for tree
      * 
      * @return Iterable_object

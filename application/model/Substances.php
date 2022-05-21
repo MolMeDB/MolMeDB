@@ -47,6 +47,264 @@ class Substances extends Db
     }
 
     /**
+     * Returns molecules differing in the presence of a functional group
+     * 
+     * @param int $id_substance
+     * 
+     * @return array
+     */
+    public function get_functional_relatives($id_substance = null)
+    {
+        if(!$id_substance && !$this && !$this->id)
+        {
+            return null;
+        }
+
+        if(!$id_substance)
+        {
+            $id_substance = $this->id;
+        }
+
+        $substance = new Substances($id_substance);
+
+        if(!$substance->id)
+        {
+            return null;
+        }
+
+        // Get all options of current molecule
+        $fragment = Fragments::instance()->where('smiles', $substance->SMILES)->get_one();
+
+        if(!$fragment->id)
+        {
+            return null;
+        }
+
+        $options = Fragments_options::instance()->get_all_options_ids($fragment->id);
+
+        // At first, find bigger substances containing requested substance
+        $bigger = Substances_fragments::instance()
+            ->where('id_substance !=', $substance->id)
+            ->in('id_fragment', $options)
+            ->get_all();
+
+        // Get all fragments of current molecule
+        $all_fragments = Substances_fragments::instance()->where('id_substance', $substance->id)->get_all();
+        $all_fragment_ids = array_unique(arr::get_values($all_fragments, 'id_fragment'));
+        $t = $all_fragment_ids;
+
+        foreach($t as $key => $id)
+        {
+            $fragmentation = Substances_fragments::instance()->get_fragmentation_detail_by_fragment_id($substance->id, $id);
+            $accept = true;
+
+            foreach($fragmentation as $f)
+            {
+                if($f->id_fragment == $id)
+                {
+                    continue;
+                }
+
+                if(!$f->functional_group)
+                {
+                    $accept = false;
+                    break;
+                }
+            }
+
+            if(!$accept)
+            {
+                unset($all_fragment_ids[$key]);
+            }
+        }
+
+        // Add all options
+        $t = $all_fragment_ids;
+        $all_fragment_option_ids = [];
+
+        foreach($t as $id)
+        {
+            $all_fragment_option_ids[$id] = Fragments_options::instance()->get_all_options_ids($id);
+        }
+
+        $smaller = [];
+
+        foreach($all_fragment_option_ids as $head_id => $ids)
+        {
+            // Find all molecules composed of only one fragment
+            $temp = Substances_fragments::instance()
+                ->where(array
+                (
+                    'total_fragments'   => 1,
+                    'id_substance !='   => $substance->id
+                ))
+                ->in('id_fragment', $ids)
+                ->get_all();
+
+            if(!count($temp))
+            {
+                continue;
+            }
+
+            $frag = new Fragments($head_id);
+            $smaller[$head_id] = [];
+            $smaller[$head_id]['core'] = $frag;
+            $smaller[$head_id]['matches'] = [];
+
+            foreach($temp as $row)
+            {
+                // Save queried molecule
+                $smaller[$head_id]['matches'][] = $row;
+            }
+        }
+
+        // Merge all results
+        $results = $smaller;
+
+        $results[$fragment->id] = [];
+        $results[$fragment->id]['core'] = $fragment;
+        $results[$fragment->id]['matches'] = $bigger;
+
+        return $results;
+
+        // // Get all fragments of current molecule
+        // // which can be combined with func. groups to make the same molecule
+        // $significant_core_ids = $this->queryOne('
+        //     SELECT GROUP_CONCAT(id1, ",", id2, ",", id3) as ids
+        //     FROM
+        //     (SELECT 1 as gb, sf.id_fragment as id1, IFNULL(fo1.id_child, 0) as id2, IFNULL(fo2.id_parent, 0) as id3
+        //     FROM substances_fragments sf
+        //     JOIN (
+        //         SELECT sf.id_substance, sf.order_number, sf.total_fragments, et.name, count(et.name) as fun_g_count, count(order_number) as orn
+        //         FROM `substances_fragments` sf 
+        //         LEFT JOIN fragments_enum_types fet ON fet.id_fragment = sf.id_fragment
+        //         LEFT JOIN enum_types et ON et.id = fet.id_enum_type
+        //         WHERE `id_substance` = ? AND ((et.name IS NULL AND sf.similarity > ?) OR (et.name IS NOT NULL))
+        //         GROUP BY order_number) as t ON t.orn = t.total_fragments AND t.id_substance = sf.id_substance AND t.order_number = sf.order_number AND t.total_fragments-t.fun_g_count < 2
+        //     LEFT JOIN fragments_options fo1 ON fo1.id_parent = sf.id_fragment
+        //     LEFT JOIN fragments_options fo2 ON fo2.id_child = sf.id_fragment
+        //     WHERE sf.similarity > ?) as t
+        //     GROUP BY t.gb 
+        // ', array($id_substance, $db_limit, $db_limit))->ids;
+
+        // $significant_core_ids = array_unique(explode(',', $significant_core_ids));
+
+        // // Return all molecules composed of some significant core supplemented by functional groups
+        // $relatives = $this->queryAll('
+        //     SELECT sf.*, et.name as func_group
+        //     FROM substances_fragments sf
+        //     JOIN (SELECT sf.*, et.name as func_group,  CONCAT(sf.id_substance, "_", sf.order_number) as gb, COUNT(et.name) as total_func_group
+        //             FROM substances_fragments sf
+        //             JOIN (
+        //                 SELECT *
+        //                 FROM substances_fragments sf
+        //                 WHERE sf.id_fragment IN (' . implode(",", $significant_core_ids) .') AND sf.id_substance != ? 
+        //             ) as t ON sf.id_substance = t.id_substance AND sf.order_number = t.order_number
+        //             LEFT JOIN fragments_enum_types fet ON fet.id_fragment = sf.id_fragment
+        //             LEFT JOIN enum_types et ON et.id = fet.id_enum_type
+        //             GROUP BY gb) as t ON t.id_substance = sf.id_substance AND t.order_number = sf.order_number AND t.total_fragments-t.total_func_group < 2
+        //     LEFT JOIN fragments_enum_types fet ON fet.id_fragment = sf.id_fragment
+        //     LEFT JOIN enum_types et ON et.id = fet.id_enum_type
+        //     ORDER BY id_substance ASC, order_number ASC, similarity DESC
+        // ', array($id_substance));
+
+        // // Make final array of results
+        // $result = [];
+
+        // foreach($relatives as $r)
+        // {
+        //     if(!isset($result[$r->id_substance]))
+        //     {
+        //         $result[$r->id_substance] = [];
+        //     }
+
+        //     // Get fragmentation detail of queried molecule for common fragment
+        //     $fragment_id = $this->queryOne('
+        //         SELECT id_fragment
+        //         FROM substances_fragments sf
+        //         WHERE id_substance = ? AND order_number = ? AND id_fragment IN (' . implode(",", $significant_core_ids) .')
+        //     ', array($r->id_substance, $r->order_number))->id_fragment;
+
+        //     $fragmentation_1 = Substances_fragments::instance()->get_fragmentation_detail_by_fragment_id($id_substance, $fragment_id);
+        //     $fragmentation_2 = Substances_fragments::instance()->get_fragmentation_detail_by_order($r->id_substance, $r->order_number);
+
+        //     // Find biggest common fragments in fragmentation
+        //     $matches = [];
+        //     foreach($fragmentation_1 as $f1)
+        //     {
+        //         if(!in_array($f1->id_fragment, $significant_core_ids))
+        //         {
+        //             continue;
+        //         }
+
+        //         foreach($fragmentation_2 as $f2)
+        //         {
+        //             if($f1->id_fragment == $f2->id_fragment || Fragments_options::instance()->is_option($f1->fragment_smiles, $f2->fragment_smiles))
+        //             {
+        //                 $matches[] = array
+        //                 (
+        //                     $f1->id_fragment,
+        //                     $f2->id_fragment
+        //                 );
+        //             }
+        //         }
+        //     }
+
+        //     foreach($matches as $match)
+        //     {
+        //         $core_id_1 = $match[0]; 
+        //         $core_id_2 = $match[1];
+                
+        //         $record = array
+        //         (
+        //             (object) array
+        //             (
+        //                 'core' => [],
+        //                 'fragments' => []
+        //             ),
+        //             (object) array
+        //             (
+        //                 'core' => [],
+        //                 'fragments' => []
+        //             )
+        //         );
+
+        //         // As first save queried molecule
+        //         foreach($fragmentation_1 as $f1)
+        //         {
+        //             if($f1->id_fragment == $core_id_1)
+        //             {
+        //                 $record[0]->core = $f1;
+        //             }
+        //             else
+        //             {
+        //                 $record[0]->fragments[] = $f1;
+        //             }
+        //         }
+
+        //         foreach($fragmentation_2 as $f2)
+        //         {
+        //             if($f2->id_fragment == $core_id_2)
+        //             {
+        //                 $record[1]->core = $f2;
+        //             }
+        //             else
+        //             {
+        //                 $record[1]->fragments[] = $f2;
+        //             }
+        //         }
+
+        //         $result[$r->id_substance][] = $record;
+        //     }
+        // }
+
+        print_r($result);
+        die;
+
+        
+    }
+
+    /**
      * Returns similar molecules
      * 
      * @param int|null $id
@@ -64,11 +322,12 @@ class Substances extends Db
         {
             $id = $this->id;
         }
-        
+
         $db_limit = 0.6;
 
         $substance = new Substances($id);
 
+        // Get substance fragments
         $temp = $substance->queryOne('
             SELECT GROUP_CONCAT(DISTINCT id_fragment) as ids
             FROM 
@@ -121,12 +380,12 @@ class Substances extends Db
         }
 
         $rows = $substance->queryAll("
-            SELECT DISTINCT id, id_fragment, id_substance, similarity
+            SELECT DISTINCT id, id_fragment, sf.id_substance, sf.order_number, similarity, links, sf.total_fragments as total
             FROM substances_fragments sf
             WHERE id_fragment IN 
                 (" . $t . ")
-              AND similarity > ? AND id_substance != ?
-            ORDER BY similarity DESC, id_substance ASC
+              AND similarity > ? AND sf.id_substance != ?
+              ORDER BY id_substance ASC, similarity DESC, total ASC
         ", array($db_limit, $substance->id));
 
         $options = $similarities = [];
@@ -141,23 +400,27 @@ class Substances extends Db
             $t = new Fragments($row->id_fragment);
             $sub = new Substances($row->id_substance);
 
+            
             if(!$t->id || !$sub->id)
             {
                 continue;
             }
-
+            
             $sim = Mol_similarity::compute($substance, $sub);
-
+            
             if($sim < $similarity_limit)
             {
                 continue;
             }
-
+            
+            $all_parts = Substances_fragments::instance()->get_fragmentation_detail_by_order($row->id_substance, $row->order_number);
+            
             $similarities[$row->id_substance] = $sim;
 
             $options[$row->id_substance] = (object)array
             (
                 'fragment' => $t,
+                'subfragments' => $all_parts,
                 'substance' => $sub,
                 'similarity' => $sim,
                 'all_similarities'  => array

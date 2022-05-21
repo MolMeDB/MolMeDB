@@ -23,6 +23,36 @@ class Smiles extends Db
     }
 
     /**
+     * Prepares smiles to print
+     * 
+     * @param string $smiles
+     * 
+     * @return string
+     */
+    public static function pretty_string($smiles)
+    {
+        // Change links
+        if(preg_match_all('/\[\*:[0-9]+\]/', $smiles, $matches))
+        {
+            $matches = $matches[0];
+
+            foreach($matches as $m)
+            {
+                if(!preg_match('/[0-9]+/', $m, $numbers))
+                {
+                    continue;
+                }
+
+                $n = $numbers[0];
+                
+                $smiles = preg_replace('/\[\*:[0-9]+\]/', '[' . $n . ':]', $smiles, 1);
+            }
+        }
+
+        return $smiles;
+    }
+
+    /**
      * Loads data from CSV file
      */
     public function loadData($filename)

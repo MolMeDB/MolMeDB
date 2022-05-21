@@ -29,6 +29,7 @@ class SchedulerController extends Controller
     (
         'run',
         'log_sub_changes',
+        'link_functional_groups'
     );
 
 
@@ -38,6 +39,12 @@ class SchedulerController extends Controller
      */
     public function run()
     {
+
+        $s = new Substances(40);
+
+        $s->get_functional_relatives();
+
+        die;
         // Holds info about run time
         $time = $this->time = new Time();
 
@@ -153,6 +160,60 @@ class SchedulerController extends Controller
 
         echo '-------------------------';
     }
+
+    /**
+     * Links all functional groups to their corresponding molecular fragments
+     * 
+     * @author Jakub Juracka
+     */
+    public function link_functional_groups()
+    {
+        // Do it iteratively
+        $func_groups = Enum_types::get_by_type(Enum_types::TYPE_FRAGMENT_CATS);
+
+        if(!$func_groups)
+        {
+            return;
+        }
+
+        foreach($func_groups as $fg)
+        {
+            if($fg->content === NULL || $fg->content == "")
+            {
+                continue;
+            }
+
+            $fg->content = str_replace('\\', '\\\\', $fg->content);
+
+            // Find all fragments matching pattern
+            $fragments = Fragments::instance()->where('smiles REGEXP', $fg->content)->get_all();
+
+            // Save links
+            foreach($fragments as $f)
+            {
+                // Skip if exists
+                $exists = Fragments_enum_types::instance()->where(array
+                    (
+                        'id_fragment' => $f->id,
+                        'id_enum_type' => $fg->id
+                    ))
+                    ->get_one();
+
+                if($exists->id)
+                {
+                    continue;
+                }
+
+                $new = new Fragments_enum_types();
+
+                $new->id_fragment = $f->id;
+                $new->id_enum_type = $fg->id;
+
+                $new->save();
+            }
+        }
+    }
+
 
     public function log_sub_changes()
     {
@@ -444,6 +505,7 @@ class SchedulerController extends Controller
                     $f = new Substances_fragments();
                     $f->id_substance = $s->id;
                     $f->id_fragment = $new->id;
+                    $f->total_fragments = 1;
                     $f->links = null;
                     $f->order_number = $sf_model->get_free_order_number($s->id);
                     $f->similarity = 1.0;
@@ -501,6 +563,7 @@ class SchedulerController extends Controller
 
                         $fragment->id_substance = $s->id;
                         $fragment->id_fragment = $new->id;
+                        $fragment->total_fragments = count($new_fragments);
                         $fragment->links = $new_links[$key];
                         $fragment->order_number = $order;
                         $fragment->similarity = $similarities[$key];

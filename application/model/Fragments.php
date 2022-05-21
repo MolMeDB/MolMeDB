@@ -22,6 +22,16 @@ class Fragments extends Db
     }
 
     /**
+     * Instance builder
+     * 
+     * @return Fragments
+     */
+    public static function instance()
+    {
+        return new Fragments();
+    }
+
+    /**
      * Adds hydrogens to current fragment
      * 
      * @return string
@@ -34,6 +44,30 @@ class Fragments extends Db
         }
 
         return preg_replace('/\[\*:\]/', '[H]', $this->smiles);
+    }
+
+    /**
+     * Returns functional group of current fragment if exists
+     * 
+     * @param int $id_fragment
+     * 
+     * @return Enum_types|null
+     */
+    public function get_functional_group($id_fragment = null)
+    {
+        if(!$id_fragment && $this->id)
+        {
+            $id_fragment = $this->id;
+        }
+
+        if(!$id_fragment)
+        {
+            return null;
+        }
+
+        $fet = Fragments_enum_types::instance()->where('id_fragment', $id_fragment)->get_one();
+
+        return $fet->id ? $fet->enum_type : null;
     }
 
     /**
@@ -61,6 +95,35 @@ class Fragments extends Db
             'links'  => implode(',', $all[1])
         );
     }
+
+    /**
+     * Fills numbers to fragment links
+     * 
+     * @param string $smiles
+     * @param array $link_numbers
+     * 
+     * @return string
+     */
+    public function fill_link_numbers($smiles, $link_numbers)
+    {
+        if(preg_match_all('/\[\*:\]/', $smiles, $all))
+        {
+            $all = $all[0];
+            
+            if(count($all) !== count($link_numbers))
+            {
+                return $smiles;
+            }
+
+            foreach($link_numbers as $l)
+            {
+                $smiles = preg_replace('/\[\*:\]/', "[*:$l]", $smiles, 1);
+            }
+        }
+
+        return $smiles;
+    }
+
 
     /**
      * Overloading of save function

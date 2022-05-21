@@ -149,6 +149,7 @@ class SearchController extends Controller
         $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
         $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
     /**

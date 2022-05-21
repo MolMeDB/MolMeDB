@@ -221,15 +221,37 @@ class View_paginator
             case 1: 
                 // Add dots and two last values
                 $items[] = new Paginator_option('...', false);
-                $items[] = new Paginator_option($max_item-1);
-                $items[] = new Paginator_option($max_item);
+                $items[] = new Paginator_option(
+                    $max_item-1,
+                    $max_item-1 != $this->active, 
+                    $this->uri_path . $this->uri_suffix, 
+                    $this->records_per_page, 
+                    $max_item-1 == $this->active);
+                $items[] = new Paginator_option(
+                    $max_item,
+                    $max_item != $this->active, 
+                    $this->uri_path . $this->uri_suffix, 
+                    $this->records_per_page, 
+                    $max_item == $this->active);
                 break;
 
             case 2:
                 // Prepend first two and dots
                 array_unshift($items, new Paginator_option('...', false));
-                array_unshift($items, new Paginator_option(2));
-                array_unshift($items, new Paginator_option(1));
+                array_unshift($items, new Paginator_option(
+                    2,
+                    true, 
+                    $this->uri_path . $this->uri_suffix, 
+                    $this->records_per_page, 
+                    false
+                ));
+                array_unshift($items, new Paginator_option(
+                    1,
+                    true, 
+                    $this->uri_path . $this->uri_suffix, 
+                    $this->records_per_page, 
+                    false
+                ));
                 break;
 
             case 3: 
@@ -239,8 +261,18 @@ class View_paginator
                 array_unshift($items, new Paginator_option(1));
                 // Append dots and last two
                 $items[] = new Paginator_option('...', false);
-                $items[] = new Paginator_option($max_item-1);
-                $items[] = new Paginator_option($max_item);
+                $items[] = new Paginator_option(
+                    $max_item-1,
+                    $max_item-1 != $this->active, 
+                    $this->uri_path . $this->uri_suffix, 
+                    $this->records_per_page, 
+                    $max_item-1 == $this->active);
+                $items[] = new Paginator_option(
+                    $max_item,
+                    $max_item != $this->active, 
+                    $this->uri_path . $this->uri_suffix, 
+                    $this->records_per_page, 
+                    $max_item == $this->active);
                 break;
         }
 

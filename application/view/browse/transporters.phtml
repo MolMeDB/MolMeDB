@@ -58,24 +58,6 @@
                     </li>
                     <?php endforeach ?>
                 </ul>
-        <div class="text-center">   
-            <ul class="pagination pagination-lg" id="paginator_comp" >
-            <?php $count = $total ?>
-              <?php for ($i=1; $i<($count/10)+1; $i++) : ?>
-                <?php if($i == $pagination): ?>
-                    <li class="active"id="activePag"><a href="/browse/transporters/<?=$element->id?>/<?= $is_last ? 1 : 0?>/<?=$i?>"><?=$i?></a></li>
-                <?php else : ?>
-                    <li><a href="/browse/transporters/<?=$element->id?>/<?= $is_last ? 1 : 0?>/<?=$i?>"><?=$i?></a></li>
-                <?php endif ?>
-              <?php endfor ?>
-            </ul>
-            <script>
-            $(document).ready(function()
-            {
-                verifyPagination('paginator_comp');
-            });
-            </script>
-        </div>
         <?php endif ?>
     </div>
 

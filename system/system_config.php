@@ -204,6 +204,12 @@ class System_config
             $class = ucfirst(str_replace('Mol_', '', $class));
             require(APP_ROOT . "libraries/Mol/" . $class . ".php");
         }
+        else if (preg_match('/^View_/', $class) 
+            && file_exists(APP_ROOT . "libraries/View/" . ucfirst(substr($class, 5)) . ".php"))
+        {
+            $class = ucfirst(str_replace('View_', '', $class));
+            require(APP_ROOT . "libraries/View/" . $class . ".php");
+        }
         else if (preg_match('/^Render_/', $class) 
             && file_exists(APP_ROOT . "helpers/Render/" . ucfirst(str_replace('Render_', '', $class)) . ".php"))
         {

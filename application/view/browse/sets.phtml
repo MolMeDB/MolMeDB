@@ -152,24 +152,6 @@
                     </li>
                     <?php endforeach ?>
                 </ul>
-        <div class="text-center">   
-            <ul class="pagination pagination-lg" id="paginator_comp" >
-            <?php $count = $list_total ?>
-              <?php for ($i=1; $i<($count/10)+1; $i++) : ?>
-                <?php if($i == $pagination): ?>
-                    <li class="active"id="activePag"><a href="/browse/sets/<?=$publication->id?>/<?=$i?>"><?=$i?></a></li>
-                <?php else : ?>
-                    <li><a href="/browse/sets/<?=$publication->id?>/<?=$i?>"><?=$i?></a></li>
-                <?php endif ?>
-              <?php endfor ?>
-            </ul>
-            <script>
-            $(document).ready(function()
-            {
-                verifyPagination('paginator_comp');
-            });
-            </script>
-        </div>
         <?php endif ?>
     </div>
 

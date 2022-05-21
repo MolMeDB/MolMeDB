@@ -158,13 +158,13 @@ class Transporter_targets extends Db
      * 
      * @return Iterable_object
      */
-    public function get_substances($pagination = NULL)
+    public function get_substances($pagination = NULL, $per_page = 10)
     {
         $limit = '';
 
         if($pagination)
         {
-            $limit = 'LIMIT ' . ($pagination-1)*10 . ',' . 10;
+            $limit = 'LIMIT ' . ($pagination-1)*$per_page . ',' . $per_page;
         }
 
         return $this->queryAll('

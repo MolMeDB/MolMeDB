@@ -87,7 +87,7 @@ class Url
         {
             return self::base() . 'api/rdf/';
         }
-        return "http://rdf.molmedb.upol.cz/";
+        return "https://rdf.molmedb.upol.cz/";
 	}
 
     /**

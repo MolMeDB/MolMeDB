@@ -113,7 +113,7 @@ class ApiRdf extends ApiController
             ResponseBuilder::bad_request('Invalid accept type parameter.');
         }
 
-        $uri = 'http://identifiers.org/molmedb/' . $suffix;
+        $uri = 'https://identifiers.org/molmedb/' . $suffix;
 
         if($accept_type == HeaderParser::HTML)
         {
@@ -136,12 +136,12 @@ class ApiRdf extends ApiController
     public function substance($suffix=NULL)
     {
         // Check compound id
-        // $substance = Substances::instance()->where('identifier', strtok($suffix,'_'))->get_one();
+        $substance = Substances::instance()->where('identifier', strtok($suffix,'_'))->get_one();
 
-        // if(!$substance->id)
-        // {
-        //     ResponseBuilder::not_found('Compound not found.');
-        // }
+        if(!$substance->id)
+        {
+            ResponseBuilder::not_found('Compound not found.');
+        }
 
         // Get requested type
         $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
@@ -198,25 +198,34 @@ class ApiRdf extends ApiController
      */
     public function interaction($suffix=NULL)
     {
-        // $item_type = substr($suffix,0,3);
-        // // Check item id
-        // if($item_type == 'int')
-        // {
-        //     $item = Interactions::instance()->where('id', strtok(substr($suffix,3),'_'))->get_one();
-        // }
-        // elseif($item_type == 'mem')
-        // {
-        //     $item = Membranes::instance()->where('id', substr($suffix,8))->get_one();
-        // }
-        // else
-        // {
-        //     $item = Methods::instance()->where('id', substr($suffix,6))->get_one();
-        // }
+        $item_arr = explode('_',$suffix);
+        $item = end($item_arr);
+        //Check item id
+        if(substr($item,0,3) == 'int')
+        {
+            #$item = Interactions::instance()->where('id', strtok(substr($item,3),'_'))->get_one();
+            $id = substr($item,3);
+            $item_record = Interactions::instance()->where('id', $id,'_')->get_one();
+        }
+        elseif(substr($item,0,8) == 'membrane')
+        {
+            $id = substr($item,8);
+            $item_record = Membranes::instance()->where('id', $id)->get_one();
+        }
+        elseif(substr($item,0,6) == 'method')
+        {
+            $id = substr($item,6);
+            $item_record = Methods::instance()->where('id', $id)->get_one();
+        }
+        else
+        {
+            ResponseBuilder::not_found('Item not found.');
+        }
 
-        // if(!$item->id)
-        // {
-        //     ResponseBuilder::not_found('item not found.');
-        // }
+        if(!$item_record->id || !is_numeric($id) || (strlen($id) > 1 && $id[0] == '0'))
+        {
+            ResponseBuilder::not_found('Item not found.');
+        }
 
         // Get requested type
         $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
@@ -274,13 +283,17 @@ class ApiRdf extends ApiController
      */
     public function transporter($suffix=NULL)
     {
-        // Check compound id
-        // $transporter = Transporters::instance()->where('id', strtok(substr($suffix, 3),'_'))->get_one();
+        $item_arr = explode('_',$suffix);
+        $item = end($item_arr);
+        $id = substr($item,3);
 
-        // if(!$transporter->id)
-        // {
-        //     ResponseBuilder::not_found('Transporter interaction not found.');
-        // }
+        // Check compound id
+        $transporter = Transporters::instance()->where('id', $id)->get_one();
+
+        if(!$transporter->id || !is_numeric($id) || (strlen($id) > 1 && $id[0] == '0') || substr($item,0,3) != 'tra')
+        {
+            ResponseBuilder::not_found('Transporter interaction not found.');
+        }
 
         // Get requested type
         $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
@@ -339,12 +352,13 @@ class ApiRdf extends ApiController
     public function reference($suffix=NULL)
     {
         // Check compound id
-        // $publication = Publications::instance()->where('id', substr($suffix, 3))->get_one();
+        $id = substr($suffix, 3);
+        $publication = Publications::instance()->where('id', $id)->get_one();
 
-        // if(!$publication->id)
-        // {
-        //     ResponseBuilder::not_found('Compound not found.');
-        // }
+        if(!$publication->id || !is_numeric($id) || (strlen($id) > 1 && $id[0] == '0') || substr($suffix,0,3) != 'ref')
+        {
+            ResponseBuilder::not_found('Reference not found.');
+        }
 
         // Get requested type
         $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
@@ -437,23 +451,5 @@ class ApiRdf extends ApiController
         $view->in = $in_trips;
 
         return $view->render(FALSE);
-    }
-
-
-    /**
-     * Creates dereference response according to Accept header
-     */
-    private function dereference_response($uri)
-    {
-        $this->responses = [
-            HeaderParser::HTML => $this->make_html_response($uri),
-            HeaderParser::RDF_XML => $uri,
-            HeaderParser::NTriples => $uri,
-            HeaderParser::NQuads => $uri,
-            HeaderParser::Turtle => $uri,
-            HeaderParser::TSV => $uri,
-            HeaderParser::TriG => $uri,
-            HeaderParser::CSV => $uri
-        ];
     }
 }

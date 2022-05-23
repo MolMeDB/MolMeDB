@@ -11,6 +11,10 @@
  * @property integer $id_user_edit
  * @property datetime $update_datetime
  * @property datetime $create_datetime
+ * 
+ * @property Publications $reference
+ * @property Users $author
+ * @property Users $editor
  */
 class Transporter_datasets extends Db
 {

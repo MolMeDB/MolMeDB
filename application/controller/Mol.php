@@ -31,6 +31,19 @@ class MolController extends Controller
         $transporter_dataset_model = new Transporter_datasets();
         $link_model = new Substance_links();
 
+        // Make identifier if not
+        if(is_numeric($identifier))
+        {
+            $identifier = Identifiers::get_identifier(intval($identifier));
+        }
+
+        if(preg_match('/^MM[0-9]+/', $identifier))
+        {
+            $identifier = preg_replace('/^MM/', '', $identifier);
+            $identifier = intval($identifier);
+            $identifier = Identifiers::get_identifier($identifier);
+        }
+
         try
         {
             // Get substance detail
@@ -48,7 +61,7 @@ class MolController extends Controller
 
             if(!$substance->id)
             {
-                throw new Exception('Record was not found.');
+                throw new MmdbException('Record was not found.');
             }
 
             // Get all membranes/methods
@@ -120,9 +133,9 @@ class MolController extends Controller
                 $this->addMessageWarning('Your request has been redirected from record ' . $identifier);
             }
         } 
-        catch (Exception $ex) 
+        catch (MmdbException $ex) 
         {
-            $this->addMessageError($ex->getMessage());
+            $this->alert->error($ex);
             $this->redirect('error');
         }
 
@@ -168,7 +181,7 @@ class MolController extends Controller
      * 
      * @return string
      * 
-     * @throws Exception
+     * @throws MmdbException
      */
     private static function get_active_interaction_table($id)
     {
@@ -176,7 +189,7 @@ class MolController extends Controller
 
         if(!$s->id)
         {
-            throw new Exception('Invalid substance id.');
+            throw new MmdbException('Invalid substance id.');
         }
 
         $transporters = Transporters::instance()->queryAll('
@@ -259,6 +272,9 @@ class MolController extends Controller
             ->title('Note');
 
         $table->datasource($dataset);
+
+        // echo $table->html();
+        // die;
 
         return $table->html();
     }

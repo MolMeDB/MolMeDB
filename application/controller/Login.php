@@ -22,6 +22,12 @@ class LoginController extends Controller
             {
                 $userManager->login($_POST['name'], $_POST['password']);
                 $this->addMessageSuccess('Success!');
+
+                if(session::is_admin())
+                {
+                    $this->redirect('administration');
+                }
+
                 $this->redirect('detail/intro');
             } 
             catch (ErrorUser $ex) 
@@ -29,9 +35,9 @@ class LoginController extends Controller
                 $this->addMessageError($ex->getMessage());
                 $this->redirect('login');
             }
-            catch (Exception $e)
+            catch (MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->addMessageError($e);
                 $this->redirect('login');
             }
             

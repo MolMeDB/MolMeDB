@@ -240,6 +240,6 @@ $upgrade_sql = array
        )",
 
     "CREATE TABLE `files` ( `id` INT NOT NULL AUTO_INCREMENT , `name` VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL , `comment` VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL , `mime` VARCHAR(50) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL , `size` BIGINT(20) NULL , `hash` BINARY(20) NOT NULL , `path` VARCHAR(255) NOT NULL , `id_user` INT NULL DEFAULT NULL , `id_validator_structure` INT NULL DEFAULT NULL , `datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
-    "ALTER TABLE `files` ADD FOREIGN KEY (`id_user`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
+    "ALTER TABLE `files` ADD FOREIGN KEY (`id_user`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;", 
     "ALTER TABLE `files` ADD FOREIGN KEY (`id_validator_structure`) REFERENCES `validator_structure`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
 );

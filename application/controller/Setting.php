@@ -141,7 +141,7 @@ class SettingController extends Controller
 
                         if($forge->has_error())
                         {
-                            throw new Exception();
+                            throw new MmdbException();
                         }
                     }
 
@@ -162,7 +162,7 @@ class SettingController extends Controller
                         if(trim($this->form->param->test_email_address) === '' || !Email::check_email_validity($this->form->param->test_email_address))
                         {
                             $forge->error('test_email_address', 'Invalid email form.');
-                            throw new Exception();
+                            throw new MmdbException();
                         }
 
                         $email = new Email();
@@ -180,9 +180,9 @@ class SettingController extends Controller
                 $this->addMessageSuccess('Settings was successfully updated.');
                 $this->redirect('setting/system');
             }
-            catch (Exception $e)
+            catch (MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->addMessageError($e);
             }
         }
 
@@ -317,9 +317,9 @@ class SettingController extends Controller
 
                 $this->alert->success('Saved.');
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                $this->alert->error($e->getMessage());
+                $this->alert->error($e);
             }
         }
         
@@ -540,7 +540,7 @@ class SettingController extends Controller
 
             if(!count($unlinked))
             {
-                throw new Exception('Nothing to link.');
+                throw new MmdbException('Nothing to link.');
             }
 
             $total_linked = 0;
@@ -592,7 +592,7 @@ class SettingController extends Controller
             $this->alert->success('Total ' . $total_linked . ' items were linked.');
             $etl->commitTransaction();
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $etl->rollbackTransaction();
@@ -707,7 +707,7 @@ class SettingController extends Controller
             $enum_type->commitTransaction();
             $this->alert->success('New enum type added.');
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $enum_type->rollbackTransaction();
@@ -769,7 +769,7 @@ class SettingController extends Controller
 
                 if(count($exists))
                 {
-                    throw new Exception('Category with given name already exists on this level.');
+                    throw new MmdbException('Category with given name already exists on this level.');
                 }
 
                 $link->id_enum_type = $type->id;
@@ -785,7 +785,7 @@ class SettingController extends Controller
             $enum_type->commitTransaction();
             $this->alert->success('Enum type edited.');
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $enum_type->rollbackTransaction();
@@ -835,7 +835,7 @@ class SettingController extends Controller
             $link->commitTransaction();
             $this->alert->success('Regexp edited.');
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $link->rollbackTransaction();
@@ -929,7 +929,7 @@ class SettingController extends Controller
             $enum_type->commitTransaction();
             $this->alert->success('Enum type removed.');
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $enum_type->rollbackTransaction();

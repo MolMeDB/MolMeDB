@@ -5,7 +5,7 @@
 		<meta charset="UTF-8" />
         <?= GOOGLE_ANALYTICS ?>
 		<title><?= $title ?></title>
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <!-- <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> -->
         <meta name="description" content="<?= $description ?>">
         <meta name="URL" id="URL" content="<?= URL ?>"/>
         <link rel="stylesheet" href="css/bootstrap.min.css"/>
@@ -45,6 +45,7 @@
 	</head>
         
 	<body>
+        <div class="body-wrapper">
 		<header>
                     <div class="menu-additional">
                             <?php if(session::is_logged_in()) : ?>
@@ -74,7 +75,7 @@
                             <div><div onclick="redirect('stats/show_all')"><img src="files/icons/chart-bar.svg" class="svg-white">Statistics</div></div>
                             <div><div onclick="redirect('detail/documentation')"><img src="files/icons/folder-open.svg" class="svg-white">Documentation</div></div>
                             <div><div onclick="redirect('detail/contact')"><img src="files/icons/info-circle.svg" class="svg-white">About</div></div>
-                            <div class="menu-dropdown">
+                            <!-- <div class="menu-dropdown">
                                 <div><img src="files/icons/chart-line.svg" class="svg-white">Comparator <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
                                 <div class="menu-dropdown-list">
                                     <div class="menu-dropdown-item" onclick="redirect('compare')">Open comparator</div>
@@ -84,7 +85,7 @@
                                     <div id="comparator-ul">
                                     </div>
                                 </div>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
 		</header>
@@ -161,5 +162,6 @@
                         </div>
                     </div>
 		</footer>
+        </div>
 	</body>
 </html>

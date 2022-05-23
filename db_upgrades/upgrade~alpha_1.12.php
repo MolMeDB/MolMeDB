@@ -33,6 +33,4 @@ $upgrade_sql = array
     "ALTER TABLE `substances` ADD INDEX (`fingerprint`);",
 
     "DELETE FROM config WHERE attribute IN ('scheduler_revalidate_3d_structures','scheduler_revalidate_3d_structures_last_id', 'scheduler_revalidate_3d_structures_is_running')",
-
-    
 );

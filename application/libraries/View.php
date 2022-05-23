@@ -16,6 +16,16 @@ class View
     private $active_path = '';
 
     /**
+     * Main core surrounding given view
+     */
+    private $core_view = '_core_template';
+
+    /**
+     * Paginator info
+     */
+    private $paginator;
+
+    /**
      * Suffix of views
      */
     private $suffix = '.phtml';
@@ -41,7 +51,7 @@ class View
     {
         if(!$name)
         {
-            $this->name = 'empty';
+            $name = 'empty';
         }
         else if($suffix)
         {
@@ -58,6 +68,10 @@ class View
         else if(file_exists(self::$shard_path . $name . $this->suffix))
         {
             $this->active_path = self::$shard_path;
+        }
+        else if(file_exists($name . $this->suffix))
+        {
+            $this->active_path = '';
         }
         else
         {
@@ -86,6 +100,21 @@ class View
         }
 
         return null;
+    }
+
+    /**
+     * Makes new paginator
+     * 
+     * @return View
+     */
+    public function paginator($paginator)
+    {
+        if(!($paginator instanceof View_paginator))
+        {
+            return $this;
+        }
+        $this->paginator = $paginator;
+        return $this;
     }
 
     /**
@@ -134,12 +163,16 @@ class View
      */
     public function render($print = TRUE)
     {
+        // Add template variables to data
+        $this->data['__core_paginator'] = $this->paginator == null ? null : $this->paginator->render();
+        $this->data['__core_content_path'] = $this->active_path . $this->view_name . $this->suffix;
+
         extract($this->protect($this->data));
         extract($this->data, EXTR_PREFIX_ALL, "nonsec"); 
 
         if($print)
         {
-            require($this->active_path . $this->view_name . $this->suffix);    
+            require(self::$basic_path . "core/" . $this->core_view . $this->suffix);    
         }
         else
         {

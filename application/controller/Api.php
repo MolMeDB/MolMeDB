@@ -8,8 +8,8 @@
  * For defining of the new endpoint, create class method and define following 
  * params in method documentation:
  *  - @[METHOD] - required param specifiing HTTP METHOD, e.g. @POST/@GET
- *  - @path([PATH]) - required param specifiing uri of defined endpoint, e.g. @Path(/get/byId)
- *  - @param [OPTIONS] $[NAME] - optional param specifiing parameter given by client for method execution
+ *  - @path([PATH]) - required param specifying uri of defined endpoint, e.g. @Path(/get/byId)
+ *  - @param [OPTIONS] $[NAME] - optional param specifying parameter given by client for method execution
  *      - can be included multiple times (once for each parameter)
  *      - $[NAME] - name has to correspond to exactly one method parameter name
  *      - OPTIONS:
@@ -77,15 +77,13 @@ class ApiController extends Controller
                 ResponseBuilder::ok_no_content();
             }
         }
-        catch(ApiException $ex)
+        catch(MmdbException $ex)
         {
-            // TODO printable message
-            ResponseBuilder::server_error($ex->getMessage());
+            ResponseBuilder::server_error($ex);
         }
-        catch(Exception $ex) // TODO LOG
+        catch(Exception $e)
         {
-            // TODO server message
-            ResponseBuilder::server_error($ex->getMessage());
+            ResponseBuilder::server_error(new ApiException($e->getMessage(), '500 SERVER ERROR', $e->getCode(), $e));
         }
              
         ResponseBuilder::ok($this->encoded_response, $this->headers);
@@ -167,7 +165,7 @@ class ApiController extends Controller
 
     /**
      * Returns list of requested accept types called by user
-     * 
+     *
      * @return array
      */
     public function get_accept_list()
@@ -177,9 +175,9 @@ class ApiController extends Controller
 
     /**
      * Returns preffered return type from given allow list
-     * 
+     *
      * @param array $options
-     * 
+     *
      * @return int|null
      */
     public function get_preffered_accept_from_list($options)
@@ -197,7 +195,7 @@ class ApiController extends Controller
         {
             return $options[0];
         }
-
+        
         return null;
     }
 }

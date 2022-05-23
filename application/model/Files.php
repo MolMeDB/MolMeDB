@@ -31,6 +31,8 @@ class Files extends Db
 
     /** RDF SPECIAL FILES */
     const T_RDF_VOCABULARY = 100;
+    
+    const T_EXAMPLE_ENERGY = 51;
 
     private static $valid_types = array
     (

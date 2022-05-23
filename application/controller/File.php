@@ -58,7 +58,7 @@ class FileController extends Controller
             echo $content;
             die;
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             header('Server error', true, 500);
             die();

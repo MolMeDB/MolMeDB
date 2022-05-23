@@ -77,11 +77,15 @@ class Alert
     /**
      * Adds ERROR message
      * 
-     * @param string|Exception $message
+     * @param string|MMmdbException|Exception $message
      */
     public function error($message)
     {
-        if($message instanceof Exception)
+        if($message instanceof MmdbException)
+        {
+            $message = $message->getPrintable();
+        }
+        elseif($message instanceof Exception)
         {
             $message = $message->getMessage();
         }

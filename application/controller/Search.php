@@ -31,8 +31,6 @@ class SearchController extends Controller
         parent::__construct();
     }
 
-
-
     /**
      * Main search engine parser
      * 
@@ -41,13 +39,18 @@ class SearchController extends Controller
      * 
      * @author Jakub Juračka
      */
-    public function index($type = self::T_COMPOUND, $pagination = 1) 
+    public function index($type = self::T_COMPOUND, $pagination = 1, $per_page = 10) 
     {
         // Is type valid?
         if(!in_array($type, $this->valid_types))
         {
             $this->addMessageWarning('Invalid parameter');
             $this->redirect('search/' . self::T_COMPOUND);
+        }
+
+        if(!$pagination || !is_numeric($pagination))
+        {
+            $pagination = 1;
         }
 
         $list = array();
@@ -66,6 +69,13 @@ class SearchController extends Controller
         $this->view->searchInput = $query;
         $this->view->searchType = $type;
         $this->view->show_detail = false;
+
+        $this->paginator = new View_paginator();
+        $this->paginator->path("$type")
+            ->active($pagination)
+            ->records_per_page($per_page);
+        
+        $this->view->paginator($this->paginator);
 
         // If not sent query, return
         if(!$query)
@@ -99,6 +109,7 @@ class SearchController extends Controller
             case self::T_TRANSPORTER:
                 return $this->by_transporter($query, $pagination);
         }
+        
     }
 
     /**
@@ -138,6 +149,7 @@ class SearchController extends Controller
         $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
         $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
     /**
@@ -178,6 +190,7 @@ class SearchController extends Controller
         $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
         $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
     /**
@@ -218,6 +231,7 @@ class SearchController extends Controller
         $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
         $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
     /**
@@ -269,6 +283,7 @@ class SearchController extends Controller
         $this->view->show_detail = True;
         $info = "Results for SMILES '<b>" . rawurldecode($query) . "</b>' ($total):";
         $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
     /**
@@ -309,6 +324,7 @@ class SearchController extends Controller
         $this->view->show_detail = True;
         $info = "Results for method '<b>" . rawurldecode($query) . "</b>' ($total):";
         $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
 }

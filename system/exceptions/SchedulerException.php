@@ -1,6 +1,6 @@
 <?php
 
-class SchedulerException extends Exception
+class SchedulerException extends MmdbException
 {
-
+    protected $level = ERROR_LVL_CRITICAL;
 }

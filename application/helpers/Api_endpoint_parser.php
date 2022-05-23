@@ -340,7 +340,7 @@ class Api_endpoint_parser
         $rf = array_map('trim', explode(' * ', $rf_method->getDocComment()));
         // Filter comments
         $rf = array_filter($rf, array($this, 'filter_comments'));
-        $rf = array_map(fn($val) : string => trim($val, "\t\n /*"), $rf);
+        $rf = array_map(function($val) { return trim($val, "\t\n /*"); }, $rf);
 
         $path = $params = $req_method = null;
         $access_types = [];

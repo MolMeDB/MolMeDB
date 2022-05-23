@@ -15,7 +15,7 @@ class ApiCompounds extends ApiController
      * 
      * @param @required $id - Substance ID
      * 
-     * @PATH(/fragments/<id:^MM\d+>)
+     * @PATH(/fragment/<id:^MM\d+>)
      */
     public function getFragments($id)
     {

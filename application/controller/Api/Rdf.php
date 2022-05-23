@@ -131,12 +131,14 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $suffix - Substance identifier
      * 
-     * @Path(/substance/<suffix:\w+>)
+     * @Path(/substance/<suffix:^MM\d+\w+$>)
      */
     public function substance($suffix=NULL)
     {
-        // Check compound id
-        $substance = Substances::instance()->where('identifier', strtok($suffix,'_'))->get_one();
+        $item_arr = explode('_',$suffix);
+        $identifier = $item_arr[0];
+
+        $substance = Substances::by_identifier($identifier);
 
         if(!$substance->id)
         {
@@ -163,7 +165,7 @@ class ApiRdf extends ApiController
      * @param @required $suffix - Substance identifier
      * @param @reqiured $type
      * 
-     * @Path(/substance/<suffix:\w+>/<type:\w+>)
+     * @Path(/substance/<suffix:^MM\d+\w+$>/<type:\w+>)
      */
     public function substance_print($suffix, $type)
     {
@@ -194,37 +196,87 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $suffix - Substance identifier
      * 
-     * @Path(/interaction/<suffix:\w+>)
+     * @Path(/interaction/<suffix:^\w+int[0-9]+$>)
      */
-    public function interaction($suffix=NULL)
+    public function interaction_by_id($suffix=NULL)
     {
         $item_arr = explode('_',$suffix);
-        $item = end($item_arr);
+        $id = preg_replace("/^int/", "", end($item_arr));
+
         //Check item id
-        if(substr($item,0,3) == 'int')
+        $interaction = new Interactions($id);
+
+        if(!$interaction->id)
         {
-            #$item = Interactions::instance()->where('id', strtok(substr($item,3),'_'))->get_one();
-            $id = substr($item,3);
-            $item_record = Interactions::instance()->where('id', $id,'_')->get_one();
-        }
-        elseif(substr($item,0,8) == 'membrane')
-        {
-            $id = substr($item,8);
-            $item_record = Membranes::instance()->where('id', $id)->get_one();
-        }
-        elseif(substr($item,0,6) == 'method')
-        {
-            $id = substr($item,6);
-            $item_record = Methods::instance()->where('id', $id)->get_one();
-        }
-        else
-        {
-            ResponseBuilder::not_found('Item not found.');
+            ResponseBuilder::not_found('Requested interaction not found.');
         }
 
-        if(!$item_record->id || !is_numeric($id) || (strlen($id) > 1 && $id[0] == '0'))
+        // Get requested type
+        $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
+        $accept_type_enum = HeaderParser::get_enum_accept_type($accept_type);
+
+        if(!$accept_type || !$accept_type_enum)
         {
-            ResponseBuilder::not_found('Item not found.');
+            ResponseBuilder::bad_request('Invalid accept type header.');
+        }
+
+        // Redirect by type
+        ResponseBuilder::see_other(Url::rdf_domain() . 'interaction/' . $suffix . '/' . $accept_type_enum);
+    }
+
+    /**
+     * Returns ...
+     * 
+     * @GET
+     * @param @required $suffix - Substance identifier
+     * 
+     * @Path(/interaction/<suffix:^membrane\d+$>)
+     */
+    public function membrane($suffix=NULL)
+    {
+        $item_arr = explode('_',$suffix);
+        $id = preg_replace("/^membrane/", "", end($item_arr));
+
+        //Check item id
+        $membrane = new Membranes($id);
+
+        if(!$membrane->id)
+        {
+            ResponseBuilder::not_found('Requested membrane not found.');
+        }
+
+        // Get requested type
+        $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
+        $accept_type_enum = HeaderParser::get_enum_accept_type($accept_type);
+
+        if(!$accept_type || !$accept_type_enum)
+        {
+            ResponseBuilder::bad_request('Invalid accept type header.');
+        }
+
+        // Redirect by type
+        ResponseBuilder::see_other(Url::rdf_domain() . 'interaction/' . $suffix . '/' . $accept_type_enum);
+    }
+
+    /**
+     * Returns ...
+     * 
+     * @GET
+     * @param @required $suffix - Substance identifier
+     * 
+     * @Path(/interaction/<suffix:^method\d+$>)
+     */
+    public function method($suffix=NULL)
+    {
+        $item_arr = explode('_',$suffix);
+        $id = preg_replace("/^method/", "", end($item_arr));
+
+        //Check item id
+        $membrane = new Methods($id);
+
+        if(!$membrane->id)
+        {
+            ResponseBuilder::not_found('Requested method not found.');
         }
 
         // Get requested type
@@ -261,7 +313,7 @@ class ApiRdf extends ApiController
             ResponseBuilder::bad_request('Invalid accept type parameter.');
         }
 
-        $uri = Url::rdf_domain(true) . "interaction/" . $suffix;
+        $uri = Url::rdf_domain() . "interaction/" . $suffix;
 
         if($accept_type == HeaderParser::HTML)
         {
@@ -277,20 +329,19 @@ class ApiRdf extends ApiController
      * Returns ...
      * 
      * @GET
-     * @param @required $suffix - Substance identifier
+     * @param @required $suffix - Transporter identifier
      * 
-     * @Path(/transporter/<suffix:\w+>)
+     * @Path(/transporter/<suffix:^\w*tra[0-9]+$>)
      */
     public function transporter($suffix=NULL)
     {
         $item_arr = explode('_',$suffix);
-        $item = end($item_arr);
-        $id = substr($item,3);
+        $id = preg_replace("/^tra/", "", end($item_arr));
 
-        // Check compound id
-        $transporter = Transporters::instance()->where('id', $id)->get_one();
+        // Check transporter id
+        $transporter = new Transporters($id);
 
-        if(!$transporter->id || !is_numeric($id) || (strlen($id) > 1 && $id[0] == '0') || substr($item,0,3) != 'tra')
+        if(!$transporter->id)
         {
             ResponseBuilder::not_found('Transporter interaction not found.');
         }
@@ -316,7 +367,7 @@ class ApiRdf extends ApiController
      * @param @required $suffix - Substance identifier
      * @param @reqiured $type
      * 
-     * @Path(/transporter/<suffix:\w+>/<type:\w+>)
+     * @Path(/transporter/<suffix:^\w*tra[0-9]+>/<type:\w+>)
      */
     public function transporter_print($suffix, $type)
     {
@@ -345,9 +396,9 @@ class ApiRdf extends ApiController
      * Returns ...
      * 
      * @GET
-     * @param @required $suffix - Substance identifier
+     * @param @required $suffix - Reference id
      * 
-     * @Path(/reference/<suffix:\w+>)
+     * @Path(/reference/<suffix:^ref\d+$>)
      */
     public function reference($suffix=NULL)
     {
@@ -378,10 +429,10 @@ class ApiRdf extends ApiController
      * Returns ...
      * 
      * @GET
-     * @param @required $suffix - Substance identifier
+     * @param @required $suffix - Reference id
      * @param @reqiured $type
      * 
-     * @Path(/reference/<suffix:\w+>/<type:\w+>)
+     * @Path(/reference/<suffix:^ref\d+$>/<type:\w+>)
      */
     public function reference_print($suffix, $type)
     {

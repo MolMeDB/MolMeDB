@@ -283,47 +283,54 @@ class Rdf extends SparqllibBase
 	function shorten_uri($uri)
 	{
 		$namespace = array(
-			"http://www.w3.org/1999/02/22-rdf-syntax-ns" => "rdf:",
-			"http://www.bioassayontology.org/bao" => "bao:",
-			"http://purl.org/spar/cito" => "cito:",
-			"http://www.w3.org/2000/01/rdf-schema" => "rdfs:",
-			"https://w3id.org/reproduceme" => "repr:",
-			"http://purl.org/dc/elements/1.1" => "dc:",
-			"http://purl.org/dc/terms" => "dcterms:",
-			"http://semanticscience.org/resource" => "sio:",
-			"http://purl.org/ontology/bibo" => "bibo:",
-			"http://purl.obolibrary.org/obo" => "obo:",
-			"http://www.w3.org/2004/02/skos/core" => "skos:",
-			"http://rdf.molmedb.upol.cz/substance" => "mmdbsub:",
-			"http://rdf.molmedb.upol.cz/interaction" => "mmdbint:",
-			"http://rdf.molmedb.upol.cz/transporter" => "mmdbtra:",
-			"http://rdf.molmedb.upol.cz/reference" => "mmdbref:",
-			"http://rdf.molmedb.upol.cz/vocabulary" => "mmdbvoc:",
-			"http://rdf.ncbi.nlm.nih.gov/pubchem/compound" => "pubchem:",
-			"http://rdf.ebi.ac.uk/resource/chembl/molecule" => "ebi:",
-			"http://purl.uniprot.org/uniprot/" => "uniprot:"
+			"w3.org/1999/02/22-rdf-syntax-ns" => "rdf:",
+			"bioassayontology.org/bao" => "bao:",
+			"purl.org/spar/cito" => "cito:",
+			"w3.org/2000/01/rdf-schema" => "rdfs:",
+			"w3id.org/reproduceme" => "repr:",
+			"purl.org/dc/elements/1.1" => "dc:",
+			"purl.org/dc/terms" => "dcterms:",
+			"semanticscience.org/resource" => "sio:",
+			"purl.org/ontology/bibo" => "bibo:",
+			"purl.obolibrary.org/obo" => "obo:",
+			"w3.org/2004/02/skos/core" => "skos:",
+			"rdf.molmedb.upol.cz/substance" => "mmdbsub:",
+			"rdf.molmedb.upol.cz/interaction" => "mmdbint:",
+			"rdf.molmedb.upol.cz/transporter" => "mmdbtra:",
+			"rdf.molmedb.upol.cz/reference" => "mmdbref:",
+			"rdf.molmedb.upol.cz/vocabulary" => "mmdbvoc:",
+			"rdf.ncbi.nlm.nih.gov/pubchem/compound" => "pubchem:",
+			"rdf.ebi.ac.uk/resource/chembl/molecule" => "ebi:",
+			"purl.uniprot.org/uniprot/" => "uniprot:"
 		);
+
+		$prefix = $uri;
+		$suffix = '';
+		
 		if (strrpos($uri,"#"))
 		{
 			$splituri = explode("#",$uri);
 			$prefix = $splituri[0];
-			$localname = $splituri[1];
+			$suffix = $splituri[1];
 		}
-		else
+
+		// Remove unimportant prefixes
+		$prefix = preg_replace('/^(http:\/\/|https:\/\/)/', '', $prefix);
+		$prefix = preg_replace('/^www\./', '', $prefix);
+
+		foreach($namespace as $ns => $sc)
 		{
-			$splituri = explode("/",$uri);
-			$localname = array_pop($splituri);
-			$prefix = implode('/',$splituri);
+			if(Text::startsWith($prefix, $ns))
+			{
+				$ns = preg_replace('/\/+$/', '', $ns);
+				$end = substr($prefix, strlen($ns)+1);
+				return $sc . $end . ($suffix ? '#' . $suffix : '');
+			}
 		}
-		if (array_key_exists($prefix,$namespace))
-		{
-			return $namespace[$prefix] . $localname;
-		}
+		
 		return $uri;
 	}
-
 }
-
 
 
 

@@ -22,8 +22,11 @@ class System_config
         // Connect to DB
         self::DB_CONNECT();
 
-        // Check DB version
-        self::check_DB_version();
+        if(!Server::is_maintenance())
+        {
+            // Check DB version
+            self::check_DB_version();
+        }
     }
 
     /**

@@ -12,6 +12,7 @@ define("PROTOCOL", substr(strtolower($_SERVER['SERVER_PROTOCOL']), 0, 5) === 'ht
 
 // Folder structure
 define("APP_ROOT", "application/");
+define("SYS_ROOT", "system/");
 define("MEDIA_ROOT", "media/");
 
 // Debug mode

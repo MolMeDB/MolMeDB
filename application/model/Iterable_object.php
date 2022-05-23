@@ -111,7 +111,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                         $val = $vals;
                         $key = $val;
 
-                        $new_key = ltrim($val, 'id_');
+                        $new_key = preg_replace('/^\s*id_/', '', $val);
                         $k = 'id_' . $new_key;
 
                         $class_name = ucwords($new_key . 's');

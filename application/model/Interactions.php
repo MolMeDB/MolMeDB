@@ -100,6 +100,16 @@ class Interactions extends Db
 	}
 
 	/**
+	 * Instance maker
+	 * 
+	 * @return Interactions
+	 */
+	public static function instance()
+	{
+		return new Interactions();
+	}
+
+	/**
 	 * Gets enum visibility by const number
 	 * 
 	 * @param integer $visibility

@@ -51,7 +51,7 @@ class View
     {
         if(!$name)
         {
-            $this->name = 'empty';
+            $name = 'empty';
         }
         else if($suffix)
         {

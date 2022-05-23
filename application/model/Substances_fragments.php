@@ -158,6 +158,8 @@ class Substances_fragments extends Db
     /**
      * Checks, if exists given fragmentation
      * 
+     * TODO - předělat s total_fragments atributem
+     * 
      * @param int $id_substance
      * @param array $id_fragments
      * 

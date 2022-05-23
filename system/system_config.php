@@ -224,6 +224,10 @@ class System_config
                 {
                     require_once($folder . $class . ".php");
                 }
+                else if(file_exists($folder . strtolower($class) . ".php"))
+                {
+                    require_once($folder . strtolower($class) . ".php");
+                }
             }
         }
     }   

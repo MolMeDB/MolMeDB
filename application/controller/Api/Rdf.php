@@ -131,7 +131,7 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $suffix - Substance identifier
      * 
-     * @Path(/substance/<suffix:^MM\d+\w+$>)
+     * @Path(/substance/<suffix:^MM\d{5,}\w*$>)
      */
     public function substance($suffix=NULL)
     {
@@ -165,7 +165,7 @@ class ApiRdf extends ApiController
      * @param @required $suffix - Substance identifier
      * @param @reqiured $type
      * 
-     * @Path(/substance/<suffix:^MM\d+\w+$>/<type:\w+>)
+     * @Path(/substance/<suffix:^MM\d{5,}\w*$>/<type:\w+>)
      */
     public function substance_print($suffix, $type)
     {
@@ -196,7 +196,7 @@ class ApiRdf extends ApiController
      * @GET
      * @param @required $suffix - Substance identifier
      * 
-     * @Path(/interaction/<suffix:^\w+int[0-9]+$>)
+     * @Path(/interaction/<suffix:^\w*int[0-9]+$>)
      */
     public function interaction_by_id($suffix=NULL)
     {
@@ -300,7 +300,7 @@ class ApiRdf extends ApiController
      * @param @required $suffix - Substance identifier
      * @param @reqiured $type
      * 
-     * @Path(/interaction/<suffix:\w+>/<type:\w+>)
+     * @Path(/interaction/<suffix:^(method\d+|membrane\d+|\w*int[0-9]+)$>/<type:\w+>)
      */
     public function interaction_print($suffix, $type)
     {

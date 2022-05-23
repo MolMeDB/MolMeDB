@@ -15,12 +15,21 @@ class HeaderParser
     const JSON = 'application/json';
     const CSV = 'text/csv';
     const HTML = 'text/html';
+    const XML = 'application/xml';
     const MULTIPART = 'multipart/form-data';
     const APP_WWW_FORM = "application/x-www-form-urlencoded";
     const GZIP = 'gzip';
     const COMPRESS = 'compress';
     const DEFLATE = 'deflate';
     const UTF8 = 'utf-8';
+
+    /** Constants for machine readable RDF dereference */
+    const RDF_XML = 'application/rdf+xml';
+    const NTriples = 'application/n-triples';
+    const NQuads = 'application/n-quads';
+    const Turtle = 'text/turtle';
+    const TSV = 'text/tab-separated-values';
+    const TriG = 'application/trig';
 
     /** ALLOWED AUTHORIZATION TYPES */
     const AUTH_BASIC = 1;
@@ -47,7 +56,33 @@ class HeaderParser
         self::CSV,
         self::ALL_TYPES,
         self::JSON,
-        self::HTML
+        self::HTML,
+        self::RDF_XML,
+        self::XML,
+        self::NTriples,
+        self::NQuads,
+        self::Turtle,
+        self::TSV,
+        self::TriG,
+    );
+
+    /**
+     * Enums of accept types
+     * 
+     * @var array
+     */
+    public static $enum_accept_types = array
+    (
+        self::CSV => "CSV",
+        self::JSON => "JSON",
+        self::HTML => "HTML",
+        self::RDF_XML => "RDFXML",
+        self::XML => "XML",
+        self::NTriples => "NTRIPLE",
+        self::NQuads => "NQUAD",
+        self::Turtle => "TURTLE",
+        self::TSV => "TSV",
+        self::TriG => "TRIG"
     );
 
     /**
@@ -61,7 +96,14 @@ class HeaderParser
     (
         self::JSON  => 'ResponseBuilder::json',
         self::CSV   => 'ResponseBuilder::csv',
-        self::HTML  => 'ResponseBuilder::html'
+        self::HTML  => 'ResponseBuilder::html',
+        self::XML   => 'ResponseBuilder::xml',
+        self::RDF_XML => 'ResponseBuilder::RDF',
+        self::NTriples => 'ResponseBuilder::RDF',
+        self::NQuads => 'ResponseBuilder::RDF',
+        self::Turtle => 'ResponseBuilder::RDF',
+        self::TSV => 'ResponseBuilder::RDF',
+        self::TriG => 'ResponseBuilder::RDF',
     );
 
     /**
@@ -122,6 +164,40 @@ class HeaderParser
     {
         $this->requested_endpoint = $requested_endpoint;
         $this->parse_headers();
+    }
+
+
+    /**
+     * Returns enum type for accept header
+     * 
+     * @param $enum_type
+     * 
+     * @return string|null
+     */
+    public static function get_accept_type_by_enum($enum_type)
+    {
+        $enum_type = strtoupper($enum_type);
+        if(!in_array($enum_type, self::$enum_accept_types))
+        {
+            return null;
+        }
+        return array_flip(self::$enum_accept_types)[$enum_type];
+    }
+
+    /**
+     * Returns enum type for accept header
+     * 
+     * @param $accept_type
+     * 
+     * @return string|null
+     */
+    public static function get_enum_accept_type($accept_type)
+    {
+        if(!array_key_exists($accept_type, self::$enum_accept_types))
+        {
+            return null;
+        }
+        return self::$enum_accept_types[$accept_type];
     }
 
     /**

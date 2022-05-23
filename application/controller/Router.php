@@ -45,6 +45,7 @@ class RouterController extends Controller
         $parsedURL["path"] = ltrim($parsedURL["path"], "/");
         $parsedURL["path"] = trim($parsedURL["path"]);
         $dividedRoute = explode("/", $parsedURL["path"]);
+
         return $dividedRoute;
     }
 

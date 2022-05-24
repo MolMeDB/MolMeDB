@@ -160,12 +160,23 @@ class HeaderParser
     /**
     * Constructor
     */    
-    public function __construct($requested_endpoint)
+    public function __construct($requested_endpoint = NULL)
     {
         $this->requested_endpoint = $requested_endpoint;
         $this->parse_headers();
     }
 
+    /**
+     * Checks, if client accepts given data format
+     * 
+     * @param string $format
+     * 
+     * @return boolean
+     */
+    public function accept($format)
+    {
+        return in_array($format, $this->accept_type) || in_array(self::ALL_TYPES, $this->accept_type);
+    }
 
     /**
      * Returns enum type for accept header

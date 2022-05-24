@@ -45,6 +45,11 @@ abstract class Controller
     protected $form;
 
     /**
+     * @var HeaderParser
+     */
+    protected $requested_header;
+
+    /**
      * Constructor
      */
     function __construct()
@@ -52,6 +57,7 @@ abstract class Controller
         $this->config = new Config();
         $this->alert = new Alert();
         $this->form = new Form();
+        $this->requested_header = new HeaderParser();
     }
     
     /**

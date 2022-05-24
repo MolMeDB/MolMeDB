@@ -83,7 +83,7 @@ class Url
 	public static function rdf_domain($strict_remote = false)
 	{
         // TODO
-        if(DEBUG && !$strict_remote)
+        if(DEBUG_API && !$strict_remote)
         {
             return self::base() . 'api/rdf/';
         }

@@ -17,6 +17,7 @@ define("MEDIA_ROOT", "media/");
 
 // Debug mode
 define('DEBUG', false);
+define('DEBUG_API', false);
 
 // Maintenance
 define('MAINTENANCE', False);

@@ -241,7 +241,7 @@ class ApiEndpoint
         {
             $name = $p->name;
 
-            if(!isset($params[$name]))
+            if(!array_key_exists($name, $params))
             {
                 if(DEBUG)
                 {
@@ -257,6 +257,3 @@ class ApiEndpoint
         $this->function_params = $final_params;
     }
 }   
-
-
-

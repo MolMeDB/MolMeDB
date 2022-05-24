@@ -1,3 +1,6 @@
 {
-	"name": "cgutteridge/sparqllib"
+	"name": "cgutteridge/sparqllib",
+	"require": {
+		"swiftmailer/swiftmailer": "^6.0"
+	}
 }

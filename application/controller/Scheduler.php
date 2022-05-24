@@ -75,8 +75,8 @@ class SchedulerController extends Controller
                 $this->check_interaction_datasets();
             }
 
-            // Fragment molecules
-            if($this->check_time("06:00"))
+            // Fragment molecules forever
+            if(TRUE)
             {
                 echo "Checking interaction datasets.\n";
                 $this->fragment_molecules();
@@ -93,9 +93,8 @@ class SchedulerController extends Controller
             }
 
             // ---- Molecules data autofill ---- //
-            if($this->debug_FMD || 
-                ($this->check_time($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME)) && 
-                $this->config->get(Configs::S_VALIDATE_SUBSTANCES))) // Run only once per hour and only at night
+            // RUN FOREVER
+            if($this->config->get(Configs::S_VALIDATE_SUBSTANCES))
             {
                 echo "Subtance validations is running. \n";
                 $this->validate_substance_identifiers(); // PARAM TODO
@@ -131,7 +130,7 @@ class SchedulerController extends Controller
         }
         catch(Exception $e)
         {
-            $text = "General error occured while scheduler was running.<br/><br/>" . $e->getMessage();
+            $text = "General error occured while scheduler was running.\n\n" . $e->getMessage();
             echo $text . ' in ' . $time->get_string();
 
             try
@@ -405,10 +404,27 @@ class SchedulerController extends Controller
      */
     public function fragment_molecules()
     {
+        
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
 
-        $substances = $sf_model->get_non_fragmented_substances(10000);
+        // start fragmentation, if last record was added before 5+ minutes
+        $last_added = $sf_model->select_list('id, datetime')->order_by('datetime', 'DESC')->get_one();
+        
+        if($last_added->id)
+        {
+            $time = strtotime($last_added->datetime);
+
+            if(strtotime('now')-$time < 2*60)
+            {
+                echo "Fragmentation still running. \n";
+                return;
+            }
+        }
+
+        echo "Fragmentation started.\n";
+
+        $substances = $sf_model->get_non_fragmented_substances(5000);
 
         $rdkit = new Rdkit();
 
@@ -645,6 +661,12 @@ class SchedulerController extends Controller
         $logs = new Validator_identifier_logs();
         
         $max_cores = Config::get('scheduler_substance_validation_max_cores');
+
+        if(!$max_cores)
+        {
+            Config::set('scheduler_substance_validation_max_cores', 1);
+        }
+
         $max_cores = $max_cores && is_numeric($max_cores) ? (int) $max_cores : 1;
     
         $running_cores = (int)Config::get('scheduler_substance_validation_running_cores');
@@ -653,12 +675,12 @@ class SchedulerController extends Controller
         {
             $new_order = 1;
         }
-        else if($running_cores >= $max_cores && !DEBUG)
+        else if($running_cores >= $max_cores)
         {
             echo 'Max number of runs reached.';
             return;
         }
-        else if(!DEBUG)
+        else
         {
             $new_order = $running_cores+1;
         }

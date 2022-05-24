@@ -225,8 +225,9 @@ class Substances_fragments extends Db
         $all = $this->queryAll('SELECT DISTINCT s.id
             FROM `substances` s
             LEFT JOIN substances_fragments sf ON sf.id_substance = s.id
-            WHERE sf.id IS NULL
-            LIMIT ' . $limit);
+            JOIN validator_identifiers vi ON vi.id_substance = s.id
+            WHERE sf.id IS NULL AND vi.identifier = ? AND vi.state = ?
+            LIMIT ' . $limit, array(Validator_identifiers::ID_SMILES, Validator_identifiers::STATE_VALIDATED));
 
         $result = [];
 

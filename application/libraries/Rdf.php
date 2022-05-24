@@ -157,7 +157,7 @@ class Rdf extends SparqllibBase
 	 */
 	function html_uri_redir($uri)
 	{
-		if(DEBUG)
+		if(DEBUG_API)
 		{
 			return preg_replace("/rdf\.molmedb\.upol\.cz/", Url::domain() . "/api/rdf", "$uri");
 		}

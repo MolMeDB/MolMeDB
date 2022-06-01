@@ -28,7 +28,8 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run',
-        'log_sub_changes',
+        // 'log_sub_changes',
+        // 'fragment_molecules'
     );
 
 
@@ -404,7 +405,6 @@ class SchedulerController extends Controller
      */
     public function fragment_molecules()
     {
-        
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
 
@@ -430,14 +430,40 @@ class SchedulerController extends Controller
 
         foreach($substances as $s)
         {
+            // Check, if molecule has fragmentation error in history
+            $err = Error_fragments::instance()->where(array
+                (
+                    'id_substance'  => $s->id,
+                    'type'          => Error_fragments::TYPE_FRAGMENTATION_ERROR 
+                ))
+                ->get_one();
+
             try
             {
                 Db::beginTransaction();
 
-                $fragments = $rdkit->fragment_molecule($s->SMILES);
+                // Timeout in secs
+                $timeout = 10;
+
+                // If error occured, increase timeout
+                if($err->id)
+                {
+                    $timeout = 90;
+                }
+
+                $fragments = $rdkit->fragment_molecule($s->SMILES, true, $timeout);
 
                 if(!$fragments)
                 {
+                    // Cannot fragment molecule -> save error record
+                    $err->id_substance = $s->id;
+                    $err->id_fragment = NULL;
+                    $err->type = Error_fragments::TYPE_FRAGMENTATION_ERROR;
+                    $err->text = 'Cannot fragment molecule.';
+                    $err->datetime = date('Y-m-d H:i:s');
+
+                    $err->save();
+
                     Db::commitTransaction();
                     continue;
                 }
@@ -524,12 +550,29 @@ class SchedulerController extends Controller
                     }
                 }
 
+                // If ok, remove old errors
+                $errors = Error_fragments::instance()->where('id_substance', $s->id)->get_all();
+
+                foreach($errors as $e)
+                {
+                    $e->delete();
+                }
+
                 Db::commitTransaction();
             }
             catch(Exception $e)
             {
                 Db::rollbackTransaction();
-                echo $e;
+
+                $err->id_substance = $s->id;
+                $err->id_fragment = NULL;
+                $err->type = Error_fragments::TYPE_FRAGMENTATION_ERROR;
+                $err->text = $e->getMessage();
+                $err->datetime = date('Y-m-d H:i:s');
+
+                $err->save();
+
+                echo $e->getMessage();
                 die;
             }
         }

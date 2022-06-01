@@ -8,8 +8,9 @@
 **/files/uploadReports/*
 **/files/schedulerReports/*
 **/files/3DStructures/* 
+/vendor/**
 
 ### Config ###
 /config.php
-
+/composer.lock
 

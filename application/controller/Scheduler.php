@@ -408,23 +408,25 @@ class SchedulerController extends Controller
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
 
-        // start fragmentation, if last record was added before 5+ minutes
-        $last_added = $sf_model->select_list('id, datetime')->order_by('datetime', 'DESC')->get_one();
+        // Check, when lastly started fragmentation
+        $last_run = Config::get('scheduler_fragmentation_last_run');
         
-        if($last_added->id)
+        if($last_run)
         {
-            $time = strtotime($last_added->datetime);
+            $time = strtotime($last_run);
 
-            if(strtotime('now')-$time < 2*60)
+            if(strtotime('now')-$time < 60*60) // Wait max 60 minutes
             {
-                echo "Fragmentation still running. \n";
+                echo "Fragmentation looks like still running. \n";
                 return;
             }
         }
 
+        Config::set('scheduler_fragmentation_last_run', date('Y-m-d H:i:s'));
+
         echo "Fragmentation started.\n";
 
-        $substances = $sf_model->get_non_fragmented_substances(5000);
+        $substances = $sf_model->get_non_fragmented_substances(1);
 
         $rdkit = new Rdkit();
 
@@ -575,10 +577,13 @@ class SchedulerController extends Controller
             catch(Exception $e)
             {
                 Db::rollbackTransaction();
+                Config::set('scheduler_fragmentation_last_run', NULL);
                 echo $e->getMessage();
                 die;
             }
         }
+
+        Config::set('scheduler_fragmentation_last_run', NULL);
     }
 
 

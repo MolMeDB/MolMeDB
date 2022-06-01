@@ -193,6 +193,7 @@ class SchedulerController extends Controller
                 $text = 'PID: ' . $exists_pid . ' including calling method Scheduler->' . $name . ' probably unexpectedly failed. Current time: ' . date('Y-m-d H:i:s');  
                 $this->send_email_to_admins($text, 'Scheduler error');
                 echo 'Error occured during processing PID: ' . $exists_pid;
+                self::end_pid_sessions($exists_pid);
                 die;
             }
         }

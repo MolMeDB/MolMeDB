@@ -475,7 +475,7 @@ class Rdkit extends Identifier_loader
         {
             if($throwable)
             {
-                throw $e;
+                throw new MmdbException($e->getMessage());
             }
             return NULL;
         }

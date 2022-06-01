@@ -443,7 +443,7 @@ class SchedulerController extends Controller
                 Db::beginTransaction();
 
                 // Timeout in secs
-                $timeout = 10;
+                $timeout = 20;
 
                 // If error occured, increase timeout
                 if($err->id)
@@ -560,7 +560,7 @@ class SchedulerController extends Controller
 
                 Db::commitTransaction();
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
                 Db::rollbackTransaction();
 
@@ -571,7 +571,10 @@ class SchedulerController extends Controller
                 $err->datetime = date('Y-m-d H:i:s');
 
                 $err->save();
-
+            }
+            catch(Exception $e)
+            {
+                Db::rollbackTransaction();
                 echo $e->getMessage();
                 die;
             }

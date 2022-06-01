@@ -18,6 +18,7 @@ $upgrade_sql = array
         `datetime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8;",
 
+      "ALTER TABLE `error_fragments` CHANGE `id` `id` INT(11) NOT NULL AUTO_INCREMENT;",
       "ALTER TABLE `error_fragments` ADD FOREIGN KEY (`id_fragment`) REFERENCES `fragments`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;",
       "ALTER TABLE `error_fragments` ADD FOREIGN KEY (`id_substance`) REFERENCES `substances`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;"
 );

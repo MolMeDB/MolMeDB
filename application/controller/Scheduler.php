@@ -14,13 +14,19 @@ class SchedulerController extends Controller
      */
     function __construct()
     {
+        $this->pid = self::PID_PREFIX . getmypid();
         parent::__construct();
     }
+
+    /**Holds PID */
+    private $pid;
 
     private $debug_DES = FALSE && DEBUG;
     private $debug_CID = FALSE && DEBUG;
     private $debug_CTD = FALSE && DEBUG;
     private $debug_FMD = FALSE && DEBUG;
+
+    const PID_PREFIX = 'pid:';
 
     /**
      * Specifies publicly accessible functions
@@ -54,7 +60,7 @@ class SchedulerController extends Controller
             // Send all unsent emails
             if($this->config->get(Configs::EMAIL_ENABLED))
             {
-                $this->send_emails();
+                $this->protected_call('send_emails', []);
                 echo "Emails sent. \n";
             }
 
@@ -64,7 +70,7 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
             {
                 echo "Deleting empty substances. \n";
-                $this->delete_empty_substances();
+                $this->protected_call('delete_empty_substances', []);
             }
 
             // Checks interactions datasets
@@ -73,14 +79,14 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_VALIDATE_PASSIVE_INT)))
             {
                 echo "Checking interaction datasets.\n";
-                $this->check_interaction_datasets();
+                $this->protected_call('check_interaction_datasets', []);
             }
 
             // Fragment molecules forever
             if(TRUE)
             {
                 echo "Checking interaction datasets.\n";
-                $this->fragment_molecules();
+                $this->protected_call('fragment_molecules', []);
             }
 
             // Checks transporter datasets - NOW INACTIVATED
@@ -98,7 +104,7 @@ class SchedulerController extends Controller
             if($this->config->get(Configs::S_VALIDATE_SUBSTANCES))
             {
                 echo "Subtance validations is running. \n";
-                $this->validate_substance_identifiers(); // PARAM TODO
+                $this->protected_call('validate_substance_identifiers', []);
             }
 
             // Once per day, update stats data
@@ -106,7 +112,7 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_UPDATE_STATS)))
             {
                 echo "Updating stats data. \n";
-                $this->update_stats();
+                $this->protected_call('update_stats', []);
             }
 
             // Once per day, update stats data
@@ -114,9 +120,9 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_CHECK_PUBLICATIONS)))
             {
                 echo "Updating publications data. \n";
-                $this->update_publications();
+                $this->protected_call('update_publications', []);
                 echo "Deleting empty publications. \n";
-                $this->delete_empty_publications();
+                $this->protected_call('delete_empty_publications', []);
             }
 
             // Delete empty membranes and methods
@@ -124,7 +130,7 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
             {
                 echo "Deleting empty membranes/methods. \n";
-                $this->delete_empty_membranes_methods();
+                $this->protected_call('delete_empty_membranes_methods', []);
             }
 
             echo "DONE \n";
@@ -133,6 +139,8 @@ class SchedulerController extends Controller
         {
             $text = "General error occured while scheduler was running.\n\n" . $e->getMessage();
             echo $text . ' in ' . $time->get_string();
+
+            self::end_pid_sessions($this->pid);
 
             try
             {
@@ -152,6 +160,68 @@ class SchedulerController extends Controller
         }
 
         echo '-------------------------';
+    }
+
+    /**
+     * Checks, if given method is not calling too often
+     * 
+     * @param string $name
+     * @param array $arguments
+     */
+    private function protected_call($name, $arguments)
+    {
+        // Check, if exists
+        if(!method_exists($this, $name))
+        {
+            echo 'Invalid method called in scheduler.';
+            die;
+        }
+
+        // Check, if exists pid running this method
+        $exists_pid = Config::get('scheduler_pid_' . $name);
+
+        if($exists_pid)
+        {
+            // Check, if process is still running
+            if(file_exists("/proc/$exists_pid"))
+            {
+                echo 'Method ' . $name . ' looks like still running from previous session.';
+                die;
+            }
+            else // Not running, but not unbinded - unexpected error had to occur
+            {
+                $text = 'PID: ' . $exists_pid . ' including calling method Scheduler->' . $name . ' probably unexpectedly failed. Current time: ' . date('Y-m-d H:i:s');  
+                $this->send_email_to_admins($text, 'Scheduler error');
+                echo 'Error occured during processing PID: ' . $exists_pid;
+                die;
+            }
+        }
+
+        // Set pid for current session
+        Config::set('scheduler_pid_' . $name, $this->pid);
+
+        // Call method
+        $this->$name(...$arguments);
+
+        // After end, release pid
+        Config::set('scheduler_pid_' . $name, NULL);
+    }
+
+    /**
+     * Ends all sessions for given pid
+     * 
+     * @param int $pid
+     * 
+     */
+    private static function end_pid_sessions($pid)
+    {
+        $rows = Configs::instance()->where('value', $pid)->get_all();
+
+        foreach($rows as $r)
+        {
+            $r->value = NULL;
+            $r->save();
+        }
     }
 
     public function log_sub_changes()
@@ -403,30 +473,14 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka
      */
-    public function fragment_molecules()
+    private function fragment_molecules()
     {
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
 
-        // Check, when lastly started fragmentation
-        $last_run = Config::get('scheduler_fragmentation_last_run');
-        
-        if($last_run)
-        {
-            $time = strtotime($last_run);
-
-            if(strtotime('now')-$time < 60*60) // Wait max 60 minutes
-            {
-                echo "Fragmentation looks like still running. \n";
-                return;
-            }
-        }
-
-        Config::set('scheduler_fragmentation_last_run', date('Y-m-d H:i:s'));
-
         echo "Fragmentation started.\n";
 
-        $substances = $sf_model->get_non_fragmented_substances(1);
+        $substances = $sf_model->get_non_fragmented_substances(100);
 
         $rdkit = new Rdkit();
 

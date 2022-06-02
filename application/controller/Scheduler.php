@@ -36,6 +36,7 @@ class SchedulerController extends Controller
         'run',
         // 'log_sub_changes',
         // 'fragment_molecules'
+        // 'validate_substance_identifiers'
     );
 
 
@@ -182,17 +183,18 @@ class SchedulerController extends Controller
 
         if($exists_pid)
         {
+            $p = str_replace(self::PID_PREFIX, '', $exists_pid);
             // Check, if process is still running
-            if(file_exists("/proc/$exists_pid"))
+            if(file_exists("/proc/$p"))
             {
-                echo 'Method ' . $name . ' looks like still running from previous session.';
+                echo 'Method ' . $name . ' looks like still running from previous session. PID: ' . $p;
                 die;
             }
             else // Not running, but not unbinded - unexpected error had to occur
             {
-                $text = 'PID: ' . $exists_pid . ' including calling method Scheduler->' . $name . ' probably unexpectedly failed. Current time: ' . date('Y-m-d H:i:s');  
+                $text = 'PID: ' . $p . ' including calling method Scheduler->' . $name . ' probably unexpectedly failed. Current time: ' . date('Y-m-d H:i:s');  
                 $this->send_email_to_admins($text, 'Scheduler error');
-                echo 'Error occured during processing PID: ' . $exists_pid;
+                echo 'Error occured during processing PID: ' . $p;
                 self::end_pid_sessions($exists_pid);
                 die;
             }
@@ -766,49 +768,21 @@ class SchedulerController extends Controller
     {
         $logs = new Validator_identifier_logs();
         
-        $max_cores = Config::get('scheduler_substance_validation_max_cores');
-
-        if(!$max_cores)
-        {
-            Config::set('scheduler_substance_validation_max_cores', 1);
-        }
-
-        $max_cores = $max_cores && is_numeric($max_cores) ? (int) $max_cores : 1;
-    
-        $running_cores = (int)Config::get('scheduler_substance_validation_running_cores');
-
-        if(!$running_cores)
-        {
-            $new_order = 1;
-        }
-        else if($running_cores >= $max_cores)
-        {
-            echo 'Max number of runs reached.';
-            return;
-        }
-        else
-        {
-            $new_order = $running_cores+1;
-        }
-
-        Config::set('scheduler_substance_validation_running_cores', $new_order);
-
         $limit = 1000;
-        $offset = $new_order ? ($new_order-1)*$limit : 0;
 
         try
         {
-            $substances = $logs->get_substances_for_validation($limit, $offset, TRUE, $include_ignored);
+            $substances = $logs->get_substances_for_validation($limit, 0, TRUE, $include_ignored);
 
             if(!count($substances))
             {
-                Config::set('scheduler_substance_validation_running_cores', $new_order-1);
+                echo 'No substance found for validation.';
                 return;
             }
         }
         catch(Exception $e)
         {
-            Config::set('scheduler_substance_validation_running_cores', $new_order-1);
+            echo $e->getMessage();
             return;
         }
 
@@ -880,23 +854,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }   
                 }
 
@@ -1010,6 +969,10 @@ class SchedulerController extends Controller
                                             $smiles = $r;
                                             $canonized = true;
                                         }
+                                        else
+                                        {
+                                            $smiles = null;
+                                        }
                                     }
                                 }
 
@@ -1039,28 +1002,16 @@ class SchedulerController extends Controller
 
                                 $log->update_state($s->id, $log->type, $new->flag == Validator_identifiers::SMILES_FLAG_CANONIZED ? $log::STATE_DONE : $log::STATE_WAITING);
                             }
+                            else
+                            {
+                                $log->update_state($s->id, $log->type, $log::STATE_ERROR, 'SMILES not found.');
+                            }
                         }
                     }
                     catch(Exception $e)
                     {
                         echo $e->getMessage();
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     } 
                 }
 
@@ -1124,23 +1075,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1180,23 +1116,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1282,23 +1203,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1505,23 +1411,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1601,23 +1492,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1626,7 +1502,6 @@ class SchedulerController extends Controller
                 ##########################
 
                 $s->check_identifiers();
-
             }
             catch(Exception $e)
             {
@@ -1635,8 +1510,7 @@ class SchedulerController extends Controller
             }
         }
 
-        $no = (int)Config::get('scheduler_substance_validation_running_cores');
-        Config::set('scheduler_substance_validation_running_cores', $no > 0 ? $no-1 : 0);
+        echo "Substance validation done.";
     }
 
 

@@ -291,6 +291,11 @@ class UniChem extends Identifier_loader
 
         foreach($response as $row)
         {
+            if(!is_object($row))
+            {
+                continue;
+            }
+
             $id = $row->src_id;
             $identifier = $row->src_compound_id;
 

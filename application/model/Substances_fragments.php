@@ -227,11 +227,12 @@ class Substances_fragments extends Db
             LEFT JOIN substances_fragments sf ON sf.id_substance = s.id
             JOIN validator_identifiers vi ON vi.id_substance = s.id
             LEFT JOIN error_fragments ef ON ef.id_substance = s.id AND ef.type = ?
-            WHERE sf.id IS NULL AND vi.identifier = ? AND vi.state = ? AND (ef.datetime < ? OR ef.id IS NULL)
+            WHERE sf.id IS NULL AND LENGTH(s.SMILES) <= ? AND vi.identifier = ? AND vi.state = ? AND (ef.datetime < ? OR ef.id IS NULL)
             LIMIT ' . $limit, 
                 array
                 (
                     Error_fragments::TYPE_FRAGMENTATION_ERROR, 
+                    Fragments::MAX_SIZE,
                     Validator_identifiers::ID_SMILES, 
                     Validator_identifiers::STATE_VALIDATED,
                     date('Y-m-d H:i:s', strtotime('-1 day'))

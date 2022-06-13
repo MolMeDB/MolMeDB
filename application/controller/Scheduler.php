@@ -187,8 +187,8 @@ class SchedulerController extends Controller
             // Check, if process is still running
             if(file_exists("/proc/$p"))
             {
-                echo 'Method ' . $name . ' looks like still running from previous session. PID: ' . $p;
-                die;
+                echo 'Method ' . $name . ' looks like still running from previous session. PID: ' . $p . "\n";
+                return;
             }
             else // Not running, but not unbinded - unexpected error had to occur
             {
@@ -483,7 +483,9 @@ class SchedulerController extends Controller
 
         echo "Fragmentation started.\n";
 
-        $substances = $sf_model->get_non_fragmented_substances(100);
+        $substances = $sf_model->get_non_fragmented_substances(10000);
+
+        echo 'Try to fragment total: ' . count($substances) . ' molecules. \n';
 
         $rdkit = new Rdkit();
 
@@ -500,6 +502,8 @@ class SchedulerController extends Controller
             try
             {
                 Db::beginTransaction();
+
+                $s->check_identifiers();
 
                 // Timeout in secs
                 $timeout = 20;
@@ -640,6 +644,8 @@ class SchedulerController extends Controller
             }
         }
 
+        echo "Fragmentation done. \n";
+
         Config::set('scheduler_fragmentation_last_run', NULL);
     }
 
@@ -768,7 +774,7 @@ class SchedulerController extends Controller
     {
         $logs = new Validator_identifier_logs();
         
-        $limit = 1000;
+        $limit = 2000;
 
         try
         {

@@ -10,6 +10,9 @@
  */
 class Fragments extends Db
 {
+    /** MAX FRAGMENT SIZE (number of chars) */
+    const MAX_SIZE = 1023;
+
     /**
      * Constructor
      * 
@@ -67,6 +70,11 @@ class Fragments extends Db
      */
     public function save()
     {
+        if(strlen($this->smiles) > self::MAX_SIZE)
+        {
+            throw new MmdbException('Cannot save fragment. Smiles size exceede allowed limit [' . self::MAX_SIZE . '].');
+        }
+
         $exists = $this->where('smiles', $this->smiles)->get_one();
 
         if($exists->id)

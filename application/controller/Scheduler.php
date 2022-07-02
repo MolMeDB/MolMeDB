@@ -39,6 +39,7 @@ class SchedulerController extends Controller
      */
     public function run()
     {
+
         // Holds info about run time
         $time = $this->time = new Time();
 

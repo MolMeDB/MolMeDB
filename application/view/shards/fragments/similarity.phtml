@@ -2,7 +2,7 @@
     <h3>Query:</h3>
     <div style="display:flex; flex-direction: row; border-bottom: 1px solid black;">
         <div>
-            <?= Html::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($substance->SMILES)) ?>
+            <?= Html::image_structure($substance->SMILES) ?>
         </div>
         <div style="margin-left: 50px;">
             <table>
@@ -28,15 +28,11 @@
     <?php foreach($options as $o) : ?>
         <h4>Fragment of <?= $o->substance->name ?></h4>
         <div style="display:flex; flex-direction: row; border-bottom: 1px solid black;">
-            <div style="display:flex; flex-direction:column; margin-right: 20px;">
-                Common fragment
-                <?= Html::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($o->fragment->add_hydrogens())) ?>
-            </div>
             <div style="display:flex; flex-direction:column;">
-                Molecule
-                <?= Html::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($o->substance->SMILES)) ?>
+                <b>Molecule</b>
+                <?= Html::image_structure($o->substance->SMILES) ?>
             </div>
-            <div style="margin-left: 50px;">
+            <div style="margin-left: 50px; margin-right: 50px;">
                 <table>
                     <tr>
                         <th>ID</th>
@@ -59,6 +55,21 @@
                         <td><?= $o->similarity ?></td>
                     </tr>
                 </table>
+            </div>
+            <div style="display:flex; flex-direction:column; padding: 0px 20px;">
+                <b>Common fragment</b>
+                <?= Html::image_structure($o->fragment->add_hydrogens()) ?>
+            </div>
+            <div style="display:flex; flex-direction:column; padding: 0px 20px;border-left: 1px solid black;">
+                <b>Fragmentation</b>
+                <div style="display:flex; flex-direction: row;">
+                    <?php foreach($o->subfragments as $s) : ?>
+                        <div style="display:flex; flex-direction: column; justify-content: center; padding: 5px 10px;">
+
+                            <?= Html::image_structure(Smiles::pretty_string($s->smiles)) ?>
+                        </div>
+                    <?php endforeach ?>
+                </div>
             </div>
         </div>
     <?php endforeach ?>

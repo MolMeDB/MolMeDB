@@ -47,6 +47,218 @@ class Substances extends Db
     }
 
     /**
+     * Returns molecules differing in the presence of a functional group
+     * 
+     * @param int $id_substance
+     * 
+     * @return array
+     */
+    public function save_functional_relatives($id_substance = null)
+    {
+        if(!$id_substance && !$this && !$this->id)
+        {
+            return null;
+        }
+
+        if(!$id_substance)
+        {
+            $id_substance = $this->id;
+        }
+
+        $substance = new Substances($id_substance);
+
+        if(!$substance->id)
+        {
+            return null;
+        }
+
+        $active_smiles = Validator_identifiers::instance()->get_active_substance_value($substance->id, Validator_identifiers::ID_SMILES)->value;
+
+        if(!$active_smiles)
+        {
+            return null;
+        }
+
+        // Get all options of current molecule
+        $fragment = Fragments::instance()->where('smiles', $active_smiles)->get_one();
+
+        if(!$fragment->id)
+        {
+            return null;
+        }
+
+        // Get all variants of the same fragment
+        $options = Fragments_options::instance()->get_all_options_ids($fragment->id);
+
+        // At first, find bigger substances containing requested substance
+        $bigger = [];
+
+        foreach($options as $id)
+        {
+            $bigger = array_merge($bigger, Fragmentation::get_all_with_fragment_id($id, $substance->id));
+        }
+
+        $pairs = [];
+
+        // Save pairs
+        foreach($bigger as $fragmentation)
+        {
+            if(!$fragmentation->order_number || !$fragmentation->id_substance)
+            {
+                continue;
+            }
+
+            foreach($fragmentation->raw_fragments as $sf)
+            {
+                if($sf->fragment->get_functional_group() === null && $sf->fragment->id !== $fragmentation->core->fragment->id)
+                {
+                    continue 2;
+                }
+            }
+
+            $r = new Substance_pairs();
+            
+            $r->id_substance_1 = $substance->id;
+            $r->id_substance_2 = $fragmentation->id_substance;
+            $r->id_core = $fragmentation->core->fragment->id;
+            $r->substance_1_fragmentation_order = 1;
+            $r->substance_2_fragmentation_order = $fragmentation->order_number;
+
+            if(!isset($pairs[$fragmentation->id_substance]))
+            {
+                $pairs[$fragmentation->id_substance] = [];
+            }
+
+            $pairs[$fragmentation->id_substance][] = $r;
+        }
+
+        // Find molecules composed of core + some func. group deletion
+        // Get all molecule fragmentations
+        $all_fragmentations = Fragmentation::get_all_substance_fragmentations($substance->id);
+
+        $func_g_fragmentations = $all_fragmentations;
+        $non_f_g_fragments = [];
+
+        // Get all fragmentations, which contain MAX one non-funcional-group fragment
+        foreach($all_fragmentations as $key => $fragmentation)
+        {
+            if(count($fragmentation->raw_fragments) == 1)
+            {
+                unset($func_g_fragmentations[$key]);
+                continue;
+            }
+
+            $non_f_g = 0;
+            foreach($fragmentation->raw_fragments as $record)
+            {
+                if($record->fragment->get_functional_group(null, false) === null)
+                {
+                    $non_f_g_fragments[$key] = $record;
+                    $non_f_g++;
+                }
+            }
+
+            if($non_f_g > 1)
+            {
+                if(isset($non_f_g_fragments[$key])) 
+                {
+                    unset($non_f_g_fragments[$key]);
+                }
+                unset($func_g_fragmentations[$key]);
+            }
+        }
+
+        // Find pairs differing by substitution
+        foreach($func_g_fragmentations as $key => $frag)
+        {
+            if(isset($non_f_g_fragments[$key]))
+            {
+                $cores = [$non_f_g_fragments[$key]];
+            }
+            else
+            {
+                continue;
+            }
+
+            foreach($cores as $c)
+            {
+                $fragment = $c->fragment;
+                $atom_count = $fragment->get_atom_count();
+
+                if($atom_count < 5 
+                    // && ($fragment->get_functional_group() !== null)
+                    )
+                {
+                    continue;
+                }
+
+                $variants = Fragments_options::instance()->get_all_options_ids($fragment->id);
+
+                // Get compounds of the same group + func. groups
+                $candidates = Db::instance()->queryAll('
+                    SELECT DISTINCT id, id_substance, order_number
+                    FROM (SELECT *, LENGTH(REPLACE(REPLACE(GROUP_CONCAT(fg), ",", ""), "0", "")) as total_fg
+                    FROM
+                    (
+                        SELECT DISTINCT sf.*, IF(fet.id IS NOT NULL, "1", "0") as fg
+                        FROM `substances_fragments` sf 
+                        LEFT JOIN fragments_enum_types fet ON fet.id_fragment = sf.id_fragment
+                        JOIN(
+                            SELECT id_substance, order_number
+                            FROM substances_fragments sf
+                            WHERE sf.id_fragment IN ("' . implode('","', $variants) . '")
+                            ) as t1 ON t1.id_substance = sf.id_substance AND t1.order_number = sf.order_number
+                        WHERE sf.id_substance != ?
+                    ) as t  
+                    GROUP BY id_substance, order_number) as t
+                    WHERE total_fragments-total_fg < 2 AND total_fragments-total_fg >= 0
+                ', array($c->id_substance));
+
+                foreach($candidates as $cand)
+                {
+                    if(!isset($pairs[$cand->id_substance]))
+                    {
+                        $pairs[$cand->id_substance] = [];
+                    }
+                    
+                    $r = new Substance_pairs();
+
+                    $r->id_substance_1 = $substance->id;
+                    $r->id_substance_2 = $cand->id_substance;
+                    $r->id_core = $c->fragment->id;
+                    $r->substance_1_fragmentation_order = $frag->order_number;
+                    $r->substance_2_fragmentation_order = $cand->order_number;
+
+                    $pairs[$cand->id_substance][] = $r;
+                }
+            }
+        }
+
+        // Remove old and save new data
+        Db::instance()->query('DELETE FROM substance_fragmentation_pairs WHERE id_substance_1 = ? OR id_substance_2 = ?', array($substance->id, $substance->id));
+
+        foreach($pairs as $id => $data)
+        {
+            $best = null;
+            $max = 0;
+
+            foreach($data as $row)
+            {
+                $core = new Fragments($row->id_core);
+                $total_atoms = $core->get_atom_count();
+                if($total_atoms > $max)
+                {
+                    $max = $total_atoms;
+                    $best = $row;
+                }
+            }
+
+            // Save record
+            $best->save();
+        }
+    }
+
+    /**
      * Returns similar molecules
      * 
      * @param int|null $id
@@ -64,11 +276,12 @@ class Substances extends Db
         {
             $id = $this->id;
         }
-        
+
         $db_limit = 0.6;
 
         $substance = new Substances($id);
 
+        // Get substance fragments
         $temp = $substance->queryOne('
             SELECT GROUP_CONCAT(DISTINCT id_fragment) as ids
             FROM 
@@ -121,12 +334,12 @@ class Substances extends Db
         }
 
         $rows = $substance->queryAll("
-            SELECT DISTINCT id, id_fragment, id_substance, similarity
+            SELECT DISTINCT id, id_fragment, sf.id_substance, sf.order_number, similarity, links, sf.total_fragments as total
             FROM substances_fragments sf
             WHERE id_fragment IN 
                 (" . $t . ")
-              AND similarity > ? AND id_substance != ?
-            ORDER BY similarity DESC, id_substance ASC
+              AND similarity > ? AND sf.id_substance != ?
+              ORDER BY id_substance ASC, similarity DESC, total ASC
         ", array($db_limit, $substance->id));
 
         $options = $similarities = [];
@@ -141,23 +354,27 @@ class Substances extends Db
             $t = new Fragments($row->id_fragment);
             $sub = new Substances($row->id_substance);
 
+            
             if(!$t->id || !$sub->id)
             {
                 continue;
             }
-
+            
             $sim = Mol_similarity::compute($substance, $sub);
-
+            
             if($sim < $similarity_limit)
             {
                 continue;
             }
-
+            
+            $all_parts = Substances_fragments::instance()->get_fragmentation_detail_by_order($row->id_substance, $row->order_number);
+            
             $similarities[$row->id_substance] = $sim;
 
             $options[$row->id_substance] = (object)array
             (
                 'fragment' => $t,
+                'subfragments' => $all_parts,
                 'substance' => $sub,
                 'similarity' => $sim,
                 'all_similarities'  => array

@@ -35,6 +35,9 @@ class System_config
         // GET version from DB
         $db = new Db();
 
+        // Check, if GROUP_BY is not restricted
+        $db->check_group_by_restrictions();
+
         $db_ver = $db->get_db_version();
         $app_ver = DB_VERSION;
 

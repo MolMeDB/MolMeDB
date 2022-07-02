@@ -10,6 +10,9 @@
  */
 class Fragments extends Db
 {
+    /** MAX FRAGMENT SIZE (number of chars) */
+    const MAX_SIZE = 1023;
+
     /**
      * Constructor
      * 
@@ -19,6 +22,16 @@ class Fragments extends Db
     {
         $this->table = 'fragments';
         parent::__construct($id);
+    }
+
+    /**
+     * Instance builder
+     * 
+     * @return Fragments
+     */
+    public static function instance()
+    {
+        return new Fragments();
     }
 
     /**
@@ -34,6 +47,79 @@ class Fragments extends Db
         }
 
         return preg_replace('/\[\*:\]/', '[H]', $this->smiles);
+    }
+
+    /**
+     * Returns parent without links
+     * 
+     * @return Fragments
+     */
+    public function remove_links()
+    {
+        $candidates = Fragments_options::instance()->where('id_parent', $this->id)->get_all();
+
+        foreach($candidates as $c)
+        {
+            if(!preg_match('/\[\*:\]/', $c->child->smiles))
+            {
+                return $c->child;
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Returns total count of atoms in fragment
+     * 
+     * @return int
+     */
+    public function get_atom_count()
+    {
+        $atoms = Periodic_table::atoms_short(true);
+        $regexp = '(' . implode('|', $atoms) . '){1}';
+
+        $smiles = $this->smiles;
+
+        if(preg_match_all("/$regexp/i", $smiles, $matches))
+        {
+            return count($matches[0]);
+        }
+
+        return 0;
+    }
+
+    /**
+     * Returns functional group of current fragment if exists
+     * 
+     * @param int $id_fragment
+     * 
+     * @return Enum_types|null
+     */
+    public function get_functional_group($id_fragment = null, $strict = true)
+    {
+        if(!$id_fragment && $this->id)
+        {
+            $id_fragment = $this->id;
+        }
+
+        if(!$id_fragment)
+        {
+            return null;
+        }
+
+        if($strict)
+        {
+            $fet = Fragments_enum_types::instance()->where('id_fragment', $id_fragment)->get_one();
+        }
+        else
+        {
+            $variants = Fragments_options::instance()->get_all_options_ids($id_fragment);
+
+            $fet = Fragments_enum_types::instance()->in('id_fragment', $variants)->select_list('id_enum_type, id')->distinct()->get_one();
+        }
+
+        return $fet->id ? $fet->enum_type : null;
     }
 
     /**
@@ -63,11 +149,50 @@ class Fragments extends Db
     }
 
     /**
+     * Fills numbers to fragment links
+     * 
+     * @param string $smiles
+     * @param array|null $link_numbers
+     * 
+     * @return string
+     */
+    public function fill_link_numbers($smiles, $link_numbers = null)
+    {
+        if(preg_match_all('/\[\*:\]/', $smiles, $all))
+        {
+            $all = $all[0];
+            
+            if(is_array($link_numbers) && count($all) !== count($link_numbers))
+            {
+                return $smiles;
+            }
+
+            if(!$link_numbers)
+            {
+                $link_numbers = range(1, count($all));
+            }
+
+            foreach($link_numbers as $l)
+            {
+                $smiles = preg_replace('/\[\*:\]/', "[$l:]", $smiles, 1);
+            }
+        }
+
+        return $smiles;
+    }
+
+
+    /**
      * Overloading of save function
      */
     public function save()
     {
-        $exists = $this->where('smiles', $this->smiles)->get_one();
+        if(strlen($this->smiles) > self::MAX_SIZE)
+        {
+            throw new MmdbException('Cannot save fragment. Smiles size exceede allowed limit [' . self::MAX_SIZE . '].');
+        }
+
+        $exists = $this->where('smiles LIKE', $this->smiles)->get_one();
 
         if($exists->id)
         {

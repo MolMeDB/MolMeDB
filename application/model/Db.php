@@ -19,6 +19,7 @@ class Db extends Iterable_object
     /** MYSQL QUERY BUILDER ATTRIBUTES */
     protected $table;
     private $select_list = '*';
+    private $alias = '';
     private $limit = '';
     private $offset = '';
     private $where = '';
@@ -158,6 +159,33 @@ class Db extends Iterable_object
             UPDATE `version`
             SET `version` = ?
         ', array($version));
+    }
+
+    /**
+     * Checks, if GROUP BY is not restricted
+     * 
+     * @throws MmdbException
+     */
+    public function check_group_by_restrictions($throw = false)
+    {
+        try
+        {
+            $this->query('
+                SELECT CONCAT(id, attribute) as attr, COUNT(id), value
+                FROM config
+                GROUP BY (attr)');
+            return true;
+        }
+        catch(Exception $e)
+        {
+            if($throw)
+            {
+                throw $e;
+            }
+            // If error, try to update
+            $this->query("SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
+            return $this->check_group_by_restrictions(true);
+        }
     }
 
     /**
@@ -341,7 +369,7 @@ class Db extends Iterable_object
             $query = '
                 SELECT ' . ($this->distinct ? ' DISTINCT ' : '') . 
                 $this->select_list . ' 
-                FROM ' . $this->table .
+                FROM ' . $this->table . ($this->alias ? ' as ' . $this->alias . ' ' : '') .
                 ' ' . $this->join .
                 ' ' . $this->where . ' ' .
                 ' ' . $this->group_by .
@@ -397,7 +425,7 @@ class Db extends Iterable_object
                 SELECT COUNT(*) as count 
                 FROM (
                     SELECT ' . ($this->distinct ? ' DISTINCT ' : '') . $this->select_list .
-                    ' FROM '. $this->table .
+                    ' FROM '. $this->table . ($this->alias ? ' as ' . $this->alias . ' ' : '') .
                     ' ' . $this->join .
                     ' ' . $this->where . ' ' .
                     ' ' . $this->group_by
@@ -445,7 +473,7 @@ class Db extends Iterable_object
 
             $query = '
                 SELECT ' . $this->select_list . ' 
-                FROM ' . $this->table .
+                FROM ' . $this->table . ($this->alias ? ' as ' . $this->alias . ' ' : '') .
                 ' ' . $this->join .
                 ' ' . $this->where . ' ' .
                 ' ' . $this->group_by .
@@ -539,6 +567,19 @@ class Db extends Iterable_object
         {
             throw new DbException($e->getMessage(), $query, $e->getCode(), $e);
         }
+    }
+
+    /**
+     * Sets table alias for shorting queries
+     * 
+     * @param string $alias
+     * 
+     * @return Db
+     */
+    public function alias($alias)
+    {
+        $this->alias = $alias;
+        return $this;
     }
 
     /**
@@ -693,12 +734,17 @@ class Db extends Iterable_object
         if($val)
         {
             $attr = trim($attr);
+            $multiparams = explode(' ', $attr);
 
-            if(count(explode(' ', $attr)) > 1)
+            if(count($multiparams) > 1)
             {
                 if($val == "NULL")
                 {
                     $this->where .= $attr . ' ' . $val;
+                }
+                else if(strtolower($multiparams[1]) == 'regexp')
+                {
+                    $this->where .= $attr . ' "' . $val . '"';
                 }
                 else
                 {

@@ -40,6 +40,78 @@ class ApiCompounds extends ApiController
     }
 
     /**
+     * Returns functional relatives
+     * 
+     * @GET
+     * @public
+     * 
+     * @param @required $id - Substance ID
+     * 
+     * @PATH(/relatives)
+     */
+    public function get_relatives($id)
+    {
+        $substance = new Substances($id);
+
+        if(!$substance->id)
+        {
+            ResponseBuilder::not_found('Compound not found.');
+        }
+
+        $all = Substance_pairs::instance()->queryAll('
+            SELECT *
+            FROM substance_fragmentation_pairs
+            WHERE id_substance_1 = ? OR id_substance_2 = ? 
+        ', array($substance->id, $substance->id));
+
+        $data = [];
+
+        foreach($all as $row)
+        {
+            $id_1 = Substances_fragments::instance()->where(array
+            (
+                'id_substance' => $row->id_substance_1,
+                'order_number' => $row->substance_1_fragmentation_order
+            ))->get_one()->id;
+            $id_2 = Substances_fragments::instance()->where(array
+            (
+                'id_substance' => $row->id_substance_2,
+                'order_number' => $row->substance_2_fragmentation_order
+            ))->get_one()->id;
+
+            if($row->id_substance_1 == $substance->id)
+            {
+                $data[] = (object) array
+                (
+                    'core' => new Fragments($row->id_core),
+                    'core_options' => Fragments_options::instance()->get_all_options_ids($row->id_core),
+                    'main' => new Fragmentation($id_1),
+                    'side' => new Fragmentation($id_2)
+                );   
+            }
+            else
+            {   
+                $data[] = (object) array
+                (
+                    'core' => new Fragments($row->id_core),
+                    'core_options' => Fragments_options::instance()->get_all_options_ids($row->id_core),
+                    'main' => new Fragmentation($id_2),
+                    'side' => new Fragmentation($id_1)
+                );  
+            }
+        }
+
+        $view = new View('fragments/relatives');
+        $view->data = $data;
+        $view->substance = $substance;
+
+        $this->responses = array
+        (
+            HeaderParser::HTML => $view->__toString()
+        );
+    }
+
+    /**
      * Returns similiar molecules
      * 
      * @GET
@@ -69,6 +141,20 @@ class ApiCompounds extends ApiController
         (
             HeaderParser::HTML => $view->__toString()
         );
+    }
+
+    /**
+     * @GET
+     * 
+     * @Path(/test)
+     */
+    public function test()
+    {
+        $id = 40;
+
+        $s = new Substances($id);
+
+        $s->get_functional_relatives();
     }
 
     /**

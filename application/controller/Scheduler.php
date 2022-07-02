@@ -34,9 +34,14 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run',
+<<<<<<< HEAD
+        'log_sub_changes',
+        'link_functional_groups'
+=======
         // 'log_sub_changes',
         // 'fragment_molecules'
         // 'validate_substance_identifiers'
+>>>>>>> develop
     );
 
 
@@ -46,6 +51,7 @@ class SchedulerController extends Controller
      */
     public function run()
     {
+
         // Holds info about run time
         $time = $this->time = new Time();
 
@@ -57,6 +63,11 @@ class SchedulerController extends Controller
                 echo 'Scheduler is not active.';
                 return;
             }
+
+            // TODO restrictions
+            $this->match_functional_pairs();
+            // $this->link_functional_groups();
+            die;
 
             // Send all unsent emails
             if($this->config->get(Configs::EMAIL_ENABLED))
@@ -87,7 +98,12 @@ class SchedulerController extends Controller
             if(TRUE)
             {
                 echo "Checking interaction datasets.\n";
+<<<<<<< HEAD
+                $this->fragment_molecules();
+                $this->link_functional_groups();
+=======
                 $this->protected_call('fragment_molecules', []);
+>>>>>>> develop
             }
 
             // Checks transporter datasets - NOW INACTIVATED
@@ -164,6 +180,102 @@ class SchedulerController extends Controller
     }
 
     /**
+<<<<<<< HEAD
+     * Match all molecular functional group pairs
+     * 
+     * @author Jakub Juracka
+     */
+    public function match_functional_pairs()
+    {
+        // Check, if func groups are linked
+        $total = Fragments_enum_types::instance()->count_all();
+
+        if(!$total)
+        {
+            $this->link_functional_groups();
+        }
+
+        // check 10 molecules per run
+        $limit = 100;
+
+        $last_id = Config::get('scheduler_func_pairs_last_id');
+
+        if(!$last_id)
+        {
+            $last_id = 1;
+        }
+
+        $all = Substances::instance()->where('id >=', $last_id)->limit($limit)->select_list('id')->get_all();
+
+        try
+        {
+            foreach($all as $r)
+            {
+                $r->save_functional_relatives();
+                Config::set('scheduler_func_pairs_last_id', $r->id);
+            }
+        }
+        catch(Exception $e) // TODO
+        {
+            echo $e->getMessage();
+        }
+    }
+
+    /**
+     * Links all functional groups to their corresponding molecular fragments
+     * 
+     * @author Jakub Juracka
+     */
+    public function link_functional_groups()
+    {
+        // Do it iteratively
+        $func_groups = Enum_types::get_by_type(Enum_types::TYPE_FRAGMENT_CATS);
+
+        if(!$func_groups)
+        {
+            return;
+        }
+
+        foreach($func_groups as $fg)
+        {
+            if($fg->content === NULL || $fg->content == "")
+            {
+                continue;
+            }
+
+            $fg->content = str_replace('\\', '\\\\', $fg->content);
+
+            // Find all fragments matching pattern
+            $fragments = Fragments::instance()->where('smiles REGEXP', $fg->content)->get_all();
+
+            // Save links
+            foreach($fragments as $f)
+            {
+                // Skip if exists
+                $exists = Fragments_enum_types::instance()->where(array
+                    (
+                        'id_fragment' => $f->id,
+                        'id_enum_type' => $fg->id
+                    ))
+                    ->get_one();
+
+                if($exists->id)
+                {
+                    continue;
+                }
+
+                $new = new Fragments_enum_types();
+
+                $new->id_fragment = $f->id;
+                $new->id_enum_type = $fg->id;
+
+                $new->save();
+            }
+        }
+    }
+
+
+=======
      * Checks, if given method is not calling too often
      * 
      * @param string $name
@@ -227,6 +339,7 @@ class SchedulerController extends Controller
         }
     }
 
+>>>>>>> develop
     public function log_sub_changes()
     {
         // Deletes
@@ -476,7 +589,7 @@ class SchedulerController extends Controller
      * 
      * @author Jakub Juracka
      */
-    private function fragment_molecules()
+    public function fragment_molecules()
     {
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
@@ -549,6 +662,7 @@ class SchedulerController extends Controller
                     $f = new Substances_fragments();
                     $f->id_substance = $s->id;
                     $f->id_fragment = $new->id;
+                    $f->total_fragments = 1;
                     $f->links = null;
                     $f->order_number = $sf_model->get_free_order_number($s->id);
                     $f->similarity = 1.0;
@@ -606,6 +720,7 @@ class SchedulerController extends Controller
 
                         $fragment->id_substance = $s->id;
                         $fragment->id_fragment = $new->id;
+                        $fragment->total_fragments = count($new_fragments);
                         $fragment->links = $new_links[$key];
                         $fragment->order_number = $order;
                         $fragment->similarity = $similarities[$key];

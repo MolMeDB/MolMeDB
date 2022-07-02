@@ -8,6 +8,7 @@
  * @property int $id_fragment
  * @property Fragments $fragment
  * @property string $links
+ * @property int $total_fragments
  * @property int $order_number
  * @property float $similarity
  * @property string $datetime
@@ -33,6 +34,15 @@ class Substances_fragments extends Db
         'id_fragment'
     );
 
+    /**
+     * Instance builder
+     * 
+     * @return Substances_fragments
+     */
+    public static function instance()
+    {
+        return new Substances_fragments();
+    }
 
     /**
      * Returns free order number
@@ -57,7 +67,137 @@ class Substances_fragments extends Db
         return $d->m+1;
     }
 
-        /**
+    /**
+     * Returns fragmentation detail by smiles
+     *  - Finds if molecule has fragment with corresponding smiles and return all fragmentations including this fragment
+     * 
+     * @param int $id_substance
+     * @param string $smiles
+     * 
+     * @return object[]
+     */
+    public function get_fragmentation_detail_by_smiles($id_substance, $smiles)
+    {
+        $s = new Substances($id_substance);
+
+        if(!$s->id)
+        {
+            return [];
+        }
+
+        $fragment = Fragments::instance()->where('smiles LIKE', $smiles)->get_one();
+
+        if(!$fragment->id)
+        {
+            return [];
+        }
+
+        $fragment_option_ids = Fragments_options::instance()->get_all_options_ids($fragment->id);
+
+        // Propojit na parent a child
+        $all = $this->alias('sf')
+            ->where(array
+            (
+                'sf.id_substance'   => $s->id
+            ))
+            ->in('sf.id_fragment', $fragment_option_ids)
+            ->select_list('DISTINCT order_number, total_fragments')
+            ->order_by('total_fragments', 'ASC')
+            ->get_all();
+
+        $details = [];
+
+        foreach($all as $r)
+        {
+            // For each order_number, find detail
+            $fragmentation = $this->where(array
+            (
+                'id_substance' => $s->id,
+                'order_number' => $r->order_number
+            ))->get_all();
+
+            $details[] = $fragmentation;
+        }
+
+        return $details;
+    }
+
+
+    /**
+     * Returns fragmentation detail
+     * 
+     * @param int $id_substance
+     * @param int $order_number
+     * 
+     * @return array
+     */
+    public function get_fragmentation_detail_by_order($id_substance, $order_number)
+    {
+        $records = $this->where(array
+            (
+                'id_substance' => $id_substance,
+                'order_number' => $order_number
+            ))
+            ->get_all();
+
+        // Prepare results
+        if(!count($records))
+        {
+            return [];
+        }
+
+        $structure = [];
+
+        foreach($records as $r)
+        {
+            // Check, if fragment is some functional group
+            $fun_group = Fragments::instance()
+                ->where('fragments.id', $r->id_fragment)
+                ->join('JOIN fragments_enum_types fet ON fet.id_fragment = fragments.id')
+                ->join('JOIN enum_types et ON et.id = fet.id_enum_type')
+                ->select_list('et.name')
+                ->get_one()
+                ->name;
+
+            $structure[] = (object)array
+            (
+                'id_fragment' => $r->id_fragment,
+                'functional_group' => $fun_group,
+                'fragment_smiles' => $r->fragment->smiles,
+                'smiles' => Fragments::instance()->fill_link_numbers($r->fragment->smiles, explode(',', $r->links)),
+                // 'smiles_clear' => $clear_child->s&miles
+            );
+        }
+
+        return $structure;
+    }
+
+
+    /**
+     * Returns fragmentation detail
+     * 
+     * @param int $id_substance
+     * @param int $id_fragment
+     * 
+     * @return array
+     */
+    public function get_fragmentation_detail_by_fragment_id($id_substance, $id_fragment)
+    {
+        // Get order number
+        $order_number = $this->queryOne('
+            SELECT sf.order_number
+            FROM substances_fragments sf
+            LEFT JOIN fragments_options fo ON fo.id_parent = sf.id_fragment
+            LEFT JOIN fragments_options fo2 ON fo2.id_child = sf.id_fragment
+            WHERE id_substance = ? AND (sf.id_fragment = ? OR fo.id_child = ? OR fo2.id_parent = ?)
+            ORDER BY total_fragments ASC
+            LIMIT 1
+        ', array($id_substance, $id_fragment, $id_fragment, $id_fragment))->order_number;
+
+        return $this->get_fragmentation_detail_by_order($id_substance, $order_number);
+    }
+
+    /**
      * Returns fragments for given molecule
      * 
      * @param int $id_substance
@@ -148,9 +288,6 @@ class Substances_fragments extends Db
                 }
             }
         }
-
-        // print_r($structure);
-        // die;
 
         return $structure;
     }

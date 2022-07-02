@@ -20,11 +20,15 @@ class Enum_types extends Db
     /** TYPE - TRANSPORTER CATEGORIES */
     const TYPE_TRANSPORTER_CATS = 3;
 
+    /** TYPE - FUNCTIONAL GROUPS of chemical compounds */
+    const TYPE_FRAGMENT_CATS = 11;
+
     public static $valid_types = array
     (
         self::TYPE_MEMBRANE_CATS,
         self::TYPE_METHOD_CATS,
-        self::TYPE_TRANSPORTER_CATS
+        self::TYPE_TRANSPORTER_CATS,
+        self::TYPE_FRAGMENT_CATS
     );
 
     /**
@@ -50,6 +54,21 @@ class Enum_types extends Db
     {
         $this->table = 'enum_types';
         parent::__construct($id);
+    }
+
+    /**
+     * Returns enum types by type
+     * 
+     * @return Enum_types[]|null
+     */
+    public static function get_by_type($type)
+    {
+        if(!self::is_type_valid($type))
+        {
+            return null;
+        }
+
+        return self::instance()->where('type', $type)->get_all();
     }
 
     /**

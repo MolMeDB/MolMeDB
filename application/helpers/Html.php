@@ -134,7 +134,7 @@ class Html
     }
 
     /**
-     * Makes button html
+     * Makes image html
      * 
      * @param string $src - prefix: 'files/'
      * @param string $class
@@ -147,6 +147,18 @@ class Html
         }
 
         return "<img class='$class' src='" . $src . "'>";
+    }
+
+    /**
+     * Makes molecule 2D structure image from smiles
+     * 
+     * @param string $smiles
+     * 
+     * @return string
+     */
+    public static function image_structure($smiles)
+    {
+        return self::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($smiles));
     }
 
 

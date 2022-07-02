@@ -16,7 +16,7 @@ try
 {
     // Make default settings
     new System_config();
-    
+
     // Parse URL
     $router = new RouterController();
     $router->parse($_SERVER['REQUEST_URI']);

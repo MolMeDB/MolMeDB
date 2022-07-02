@@ -9,7 +9,7 @@
  * params in method documentation:
  *  - @[METHOD] - required param specifiing HTTP METHOD, e.g. @POST/@GET
  *  - @path([PATH]) - required param specifying uri of defined endpoint, e.g. @Path(/get/byId)
- *  - @param [OPTIONS] $[NAME] - optional param specifiing parameter given by client for method execution
+ *  - @param [OPTIONS] $[NAME] - optional param specifying parameter given by client for method execution
  *      - can be included multiple times (once for each parameter)
  *      - $[NAME] - name has to correspond to exactly one method parameter name
  *      - OPTIONS:
@@ -24,7 +24,7 @@ class ApiController extends Controller
     /** Class variables */
     protected $user;
     protected $request_method;
-    protected $parsed_request;
+    public $parsed_request;
     protected $api_endpoint;
     private $encoded_response;
 
@@ -161,5 +161,41 @@ class ApiController extends Controller
         }
 
         throw new ApiException("Cannot encode output to the required format. Please, try to expand your `Accept` request header options.");
+    }
+
+    /**
+     * Returns list of requested accept types called by user
+     *
+     * @return array
+     */
+    public function get_accept_list()
+    {
+        return $this->parsed_request->accept_type;
+    }
+
+    /**
+     * Returns preffered return type from given allow list
+     *
+     * @param array $options
+     *
+     * @return int|null
+     */
+    public function get_preffered_accept_from_list($options)
+    {
+        foreach($this->parsed_request->accept_type as $at)
+        {
+            if(in_array($at, $options))
+            {
+                return $at;
+            }
+        }
+
+        if(in_array(HeaderParser::ALL_TYPES, $this->parsed_request->accept_type) &&
+            count($options))
+        {
+            return $options[0];
+        }
+        
+        return null;
     }
 }

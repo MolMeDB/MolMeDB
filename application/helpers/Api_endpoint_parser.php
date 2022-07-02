@@ -75,13 +75,86 @@ class Api_endpoint_parser
 		}
 	}
 
+    /**
+     * Returns array key corresponding to regexp path
+     * 
+     * @param string $requested_path
+     * @param string[] $endpoints
+     * 
+     * @return array|false - Returns endpoint if exists
+     */
+    private static function get_endpoint_by_pattern($requested_path, $endpoints)
+    {
+        $requested_path = preg_replace('/@+/', "/", $requested_path);
+        $requested_path = trim($requested_path, '/');
+        $requested_path = explode('/', $requested_path);
+        $total = count($requested_path);
+        $i = 0;
+        $param_values = [];
+
+        while($i < $total)
+        {
+            $path_part = $requested_path[$i];
+            $t = $endpoints;
+            foreach($t as $key => $val)
+            {
+                $val = preg_replace('/@+/', "/", $val);
+                $parts = explode('/', $val);
+
+                if(count($parts) !== $total)
+                {
+                    unset($endpoints[$key]);
+                }
+
+                if(!isset($param_values[$key]))
+                {
+                    $param_values[$key] = [];
+                }
+
+                $ch_part = $parts[$i];
+
+                // Regexp param
+                if(preg_match('/^\(.*\)$/', $ch_part))
+                {
+                    $regexp = trim($ch_part, '()');
+                    if(!preg_match("/^$regexp$/i", $path_part))
+                    {
+                        unset($endpoints[$key]);
+                        unset($param_values[$key]);
+                    }
+                    else
+                    {
+                        $param_values[$key][] = $path_part;
+                    }
+                }
+                else if(strtolower($ch_part) !== strtolower($path_part))
+                {
+                    unset($endpoints[$key]);
+                    unset($param_values[$key]);
+                }
+            }
+            $i++;
+        }
+
+        if(!count($endpoints))
+        {
+            return False;
+        }
+
+        return array
+        (
+            'params' => $param_values[array_keys($endpoints)[0]],
+            'key' => array_shift($endpoints)
+        );
+    }
+
 	/**
     * Checks if endpoint exists in loaded endpoints
 	* 
 	* @param string $endpoint
 	* @param bool $fast_check
     *
-	* @author Jaromir Hradil
+	* @author Jaromir Hradil, Jakub Juracka
 	*/
 	public function find($endpoint, $method, $fast_check = FALSE)
 	{
@@ -108,32 +181,80 @@ class Api_endpoint_parser
 
         $endpoint_path = $method . "@" . $endpoint;
 
-		if(array_key_exists($endpoint_path, $endpoints))
-		{
-            $data = $endpoints[$endpoint_path];
-            // Check for changes
-            $r = $this->get_method_detail($data['class_name'], $data['function_name']);
+        $rq_endpoint_params = self::get_endpoint_by_pattern($endpoint_path, array_keys($endpoints));
 
-            // Update
-            if(!$r || strtolower(preg_replace('/^Api/', '', $r['class_name'])) . $r['path'] !== $endpoint)
-            {
-                file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
-                return NULL;
-            }
-
-            $endpoints[$endpoint_path] = $r;
-            file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
-			return $endpoints[$endpoint_path];
-		}
-		else if(!$fast_check)
+        if(!$rq_endpoint_params || count($rq_endpoint_params['params']) !== count($endpoints[$rq_endpoint_params['key']]['path_params']))
+        {
+            return NULL;
+        }
+        else if(!$fast_check)
 		{
 			$this->update_all();
             return $this->find($endpoint, $method, TRUE);
 		}
-        else
+
+        $requested_endpoint_key = $rq_endpoint_params['key'];
+        $uri_params = $rq_endpoint_params['params'];
+
+        $data = $endpoints[$requested_endpoint_key];
+        // Check for changes
+        $r = $this->get_method_detail($data['class_name'], $data['function_name']);
+
+        // Update
+        if(!$r)
         {
+            unset($endpoints[$requested_endpoint_key]);
+            file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
             return NULL;
         }
+
+        $endpoints[$requested_endpoint_key] = $r;
+        file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
+
+        $endpoints[$requested_endpoint_key]['uri_params'] = $uri_params;
+
+        return $endpoints[$requested_endpoint_key];
+
+        // else if($method == HeaderParser::METHOD_GET)
+        // {
+        //     $backslash_params = [];
+        //     while(count($endpoint_arr) > 2)
+        //     {
+        //         $backslash_params[] = array_pop($endpoint_arr);
+        //         $endpoint_path = $method . "@" . implode('/', $endpoint_arr);
+
+        //         $requested_endpoint_key = self::get_endpoint_by_pattern($endpoint_path, array_keys($endpoints));
+
+        //         if($requested_endpoint_key)
+        //         {
+        //             $data = $endpoints[$requested_endpoint_key];
+        //             // Check for changes
+        //             $r = $this->get_method_detail($data['class_name'], $data['function_name']);
+
+        //             // Update
+        //             if(!$r || strtolower(preg_replace('/^Api/', '', $r['class_name'])) . $r['path'] !== implode('/', $endpoint_arr))
+        //             {
+        //                 file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
+        //                 return NULL;
+        //             }
+
+        //             $endpoints[$requested_endpoint_key] = $r;
+        //             file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
+
+        //             $endpoints[$requested_endpoint_key]['backslash_params'] = $backslash_params;
+        //             return $endpoints[$requested_endpoint_key];
+        //         }
+        //     }
+        // }
+		// else if(!$fast_check)
+		// {
+		// 	$this->update_all();
+        //     return $this->find($endpoint, $method, TRUE);
+		// }
+        // else
+        // {
+        //     return NULL;
+        // }
 	}
 
 	/**
@@ -216,19 +337,20 @@ class Api_endpoint_parser
 
         $rf_method = new ReflectionMethod($class_name, $method);
         // Split by "*" char
-        $rf = array_map('trim', explode('*', $rf_method->getDocComment()));
+        $rf = array_map('trim', explode(' * ', $rf_method->getDocComment()));
         // Filter comments
         $rf = array_filter($rf, array($this, 'filter_comments'));
+        $rf = array_map(function($val) { return trim($val, "\t\n /*"); }, $rf);
 
         $path = $params = $req_method = null;
         $access_types = [];
-
+        
         foreach($rf as $row)
         {   
             //Checking Path(...) param
-            if(preg_match('/^\s*@Path\s*\(\s*\S+\s*\)\s*$/i', $row))
+            if(preg_match('/^\s*@Path\((\/\w+|\/<\w+:.*>)+\/*\)/i', $row))
             {   //Replacing Path() to get inner value 
-                $path = strtolower(preg_replace('/^\s*@Path\s*\(\s*|\s*\)\s*$/i', '', $row));
+                $path = preg_replace('/^\s*@Path\s*\(\s*|\s*\)\s*$/i', '', $row);
                 continue;
             }
             //Get function type to determine who can access it
@@ -263,13 +385,46 @@ class Api_endpoint_parser
             $access_types[] = self::ACCESS_PUBLIC;
         }
 
-        $params = $this->get_function_params($rf);
+        $params = $this->get_function_params($rf); 
+        $path_params = [];
+
+        // Get params specified in path
+        if(preg_match_all('/<\w+:.+>/Ui', $path, $matches))
+        {
+            foreach($matches[0] as $m)
+            {
+                $m = trim($m, '<>');
+                $var_name = preg_replace('/:.+$/', "", $m);
+                $regexp = preg_replace('/^' . $var_name . ':/', "", $m);
+                $regexp = trim($regexp, '/');
+                $var_name = trim($var_name, '/');
+                // Check regexp validity
+                if(@preg_match('/' . $regexp . '/', "text") === false)
+                {
+                    $path = null;
+                    if(DEBUG)
+                    {
+                        throw new Exception("Invalid regexp `$regexp` in $class_name->$method path specification.");
+                    }
+                    return null;
+                }
+                $path_params[] = array
+                (
+                    'name' => $var_name,
+                    'regexp' => $regexp
+                );
+
+                // Replace final path
+                $path = preg_replace('/<\w+:.+>/Ui', "($regexp)", $path, 1);
+            }
+        }
 
         // Save detail
         return array
         (
             'path'  => $path,
             'params' => $params,
+            'path_params' => $path_params,
             'access_types' => $access_types,
             'method' => $req_method,
             'class_name' => $class_name,

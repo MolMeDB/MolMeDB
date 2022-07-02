@@ -15,7 +15,7 @@ class ApiCompounds extends ApiController
      * 
      * @param @required $id - Substance ID
      * 
-     * @PATH(/fragments)
+     * @PATH(/fragment/<id:^MM\d+>)
      */
     public function getFragments($id)
     {
@@ -47,7 +47,7 @@ class ApiCompounds extends ApiController
      * 
      * @param @required $id - Substance ID
      * 
-     * @PATH(/relatives)
+     * @PATH(/relatives/<id:^MM\d+>)
      */
     public function get_relatives($id)
     {
@@ -141,20 +141,6 @@ class ApiCompounds extends ApiController
         (
             HeaderParser::HTML => $view->__toString()
         );
-    }
-
-    /**
-     * @GET
-     * 
-     * @Path(/test)
-     */
-    public function test()
-    {
-        $id = 40;
-
-        $s = new Substances($id);
-
-        $s->get_functional_relatives();
     }
 
     /**

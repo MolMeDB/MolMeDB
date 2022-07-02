@@ -62,6 +62,11 @@ class Server
         
         return FALSE;
     }
+
+    public static function is_maintenance()
+    {
+        return MAINTENANCE && !session::is_admin();
+    }
     
     /**
     * Returns request method

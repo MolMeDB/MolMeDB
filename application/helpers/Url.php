@@ -77,6 +77,20 @@ class Url
 	}
 
     /**
+	 * Returns RDF prefix
+	 * @return string
+	 */
+	public static function rdf_domain($strict_remote = false)
+	{
+        // TODO
+        if(DEBUG_API && !$strict_remote)
+        {
+            return self::base() . 'api/rdf/';
+        }
+        return "https://rdf.molmedb.upol.cz/";
+	}
+
+    /**
      * Returns url for generating 2d structure
      * 
      * @return string

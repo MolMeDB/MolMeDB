@@ -22,8 +22,11 @@ class System_config
         // Connect to DB
         self::DB_CONNECT();
 
-        // Check DB version
-        self::check_DB_version();
+        if(!Server::is_maintenance())
+        {
+            // Check DB version
+            self::check_DB_version();
+        }
     }
 
     /**
@@ -204,6 +207,12 @@ class System_config
             $class = ucfirst(str_replace('Mol_', '', $class));
             require(APP_ROOT . "libraries/Mol/" . $class . ".php");
         }
+        else if (preg_match('/^View_/', $class) 
+            && file_exists(APP_ROOT . "libraries/View/" . ucfirst(substr($class, 5)) . ".php"))
+        {
+            $class = ucfirst(str_replace('View_', '', $class));
+            require(APP_ROOT . "libraries/View/" . $class . ".php");
+        }
         else if (preg_match('/^Render_/', $class) 
             && file_exists(APP_ROOT . "helpers/Render/" . ucfirst(str_replace('Render_', '', $class)) . ".php"))
         {
@@ -217,6 +226,10 @@ class System_config
                 if(file_exists($folder . $class . ".php"))
                 {
                     require_once($folder . $class . ".php");
+                }
+                else if(file_exists($folder . strtolower($class) . ".php"))
+                {
+                    require_once($folder . strtolower($class) . ".php");
                 }
             }
         }

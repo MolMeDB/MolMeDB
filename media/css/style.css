@@ -19,6 +19,13 @@ a[target="_blank"]::after {
     margin: 0 3px 0 5px;
   }
 
+button.btn a, button.btn a:link, button.btn a:hover, button.btn a:visited, button.btn a:focus, button.btn a:active {
+    text-decoration: none !important;
+    color: inherit !important;
+    outline: 0 !important;
+    cursor: inherit !important;
+}
+
 #chart_detail{
   position: fixed; /* Sit on top of the page content */
   display: none; /* Hidden by default */

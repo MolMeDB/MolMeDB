@@ -9,8 +9,8 @@
             <?php endif ?>
         </div>
 
-        <button class="accordion"><i class="fa fa-list-alt" style="font-size:24px;"></i> General info, 2D/3D Structure</button>
-        <div class="panelDetail">
+        <!-- <button class="accordion"><i class="fa fa-list-alt" style="font-size:24px;"></i> General info, 2D/3D Structure</button> -->
+        <!-- <div class="panelDetail"> -->
             <div class="flex-row space-around">
                 <div class="flex-column" style="width: 47%">
                     <div class="general-info" >
@@ -375,8 +375,8 @@
                         <div hidden></div>
                     </div>
                 </div>
-                <button type="button" class="btn pull-right btn-warning" onclick="export_detail_data('<?= $substance->uploadName ?>')">Export data [.csv]</button>
-                <button type="button" class="btn pull-right btn-info" onclick="add_to_comparator('<?= $substance->id ?>', '<?= $substance->name ?>')" style="margin-right: 10px;">Add to comparator</button>
+                <button type="button" class="btn pull-right btn-warning"><a href="/export/mol/passive/<?= $substance->id ?>">Export data [.csv]</a></button>
+                <!-- <button type="button" class="btn pull-right btn-info" onclick="add_to_comparator('<?= $substance->id ?>', '<?= $substance->name ?>')" style="margin-right: 10px;">Add to comparator</button> -->
             </div>
         </div>
 
@@ -391,6 +391,7 @@
                    <div class="detail-content" id="transporterTab">
                     <?= $nonsec_transporters_html ?>
                    </div>
+                   <button type="button" class="btn pull-right btn-warning"><a href="/export/mol/active/<?= $substance->id ?>">Export data [.csv]</a></button>
                </div>
            </div>
        </div>

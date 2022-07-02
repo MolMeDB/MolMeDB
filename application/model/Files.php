@@ -17,6 +17,8 @@
  * @property Validator_structure $validator_structure
  * @property string $datetime
  * 
+ * @property File $file_handler
+ * 
  * @author Jakub Juracka
  */
 class Files extends Db
@@ -27,6 +29,8 @@ class Files extends Db
     const T_STATS_IDENTIFIERS = 3;
     const T_STATS_SUBST_INTERACTIONS = 4;
 
+    /** RDF SPECIAL FILES */
+    const T_RDF_VOCABULARY = 100;
     const T_EXAMPLE_ENERGY = 51;
 
     private static $valid_types = array
@@ -52,6 +56,7 @@ class Files extends Db
     {
         $this->table = 'files';
         parent::__construct($id);
+        $this->file = new File($this->path);
     }
 
     /**
@@ -187,4 +192,8 @@ class Files extends Db
 
         parent::save();
     }
+
+    /**
+     * Returns file content
+     */
 }

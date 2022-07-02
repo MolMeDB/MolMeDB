@@ -9,6 +9,7 @@ class ResponseBuilder
     /** RESPONSE CODES */
     const CODE_OK = 200;
     const CODE_OK_NO_CONTENT = 204;
+    const CODE_SEE_OTHER = 303;
     const CODE_BAD_REQUEST = 400;
     const CODE_UNAUTHORIZED = 401;
     const CODE_FORBIDDEN = 403;
@@ -29,6 +30,21 @@ class ResponseBuilder
         {
             echo('400 Bad Request: '. $err_text);
         }
+        die;
+    }
+
+    /**
+     * Method for creating HTTP 303 response code with corresponding header
+     * 
+     * @param string $target - Where to redirect request
+     * 
+     * @author Jakub Juracka
+     */
+    public static function see_other($target)
+    {
+        http_response_code(self::CODE_SEE_OTHER);
+        // TODO
+        header("Location: " . $target);
         die;
     }
 
@@ -130,15 +146,15 @@ class ResponseBuilder
     /**
      * Method for creating HTTP 500 response code and error message
      * 
-     * @param string|MmdbException $err_text - OPTIONAL
+     * @param string|Exception $err_text - OPTIONAL
      *  
      * @author Jaromír Hradil
      */
     public static function server_error($err_text = NULL)
     {
-        if($err_text instanceof MmdbException)
+        if($err_text instanceof Exception)
         {
-            $err_text = $err_text->getPrintable();
+            $err_text = $err_text->getMessage();
         }
 
         http_response_code(self::CODE_SERVER_ERROR);
@@ -147,8 +163,21 @@ class ResponseBuilder
             echo('500 Server error: Internal error occured. ');
             echo $err_text;
         }
+        //TODO logging of errors
         die;
     } 
+
+    /**
+     * Parses final response to XML format
+     * 
+     * @param string $content
+     * 
+     * @return array
+     */
+    public static function xml($content)
+    {
+        return $content;
+    }
 
     /**
      * Parses final response to CSV format (2D-array)
@@ -283,5 +312,15 @@ class ResponseBuilder
         }
         
         return $csv_output;
+    }
+
+    /** method for machine readable RDF formats */
+    public static function RDF($uri)
+    {
+        http_response_code(self::CODE_SEE_OTHER);
+        $query = "DESCRIBE <" . $uri . ">";
+        $query = rawurlencode($query);
+        header("Location: https://idsm.elixir-czech.cz/sparql/endpoint/molmedb?query=$query");
+        die;
     }
 }

@@ -14,13 +14,19 @@ class SchedulerController extends Controller
      */
     function __construct()
     {
+        $this->pid = self::PID_PREFIX . getmypid();
         parent::__construct();
     }
+
+    /**Holds PID */
+    private $pid;
 
     private $debug_DES = FALSE && DEBUG;
     private $debug_CID = FALSE && DEBUG;
     private $debug_CTD = FALSE && DEBUG;
     private $debug_FMD = FALSE && DEBUG;
+
+    const PID_PREFIX = 'pid:';
 
     /**
      * Specifies publicly accessible functions
@@ -28,7 +34,9 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run',
-        'log_sub_changes',
+        // 'log_sub_changes',
+        // 'fragment_molecules'
+        // 'validate_substance_identifiers'
     );
 
 
@@ -53,7 +61,7 @@ class SchedulerController extends Controller
             // Send all unsent emails
             if($this->config->get(Configs::EMAIL_ENABLED))
             {
-                $this->send_emails();
+                $this->protected_call('send_emails', []);
                 echo "Emails sent. \n";
             }
 
@@ -63,7 +71,7 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
             {
                 echo "Deleting empty substances. \n";
-                $this->delete_empty_substances();
+                $this->protected_call('delete_empty_substances', []);
             }
 
             // Checks interactions datasets
@@ -72,14 +80,14 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_VALIDATE_PASSIVE_INT)))
             {
                 echo "Checking interaction datasets.\n";
-                $this->check_interaction_datasets();
+                $this->protected_call('check_interaction_datasets', []);
             }
 
-            // Fragment molecules
-            if($this->check_time("06:00"))
+            // Fragment molecules forever
+            if(TRUE)
             {
                 echo "Checking interaction datasets.\n";
-                $this->fragment_molecules();
+                $this->protected_call('fragment_molecules', []);
             }
 
             // Checks transporter datasets - NOW INACTIVATED
@@ -93,12 +101,11 @@ class SchedulerController extends Controller
             }
 
             // ---- Molecules data autofill ---- //
-            if($this->debug_FMD || 
-                ($this->check_time($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME)) && 
-                $this->config->get(Configs::S_VALIDATE_SUBSTANCES))) // Run only once per hour and only at night
+            // RUN FOREVER
+            if($this->config->get(Configs::S_VALIDATE_SUBSTANCES))
             {
                 echo "Subtance validations is running. \n";
-                $this->validate_substance_identifiers(); // PARAM TODO
+                $this->protected_call('validate_substance_identifiers', []);
             }
 
             // Once per day, update stats data
@@ -106,7 +113,7 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_UPDATE_STATS)))
             {
                 echo "Updating stats data. \n";
-                $this->update_stats();
+                $this->protected_call('update_stats', []);
             }
 
             // Once per day, update stats data
@@ -114,9 +121,9 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_CHECK_PUBLICATIONS)))
             {
                 echo "Updating publications data. \n";
-                $this->update_publications();
+                $this->protected_call('update_publications', []);
                 echo "Deleting empty publications. \n";
-                $this->delete_empty_publications();
+                $this->protected_call('delete_empty_publications', []);
             }
 
             // Delete empty membranes and methods
@@ -124,15 +131,17 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
             {
                 echo "Deleting empty membranes/methods. \n";
-                $this->delete_empty_membranes_methods();
+                $this->protected_call('delete_empty_membranes_methods', []);
             }
 
             echo "DONE \n";
         }
         catch(Exception $e)
         {
-            $text = "General error occured while scheduler was running.<br/><br/>" . $e->getMessage();
+            $text = "General error occured while scheduler was running.\n\n" . $e->getMessage();
             echo $text . ' in ' . $time->get_string();
+
+            self::end_pid_sessions($this->pid);
 
             try
             {
@@ -152,6 +161,70 @@ class SchedulerController extends Controller
         }
 
         echo '-------------------------';
+    }
+
+    /**
+     * Checks, if given method is not calling too often
+     * 
+     * @param string $name
+     * @param array $arguments
+     */
+    private function protected_call($name, $arguments)
+    {
+        // Check, if exists
+        if(!method_exists($this, $name))
+        {
+            echo 'Invalid method called in scheduler.';
+            die;
+        }
+
+        // Check, if exists pid running this method
+        $exists_pid = Config::get('scheduler_pid_' . $name);
+
+        if($exists_pid)
+        {
+            $p = str_replace(self::PID_PREFIX, '', $exists_pid);
+            // Check, if process is still running
+            if(file_exists("/proc/$p"))
+            {
+                echo 'Method ' . $name . ' looks like still running from previous session. PID: ' . $p . "\n";
+                return;
+            }
+            else // Not running, but not unbinded - unexpected error had to occur
+            {
+                $text = 'PID: ' . $p . ' including calling method Scheduler->' . $name . ' probably unexpectedly failed. Current time: ' . date('Y-m-d H:i:s');  
+                $this->send_email_to_admins($text, 'Scheduler error');
+                echo 'Error occured during processing PID: ' . $p;
+                self::end_pid_sessions($exists_pid);
+                die;
+            }
+        }
+
+        // Set pid for current session
+        Config::set('scheduler_pid_' . $name, $this->pid);
+
+        // Call method
+        $this->$name(...$arguments);
+
+        // After end, release pid
+        Config::set('scheduler_pid_' . $name, NULL);
+    }
+
+    /**
+     * Ends all sessions for given pid
+     * 
+     * @param int $pid
+     * 
+     */
+    private static function end_pid_sessions($pid)
+    {
+        $rows = Configs::instance()->where('value', $pid)->get_all();
+
+        foreach($rows as $r)
+        {
+            $r->value = NULL;
+            $r->save();
+        }
     }
 
     public function log_sub_changes()
@@ -408,20 +481,52 @@ class SchedulerController extends Controller
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
 
+        echo "Fragmentation started.\n";
+
         $substances = $sf_model->get_non_fragmented_substances(10000);
+
+        echo 'Try to fragment total: ' . count($substances) . ' molecules. \n';
 
         $rdkit = new Rdkit();
 
         foreach($substances as $s)
         {
+            // Check, if molecule has fragmentation error in history
+            $err = Error_fragments::instance()->where(array
+                (
+                    'id_substance'  => $s->id,
+                    'type'          => Error_fragments::TYPE_FRAGMENTATION_ERROR 
+                ))
+                ->get_one();
+
             try
             {
                 Db::beginTransaction();
 
-                $fragments = $rdkit->fragment_molecule($s->SMILES);
+                $s->check_identifiers();
+
+                // Timeout in secs
+                $timeout = 20;
+
+                // If error occured, increase timeout
+                if($err->id)
+                {
+                    $timeout = 90;
+                }
+
+                $fragments = $rdkit->fragment_molecule($s->SMILES, true, $timeout);
 
                 if(!$fragments)
                 {
+                    // Cannot fragment molecule -> save error record
+                    $err->id_substance = $s->id;
+                    $err->id_fragment = NULL;
+                    $err->type = Error_fragments::TYPE_FRAGMENTATION_ERROR;
+                    $err->text = 'Cannot fragment molecule.';
+                    $err->datetime = date('Y-m-d H:i:s');
+
+                    $err->save();
+
                     Db::commitTransaction();
                     continue;
                 }
@@ -508,15 +613,40 @@ class SchedulerController extends Controller
                     }
                 }
 
+                // If ok, remove old errors
+                $errors = Error_fragments::instance()->where('id_substance', $s->id)->get_all();
+
+                foreach($errors as $e)
+                {
+                    $e->delete();
+                }
+
                 Db::commitTransaction();
+            }
+            catch(MmdbException $e)
+            {
+                Db::rollbackTransaction();
+
+                $err->id_substance = $s->id;
+                $err->id_fragment = NULL;
+                $err->type = Error_fragments::TYPE_FRAGMENTATION_ERROR;
+                $err->text = $e->getMessage();
+                $err->datetime = date('Y-m-d H:i:s');
+
+                $err->save();
             }
             catch(Exception $e)
             {
                 Db::rollbackTransaction();
-                echo $e;
+                Config::set('scheduler_fragmentation_last_run', NULL);
+                echo $e->getMessage();
                 die;
             }
         }
+
+        echo "Fragmentation done. \n";
+
+        Config::set('scheduler_fragmentation_last_run', NULL);
     }
 
 
@@ -644,43 +774,21 @@ class SchedulerController extends Controller
     {
         $logs = new Validator_identifier_logs();
         
-        $max_cores = Config::get('scheduler_substance_validation_max_cores');
-        $max_cores = $max_cores && is_numeric($max_cores) ? (int) $max_cores : 1;
-    
-        $running_cores = (int)Config::get('scheduler_substance_validation_running_cores');
-
-        if(!$running_cores)
-        {
-            $new_order = 1;
-        }
-        else if($running_cores >= $max_cores && !DEBUG)
-        {
-            echo 'Max number of runs reached.';
-            return;
-        }
-        else if(!DEBUG)
-        {
-            $new_order = $running_cores+1;
-        }
-
-        Config::set('scheduler_substance_validation_running_cores', $new_order);
-
-        $limit = 1000;
-        $offset = $new_order ? ($new_order-1)*$limit : 0;
+        $limit = 2000;
 
         try
         {
-            $substances = $logs->get_substances_for_validation($limit, $offset, TRUE, $include_ignored);
+            $substances = $logs->get_substances_for_validation($limit, 0, TRUE, $include_ignored);
 
             if(!count($substances))
             {
-                Config::set('scheduler_substance_validation_running_cores', $new_order-1);
+                echo 'No substance found for validation.';
                 return;
             }
         }
         catch(Exception $e)
         {
-            Config::set('scheduler_substance_validation_running_cores', $new_order-1);
+            echo $e->getMessage();
             return;
         }
 
@@ -752,23 +860,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }   
                 }
 
@@ -882,6 +975,10 @@ class SchedulerController extends Controller
                                             $smiles = $r;
                                             $canonized = true;
                                         }
+                                        else
+                                        {
+                                            $smiles = null;
+                                        }
                                     }
                                 }
 
@@ -911,28 +1008,16 @@ class SchedulerController extends Controller
 
                                 $log->update_state($s->id, $log->type, $new->flag == Validator_identifiers::SMILES_FLAG_CANONIZED ? $log::STATE_DONE : $log::STATE_WAITING);
                             }
+                            else
+                            {
+                                $log->update_state($s->id, $log->type, $log::STATE_ERROR, 'SMILES not found.');
+                            }
                         }
                     }
                     catch(Exception $e)
                     {
                         echo $e->getMessage();
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     } 
                 }
 
@@ -996,23 +1081,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1052,23 +1122,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1154,23 +1209,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1377,23 +1417,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1473,23 +1498,8 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        if($log->state == $log::STATE_ERROR || $log->state == $log::STATE_MULTIPLE_ERROR)
-                        {
-                            $count = $log->count ? $log->count : 0;
-                            $new_state = $log::STATE_ERROR;
-                            $count++;
-
-                            if($count > 2)
-                            {
-                                $new_state = $log::STATE_MULTIPLE_ERROR;
-                            }
-
-                            $log->update_state($s->id, $log->type, $new_state, $e->getMessage(), $count);
-                        }
-                        else 
-                        {
-                            $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage(), 1);
-                        }
+                        echo $e->getMessage();
+                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
 
@@ -1498,7 +1508,6 @@ class SchedulerController extends Controller
                 ##########################
 
                 $s->check_identifiers();
-
             }
             catch(Exception $e)
             {
@@ -1507,8 +1516,7 @@ class SchedulerController extends Controller
             }
         }
 
-        $no = (int)Config::get('scheduler_substance_validation_running_cores');
-        Config::set('scheduler_substance_validation_running_cores', $no > 0 ? $no-1 : 0);
+        echo "Substance validation done.";
     }
 
 

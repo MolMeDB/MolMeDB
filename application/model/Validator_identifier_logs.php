@@ -39,11 +39,11 @@ class Validator_identifier_logs extends Db
     const TYPE_TITLE = 8;
 
     /** STATES */
-    const STATE_WAITING = 0;
-    const STATE_DONE = 1;
-    const STATE_ERROR = 2;
-    const STATE_MULTIPLE_ERROR = 3;
-    const STATE_PROCESSING = 5;
+    const STATE_WAITING = 0; // Adds 1000 score
+    const STATE_DONE = 1; // Adds 0 score
+    const STATE_ERROR = 2; // Adds 100 score
+    const STATE_MULTIPLE_ERROR = 3; // Adds 0 score
+    const STATE_PROCESSING = 5; // Adds 10 score - Same as NO-STATE
 
     /**
      * Holds all types
@@ -110,17 +110,9 @@ class Validator_identifier_logs extends Db
      * @param int $type
      * @param int $new_state
      */
-    public function update_state($id_substance, $type, $new_state, $err_text = NULL, $err_count = NULL)
+    public function update_state($id_substance, $type, $new_state, $err_text = NULL)
     {
         $obj = $this->get_current_by_type($id_substance, $type);
-
-        if($obj && $obj->id)
-        {
-            $obj->state = $new_state;
-            $obj->save();
-
-            return;
-        }
 
         $obj->id_substance = $id_substance;
         $obj->type = $type;
@@ -128,10 +120,19 @@ class Validator_identifier_logs extends Db
 
         if($new_state == self::STATE_ERROR || $new_state == self::STATE_MULTIPLE_ERROR)
         {
+            $current = $obj->error_count ? $obj->error_count+1 : 1;
+
             $obj->error_text = $err_text;
-            $obj->error_count = $err_count;
+            $obj->error_count = $current;
+            $obj->state = $current > 2 ? self::STATE_MULTIPLE_ERROR : self::STATE_ERROR;
+        }
+        else
+        {
+            $obj->error_text = NULL;
+            $obj->error_count = NULL;
         }
 
+        $obj->datetime = date('Y-m-d H:i:s');
         $obj->save();
 
         return;
@@ -194,6 +195,14 @@ class Validator_identifier_logs extends Db
         $select = preg_replace('/\+\s*$/', '', $select);
         $select .= ') as score';
 
+        $select .= ', GREATEST(IFNULL(tab_1.datetime,"0000-00-00 00:00:00"),
+            IFNULL(tab_2.datetime,"0000-00-00 00:00:00"),
+            IFNULL(tab_3.datetime,"0000-00-00 00:00:00"),
+            IFNULL(tab_4.datetime,"0000-00-00 00:00:00"),
+            IFNULL(tab_5.datetime,"0000-00-00 00:00:00"),
+            IFNULL(tab_6.datetime,"0000-00-00 00:00:00"),
+            IFNULL(tab_7.datetime,"0000-00-00 00:00:00")) as dt ';
+
         // echo "SELECT * 
         // FROM
         // (
@@ -202,7 +211,7 @@ class Validator_identifier_logs extends Db
         //     $joins
         // ) as tab
         // WHERE tab.score > 0
-        // ORDER BY score DESC, id ASC
+        // ORDER BY score DESC, dt ASC
         // LIMIT $limit OFFSET $offset";
         // die;
 
@@ -214,7 +223,7 @@ class Validator_identifier_logs extends Db
                 $joins
             ) as tab
             WHERE tab.score > 0
-            ORDER BY score DESC, id ASC
+            ORDER BY score DESC, dt ASC
             LIMIT $limit OFFSET $offset
         ");
 

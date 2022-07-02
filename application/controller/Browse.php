@@ -87,7 +87,7 @@ class BrowseController extends Controller
      * 
      * @author Jakub Juracka
      */
-    public function transporters($element_id = NULL, $is_last = FALSE, $pagination = 1)
+    public function transporters($element_id = NULL, $is_last = FALSE, $pagination = 1, $per_page = 10)
     {
         $stats = new Statistics();
 
@@ -111,38 +111,44 @@ class BrowseController extends Controller
                         throw new Exception('Transporter target not found.');
                     }
 
-                    $substances = $target->get_substances($pagination);
+                    $substances = $target->get_substances($pagination, $per_page);
                     $total = $target->count_substances();
                 }
                 else
                 {
                     $enum_type_link = new Enum_type_links($element_id);
                     $enum_type = $enum_type_link->enum_type;
-                    $transporter_target_model = new Transporter_targets();
 
                     if($enum_type->type != Enum_types::TYPE_TRANSPORTER_CATS || !$enum_type->id)
                     {
                         throw new Exception('Invalid transporter group.');
                     }
 
-                    $data = $enum_type->get_link_elements($enum_type_link->id, ($pagination-1)*10, 10);
+                    $data = $enum_type->get_link_elements($enum_type_link->id, ($pagination-1)*$per_page, $per_page);
 
                     $substances = $data->data;
                     $total = $data->total;
                 }
 
+                $paginator = new View_paginator();
+                $paginator->path("$element_id/$is_last")
+                    ->active($pagination)
+                    ->records_per_page($per_page);
+
+                $paginator->total_records($total);
+                $this->view->paginator($paginator);
+
                 $this->view->element = $is_last ? $target : $enum_type_link;
-                $this->view->is_last = $is_last;
-                $this->view->pagination = $pagination;
-                $this->view->list = $substances;
                 $this->view->total = $total;
+                $this->view->is_last = $is_last;
+                $this->view->list = $substances;
             }
             catch(Exception $e)
             {
                 $this->alert->error($e->getMessage());
             }
         }
-
+        
         $this->view->chart_data = $stats->get(Statistics::TYPE_INTER_ACTIVE);
         $this->title = 'Transporters';
     }
@@ -156,7 +162,7 @@ class BrowseController extends Controller
      * 
      * @author Jakub Juračka
      */
-    public function sets($reference_id = NULL, $pagination = 1)
+    public function sets($reference_id = NULL, $pagination = 1, $per_page = 10)
     {
         $publicationModel = new Publications();
 
@@ -184,6 +190,14 @@ class BrowseController extends Controller
 
                 $this->view->list = $publication->get_assigned_substances($pagination);
                 $this->view->list_total = $publication->count_assigned_substances();
+
+                $paginator = new View_paginator();
+                $paginator->path("$reference_id")
+                    ->active($pagination)
+                    ->records_per_page($per_page);
+
+                $paginator->total_records($this->view->list_total);
+                $this->view->paginator($paginator);
             }
 
             $this->view->publications = $publicationModel->get_nonempty_refs();

@@ -115,4 +115,18 @@ class Text
         }
         return $return;
     }
+
+    /**
+     * Implements function starts_with_text
+     * 
+     * @param string $text
+     * @param string $needle_start
+     * 
+     * @return boolean
+     */
+    public static function startsWith($text, $needle_start)
+    {
+        $len = strlen($needle_start);
+        return (substr($text, 0, $len) === $needle_start);
+    }
 }

@@ -158,6 +158,8 @@ class Substances_fragments extends Db
     /**
      * Checks, if exists given fragmentation
      * 
+     * TODO - předělat s total_fragments atributem
+     * 
      * @param int $id_substance
      * @param array $id_fragments
      * 
@@ -223,8 +225,18 @@ class Substances_fragments extends Db
         $all = $this->queryAll('SELECT DISTINCT s.id
             FROM `substances` s
             LEFT JOIN substances_fragments sf ON sf.id_substance = s.id
-            WHERE sf.id IS NULL
-            LIMIT ' . $limit);
+            JOIN validator_identifiers vi ON vi.id_substance = s.id
+            LEFT JOIN error_fragments ef ON ef.id_substance = s.id AND ef.type = ?
+            WHERE sf.id IS NULL AND LENGTH(s.SMILES) <= ? AND vi.identifier = ? AND vi.state = ? AND (ef.datetime < ? OR ef.id IS NULL)
+            LIMIT ' . $limit, 
+                array
+                (
+                    Error_fragments::TYPE_FRAGMENTATION_ERROR, 
+                    Fragments::MAX_SIZE,
+                    Validator_identifiers::ID_SMILES, 
+                    Validator_identifiers::STATE_VALIDATED,
+                    date('Y-m-d H:i:s', strtotime('-1 day'))
+                ));
 
         $result = [];
 

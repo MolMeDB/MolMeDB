@@ -9,7 +9,9 @@ class Rdkit extends Identifier_loader
     /** SERVICE STATUS */
     private static $STATUS = false;
 
-    /** Holds connection */
+    /** Holds connection 
+     * @var Http_request
+    */
     private static $client;
 
     /** Holds info about last used identifier type */
@@ -442,10 +444,12 @@ class Rdkit extends Identifier_loader
      * Fragments givne molecule by SMILES
      * 
      * @param string $smiles
+     * @param bool $throwable
+     * @param int $timeout - Request timeout
      * 
      * @return
      */
-    public function fragment_molecule($smiles)
+    public function fragment_molecule($smiles, $throwable = false, $timeout = 20)
     {
         $this->last_identifier = Validator_identifiers::ID_SMILES;
 
@@ -458,7 +462,7 @@ class Rdkit extends Identifier_loader
 
         try
         {
-            $response = self::$client->request($uri, $method, $params);
+            $response = self::$client->request($uri, $method, $params, FALSE, $timeout);
 
             if(!empty($response) && isset($response[0]) && $response[0] != '')
             {
@@ -469,6 +473,10 @@ class Rdkit extends Identifier_loader
         }
         catch(Exception $e)
         {
+            if($throwable)
+            {
+                throw new MmdbException($e->getMessage());
+            }
             return NULL;
         }
     }

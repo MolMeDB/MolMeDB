@@ -37,6 +37,19 @@ class Substances extends Db
     }    
 
     /**
+     * Creates instance by identifier
+     * 
+     * @param string $identifier
+     * 
+     * @return Substances
+     */
+    public static function by_identifier($identifier)
+    {
+        $identifier = strtoupper($identifier);
+        return Substances::instance()->where('identifier', $identifier)->get_one();
+    }
+
+    /**
      * Returns all molecule fragments
      * 
      * @return array

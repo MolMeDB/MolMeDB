@@ -42,8 +42,8 @@ notif> div{
 body{
     padding:0;
     margin:0;
-    background: rgb(240,240,240);
-    background: linear-gradient(180deg, rgba(240,240,240,1) 20%, rgba(0,78,146,1) 100%);
+    /* background: rgb(255,255,255); */
+    background-image: linear-gradient(to right bottom, #eeeeee, #e8e7e8, #e1e1e1, #dbdadb, #d5d4d4);
 }
 
 .body-wrapper{
@@ -57,7 +57,7 @@ body{
     display: flex;
     padding: 0 133px;
     position: relative;
-    background-image: linear-gradient(to right bottom, #eeeeee, #e8e7e8, #e1e1e1, #dbdadb, #d5d4d4);
+    /* background-image: linear-gradient(to right bottom, #eeeeee, #e8e7e8, #e1e1e1, #dbdadb, #d5d4d4); */
 }
 
 .noah{
@@ -76,9 +76,16 @@ body{
     position: relative;
 }
 
-.menu{
-    max-height: 150px;
+header{
     background-image: linear-gradient(to right, #4a82da, #3a68bb, #294f9c, #17377f, #002162);
+}
+
+.menu{
+    max-width: 1600px;
+    min-width: 1200px;
+    /* display: block; */
+    margin: auto;
+    max-height: 150px;
     display: flex;
     flex-direction: row;
     padding: 30px 30px 30px 30px;
@@ -234,8 +241,6 @@ footer{
     min-height: 350px;
     padding: 30px 30px 30px 30px;
     color: white;
-    display: flex !important;
-    justify-content: space-between;
     position: relative;
     z-index: 251;
 }
@@ -256,17 +261,26 @@ footer{
     padding-left: 10px;
 }
 
-footer>div{
+#footer{
+    display: flex !important;
+    justify-content: space-between;
+    max-width: 1600px;
+    min-width: 1200px;
+    /* display: block; */
+    margin: auto;
+}
+
+#footer>div{
     padding: 0 20px;
     display: flex;
     max-width: 500px;
 }
 
-footer>div:last-child{
+#footer>div:last-child{
     flex-direction: row-reverse;
 }
 
-footer>div:not(:last-child){
+#footer>div:not(:last-child){
     flex-direction: column;
 }
 

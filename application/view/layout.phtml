@@ -45,51 +45,50 @@
 	</head>
         
 	<body>
-        <div class="body-wrapper">
 		<header>
-                    <div class="menu-additional">
-                            <?php if(session::is_logged_in()) : ?>
-                            <div onclick="redirect('administration/logout')"><img src="files/icons/user-circle.svg" class="svg-white"> Log out</div>
-                            <?php else : ?>
-                            <div onclick="redirect('login')"><img src="files/icons/user-circle.svg" class="svg-white"> Log in</div>
-                            <?php endif ?>
-                            <?php if(session::is_admin()) : ?>
-                            <div onclick="redirect('administration')"><img src="files/icons/user-md.svg" class="svg-white"> Administration</div>
-                            <?php endif ?>
-                    </div>
-                    <div class="menu">
-                        <div class="logo">
-                            <img src="files/icons/logo_new.png" onclick="redirect('detail/intro')" style="background: transparent;" alt="MolMeDB">
+            <div class="menu-additional">
+                <?php if(session::is_logged_in()) : ?>
+                <div onclick="redirect('administraation/logout')"><img src="files/icons/user-circle.svg" class="svg-white"> Log out</div>
+                <?php else : ?>
+                <div onclick="redirect('login')"><img src="files/icons/user-circle.svg" class="svg-white"> Log in</div>
+                <?php endif ?>
+                <?php if(session::is_admin()) : ?>
+                <div onclick="redirect('administration')"><img src="files/icons/user-md.svg" class="svg-white"> Administration</div>
+                <?php endif ?>
+            </div>
+            <div class="menu">
+                <div class="logo">
+                    <img src="files/icons/logo_new.png" onclick="redirect('detail/intro')" style="background: transparent;" alt="MolMeDB">
+                </div>
+                <div class="menu-items">
+                    <div class="menu-dropdown">
+                        <div><img src="files/icons/list.svg" class="svg-white">Browse <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
+                        <div class="menu-dropdown-list">
+                            <div class="menu-dropdown-item" onclick="redirect('browse/membranes')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Membranes</div>
+                            <div class="menu-dropdown-item" onclick="redirect('browse/methods')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Methods</div>
+                            <div class="menu-dropdown-item" onclick="redirect('browse/transporters')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Transporters</div>
+                            <div class="menu-dropdown-item" onclick="redirect('browse/sets')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Sets</div>
                         </div>
-                        <div class="menu-items">
-                            <div class="menu-dropdown">
-                                <div><img src="files/icons/list.svg" class="svg-white">Browse <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
-                                <div class="menu-dropdown-list">
-                                    <div class="menu-dropdown-item" onclick="redirect('browse/membranes')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Membranes</div>
-                                    <div class="menu-dropdown-item" onclick="redirect('browse/methods')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Methods</div>
-                                    <div class="menu-dropdown-item" onclick="redirect('browse/transporters')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Transporters</div>
-                                    <div class="menu-dropdown-item" onclick="redirect('browse/sets')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Sets</div>
-                                </div>
+                    </div>
+                    <div><div onclick="redirect('search')"><img src="files/icons/search.svg" class="svg-white">Search</div></div>
+                    <div><div onclick="redirect('stats/show_all')"><img src="files/icons/chart-bar.svg" class="svg-white">Statistics</div></div>
+                    <div><div onclick="redirect('detail/documentation')"><img src="files/icons/folder-open.svg" class="svg-white">Documentation</div></div>
+                    <div><div onclick="redirect('detail/contact')"><img src="files/icons/info-circle.svg" class="svg-white">About</div></div>
+                    <!-- <div class="menu-dropdown">
+                        <div><img src="files/icons/chart-line.svg" class="svg-white">Comparator <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
+                        <div class="menu-dropdown-list">
+                            <div class="menu-dropdown-item" onclick="redirect('compare')">Open comparator</div>
+                            <div class="menu-dropdown-item" onclick="flush_comparator_list()">Delete all</div>
+                            <div class="dropdown-line"></div>
+                            <div class="dropdown-title">Compounds:</div>
+                            <div id="comparator-ul">
                             </div>
-                            <div><div onclick="redirect('search')"><img src="files/icons/search.svg" class="svg-white">Search</div></div>
-                            <div><div onclick="redirect('stats/show_all')"><img src="files/icons/chart-bar.svg" class="svg-white">Statistics</div></div>
-                            <div><div onclick="redirect('detail/documentation')"><img src="files/icons/folder-open.svg" class="svg-white">Documentation</div></div>
-                            <div><div onclick="redirect('detail/contact')"><img src="files/icons/info-circle.svg" class="svg-white">About</div></div>
-                            <!-- <div class="menu-dropdown">
-                                <div><img src="files/icons/chart-line.svg" class="svg-white">Comparator <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
-                                <div class="menu-dropdown-list">
-                                    <div class="menu-dropdown-item" onclick="redirect('compare')">Open comparator</div>
-                                    <div class="menu-dropdown-item" onclick="flush_comparator_list()">Delete all</div>
-                                    <div class="dropdown-line"></div>
-                                    <div class="dropdown-title">Compounds:</div>
-                                    <div id="comparator-ul">
-                                    </div>
-                                </div>
-                            </div> -->
                         </div>
-                    </div>
+                    </div> -->
+                </div>
+            </div>
 		</header>
-                
+        <div class="body-wrapper">
                 <div class="body">
                     <notif id="alert-column">
                         <?= $nonsec_messages?>
@@ -105,8 +104,9 @@
                 </div>
                 
                 <script>make_comparator_list();</script>
-                	
-		<footer id="footer">
+        </div>        	
+		<footer>
+            <div id="footer">
                     <div>
                         <div class="footer-logo">
                             <img src="files/icons/UP2.png" class="upol_logo">
@@ -161,7 +161,7 @@
                             </div>
                         </div>
                     </div>
+            </div>
 		</footer>
-        </div>
 	</body>
 </html>

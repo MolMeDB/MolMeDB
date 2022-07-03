@@ -32,38 +32,15 @@ class MolController extends Controller
 
         $energyModel = new Energy();
         $methodModel = new Methods();
-        $substanceModel = new Substances();
-        $transporterModel = new Transporters();
-        $transporter_dataset_model = new Transporter_datasets();
+        // $substanceModel = new Substances();
         $link_model = new Substance_links();
-
-        // Make identifier if not
-        if(is_numeric($identifier))
-        {
-            $identifier = Identifiers::get_identifier(intval($identifier));
-        }
-
-        if(preg_match('/^MM[0-9]+/', $identifier))
-        {
-            $identifier = preg_replace('/^MM/', '', $identifier);
-            $identifier = intval($identifier);
-            $identifier = Identifiers::get_identifier($identifier);
-        }
 
         try
         {
             // Get substance detail
-            $substance = $substanceModel
-                ->where('identifier', $identifier)
-                ->get_one();
+            $substance = new Substances($identifier);
 
-            $by_link = false;
-
-            if(!$substance->id)
-            {
-                $substance = $link_model->get_substance_by_identifier($identifier);
-                $by_link = True;
-            }
+            $by_link = isset($substance->old_identifier);
 
             if(!$substance->id)
             {

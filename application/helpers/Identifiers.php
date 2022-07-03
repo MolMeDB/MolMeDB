@@ -4,7 +4,7 @@ class Identifiers
 {
 	CONST PREFIX = 'MM';
 	CONST min_len = 7;
-	CONST PATTERN = '/^MM{1}[0-9]+$/';
+	CONST PATTERN = '/^[M]{2}[0-9]{5,}$/';
 	
 	/**
 	 * Generates new identifier

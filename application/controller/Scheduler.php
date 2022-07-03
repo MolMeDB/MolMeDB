@@ -34,14 +34,9 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run',
-<<<<<<< HEAD
-        'log_sub_changes',
-        'link_functional_groups'
-=======
         // 'log_sub_changes',
         // 'fragment_molecules'
         // 'validate_substance_identifiers'
->>>>>>> develop
     );
 
 
@@ -98,12 +93,7 @@ class SchedulerController extends Controller
             if(TRUE)
             {
                 echo "Checking interaction datasets.\n";
-<<<<<<< HEAD
-                $this->fragment_molecules();
-                $this->link_functional_groups();
-=======
                 $this->protected_call('fragment_molecules', []);
->>>>>>> develop
             }
 
             // Checks transporter datasets - NOW INACTIVATED
@@ -180,7 +170,6 @@ class SchedulerController extends Controller
     }
 
     /**
-<<<<<<< HEAD
      * Match all molecular functional group pairs
      * 
      * @author Jakub Juracka
@@ -274,8 +263,7 @@ class SchedulerController extends Controller
         }
     }
 
-
-=======
+    /*
      * Checks, if given method is not calling too often
      * 
      * @param string $name
@@ -339,7 +327,6 @@ class SchedulerController extends Controller
         }
     }
 
->>>>>>> develop
     public function log_sub_changes()
     {
         // Deletes

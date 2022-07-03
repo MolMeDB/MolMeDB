@@ -23,6 +23,8 @@
  * @property string $createDateTime
  * @property string $editDateTime
  * 
+ * @property string $old_identifier - Indicates, if record was loaded as redirection from old record
+ * 
  * @author Jakub Juracka
  */
 class Substances extends Db
@@ -32,12 +34,27 @@ class Substances extends Db
      */
     function __construct($id = NULL)
     {
-        if($id && preg_match('/^MM[0-9]{5,}$/', $id))
+        $this->table = 'substances';
+
+        if($id && !is_array($id) && preg_match(Identifiers::PATTERN, $id))
         {
-            $id = preg_replace('^MM[0]+', '', $id);
+            // Find by identifier
+            $id_t = preg_replace('/^[M]{2}[0]*/', '', $id);
+            parent::__construct($id_t);
+
+            if(!$this->id)
+            {
+                $s = Substance_links::instance()->where('identifier LIKE', $id)->get_one();
+
+                if($s->id_substance)
+                {
+                    parent::__construct($s->id_substance);
+                    $this->old_identifier = $id;
+                }
+            }
+            return;
         }
 
-        $this->table = 'substances';
         parent::__construct($id);
     }    
 

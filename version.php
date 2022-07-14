@@ -1,4 +1,3 @@
-
 <?php
 
 /** HOLDS INFO ABOUT DB VERSION */

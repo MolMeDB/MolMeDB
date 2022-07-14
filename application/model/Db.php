@@ -184,7 +184,6 @@ class Db extends Iterable_object
             }
             // If error, try to update
             $this->query("SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));");
-            return $this->check_group_by_restrictions(true);
         }
     }
 
@@ -656,7 +655,7 @@ class Db extends Iterable_object
      * @param $attr
      * @param $vals
      */
-    public function in($attr, $vals)
+    public function in($attr, $vals, $not = false)
     {
         if($this->where == '')
         {
@@ -666,6 +665,8 @@ class Db extends Iterable_object
         {
             $this->where .= ' AND ';
         }
+
+        $op = $not ? 'NOT IN' : "IN";
 
         if(!(is_array($vals) && empty($vals)))
         {
@@ -682,7 +683,7 @@ class Db extends Iterable_object
                     unset($vals[$k]);
                 }
 
-                $this->where .= " $attr IN ('" . implode("','", $vals) . "') ";
+                $this->where .= " $attr $op ('" . implode("','", $vals) . "') ";
 
                 if($n)
                 {

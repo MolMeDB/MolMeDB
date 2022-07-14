@@ -71,9 +71,26 @@ class ApiEndpoint
         }
         else if(in_array(ApiEndpoint::ENDPOINT_PRIVATE, $this->access_types))
         {
-            // TODO
-            // Check if valid user info
-            // $access = true;
+            $token = $this->request->auth_token;
+
+            if(!$token)
+            {
+                header("WWW-Authenticate: " . "Basic realm=\"MolMeDB Internal request\"");
+                header("HTTP/1.0 401 Unauthorized");
+                echo 'Invalid username or password.';
+            }
+
+            $user = Users::instance()->where(array
+                (
+                    'token' => $token
+                ))->get_one();
+
+            if(!$user->id)
+            {
+                ResponseBuilder::unauthorized();
+            }
+
+            $access = true;
         }
 
         if(!$access && in_array(ApiEndpoint::ENDPOINT_INTERNAL, $this->access_types))
@@ -82,7 +99,56 @@ class ApiEndpoint
             $server_token = Config::get('api_access_token');
             $access = ($token && $token === $server_token);
 
-            if(!$server_token)
+            if(!$access)
+            {
+                if(!$token)
+                {
+                    header("WWW-Authenticate: " . "Basic realm=\"MolMeDB Internal request\"");
+                    header("HTTP/1.0 401 Unauthorized");
+                    echo 'Invalid username or password.';
+                }
+                else // If not match server token, try admin login info
+                {
+                    if(!$this->request->auth_username || !$this->request->auth_password)
+                    {
+                        ResponseBuilder::unauthorized();
+                    }
+
+                    $pass = Users::return_fingerprint($this->request->auth_password);
+                    $user = Users::instance()->where(array
+                        (
+                            'name' => $this->request->auth_username,
+                            'password' => $pass
+                        ))->get_one();
+
+                    if(!$user->id)
+                    {
+                        $user = Users::instance()->where(array
+                        (
+                            'token' => $this->request->auth_token
+                        ))->get_one();
+                        
+                        if(!$user->id)
+                        {
+                            ResponseBuilder::unauthorized();
+                        }
+                    }
+
+                    $admin = Db::instance()->queryOne('
+                        SELECT * FROM gp_usr
+                        WHERE id_user = ? AND id_group = ?', 
+                        array($user->id, 1));
+
+                    if(!$admin->id_group) // Must be admin
+                    {
+                        ResponseBuilder::unauthorized();
+                    }
+
+                    $access = true;
+                }
+            }
+
+            if(!$access && !$server_token)
             {
                 ResponseBuilder::server_error('Internal requests are not currently supported.');
             }

@@ -708,227 +708,252 @@ function get_substance_id(attr)
     return null;
 }
 
-/**
- * Returns search list item ID
- * 
- * @param {integer} id
- */
-function get_search_list_id(id)
-{
-    return 'search_' + get_attr(id);
-}
+// /**
+//  * Returns search list item ID
+//  * 
+//  * @param {integer} id
+//  */
+// function get_search_list_id(id)
+// {
+//     return 'search_' + get_attr(id);
+// }
 
-/**
- * Returns id of compound item
- * in comparator detail 
- * 
- * @param {integer} id 
- */
-function get_comparator_detail_id(id)
-{
-    return 'detail_' + get_attr(id);
-}
+// /**
+//  * Returns id of compound item
+//  * in comparator detail 
+//  * 
+//  * @param {integer} id 
+//  */
+// function get_comparator_detail_id(id)
+// {
+//     return 'detail_' + get_attr(id);
+// }
 
-/**
- * Makes comparator list to menu 
- */
-function make_comparator_list()
-{
-    // Get all 
-    var keys = Object.keys(localStorage), i = keys.length;
+// /**
+//  * Makes comparator list to menu 
+//  */
+// function make_comparator_list()
+// {
+//     // Get all 
+//     var keys = Object.keys(localStorage), i = keys.length;
 
-    while (i--) 
-    {
-        var id = get_substance_id(keys[i]);
+//     while (i--) 
+//     {
+//         var id = get_substance_id(keys[i]);
 
-        if(!id)
-        {
-            continue;
-        }
+//         if(!id)
+//         {
+//             continue;
+//         }
 
-        var attr = keys[i];
+//         var attr = keys[i];
 
-        var name = localStorage.getItem(keys[i]);
+//         var name = localStorage.getItem(keys[i]);
 
-        // Add to comparator list
-        var ul = document.getElementById("comparator-ul");
-        var div = document.createElement("div");
-        var text = document.createElement("span");
-        var func = "remove_from_comparator('" + attr + "')";
-        var span = document.createElement("span");
+//         // Add to comparator list
+//         var ul = document.getElementById("comparator-ul");
+//         var div = document.createElement("div");
+//         var text = document.createElement("span");
+//         var func = "remove_from_comparator('" + attr + "')";
+//         var span = document.createElement("span");
 
-        text.innerHTML = name;
-        span.classList.add("glyphicon");
-        span.classList.add("glyphicon-remove");
-        span.classList.add("comp-list-remove");
-        div.appendChild(span);
-        div.appendChild(text);
-        div.setAttribute("id", attr);
-        div.setAttribute("onclick", func)
-        div.classList.add('dropdown-text');
-        ul.appendChild(div);
+//         text.innerHTML = name;
+//         span.classList.add("glyphicon");
+//         span.classList.add("glyphicon-remove");
+//         span.classList.add("comp-list-remove");
+//         div.appendChild(span);
+//         div.appendChild(text);
+//         div.setAttribute("id", attr);
+//         div.setAttribute("onclick", func)
+//         div.classList.add('dropdown-text');
+//         ul.appendChild(div);
 
-        // Toggle search list items
-        var search_list_item = document.getElementById(get_search_list_id(id));
+//         // Toggle search list items
+//         var search_list_item = document.getElementById(get_search_list_id(id));
 
-        if(search_list_item)
-        {
-            var span = search_list_item.children[0];
+//         if(search_list_item)
+//         {
+//             var span = search_list_item.children[0];
 
-            // Change icon and color
-            search_list_item.classList.toggle("btn-primary");
-            search_list_item.classList.toggle("btn-danger");
-            span.classList.toggle("glyphicon-plus");
-            span.classList.toggle("glyphicon-minus");
-        }
-    }
-}
+//             // Change icon and color
+//             search_list_item.classList.toggle("btn-primary");
+//             search_list_item.classList.toggle("btn-danger");
+//             span.classList.toggle("glyphicon-plus");
+//             span.classList.toggle("glyphicon-minus");
+//         }
+//     }
+// }
 
-/**
- * Adds new record to comparator list 
- * 
- * @param {integer} id  - Compound ID
- * @param {string} name - Compound name
- */
-function add_to_comparator(id, name)
-{
-    var attr = get_attr(id);
-    var comparator_detail_id = get_comparator_detail_id(id);
-    var search_list_item = document.getElementById(get_search_list_id(id));
+// /**
+//  * Adds new record to comparator list 
+//  * 
+//  * @param {integer} id  - Compound ID
+//  * @param {string} name - Compound name
+//  */
+// function add_to_comparator(id, name)
+// {
+//     var attr = get_attr(id);
+//     var comparator_detail_id = get_comparator_detail_id(id);
+//     var search_list_item = document.getElementById(get_search_list_id(id));
 
-    // Checks if object is already stored
-    if (is_in_comparator(id))
-    {
-        return true;
-    }
+//     // Checks if object is already stored
+//     if (is_in_comparator(id))
+//     {
+//         return true;
+//     }
 
-    // Store new record
-    localStorage.setItem(attr, name);
+//     // Store new record
+//     localStorage.setItem(attr, name);
 
-    // Add to comparator list
-    var ul = document.getElementById("comparator-ul");
-    var div = document.createElement("div");
-    var func = "remove_from_comparator('" + attr + "')";
-    var span = document.createElement("span");
-    span.classList.add("glyphicon");
-    span.classList.add("glyphicon-remove");
-    span.classList.add("comp-list-remove");
-    div.appendChild(span);
-    div.appendChild(document.createTextNode(name));
-    div.setAttribute("id", attr);
-    div.setAttribute("onclick", func)
-    div.classList.add('dropdown-text');
-    ul.appendChild(div);
+//     // Add to comparator list
+//     var ul = document.getElementById("comparator-ul");
+//     var div = document.createElement("div");
+//     var func = "remove_from_comparator('" + attr + "')";
+//     var span = document.createElement("span");
+//     span.classList.add("glyphicon");
+//     span.classList.add("glyphicon-remove");
+//     span.classList.add("comp-list-remove");
+//     div.appendChild(span);
+//     div.appendChild(document.createTextNode(name));
+//     div.setAttribute("id", attr);
+//     div.setAttribute("onclick", func)
+//     div.classList.add('dropdown-text');
+//     ul.appendChild(div);
 
-    // Toggle in search list if exists
-    if(search_list_item)
-    {
-        var span = search_list_item.children[0];
+//     // Toggle in search list if exists
+//     if(search_list_item)
+//     {
+//         var span = search_list_item.children[0];
 
-        // Change icon and color
-        search_list_item.classList.toggle("btn-primary");
-        search_list_item.classList.toggle("btn-danger");
-        span.classList.toggle("glyphicon-plus");
-        span.classList.toggle("glyphicon-minus");
-    }
-}
+//         // Change icon and color
+//         search_list_item.classList.toggle("btn-primary");
+//         search_list_item.classList.toggle("btn-danger");
+//         span.classList.toggle("glyphicon-plus");
+//         span.classList.toggle("glyphicon-minus");
+//     }
+// }
 
-/**
- * Checks if item with given ID is already in comparator list
- * 
- * @param {integer} id - Compound ID
- * 
- * @return {boolean} 
- */
-function is_in_comparator(id)
-{
-    id = get_substance_id(id);
+// /**
+//  * Checks if item with given ID is already in comparator list
+//  * 
+//  * @param {integer} id - Compound ID
+//  * 
+//  * @return {boolean} 
+//  */
+// function is_in_comparator(id)
+// {
+//     id = get_substance_id(id);
 
-    var attr = get_attr(id);
+//     var attr = get_attr(id);
 
-    if (localStorage.getItem(attr))
-    {
-        return true;
-    }
+//     if (localStorage.getItem(attr))
+//     {
+//         return true;
+//     }
 
-    return false;
-}
+//     return false;
+// }
 
-/**
- * Removes compound from comparator list
- * 
- * @param {string} id - Compound ID 
- */
-function remove_from_comparator(id)
-{
-    var id = get_substance_id(id);
+// /**
+//  * Removes compound from comparator list
+//  * 
+//  * @param {string} id - Compound ID 
+//  */
+// function remove_from_comparator(id)
+// {
+//     var id = get_substance_id(id);
 
-    var attr = get_attr(id);
-    var btn_search_list_id = get_search_list_id(id);
-    var comparator_detail_id = get_comparator_detail_id(id);
+//     var attr = get_attr(id);
+//     var btn_search_list_id = get_search_list_id(id);
+//     var comparator_detail_id = get_comparator_detail_id(id);
 
-    // Remove from comparator list
-    var ul = document.getElementById("comparator-ul");
-    var li = document.getElementById(attr);
+//     // Remove from comparator list
+//     var ul = document.getElementById("comparator-ul");
+//     var li = document.getElementById(attr);
 
-    if(ul && li)
-    {
-        ul.removeChild(li);
-    }
+//     if(ul && li)
+//     {
+//         ul.removeChild(li);
+//     }
 
-    // Toggle in search list
-    var btn = document.getElementById(btn_search_list_id);
+//     // Toggle in search list
+//     var btn = document.getElementById(btn_search_list_id);
 
-    // Remove from comparator detail list
-    var comparator_item = document.getElementById(comparator_detail_id);
+//     // Remove from comparator detail list
+//     var comparator_item = document.getElementById(comparator_detail_id);
 
-    if(comparator_item !== null)
-    {
-        comparator_item.remove();
-    }
+//     if(comparator_item !== null)
+//     {
+//         comparator_item.remove();
+//     }
 
-    if (btn && btn.classList.contains('btn-danger')) 
-    {
-        var span = btn.children[0];
-        btn.classList.toggle("btn-danger"); 
-        btn.classList.toggle("btn-primary");
-        span.classList.toggle("glyphicon-minus"); 
-        span.classList.toggle("glyphicon-plus");
-    }
+//     if (btn && btn.classList.contains('btn-danger')) 
+//     {
+//         var span = btn.children[0];
+//         btn.classList.toggle("btn-danger"); 
+//         btn.classList.toggle("btn-primary");
+//         span.classList.toggle("glyphicon-minus"); 
+//         span.classList.toggle("glyphicon-plus");
+//     }
 
-    // Remove from storage
-    localStorage.removeItem(attr);
-}
+//     // Remove from storage
+//     localStorage.removeItem(attr);
+// }
 
-/**
- * Removes all from local storage
- */
-function flush_comparator_list()
-{
-    var keys = Object.keys(localStorage), i = keys.length;
+// /**
+//  * Removes all from local storage
+//  */
+// function flush_comparator_list()
+// {
+//     var keys = Object.keys(localStorage), i = keys.length;
 
-    while (i--) 
-    {
-        var id = get_substance_id(keys[i]);
+//     while (i--) 
+//     {
+//         var id = get_substance_id(keys[i]);
 
-        if(!id)
-        {
-            continue;
-        }
+//         if(!id)
+//         {
+//             continue;
+//         }
 
-        remove_from_comparator(id);
-    }
+//         remove_from_comparator(id);
+//     }
 
-    var btn = document.getElementById("btn-addALL");
+//     var btn = document.getElementById("btn-addALL");
 
-    if(!btn)
-    {
-        return;
-    }
+//     if(!btn)
+//     {
+//         return;
+//     }
     
-    if (btn.classList.contains("btn-danger")) 
+//     if (btn.classList.contains("btn-danger")) 
+//     {
+//         btn.classList.toggle("btn-danger"); btn.classList.toggle("btn-primary");
+//         btn.innerHTML = "Add all to comparator";
+//     }
+// }
+
+window.addEventListener("load", function()
+{
+    /**
+     * Init all small whispers
+     */
+    $('.onHover_parent').each((i, el) =>
     {
-        btn.classList.toggle("btn-danger"); btn.classList.toggle("btn-primary");
-        btn.innerHTML = "Add all to comparator";
-    }
-}
+        var wind = $(el).find('.onHover')[0];
+
+        if(!wind)
+        {
+            return;
+        }
+
+        let endpoint = $(wind).data('endpoint');
+        let GET_params = $(wind).data('get');
+        let POST_params = $(wind).data('post');
+
+        if(GET_params)
+        {
+            $(wind).html(ajax_request(endpoint, GET_params, "GET", 'html'));
+        }
+    })
+});

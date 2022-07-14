@@ -3,7 +3,7 @@
     <input hidden id="idSubstance" value="<?= $substance->id ?>">
     <div class="content">
         <div>
-            <p class="compoundTitle"><?= $substance->name ?></p>
+            <p class="compoundTitle"><?= $substance->name == $substance->identifier ? 'Identifier: ' . $substance->identifier : $substance->name ?></p>
             <?php if (session::is_admin()) : ?>
                 <p style="text-align: right; font-size: 20px;"><a href="/edit/Compound/<?= $substance->id ?>/<?= $substance->name ?>"><span class="glyphicon glyphicon-edit"></span> Edit</a></p>
             <?php endif ?>
@@ -359,7 +359,14 @@
                                 <div style="color: <?= $color ?>; font-weight: bold;"><?= $cat_2['name'] ?></div>
                                 <div class="category-items">
                                     <?php foreach($cat_2['children'] as $item) : ?>
-                                    <button class="btn-methods" id="btn_meth_<?=$item['id_element']?>" onclick="showRows(this, '<?= $substance->id ?>')"><?= $item['name'] ?></button>
+                                    <div class="onHover_parent">
+                                        <button class="btn-methods" id="btn_meth_<?=$item['id_element']?>" onclick="showRows(this, '<?= $substance->id ?>')"><?= $item['name'] ?></button>
+                                        <span class="onHover_sign glyphicon glyphicon-info-sign" style="right: 7px; top:25px;"></span>
+                                        <span class="onHover" data-endpoint="methods/whisper" data-get='<?= json_encode(array
+                                        (
+                                            'id_method' => $item['id_element']
+                                        )) ?>'></span>
+                                    </div>
                                     <?php endforeach ?>
                                 </div>
                             </div>

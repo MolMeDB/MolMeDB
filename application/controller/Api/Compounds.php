@@ -47,7 +47,7 @@ class ApiCompounds extends ApiController
      * 
      * @param @required $id - Substance ID
      * 
-     * @PATH(/relatives/<id:^MM\d+>)
+     * @PATH(/relatives/<id:^[M]*\d+>)
      */
     public function get_relatives($id)
     {

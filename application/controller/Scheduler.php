@@ -14,19 +14,24 @@ class SchedulerController extends Controller
      */
     function __construct()
     {
-        $this->pid = self::PID_PREFIX . getmypid();
+        $this->pid = getmypid();
         parent::__construct();
+        // Holds info about run time
+        $this->time = new Time();
     }
 
     /**Holds PID */
     private $pid;
+    
+    /**
+     * @var Scheduler_runs
+     */
+    private $run;
 
-    private $debug_DES = FALSE && DEBUG;
-    private $debug_CID = FALSE && DEBUG;
-    private $debug_CTD = FALSE && DEBUG;
-    private $debug_FMD = FALSE && DEBUG;
-
-    const PID_PREFIX = 'pid:';
+    /**
+     * @var Scheduler_runs[]
+     */
+    private $runs = [];
 
     /**
      * Specifies publicly accessible functions
@@ -36,9 +41,28 @@ class SchedulerController extends Controller
         'run',
         // 'log_sub_changes',
         // 'fragment_molecules'
-        // 'validate_substance_identifiers'
+        'validate_substance_identifiers'
     );
 
+    /**
+     * Prints message to the console
+     * 
+     * @param string $msg
+     */
+    private function print($msg, $print_time = TRUE)
+    {
+        $time = strtotime('now') - $this->time->current();
+        $time = date('i:s', $time);
+
+        if($print_time)
+        {
+            echo " -> $time - $msg \n";
+        }
+        else
+        {
+            echo " -> $msg \n";
+        }
+    }
 
     /**
      * Main scheduler funtion
@@ -46,59 +70,37 @@ class SchedulerController extends Controller
      */
     public function run()
     {
-
-        // Holds info about run time
-        $time = $this->time = new Time();
-
-        echo '--- RUN ' . $time->get_string() . " ---\n";
+        echo '--- RUN ' . $this->time->get_string() . " ---\n";
         try
         {
             if(!$this->config->get(Configs::S_ACTIVE))
             {
-                echo 'Scheduler is not active.';
+                $this->print('Scheduler is not active.');
                 return;
             }
-
-            // TODO restrictions
-            $this->match_functional_pairs();
-            // $this->link_functional_groups();
-            die;
 
             // Send all unsent emails
             if($this->config->get(Configs::EMAIL_ENABLED))
             {
-                $this->protected_call('send_emails', []);
-                echo "Emails sent. \n";
+                // $this->protected_call('send_emails', []);
             }
 
             // Delete substances without interactions
-            if($this->debug_DES || 
-                ($this->check_time($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)) && 
+            if(($this->check_time($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)) && 
                 $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
             {
-                echo "Deleting empty substances. \n";
                 $this->protected_call('delete_empty_substances', []);
             }
 
             // Checks interactions datasets
-            if($this->debug_CID || 
-                ($this->check_time($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME)) && 
+            if(($this->check_time($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME)) && 
                 $this->config->get(Configs::S_VALIDATE_PASSIVE_INT)))
             {
-                echo "Checking interaction datasets.\n";
                 $this->protected_call('check_interaction_datasets', []);
             }
 
-            // Fragment molecules forever
-            if(TRUE)
-            {
-                echo "Checking interaction datasets.\n";
-                $this->protected_call('fragment_molecules', []);
-            }
-
             // Checks transporter datasets - NOW INACTIVATED
-            if($this->debug_CTD ||
-                ($this->check_time($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME)) && 
+            if(($this->check_time($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME)) && 
                 $this->config->get(Configs::S_VALIDATE_ACTIVE_INT)))
             {
                 // TODO
@@ -106,19 +108,10 @@ class SchedulerController extends Controller
                 // echo "Transporter datasets checked.\n";
             }
 
-            // ---- Molecules data autofill ---- //
-            // RUN FOREVER
-            if($this->config->get(Configs::S_VALIDATE_SUBSTANCES))
-            {
-                echo "Subtance validations is running. \n";
-                $this->protected_call('validate_substance_identifiers', []);
-            }
-
             // Once per day, update stats data
             if(($this->check_time($this->config->get(Configs::S_UPDATE_STATS_TIME)) && 
                 $this->config->get(Configs::S_UPDATE_STATS)))
             {
-                echo "Updating stats data. \n";
                 $this->protected_call('update_stats', []);
             }
 
@@ -126,9 +119,7 @@ class SchedulerController extends Controller
             if(($this->check_time($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME)) && 
                 $this->config->get(Configs::S_CHECK_PUBLICATIONS)))
             {
-                echo "Updating publications data. \n";
                 $this->protected_call('update_publications', []);
-                echo "Deleting empty publications. \n";
                 $this->protected_call('delete_empty_publications', []);
             }
 
@@ -136,18 +127,32 @@ class SchedulerController extends Controller
             if(($this->check_time($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME)) && 
                 $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
             {
-                echo "Deleting empty membranes/methods. \n";
                 $this->protected_call('delete_empty_membranes_methods', []);
             }
 
-            echo "DONE \n";
+            // Run always
+            if(TRUE)
+            {
+                $this->protected_call('fragment_molecules', []);
+                // Link molecules by functional groups
+                $this->protected_call('match_functional_pairs', []);
+            }
+
+            // ---- Molecules data autofill ---- //
+            // RUN FOREVER
+            if($this->config->get(Configs::S_VALIDATE_SUBSTANCES))
+            {
+                $this->protected_call('validate_substance_identifiers', []);
+            }
+
+            $this->print("Scheduler END.");
         }
         catch(Exception $e)
         {
             $text = "General error occured while scheduler was running.\n\n" . $e->getMessage();
-            echo $text . ' in ' . $time->get_string();
+            $this->print($text);
 
-            self::end_pid_sessions($this->pid);
+            $this->run->report_crash($this->run->pid, $e);
 
             try
             {
@@ -158,7 +163,7 @@ class SchedulerController extends Controller
             }
             catch(Exception $e)
             {
-                echo 'Cannot make report file - ' . $e->getMessage();
+                $this->print('Cannot make report file - ' . $e->getMessage());
                 $this->send_email_to_admins($text, 'Scheduler error');
                 return;
             }
@@ -166,7 +171,7 @@ class SchedulerController extends Controller
             $this->send_email_to_admins($text, 'Scheduler error', $filePath);
         }
 
-        echo '-------------------------';
+        $this->print('-------------------------');
     }
 
     /**
@@ -179,34 +184,55 @@ class SchedulerController extends Controller
         // Check, if func groups are linked
         $total = Fragments_enum_types::instance()->count_all();
 
-        if(!$total)
+        // Is already linked?
+        $sj = Scheduler_runs::instance()->where(array
+        (
+            'method'    => 'link_functional_groups',
+        ))->order_by('id', 'DESC')->get_one();
+
+        if($sj->status == Scheduler_runs::STATE_RUNNING)
         {
-            $this->link_functional_groups();
+            $text = 'Waiting for finish of `link_funcional_groups` process.';
+            $this->run->note = $text;
+            $this->print($text);
+            return;
         }
 
-        // check 10 molecules per run
-        $limit = 100;
-
-        $last_id = Config::get('scheduler_func_pairs_last_id');
-
-        if(!$last_id)
+        if(!$sj->id || !$total)
         {
-            $last_id = 1;
-        }
-
-        $all = Substances::instance()->where('id >=', $last_id)->limit($limit)->select_list('id')->get_all();
-
-        try
-        {
-            foreach($all as $r)
+            if(!$this->protected_call('link_functional_groups', []))
             {
-                $r->save_functional_relatives();
-                Config::set('scheduler_func_pairs_last_id', $r->id);
+                $this->run->note = 'Link functional group failed. Leaving...';
+                $this->print('Link functional group failed. Leaving...');
+                return;
             }
         }
-        catch(Exception $e) // TODO
+
+        // check $limit molecules per run
+        $limit = 100;
+
+        $all = Substance_pairs::instance()->get_unmatched_molecules($limit);
+
+        foreach($all as $r)
         {
-            echo $e->getMessage();
+            try
+            {
+                Db::beginTransaction();
+                $r->save_functional_relatives();
+                Db::commitTransaction();
+            }
+            catch(Exception $e)
+            {
+                Db::rollbackTransaction();
+                echo $e->getMessage();
+                $ex = new MmdbException($e->getMessage(), '', 0, $e);
+                $this->run->id_exception = $ex->getExceptionId();
+                // Inform admin and exit
+                $this->send_email_to_admins(
+                    'Exception thrown during `match_functional_pairs` method run.</br>' . $e->getMessage()
+                );
+                throw $ex;
+            }
         }
     }
 
@@ -274,59 +300,91 @@ class SchedulerController extends Controller
         // Check, if exists
         if(!method_exists($this, $name))
         {
-            echo 'Invalid method called in scheduler.';
+            $this->print('Invalid method called in scheduler.');
             die;
         }
 
-        // Check, if exists pid running this method
-        $exists_pid = Config::get('scheduler_pid_' . $name);
+        $run = new Scheduler_runs();
 
-        if($exists_pid)
+        // Check, if exists pid running this method
+        $exists = $run->get_by_method_name($name, $run::STATE_RUNNING);
+
+        if($exists->id)
         {
-            $p = str_replace(self::PID_PREFIX, '', $exists_pid);
             // Check, if process is still running
-            if(file_exists("/proc/$p"))
+            if($exists->is_pid_running())
             {
-                echo 'Method ' . $name . ' looks like still running from previous session. PID: ' . $p . "\n";
-                return;
+                $this->print('Method ' . $name . ' looks like still running from previous session.' . $exists->__toString());
+                return false;
             }
-            else // Not running, but not unbinded - unexpected error had to occur
+            else
             {
-                $text = 'PID: ' . $p . ' including calling method Scheduler->' . $name . ' probably unexpectedly failed. Current time: ' . date('Y-m-d H:i:s');  
+                $text = $exists->__toString() . ' including calling method Scheduler->' . $name . ' probably unexpectedly failed. Current time: ' . date('Y-m-d H:i:s');  
                 $this->send_email_to_admins($text, 'Scheduler error');
-                echo 'Error occured during processing PID: ' . $p;
-                self::end_pid_sessions($exists_pid);
-                die;
+                $this->print('Error occured during processing ' . $exists->__toString());
+                $exists->report_crash($exists->pid);
             }
         }
 
-        // Set pid for current session
-        Config::set('scheduler_pid_' . $name, $this->pid);
+        $run->pid = $this->pid;
+        $run->method = $name;
+        $run->params = json_encode($arguments);
+        $run->status = $run::STATE_RUNNING;
+        $run->datetime = date('Y-m-d H:i:s');
+        $run->save();
 
-        // Call method
-        $this->$name(...$arguments);
+        // $this->runs[$name] = $run;
 
-        // After end, release pid
-        Config::set('scheduler_pid_' . $name, NULL);
+        $this->print("Method `$name` is running.");
+
+        $prev_run = $this->run;
+
+        try
+        {
+            // Call method
+            $this->run = $run;
+            $this->$name(...$arguments);
+            $this->run = $prev_run;
+        }
+        catch(MmdbException $e)
+        {
+            $this->run = $prev_run;
+            $run->status = $run::STATE_ERROR;
+            $run->id_exception = $e->getExceptionId();
+            $run->save();
+            $this->print("Method `$name` failed.");
+
+            $this->send_email_to_admins(
+                "Method `$name` run failed. Exception id: " . $e->getExceptionId()
+            );
+            return false;
+        }
+        catch(Exception $e)
+        {
+            $this->run = $prev_run;
+            $ex = new MmdbException('General error occured.', '', 0, $e);
+            $run->status = $run::STATE_ERROR;
+            $run->id_exception = $ex->getExceptionId();
+            $run->save();
+            $this->print("Method `$name` failed.");
+            
+            $this->send_email_to_admins(
+                "Method `$name` run failed. Exception id: " . $ex->getExceptionId()
+            );
+            return false;
+        }
+
+        // After end
+        $run->status = $run::STATE_DONE;
+        $run->save();
+        $this->print("Method `$name` executed.");
+        return true;
     }
 
     /**
-     * Ends all sessions for given pid
-     * 
-     * @param int $pid
+     * Should be run only once. Matches all substance changes
      * 
      */
-    private static function end_pid_sessions($pid)
-    {
-        $rows = Configs::instance()->where('value', $pid)->get_all();
-
-        foreach($rows as $r)
-        {
-            $r->value = NULL;
-            $r->save();
-        }
-    }
-
     public function log_sub_changes()
     {
         // Deletes
@@ -476,7 +534,7 @@ class SchedulerController extends Controller
 
             if(!$vi->init_substance_identifiers($s))
             {
-                echo "ERROR OCCURED: " . $s->id . ' / ' . $s->name . '.';
+                $this->print("ERROR OCCURED: " . $s->id . ' / ' . $s->name . '.');
                 die;
             }
         }
@@ -581,11 +639,11 @@ class SchedulerController extends Controller
         // Get non-fragmented substances
         $sf_model = new Substances_fragments();
 
-        echo "Fragmentation started.\n";
+        $this->print("Fragmentation started.");
 
         $substances = $sf_model->get_non_fragmented_substances(10000);
 
-        echo 'Try to fragment total: ' . count($substances) . ' molecules. \n';
+        $this->print('Try to fragment total: ' . count($substances) . ' molecules.');
 
         $rdkit = new Rdkit();
 
@@ -602,7 +660,6 @@ class SchedulerController extends Controller
             try
             {
                 Db::beginTransaction();
-
                 $s->check_identifiers();
 
                 // Timeout in secs
@@ -736,19 +793,15 @@ class SchedulerController extends Controller
                 $err->datetime = date('Y-m-d H:i:s');
 
                 $err->save();
+
+                $this->run->id_exception = $e->getExceptionId();
             }
             catch(Exception $e)
             {
                 Db::rollbackTransaction();
-                Config::set('scheduler_fragmentation_last_run', NULL);
-                echo $e->getMessage();
-                die;
+                throw $e;
             }
         }
-
-        echo "Fragmentation done. \n";
-
-        Config::set('scheduler_fragmentation_last_run', NULL);
     }
 
 
@@ -884,13 +937,13 @@ class SchedulerController extends Controller
 
             if(!count($substances))
             {
-                echo 'No substance found for validation.';
+                $this->print('No substance found for validation.');
                 return;
             }
         }
         catch(Exception $e)
         {
-            echo $e->getMessage();
+            $this->print($e->getMessage());
             return;
         }
 
@@ -962,7 +1015,7 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        echo $e->getMessage();
+                        $this->print($e->getMessage());
                         $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }   
                 }
@@ -1118,7 +1171,7 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        echo $e->getMessage();
+                        $this->print($e->getMessage());
                         $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     } 
                 }
@@ -1183,7 +1236,7 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        echo $e->getMessage();
+                        $this->print($e->getMessage());
                         $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
@@ -1224,7 +1277,7 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        echo $e->getMessage();
+                        $this->print($e->getMessage());
                         $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
@@ -1311,7 +1364,7 @@ class SchedulerController extends Controller
                     }
                     catch(Exception $e)
                     {
-                        echo $e->getMessage();
+                        $this->print($e->getMessage());
                         $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
@@ -1419,11 +1472,11 @@ class SchedulerController extends Controller
                                 unlink($file_name);
                             }
                             // LOG ERROR
-                            echo $e->getMessage();
+                            $this->print($e->getMessage());
                         }
                     }
 
-                    if(count($exists) == count($accessible))
+                    if(count($exists) == count($accessible) || count($exists) > 1)
                     {
                         $log->update_state($s->id, $log->type, $log::STATE_DONE);
                     }
@@ -1437,18 +1490,18 @@ class SchedulerController extends Controller
                 ### End of finding 3D structure ###
                 ###################################
 
-                ####################################
-                ## Try to find TITLE as best name ##
-                ####################################
-
-                $log = $logs_arr[$log::TYPE_TITLE];
+                #########################################
+                ## Try to find new name by identifier ###
+                #########################################
+                $log = $logs_arr[$log::TYPE_NAME_BY_IDENTIFIERS];
 
                 if(!$log->is_done())
                 {
                     try
                     {
-                        $found = false;
-
+                        $name_o = $val_identifiers->get_active_substance_value($s->id, $val_identifiers::ID_NAME);
+                        $unreachable = false;
+                        $found = [];
                         $priority_methods = ['get_title', 'get_name'];
 
                         foreach($val_identifiers::$identifier_servers[$val_identifiers::ID_NAME] as $servers)
@@ -1464,6 +1517,7 @@ class SchedulerController extends Controller
 
                                 if(!$server || !$server->is_reachable())
                                 {
+                                    $unreachable = true;
                                     continue;
                                 }
 
@@ -1487,120 +1541,61 @@ class SchedulerController extends Controller
 
                                 $source = $val_identifiers->find_source($s->id, $server->last_identifier);
 
-                                if(!$source || $source->state != $source::STATE_VALIDATED)
+                                if(!$source->id)
                                 {
                                     continue;
                                 }
 
-                                $found = true;
-
-                                $new = new Validator_identifiers();
-
-                                $found_value = ucfirst(strtolower($found_value));
+                                $new = Validator_identifiers::instance()->where(array
+                                    (
+                                        'id_substance'  => $s->id,
+                                        'id_source'     => $source->id,
+                                        'server'        => $server_id,
+                                        'identifier'    => Validator_identifiers::ID_NAME,
+                                        'value'         => $found_value
+                                    ))
+                                    ->get_one();
 
                                 $new->id_substance = $s->id;
                                 $new->id_source = $source->id;
                                 $new->server = $server_id;
-                                $new->identifier = $new::ID_NAME;
+                                $new->identifier = Validator_identifiers::ID_NAME;
                                 $new->value = $found_value;
-                                $new->state = $source->is_credible($server_id) ? $new::STATE_VALIDATED : $new::STATE_NEW;
-                                $new->active = $new->state == $new::STATE_VALIDATED ? $new::ACTIVE : $new::INACTIVE;
+                                $new->state = $source->is_credible($server_id) ? Validator_identifiers::STATE_VALIDATED : Validator_identifiers::STATE_NEW;
+                                $new->active = Validator_identifiers::INACTIVE;
                                 
                                 $new->save();
-                                break;
-                            }
 
-                            if($found)
-                            {
-                                $log->update_state($s->id, $log->type, $log::STATE_DONE);
-                                break;
+                                $found[] = $new;
                             }
                         }
-                    }
-                    catch(Exception $e)
-                    {
-                        echo $e->getMessage();
-                        $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
-                    }
-                }
 
-                ///////////////////////
-
-                #########################################
-                ## Try to find new name by identifier ###
-                #########################################
-                $log = $logs_arr[$log::TYPE_NAME_BY_IDENTIFIERS];
-
-                if(!$log->is_done())
-                {
-                    try
-                    {
-                        $name_o = $val_identifiers->get_active_substance_value($s->id, $val_identifiers::ID_NAME);
-                        if(!$name_o->id || Identifiers::is_identifier($name_o->value))
+                        // Iterate over found values and activate the best one
+                        $best = [];
+                        foreach($found as $vi)
                         {
-                            $found = false;
-
-                            foreach($val_identifiers::$identifier_servers[$val_identifiers::ID_NAME] as $servers)
-                            {
-                                if(is_numeric($servers))
-                                {
-                                    $servers = [$servers];
-                                }
-
-                                foreach($servers as $server_id)
-                                {
-                                    $server = $remote_servers[$server_id];
-
-                                    if(!$server || !$server->is_reachable())
-                                    {
-                                        continue;
-                                    }
-
-                                    $found_value = $server->get_name($s);
-
-                                    if(!$found_value)
-                                    {
-                                        continue;
-                                    }
-
-                                    $source = $val_identifiers->find_source($s->id, $server->last_identifier);
-
-                                    if(!$source || $source->state != $source::STATE_VALIDATED)
-                                    {
-                                        continue;
-                                    }
-
-                                    $found = true;
-
-                                    $new = new Validator_identifiers();
-
-                                    $new->id_substance = $s->id;
-                                    $new->id_source = $source->id;
-                                    $new->server = $server_id;
-                                    $new->identifier = $new::ID_NAME;
-                                    $new->value = $found_value;
-                                    $new->state = $source->is_credible($server_id) ? $new::STATE_VALIDATED : $new::STATE_NEW;
-                                    $new->active = $new->state == $new::STATE_VALIDATED ? $new::ACTIVE : $new::INACTIVE;
-                                    
-                                    $new->save();
-                                    break;
-                                }
-
-                                if($found)
-                                {
-                                    $log->update_state($s->id, $log->type, $log::STATE_DONE);
-                                    break;
-                                }
-                            }
+                            $best[$vi->id] = 100-strlen($vi->value);
                         }
-                        else
+
+                        arsort($best);
+
+                        if(count($best) && 
+                            (Identifiers::is_identifier($name_o->value) || $name_o->id_source != null))
+                        {
+                            $best = array_keys($best)[0];
+                            $best = new Validator_identifiers($best);
+                            $best->active = Validator_identifiers::ACTIVE;
+                            $best->save();
+                        }
+
+                        if(!$unreachable) // If all servers were reachable, can close the log
                         {
                             $log->update_state($s->id, $log->type, $log::STATE_DONE);
                         }
                     }
-                    catch(Exception $e)
+                    catch(MmdbException $e)
                     {
-                        echo $e->getMessage();
+                        $this->print($e->getMessage());
                         $log->update_state($s->id, $log->type, $log::STATE_ERROR, $e->getMessage());
                     }
                 }
@@ -1610,15 +1605,14 @@ class SchedulerController extends Controller
                 ##########################
 
                 $s->check_identifiers();
+                return;
             }
             catch(Exception $e)
             {
                 // Save error
-                echo $e->getMessage();
+                throw $e;
             }
         }
-
-        echo "Substance validation done.";
     }
 
 
@@ -1683,8 +1677,8 @@ class SchedulerController extends Controller
             }
             catch(Exception $e)
             {
-                echo "Error occured while deleting membrane [" . $membrane->name . "].\n";
-                echo $e->getMessage() . "\n";
+                $this->print("Error occured while deleting membrane [" . $membrane->name . "].");
+                $this->print($e->getMessage());
             }
         }
 
@@ -1697,19 +1691,19 @@ class SchedulerController extends Controller
             }
             catch(Exception $e)
             {
-                echo "Error occured while deleting method [" . $method->name . "].\n";
-                echo $e->getMessage() . "\n";
+                $this->print("Error occured while deleting method [" . $method->name . "].");
+                $this->print($e->getMessage());
             }
         }
 
         if($del_membranes)
         {
-            echo "Total $del_membranes membranes deleted.\n";
+            $this->print("Total $del_membranes membranes deleted.");
         }
 
         if($del_methods)
         {
-            echo "Total $del_methods methods deleted.\n";
+            $this->print("Total $del_methods methods deleted.");
         }
     }
 
@@ -1751,20 +1745,20 @@ class SchedulerController extends Controller
                 // Send emails
                 $this->send_email_to_admins('A total of ' . $total . ' molecules were deleted.', 'Scheduler autoremove report', $file_path);
 
-                // Add info about log file
-                $scheduler_log = new Log_scheduler();
+                // // Add info about log file
+                // $scheduler_log = new Log_scheduler();
 
-                $scheduler_log->error_count = 0;
-                $scheduler_log->success_count = $total;
-                $scheduler_log->report_path = $file_path;
-                $scheduler_log->type = Log_scheduler::T_SUBSTANCE_AUTOREMOVE;
+                // $scheduler_log->error_count = 0;
+                // $scheduler_log->success_count = $total;
+                // $scheduler_log->report_path = $file_path;
+                // $scheduler_log->type = Log_scheduler::T_SUBSTANCE_AUTOREMOVE;
 
-                $scheduler_log->save();
+                // $scheduler_log->save();
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                echo $e->getMessage();
-                echo 'Cannot make `substance_delete` log file.';
+                $this->print($e->getMessage());
+                $this->run->id_exception = $e->getExceptionId();
             }
 
             echo('Total ' . $total . ' substances were deleted.' . "\n");
@@ -1801,7 +1795,7 @@ class SchedulerController extends Controller
 
         if(count($duplcs))
         {
-            echo 'Total ' . count($duplcs) . " datasets were joined. \n";
+            $this->print('Total ' . count($duplcs) . " datasets were joined.");
         }
 
         // Remove empty datasets
@@ -1822,7 +1816,7 @@ class SchedulerController extends Controller
 
         if($removed > 0)
         {
-            echo 'Total ' . $removed . " empty datasets were removed. \n";
+            $this->print('Total ' . $removed . " empty datasets were removed.");
         }
 
         if($removed > 0 || $joioned > 0)
@@ -1848,20 +1842,20 @@ class SchedulerController extends Controller
                 // Send emails
                 $this->send_email_to_admins($text, 'Scheduler dataset checker report');
 
-                // Add info about log file
-                $scheduler_log = new Log_scheduler();
+                // // Add info about log file
+                // $scheduler_log = new Log_scheduler();
 
-                $scheduler_log->error_count = 0;
-                $scheduler_log->success_count = $joioned + $removed;
-                $scheduler_log->report_path = $file_path;
-                $scheduler_log->type = Log_scheduler::T_INT_CHECK_DATASET;
+                // $scheduler_log->error_count = 0;
+                // $scheduler_log->success_count = $joioned + $removed;
+                // $scheduler_log->report_path = $file_path;
+                // $scheduler_log->type = Log_scheduler::T_INT_CHECK_DATASET;
 
-                $scheduler_log->save();
+                // $scheduler_log->save();
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                echo $e->getMessage();
-                echo 'Cannot make `interaction_delete/join` log file.';
+                $this->print($e->getMessage());
+                $this->run->id_exception = $e->getExceptionId();
             }
         }
     }
@@ -1897,7 +1891,7 @@ class SchedulerController extends Controller
 
         // if(count($duplcs))
         // {
-        //     echo 'Total ' . count($duplcs) . " datasets were joined. \n";
+        //     $this->print('Total ' . count($duplcs) . " datasets were joined. \n";
         // }
 
         // // Remove empty datasets
@@ -1918,7 +1912,7 @@ class SchedulerController extends Controller
 
         // if($removed > 0)
         // {
-        //     echo 'Total ' . $removed . " empty datasets were removed. \n";
+        //     $this->print('Total ' . $removed . " empty datasets were removed. \n";
         // }
     }
 
@@ -2002,82 +1996,5 @@ class SchedulerController extends Controller
 
             $email_queue->save();
         }
-    }
-
-
-    /**
-     * Fills logPs for given substance
-     * 
-     * @param Substances $s
-     */
-    private function fill_logP($s)
-    {
-        $interaction_model = new Interactions();
-        $log = new Scheduler_errors();
-
-        // Try to find LogPs in another DBs
-        if($s->pubchem)
-        {
-            $pubchem = new Pubchem();
-
-            if($pubchem->is_connected())
-            {
-                $data = $pubchem->get_data($s->pubchem);
-
-                if($data && $data->logP && $data->logP != '')
-                {
-                    $membrane = $pubchem->get_logP_membrane();
-                    $method = $pubchem->get_logP_method();
-                    $dataset = $pubchem->get_dataset();
-                    $publication = $pubchem->get_publication();
-
-                    if(!$membrane || !$membrane->id || !$method || !$method->id ||
-                        !$dataset || !$dataset->id || !$publication || !$publication->id)
-                    {
-                        $s->save();
-                        throw new Exception('Cannot fill Pubchem LogP. Pubchem default membrane/method/dataset/publication was not found!');
-                    }
-
-                    // Exists yet in DB?
-                    $exists = $interaction_model->where(
-                        array
-                        (
-                            'id_substance'  => $s->id,
-                            'id_membrane'   => $membrane->id,
-                            'id_method'     => $method->id,
-                            'id_reference'  => $publication->id,
-                            'id_dataset'    => $dataset->id
-                        ))
-                        ->get_one();
-
-                    if($exists->id)
-                    {
-                        $exists->LogK = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->logP);
-                        $exists->save();
-                    }
-                    else
-                    {
-                        $interaction = new Interactions();
-
-                        $interaction->id_substance = $s->id;
-                        $interaction->id_membrane = $membrane->id;
-                        $interaction->id_method = $method->id;
-                        $interaction->id_dataset = $dataset->id;
-                        $interaction->id_reference = $publication->id;
-                        $interaction->LogK = Upload_validator::get_attr_val(Upload_validator::LOG_P, $data->logP);
-                        $interaction->temperature = NULL;
-                        $interaction->charge = NULL;
-                        $interaction->user_id = NULL;
-                        $interaction->visibility = Interactions::VISIBLE;
-
-                        $interaction->save();
-
-                        $log->add($s->id, 'Filled Pubchem_LogP value.');
-                    }
-                }
-            }
-        }
-
-        $s->save();
     }
 }

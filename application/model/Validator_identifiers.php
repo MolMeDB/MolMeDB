@@ -226,7 +226,7 @@ class Validator_identifiers extends Db
      * @param int $id_substance
      * @param int $identifier_type
      * 
-     * @return Validator_identifiers|null - Null if not exists
+     * @return Validator_identifiers
      */
     public function find_source($id_substance, $identifier_type)
     {
@@ -247,12 +247,7 @@ class Validator_identifiers extends Db
             ->order_by('create_date', 'DESC')
             ->get_one();
 
-        if($record->id)
-        {
-            return $record;
-        }
-
-        return null;
+        return $record;
     }
 
     /**
@@ -565,6 +560,23 @@ class Validator_identifiers extends Db
      */
     public function save()
     {
+        // Adjust values to requested format for new downloaded records
+        if(!$this->id && $this->id_source)
+        {
+            if($this->identifier == Validator_identifiers::ID_NAME && !Identifiers::is_identifier($this->value))
+            {
+                $name = trim($this->value);
+                $uc = strtoupper($name);
+
+                if($name === $uc)
+                {
+                    $name = ucfirst(strtolower($name));
+                }
+
+                $this->value = $name;
+            }
+        }
+
         $t = false;
 
         // Check first, if similar record already exists if new record

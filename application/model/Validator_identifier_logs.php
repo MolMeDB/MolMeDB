@@ -43,7 +43,7 @@ class Validator_identifier_logs extends Db
     const STATE_DONE = 1; // Adds 0 score
     const STATE_ERROR = 2; // Adds 100 score
     const STATE_MULTIPLE_ERROR = 3; // Adds 0 score
-    const STATE_PROCESSING = 5; // Adds 10 score - Same as NO-STATE
+    const STATE_PROCESSING = 5; // Adds 10 score
 
     /**
      * Holds all types

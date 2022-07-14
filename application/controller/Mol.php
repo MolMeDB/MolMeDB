@@ -146,7 +146,7 @@ class MolController extends Controller
             'total_passive' => $total_passive,
             'total_active'  => $total_active
         );
-        
+
         // Membranes and methods
         $this->view->methods_cat = $methods_cat;
 

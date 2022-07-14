@@ -19,6 +19,16 @@ class Time
     }
 
     /**
+     * Returns current time 
+     * 
+     * @return int
+     */
+    public function current()
+    {
+        return $this->current;
+    }
+
+    /**
      * Reloads time
      */
     function reload()

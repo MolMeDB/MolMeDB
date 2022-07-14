@@ -1026,10 +1026,10 @@ div.info-text > div {
 }
 
 p.compoundTitle{
-    text-align: center; 
-    margin-top: 20px;
     font-size: 30px;
     font-weight: bold;
+    padding: 0 30px;
+    color: #1a427e;
 }
 
 .dropbtn {
@@ -2454,7 +2454,7 @@ p.attribute {
     background-color: inherit;
     font-size: 12px;
     font-weight: bold;
-    padding: 5px 10px;
+    padding: 6px 10px;
     margin-top: 5px;
     margin-right: 5px;
 }
@@ -2471,7 +2471,7 @@ p.attribute {
     background-color: inherit;
     font-size: 12px;
     font-weight: bold;
-    padding: 5px 10px;
+    padding: 6px 10px;
     margin-top: 5px;
     margin-right: 5px;
     text-decoration: none;

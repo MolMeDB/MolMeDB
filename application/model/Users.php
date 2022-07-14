@@ -6,6 +6,7 @@
  * @property integer $id
  * @property string $name
  * @property string $password
+ * @property string $token
  * @property bool $guest
  * @property bool $superadmin
  * @property datetime $createDateTime
@@ -35,6 +36,24 @@ class Users extends Db
     {
         $salt = 'fd16sdfd2ew#$%';
         return hash('sha256', $password . $salt);
+    }
+
+    /**
+     * Generates access token for user
+     */
+    public function save_new_token()
+    {
+        if(!$this->id)
+        {
+            return;
+        }
+
+        $ms_username = Text::generateRandomString(8,false);
+        $ms_pass = Text::generateRandomString(16,true);
+        $token = base64_encode("$ms_username:$ms_pass");
+
+        $this->token = $token;
+        $this->save();
     }
 
     /**

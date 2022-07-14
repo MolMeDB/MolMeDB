@@ -403,91 +403,96 @@ class Enum_types extends Db
             return [];
         }
 
-        function get_inner_categories($link_id, $fixed = false)
+        if(!function_exists('get_inner_categories'))
         {
-            $link = new Enum_type_links($link_id);
-            $res = [];
-
-            $items = $link->where(array
-                (
-                    'id_parent_link' => $link_id,
-                    'et.type' => $link->enum_type->type
-                ))
-                ->join('enum_types et ON et.id = enum_type_links.id_enum_type')
-                ->select_list('enum_type_links.id as id, et.name as name, et.type as type')
-                ->order_by('name')
-                ->get_all();
-
-            if($link->enum_type->type == Enum_types::TYPE_MEMBRANE_CATS)
+            function get_inner_categories($link_id, $fixed = false)
             {
-                $model = new Membranes();
-            }
-            elseif($link->enum_type->type == Enum_types::TYPE_METHOD_CATS)
-            {
-                $model = new Methods();
-            }
-            elseif($link->enum_type->type == Enum_types::TYPE_TRANSPORTER_CATS)
-            {
-                $model = new Transporter_targets();
-                $t_model = new Transporters();
-            }
+                $link = new Enum_type_links($link_id);
+                $res = [];
 
-            foreach($items as $i)
-            {
-                $ch = get_inner_categories($i->id);
+                $items = $link->where(array
+                    (
+                        'id_parent_link' => $link_id,
+                        'et.type' => $link->enum_type->type
+                    ))
+                    ->join('enum_types et ON et.id = enum_type_links.id_enum_type')
+                    ->select_list('enum_type_links.id as id, et.id as id_enum_type, et.name as name, et.type as type')
+                    ->order_by('name')
+                    ->get_all();
 
-                // Get membrane/methods.... 
-                $ms = [];
-                $total = 1;
-
-                if(isset($model))
+                if($link->enum_type->type == Enum_types::TYPE_MEMBRANE_CATS)
                 {
-                    $ms = $model->get_linked_data($i->id);
+                    $model = new Membranes();
+                }
+                elseif($link->enum_type->type == Enum_types::TYPE_METHOD_CATS)
+                {
+                    $model = new Methods();
+                }
+                elseif($link->enum_type->type == Enum_types::TYPE_TRANSPORTER_CATS)
+                {
+                    $model = new Transporter_targets();
+                    $t_model = new Transporters();
                 }
 
-                $d = array
-                (
-                    'name' => $i->name,
-                    'id_element' => $i->id,
-                    'fixed' => $fixed,
-                    'children' => []
-                );
-
-                if(count($ch))
+                foreach($items as $i)
                 {
-                    $ch = Arr::sort_by_key($ch, 'name');
-                    $d['children'] = $ch;
-                }
+                    $ch = get_inner_categories($i->id);
 
-                if(count($ms))
-                {
-                    foreach($ms as $m)
+                    // Get membrane/methods.... 
+                    $ms = [];
+                    $total = 1;
+
+                    if(isset($model))
                     {
-                        if($i->type == Enum_types::TYPE_TRANSPORTER_CATS)
-                        {
-                            $total = $t_model->where('id_target', $m->id)->count_all();
-                        }
-
-                        $d['children'][] = array
-                        (
-                            'name' => $m->name,
-                            'id_element' => $m->id,
-                            'value' => $total,
-                            'last' => 1
-                        );  
+                        $ms = $model->get_linked_data($i->id);
                     }
+
+                    $d = array
+                    (
+                        'name' => $i->name,
+                        'id_element' => $i->id,
+                        'id_enum_type' => $i->id_enum_type,
+                        'fixed' => $fixed,
+                        'children' => []
+                    );
+
+                    if(count($ch))
+                    {
+                        $ch = Arr::sort_by_key($ch, 'name');
+                        $d['children'] = $ch;
+                    }
+
+                    if(count($ms))
+                    {
+                        foreach($ms as $m)
+                        {
+                            if($i->type == Enum_types::TYPE_TRANSPORTER_CATS)
+                            {
+                                $total = $t_model->where('id_target', $m->id)->count_all();
+                            }
+
+                            $d['children'][] = array
+                            (
+                                'name' => $m->name,
+                                'id_element' => $m->id,
+                                'id_enum_type' => $i->id_enum_type,
+                                'value' => $total,
+                                'last' => 1
+                            );  
+                        }
+                    }
+
+                    $d['children'] = Arr::sort_by_key($d['children'], 'name');
+                    $res[] = $d;
                 }
 
-                $d['children'] = Arr::sort_by_key($d['children'], 'name');
-                $res[] = $d;
+                return $res;
             }
-
-            return $res;
         }
 
         // Get init ids
         $e = $this->queryOne('
-                SELECT DISTINCT etl.id, et.name 
+                SELECT DISTINCT etl.id, et.name, et.id as id_enum_type 
                 FROM enum_type_links etl
                 JOIN enum_types et ON et.id = etl.id_enum_type 
                 WHERE id_enum_type = ? AND id_enum_type = id_enum_type_parent
@@ -540,6 +545,7 @@ class Enum_types extends Db
                 (
                     'name' => $u->name,
                     'id_element' => $u->id,
+                    'id_enum_type' => $u->id_enum_type,
                     'value' => $total,
                     'last' => true
                 );

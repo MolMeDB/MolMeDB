@@ -28,6 +28,16 @@ class Substance_pairs extends Db
     }
 
     /**
+     * Instance
+     * 
+     * @return Substance_pairs
+     */
+    public static function instance()
+    {
+        return parent::instance();
+    }
+
+    /**
      * Links to another tables
      */
     protected $has_one = array
@@ -106,5 +116,36 @@ class Substance_pairs extends Db
         }
 
         parent::save();
+    }
+
+    
+    /**
+     * Returns new molecules for matching
+     * 
+     * @param int $limit
+     * 
+     * @return Substances[]
+     */
+    public function get_unmatched_molecules($limit)
+    {
+       $ids = Db::instance()->queryAll("
+            SELECT DISTINCT id
+            FROM substances
+            WHERE id NOT IN (
+                SELECT id_substance_1
+                FROM substance_fragmentation_pairs
+                WHERE id_substance_1 = id_substance_2
+            )
+            LIMIT $limit
+        ");
+
+        $result = [];
+
+        foreach($ids as $row)
+        {
+            $result[] = new Substances($row->id);
+        }
+
+        return $result;
     }
 }

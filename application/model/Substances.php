@@ -122,6 +122,19 @@ class Substances extends Db
             return null;
         }
 
+        $pairs = [];
+
+        // Save init flag
+        $r = new Substance_pairs();
+            
+        $r->id_substance_1 = $substance->id;
+        $r->id_substance_2 = $substance->id;
+        $r->id_core = $fragment->id;
+        $r->substance_1_fragmentation_order = 1;
+        $r->substance_2_fragmentation_order = 1;
+
+        $pairs[$substance->id] = [$r];
+
         // Get all variants of the same fragment
         $options = Fragments_options::instance()->get_all_options_ids($fragment->id);
 
@@ -132,8 +145,6 @@ class Substances extends Db
         {
             $bigger = array_merge($bigger, Fragmentation::get_all_with_fragment_id($id, $substance->id));
         }
-
-        $pairs = [];
 
         // Save pairs
         foreach($bigger as $fragmentation)
@@ -606,6 +617,7 @@ class Substances extends Db
             {
                 $chembl->active = $chembl::INACTIVE;
                 $chembl->active_msg = $e->getMessage();
+                $chembl->state = $vi::STATE_INVALID;
                 $chembl->save();
 
                 $chembl = null; 
@@ -640,6 +652,7 @@ class Substances extends Db
             {
                 $drugbank->active = $drugbank::INACTIVE;
                 $drugbank->active_msg = $e->getMessage();
+                $drugbank->state = $vi::STATE_INVALID;
                 $drugbank->save();
 
                 $drugbank = null; 
@@ -649,9 +662,38 @@ class Substances extends Db
                 
             }
         }
-        
 
-        $this->name = $name && $name->id ? $name->value : NULL;
+        if($name && $name->id)
+        {
+            $this->name = $name->value;
+        }
+        else
+        {
+            $this->name = $this->identifier;
+            $exists = $vi->where(array
+            (
+                'id_substance'  => $this->id,
+                'identifier'    => $vi::ID_NAME,
+                'value'         => $this->identifier 
+            ))->get_one();
+
+            if(!$exists->id)
+            {
+                $exists = new Validator_identifiers();
+                $exists->id_substance = $this->id;
+                $exists->id_source = NULL;
+                $exists->server = NULL;
+                $exists->identifier = $vi::ID_NAME;
+                $exists->id_user = NULL;
+                $exists->value = $this->identifier;
+            }
+
+            $exists->state = $vi::STATE_VALIDATED;
+            $exists->active = $vi::ACTIVE;
+
+            $exists->save();
+        }
+        
         $this->SMILES = $smiles && $smiles->id ? $smiles->value : NULL;
         $this->inchikey = $inchikey && $inchikey->id ? $inchikey->value : NULL;
         $this->pubchem = $pubchem && $pubchem->id ? $pubchem->value : NULL;
@@ -1233,21 +1275,18 @@ class Substances extends Db
      * 
      * @return array
      */
-    public function search_by_method($query, $pagination)
+    public function search_by_method($id, $pagination)
     {
-        $query = '%' . $query . '%';
         return $this->queryAll('
             SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
             FROM substances as s
             JOIN interaction as i ON s.id = i.id_substance
-            WHERE i.id_method IN (SELECT id
-                                        FROM methods
-                                        WHERE name LIKE ?)
+            WHERE i.id_method = ?
                 AND i.visibility = ?
             ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
             LIMIT ?,?', array
             (
-                $query,
+                $id,
                 Interactions::VISIBLE,
                 ($pagination-1)*10,
                 10
@@ -1261,22 +1300,19 @@ class Substances extends Db
      * 
      * @return array
      */
-    public function search_by_method_count($query)
+    public function search_by_method_count($id)
     {
-        $query = '%' . $query . '%';
         return $this->queryOne('
             SELECT COUNT(*) as count
             FROM(
                 SELECT DISTINCT s.id
                 FROM substances as s
                 JOIN interaction as i ON s.id = i.id_substance
-                WHERE i.id_method IN (SELECT id
-                                            FROM methods
-                                            WHERE name LIKE ?)
+                WHERE i.id_method = ?
                     AND i.visibility = ?) as tab', 
             array
             (
-                $query,
+                $id,
                 Interactions::VISIBLE
             ))->count;
     }
@@ -1284,26 +1320,23 @@ class Substances extends Db
     /**
      * Search substances for given membrane name
      * 
-     * @param string $query
+     * @param int $id
      * @param integer $pagination
      * 
      * @return array
      */
-    public function search_by_membrane($query, $pagination)
+    public function search_by_membrane($id, $pagination)
     {
-        $query = '%' . $query . '%';
         return $this->queryAll('
             SELECT DISTINCT name, identifier, s.id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
             FROM substances as s
             JOIN interaction as i ON s.id = i.id_substance
-            WHERE i.id_membrane IN (SELECT id
-                                        FROM membranes
-                                        WHERE name LIKE ?)
+            WHERE i.id_membrane = ?
                 AND i.visibility = ?
             ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
             LIMIT ?,?', array
             (
-                $query,
+                $id,
                 Interactions::VISIBLE,
                 ($pagination-1)*10,
                 10
@@ -1313,27 +1346,23 @@ class Substances extends Db
     /**
      * Count substances according to the membrane name
      * 
-     * @param string $query
+     * @param int $id
      * 
      * @return integer
      */
-    public function search_by_membrane_count($query)
+    public function search_by_membrane_count($id)
     {
-        $query = '%' . $query . '%';
-
         return $this->queryOne('
             SELECT COUNT(*) as count
             FROM 
                 (SELECT DISTINCT s.id 
                 FROM substances as s
                 JOIN interaction as i ON s.id = i.id_substance
-                WHERE i.id_membrane IN (SELECT id
-                                            FROM membranes
-                                            WHERE name LIKE ?)
+                WHERE i.id_membrane = ?
                     AND i.visibility = ?) as tab',
             array
             (
-                $query,
+                $id,
                 Interactions::VISIBLE
             )
             )->count;

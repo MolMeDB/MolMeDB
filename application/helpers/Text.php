@@ -129,4 +129,29 @@ class Text
         $len = strlen($needle_start);
         return (substr($text, 0, $len) === $needle_start);
     }
+
+    /**
+     * Generates random strings
+     * 
+     * @param int $length - length of string
+     * @param bool $include_non_alphabet
+     * 
+     * @return string
+     */
+    public static function generateRandomString($length = 10, $include_non_alphabet = false) 
+    {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $non_alphabet = '!@#$%^&*()_+{}"|>?<';
+        $randomString = '';
+        $len_list = [strlen($characters), strlen($non_alphabet)];
+        $list = [$characters, $non_alphabet];
+
+        for ($i = 0; $i < $length; $i++) 
+        {
+            $k = $include_non_alphabet ? rand(0,1) : 0;
+            $source = $list[$k];
+            $randomString .= $source[rand(0, $len_list[$k] - 1)];
+        }
+        return $randomString;
+    }
 }

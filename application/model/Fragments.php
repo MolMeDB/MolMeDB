@@ -77,6 +77,14 @@ class Fragments extends Db
     public function get_atom_count()
     {
         $atoms = Periodic_table::atoms_short(true);
+
+        $t = $atoms;
+
+        foreach($t as $key => $el)
+        {
+            $atoms[$key] = strlen($el) > 1 ? "\[$el\]" : $el;
+        }
+
         $regexp = '(' . implode('|', $atoms) . '){1}';
 
         $smiles = $this->smiles;

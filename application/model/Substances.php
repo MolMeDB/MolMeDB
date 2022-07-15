@@ -39,7 +39,7 @@ class Substances extends Db
         if($id && !is_array($id) && preg_match(Identifiers::PATTERN, $id))
         {
             // Find by identifier
-            $id_t = preg_replace('/^[M]{2}[0]*/', '', $id);
+            $id_t = preg_replace('/^[M]{2}[0]*/i', '', $id);
             parent::__construct($id_t);
 
             if(!$this->id)

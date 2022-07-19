@@ -50,6 +50,28 @@ class Fragments extends Db
     }
 
     /**
+     * Returns all options for given fragment
+     * 
+     * @param int $id_fragment
+     * 
+     * @return int[]
+     */
+    public function get_all_options_ids($id_fragment = null)
+    {
+        if(!$id_fragment && $this->id)
+        {
+            $id_fragment = $this->id;
+        }
+
+        if(!$id_fragment)
+        {
+            return null;
+        }
+
+        return Fragments_options::instance()->get_all_options_ids($id_fragment);
+    }
+
+    /**
      * Returns parent without links
      * 
      * @return Fragments
@@ -137,8 +159,12 @@ class Fragments extends Db
      * 
      * @return object|null
      */
-    public function prepare_fragment($smiles)
+    public function prepare_fragment($smiles = null)
     {
+        if(!$smiles && $this->smiles)
+        {
+            $smiles = $this->smiles;
+        }
         if(!$smiles)
         {
             return null;
@@ -160,7 +186,7 @@ class Fragments extends Db
      * Fills numbers to fragment links
      * 
      * @param string $smiles
-     * @param array|null $link_numbers
+     * @param array|string|null $link_numbers
      * 
      * @return string
      */
@@ -169,6 +195,11 @@ class Fragments extends Db
         if(preg_match_all('/\[\*:\]/', $smiles, $all))
         {
             $all = $all[0];
+
+            if(!is_array($link_numbers))
+            {
+                $link_numbers = explode(',', $link_numbers);
+            }
             
             if(is_array($link_numbers) && count($all) !== count($link_numbers))
             {
@@ -189,6 +220,110 @@ class Fragments extends Db
         return $smiles;
     }
 
+    /**
+     * Joins fragments
+     * - is based on corresponding link numbers
+     * 
+     * @param string[] $smiles_list
+     * 
+     * @return string|null - Null if cannot join
+     */
+    public static function join_by_links($smiles_list, $canonize = true)
+    {
+        if(!count($smiles_list))
+        {
+            return '';
+        }
+
+        $rdkit = new Rdkit();
+
+        $max_required = 0;
+        $allowed_in_run = 9;
+
+        $list_clear = [];
+
+        foreach($smiles_list as $smi)
+        {
+            $list_clear[] = preg_replace('/\[[\*0-9]+:\]/', '', $smi);
+            if(preg_match_all('/\[([0-9]+):\]/', $smi, $all))
+            {
+                $all = $all[1];
+                $max_required = $max_required < arr::max($all) ? arr::max($all) : $max_required;
+            }
+        }
+
+        $max = 0;
+
+        foreach($list_clear as $smi)
+        {
+            if(preg_match_all('/[0-9]{1}/', $smi, $all))
+            {
+                $all = $all[0];
+                $max = $max < arr::max($all) ? arr::max($all) : $max;
+            }
+        }
+
+        $allowed_in_run -= $max;
+
+        $rounds = $max_required/$allowed_in_run;
+        $rounds = $rounds == (int)$rounds ? $rounds : (int)($rounds) + 1;
+
+        $current = 9-$allowed_in_run+1;
+
+        if($current > 9)
+        {
+            return null;
+        }
+
+        while(count($smiles_list) > 1)
+        {
+            $smi = array_shift($smiles_list);
+
+            if(!preg_match_all('/\[([0-9]+):\]/', $smi, $all))
+            {
+                return null;
+            }
+
+            $all = $all[0];
+            $found = false;
+            $l = 1;
+
+            foreach($all as $a)
+            {
+                $t = $smiles_list;
+                $k_arr = $a;
+
+                foreach($t as $key => $smi2)
+                {
+                    if(strpos($smi2, $k_arr, 1) === false)
+                    {
+                        continue;
+                    }
+
+                    $found = true;
+                    $smiles_list[$key] = str_replace($k_arr, "$current", $smi, $l) . "." . str_replace($k_arr, "$current", $smi2, $l);
+                    $smiles_list[$key] = preg_replace('/(\(([0-9]+)\))/', '$2', $smiles_list[$key]);
+
+                    if($current == 9)
+                    {
+                        $smiles_list[$key] = $rdkit->canonize_smiles($smiles_list[$key]);
+                        $current = 0;  
+                    }
+                    
+                    $current++;
+                    break 2;
+                }
+            }
+
+            if(!$found)
+            {
+                return null;
+            }
+        }
+
+
+        return $canonize ? $rdkit->canonize_smiles(array_shift($smiles_list)) : array_shift($smiles_list);
+    }
 
     /**
      * Overloading of save function

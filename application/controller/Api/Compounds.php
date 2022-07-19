@@ -58,48 +58,9 @@ class ApiCompounds extends ApiController
             ResponseBuilder::not_found('Compound not found.');
         }
 
-        $all = Substance_pairs::instance()->queryAll('
-            SELECT *
-            FROM substance_fragmentation_pairs
-            WHERE id_substance_1 = ? OR id_substance_2 = ? 
-        ', array($substance->id, $substance->id));
+        $sp_model = new Substance_pairs();
 
-        $data = [];
-
-        foreach($all as $row)
-        {
-            $id_1 = Substances_fragments::instance()->where(array
-            (
-                'id_substance' => $row->id_substance_1,
-                'order_number' => $row->substance_1_fragmentation_order
-            ))->get_one()->id;
-            $id_2 = Substances_fragments::instance()->where(array
-            (
-                'id_substance' => $row->id_substance_2,
-                'order_number' => $row->substance_2_fragmentation_order
-            ))->get_one()->id;
-
-            if($row->id_substance_1 == $substance->id)
-            {
-                $data[] = (object) array
-                (
-                    'core' => new Fragments($row->id_core),
-                    'core_options' => Fragments_options::instance()->get_all_options_ids($row->id_core),
-                    'main' => new Fragmentation($id_1),
-                    'side' => new Fragmentation($id_2)
-                );   
-            }
-            else
-            {   
-                $data[] = (object) array
-                (
-                    'core' => new Fragments($row->id_core),
-                    'core_options' => Fragments_options::instance()->get_all_options_ids($row->id_core),
-                    'main' => new Fragmentation($id_2),
-                    'side' => new Fragmentation($id_1)
-                );  
-            }
-        }
+        $data = $sp_model->by_substance($substance->id);
 
         $view = new View('fragments/relatives');
         $view->data = $data;

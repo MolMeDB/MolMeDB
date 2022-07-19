@@ -59,17 +59,26 @@ class Fragments_options extends Db
     public function get_all_options_ids($id_fragment)
     {
         $all = [$id_fragment];
+        $c1 = 0;
+        $c2 = count($all);
 
-        $t = $this->queryAll('
-            SELECT id_parent, id_child
-            FROM fragments_options
-            WHERE id_child = ? OR id_parent = ?
-        ', array($id_fragment, $id_fragment));
-
-        foreach($t as $r)
+        while($c1 != $c2)
         {
-            $all[] = $r->id_child;
-            $all[] = $r->id_parent;
+            $c1 = count($all);
+
+            $t = $this->queryAll('
+                SELECT id_parent, id_child
+                FROM fragments_options
+                WHERE id_child IN ("' . implode('","', $all) . '") OR id_parent IN ("' . implode('","', $all) . '")
+            ');
+
+            $t1 = arr::get_values($t, 'id_parent');
+            $t2 = arr::get_values($t, 'id_child');
+
+            $all = arr::union($all, $t1, $t2);
+            $all = array_unique($all);
+            
+            $c2 = count($all);
         }
 
         return array_unique($all);

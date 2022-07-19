@@ -240,12 +240,15 @@ class Rdkit extends Identifier_loader
      * 
      * @return string|false
      */
-    public function canonize_smiles($smiles)
+    public function canonize_smiles($smiles, $throwable = false)
     {
         if(!self::$STATUS)
         {
             return null;
         }
+
+        // Protect links
+        $smiles = preg_replace('/\[([0-9]+):\]/', '[*:$1]', $smiles);
 
         $this->last_identifier = Validator_identifiers::ID_SMILES;
 
@@ -258,18 +261,24 @@ class Rdkit extends Identifier_loader
 
         try
         {
-            $response = self::$client->request($uri, $method, $params);
+            $response = self::$client->request($uri, $method, $params, false, 30); 
 
             if(!empty($response) && isset($response[0]) && $response[0] != '')
             {
-                return $response[0];
+                // Protect links
+                $smiles = preg_replace('/\[\*:([0-9]+)\]/', '[$1:]', $response[0]);
+                return $smiles;
             }
 
             return false;
         }
         catch(Exception $e)
         {
-            return false;
+            if($throwable)
+            {
+                throw $e;
+            }
+            return $this->canonize_smiles($smiles, true);
         }
     }
 
@@ -449,7 +458,7 @@ class Rdkit extends Identifier_loader
      * 
      * @return
      */
-    public function fragment_molecule($smiles, $throwable = false, $timeout = 20)
+    public function fragment_molecule($smiles, $throwable = false, $timeout = 120)
     {
         $this->last_identifier = Validator_identifiers::ID_SMILES;
 

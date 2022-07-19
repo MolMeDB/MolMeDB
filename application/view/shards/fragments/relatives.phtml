@@ -22,7 +22,9 @@
         <div>
             <label>Requested</label> 
             <div style="display: flex; flex-direction: row;">
-                <?php foreach($row->main->raw_fragments as $sf) : ?>
+                <?php if($row->id_substance_1 == $substance->id){$main = $row->fragmentation_1; $side = $row->fragmentation_2;}
+                    else{$main = $row->fragmentation_2; $side = $row->fragmentation_1;}?>
+                <?php foreach($main->raw_fragments as $sf) : ?>
                     <?= Html::image_structure($sf->fragment->fill_link_numbers($sf->fragment->smiles, explode(',', $sf->links))) ?>
                 <?php endforeach ?>
             </div>
@@ -35,9 +37,9 @@
             </div>
         </div>
         <div>
-            <label>Sibling [ID: <?= $row->side->id_substance ?>]</label> 
+            <label>Sibling [ID: <?= $side->id_substance ?>]</label> 
             <div style="display: flex; flex-direction: row;">
-                <?php foreach($row->side->raw_fragments as $sf) : ?>
+                <?php foreach($side->raw_fragments as $sf) : ?>
                     <div style="display: flex; flex-direction: column; padding: 0 10px;">
                         <?= Html::image_structure($sf->fragment->fill_link_numbers($sf->fragment->smiles, explode(',', $sf->links))) ?>
                         <?php $fg = $sf->fragment->get_functional_group() ?>

@@ -113,4 +113,16 @@ class arr
         
         return $arr;
     }
+
+    /**
+     * Get max value from array
+     * 
+     * @param array $data
+     * 
+     * @return mixed
+     */
+    public static function max($data)
+    {
+        return max($data);
+    }
 }

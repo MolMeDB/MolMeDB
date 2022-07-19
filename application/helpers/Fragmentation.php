@@ -98,6 +98,26 @@ class Fragmentation
     }
 
     /**
+     * Returns molecule fragmentation
+     * 
+     * @param int $id_substance
+     * @param int $order
+     * 
+     * @return Fragmentation
+     */
+    public static function get_substance_fragmentation($id_substance, $order)
+    {   
+        $t = Substances_fragments::instance()->where(array
+        (
+            'id_substance' => $id_substance,
+            'order_number' => $order
+        ))
+            ->get_one();
+
+        return new Fragmentation($t->id);
+    }
+
+    /**
      * Finds all fragmentations containing given fragment_id
      * 
      * @param int $id_fragment
@@ -152,5 +172,28 @@ class Fragmentation
         }
 
         return $results;
+    }
+
+    /**
+     * Compose fragmentation to create whole molecule
+     * 
+     * @return string
+     */
+    public function compose()
+    {
+        if(!count($this->raw_fragments))
+        {
+            throw new MmdbException('No fragments to compose.');
+        }
+
+        $fragments = [];
+        $f_model =new Fragments();
+
+        foreach($this->raw_fragments as $rf)
+        {
+            $fragments[] = $f_model->fill_link_numbers($rf->fragment->smiles, explode(',', $rf->links));
+        }
+
+        return Fragments::join_by_links($fragments);
     }
 }

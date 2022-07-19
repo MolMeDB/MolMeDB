@@ -268,7 +268,9 @@ class Substance_pairs extends Db
                 SELECT id_substance_1
                 FROM substance_fragmentation_pairs
                 WHERE id_substance_1 = id_substance_2
-            )
+            ) AND id IN (
+                SELECT DISTINCT id_substance
+                FROM substances_fragments)
             LIMIT $limit
         ");
 

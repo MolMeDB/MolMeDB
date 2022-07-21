@@ -234,6 +234,47 @@ class Rdkit extends Identifier_loader
     }
 
     /**
+     * Returns fingerprint for given smiles
+     * 
+     * @param string $smiles
+     * 
+     * @return Vector|false - False, if not found.
+     *  - Returned fingerprint must have lenght equal to 2048
+     */
+    function get_fingerprint_by_smiles($smiles)
+    {
+        if(!self::$STATUS || !$smiles)
+        {
+            return null;
+        }
+
+        $this->last_identifier = Validator_identifiers::ID_SMILES;
+
+        $uri = 'mol/fingerprint';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'mol' => $smiles
+        );
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params);
+
+            if($response && strlen($response->fingerprint) === 2048)
+            {
+                return new Vector(str_split($response->fingerprint), true);
+            }
+
+            return false;
+        }
+        catch(Exception $e)
+        {
+            return false;
+        }
+    }
+
+    /**
      * For given SMILES returns it in canonized form
      * 
      * @param string $smiles

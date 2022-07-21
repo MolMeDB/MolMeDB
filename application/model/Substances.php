@@ -1242,9 +1242,10 @@ class Substances extends Db
         $query = '%' . $query . '%';
 
         return $this->queryAll('
-            SELECT DISTINCT name, identifier, id, SMILES, MW, pubchem, drugbank, chEBI, pdb, chEMBL
-            FROM substances
-            WHERE SMILES LIKE ?
+            SELECT DISTINCT s.name, s.identifier, s.id, s.SMILES, s.MW, s.pubchem, s.drugbank, s.chEBI, s.pdb, s.chEMBL
+            FROM substances s
+            JOIN substances_fragments sf ON sf.id_substance = s.id 
+            JOIN fragments f ON f.id = sf.id_fragment AND f.smiles LIKE ? 
             ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
             LIMIT ?,?', array($query,($pagination-1)*10,10));
     }
@@ -1261,9 +1262,11 @@ class Substances extends Db
         $query = '%' . $query . '%';
 
         return $this->queryOne('
-            SELECT COUNT(*) as count
-            FROM substances
-            WHERE SMILES LIKE ?', array($query))
+            SELECT DISTINCT COUNT(s.id) as count
+            FROM substances s
+            JOIN substances_fragments sf ON sf.id_substance = s.id 
+            JOIN fragments f ON f.id = sf.id_fragment AND f.smiles LIKE ?'
+            , array($query))
         ->count;
     }
     

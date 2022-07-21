@@ -3,62 +3,115 @@
     /**
      * Callback for adding/removing items to comparator list
      */
-    $('.btn-add').each(function(index, obj)
+    // $('.btn-add').each(function(index, obj)
+    // {
+    //     // Add all button
+    //     if(index === 0)
+    //     {
+    //         $(obj).click(function()
+    //         {
+    //             // Is already in list? Then remove
+    //             if (this.classList.contains("btn-primary")) 
+    //             {
+    //                 this.innerHTML = "Delete list from the comparator";
+    //                 for (i = 1; i < btns_add.length; i++) 
+    //                 {
+    //                     if (btns_add[i].classList.contains("btn-primary"))
+    //                     {
+    //                         btns_add[i].click();
+    //                     }
+    //                 }
+    //             } 
+    //             else // Else add 
+    //             {
+    //                 this.innerHTML = "Add list to the comparator";
+    //                 for (i = 1; i < btns_add.length; i++) 
+    //                 {
+    //                     if (btns_add[i].classList.contains("btn-danger"))
+    //                     {
+    //                         btns_add[i].click();
+    //                     }
+    //                 }
+    //             }
+    //             this.classList.toggle("btn-primary");
+    //             this.classList.toggle("btn-danger");
+    //         })
+    //     }
+    //     else // Add/remove one 
+    //     {
+    //         // Set button ID
+    //         var ID = $(obj).attr('id');
+    //         $(obj).attr('id', get_search_list_id(ID));
+
+    //         // Click callback
+    //         $(obj).click(function()
+    //         {
+    //             var span = this.children[0];
+    //             var name = span.id;
+
+    //             if(is_in_comparator(ID))
+    //             {
+    //                 remove_from_comparator(ID);
+    //             }
+    //             else
+    //             {
+    //                 add_to_comparator(ID, name);
+    //             }
+    //         })
+    //     }
+    // });
+
+    var ketcher = null; 
+
+    function init_ketcher()
     {
-        // Add all button
-        if(index === 0)
+        if(ketcher)
         {
-            $(obj).click(function()
-            {
-                // Is already in list? Then remove
-                if (this.classList.contains("btn-primary")) 
-                {
-                    this.innerHTML = "Delete list from the comparator";
-                    for (i = 1; i < btns_add.length; i++) 
-                    {
-                        if (btns_add[i].classList.contains("btn-primary"))
-                        {
-                            btns_add[i].click();
-                        }
-                    }
-                } 
-                else // Else add 
-                {
-                    this.innerHTML = "Add list to the comparator";
-                    for (i = 1; i < btns_add.length; i++) 
-                    {
-                        if (btns_add[i].classList.contains("btn-danger"))
-                        {
-                            btns_add[i].click();
-                        }
-                    }
-                }
-                this.classList.toggle("btn-primary");
-                this.classList.toggle("btn-danger");
-            })
+            return;
         }
-        else // Add/remove one 
+
+        var ketcherFrame = document.getElementById('ketcher');
+
+        if ('contentDocument' in ketcherFrame)
+            ketcher = ketcherFrame.contentWindow.ketcher;
+        else // IE7
+            ketcher = document.frames['ifKetcher'].window.ketcher;
+    }
+
+    /**
+     * Finds molecules by smiles
+     */
+    $('#search_smiles').on('click', async function(el)
+    {
+        init_ketcher();
+
+        if(!ketcher)
         {
-            // Set button ID
-            var ID = $(obj).attr('id');
-            $(obj).attr('id', get_search_list_id(ID));
-
-            // Click callback
-            $(obj).click(function()
-            {
-                var span = this.children[0];
-                var name = span.id;
-
-                if(is_in_comparator(ID))
-                {
-                    remove_from_comparator(ID);
-                }
-                else
-                {
-                    add_to_comparator(ID, name);
-                }
-            })
+            return;
         }
+
+        var smiles = await ketcher.getSmiles();
+
+        if(!smiles)
+        {
+            return; // TODO
+        }
+
+        $('<form method="GET" action="/search/smiles/1"><input name="q" value="' + smiles + '"></form>').appendTo('body').submit();
+    });
+
+    $('#insert_structure').on('click', function(e)
+    {
+        init_ketcher();
+
+        let smiles = $('#insert_smiles').val();
+
+        if(!smiles || !ketcher)
+        {
+            return;
+        }
+
+        ketcher.setMolecule(smiles);
     });
 
     /**

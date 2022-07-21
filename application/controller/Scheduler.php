@@ -657,6 +657,12 @@ class SchedulerController extends Controller
                 ))
                 ->get_one();
 
+            // Not fragment mixtures etc.
+            if(preg_match('/\./', $s->SMILES))
+            {
+                continue;
+            }
+
             try
             {
                 Db::beginTransaction();

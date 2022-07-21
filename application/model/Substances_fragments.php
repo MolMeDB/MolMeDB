@@ -365,6 +365,7 @@ class Substances_fragments extends Db
             JOIN validator_identifiers vi ON vi.id_substance = s.id
             LEFT JOIN error_fragments ef ON ef.id_substance = s.id AND ef.type = ?
             WHERE sf.id IS NULL AND LENGTH(s.SMILES) <= ? AND vi.identifier = ? AND vi.state = ? AND (ef.datetime < ? OR ef.id IS NULL)
+                AND s.SMILES NOT REGEXP "\\\\."
             LIMIT ' . $limit, 
                 array
                 (

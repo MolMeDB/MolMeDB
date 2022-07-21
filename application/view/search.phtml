@@ -6,7 +6,7 @@
   <li class="active"><a data-toggle="tab" href="#compound">Name</a></li>
   <li><a data-toggle="tab" href="#membrane">Membrane</a></li>
   <li><a data-toggle="tab" href="#method">Method</a></li>
-  <li><a data-toggle="tab" href="#smiles">SMILES</a></li>
+  <li><a data-toggle="tab" href="#smiles">Structure</a></li>
   <li><a data-toggle="tab" href="#transporters">Transporters</a></li>
   <!-- <li><a data-toggle="tab" href="#uniprot">Uniprot ID</a></li> -->
 </ul>
@@ -53,13 +53,15 @@
   <div id="smiles" class="tab-pane fade">
     <div class="panel-group">
       <div class="panel panel-primary">
-        <div class="panel-heading">Search compounds by SMILES</div>
+        <div class="panel-heading">Search compounds by structure</div>
         <div class="panel-body">
           <form method="get" action="/search/smiles/1" autocomplete="off">
-            <div class="autocomplete">
-              <input type="text" class="searchEngine" name="q" id='smilesSearch' placeholder="Search compounds by SMILES">
+            <div style="margin-bottom: 5px; display: flex; flex-direction: row; justify-content: space-between; align-items:center;">
+              <input style="width: calc(100% - 70px) !important;" id="insert_smiles" type="text" class="searchEngine" name="q"  placeholder="Draw structure by SMILES">
+              <button type="button" id="insert_structure" class="btn btn-info pull-right">Insert</button>
             </div>
-            <button type="submit" class="btn btn-success pull-right">Search</button>
+              <iframe id="ketcher" src="/api/ketcher/run" width="100%" height="600"></iframe>
+              <button type="button" id="search_smiles" class="btn btn-success pull-right">Search</button>
           </form>
         </div>
       </div>

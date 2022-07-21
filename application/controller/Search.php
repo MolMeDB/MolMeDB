@@ -288,10 +288,16 @@ class SearchController extends Controller
             $query = substr($query, $start, $len);
         }
 
+        $rdkit = new Rdkit();
+
+        $smiles = $rdkit->canonize_smiles($query);
+
         try 
         {
-            $list = $substance_model->search_by_smiles($query, $pagination);
-            $total = $substance_model->search_by_smiles_count($query);
+            $smiles = $rdkit->canonize_smiles($query);
+
+            $list = $substance_model->search_by_smiles($smiles ? $smiles : $query, $pagination);
+            $total = $substance_model->search_by_smiles_count($smiles ? $smiles : $query);
         } 
         catch (ErrorUser $ex) 
         {
@@ -310,7 +316,7 @@ class SearchController extends Controller
         $this->view->list = $list;
         $this->view->count = $total;
         $this->view->show_detail = True;
-        $info = "Results for SMILES '<b>" . rawurldecode($query) . "</b>' ($total):";
+        $info = "Results for SMILES '<b>" . rawurldecode($smiles ? $smiles : $query) . "</b>' ($total):";
         $this->view->info = $info;
         $this->paginator->total_records($total);
     }

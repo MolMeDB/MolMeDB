@@ -1239,15 +1239,42 @@ class Substances extends Db
      */
     public function search_by_smiles($query, $pagination)
     {
-        $query = '%' . $query . '%';
+        if(strlen($query) < 5)
+        {
+            return $this->queryAll('
+                SELECT DISTINCT s.name, s.identifier, s.id, s.SMILES, s.MW, s.pubchem, s.drugbank, s.chEBI, s.pdb, s.chEMBL
+                FROM substances s
+                JOIN (SELECT DISTINCT id_substance
+                    FROM substances_fragments sf 
+                    JOIN fragments f ON f.id = sf.id_fragment AND f.smiles LIKE ?) as t ON s.id = t.id_substance 
+                ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
+                LIMIT ?,?', array($query,($pagination-1)*10,10));
+        }
+
+        $fragment = Fragments::instance()->where('smiles', $query)->get_one();
+
+        if($fragment->id)
+        {
+            $ids = Fragments_options::instance()->get_all_options_ids($fragment->id);
+
+            return $this->queryAll('
+                SELECT DISTINCT s.name, s.identifier, s.id, s.SMILES, s.MW, s.pubchem, s.drugbank, s.chEBI, s.pdb, s.chEMBL
+                FROM substances s
+                JOIN substances_fragments sf ON sf.id_substance = s.id AND sf.id_fragment IN ("' . implode('","', $ids) . '")
+                ORDER BY sf.similarity DESC, IF(name RLIKE "^[a-z]", 1, 2) ASC, name ASC
+                LIMIT ?,?', array(($pagination-1)*10,10));
+        }
+
+        $query_all = '%' . $query . '%';
 
         return $this->queryAll('
-            SELECT DISTINCT s.name, s.identifier, s.id, s.SMILES, s.MW, s.pubchem, s.drugbank, s.chEBI, s.pdb, s.chEMBL
+            SELECT DISTINCT s.name, s.identifier, s.id, s.SMILES, s.MW, s.pubchem, s.drugbank, s.chEBI, s.pdb, s.chEMBL, t.exact
             FROM substances s
-            JOIN substances_fragments sf ON sf.id_substance = s.id 
-            JOIN fragments f ON f.id = sf.id_fragment AND f.smiles LIKE ? 
-            ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
-            LIMIT ?,?', array($query,($pagination-1)*10,10));
+            JOIN (SELECT DISTINCT id_substance, IF(f.smiles = ?, 100/sf.total_fragments, 0) as exact
+                FROM substances_fragments sf 
+                JOIN fragments f ON f.id = sf.id_fragment AND f.smiles LIKE ?) as t ON s.id = t.id_substance 
+            ORDER BY exact DESC, IF(name RLIKE "^[a-z]", 1, 2) ASC, name ASC
+            LIMIT ?,?', array($query, $query_all,($pagination-1)*10,10));
     }
 
     /**
@@ -1259,15 +1286,43 @@ class Substances extends Db
      */
     public function search_by_smiles_count($query)
     {
-        $query = '%' . $query . '%';
+        if(strlen($query) < 5)
+        {
+            return $this->queryOne('
+                SELECT COUNT(s.id) as count
+                FROM substances s
+                JOIN (SELECT DISTINCT id_substance
+                    FROM substances_fragments sf 
+                    JOIN fragments f ON f.id = sf.id_fragment AND f.smiles LIKE ?) as t ON s.id = t.id_substance 
+                ORDER BY IF(name RLIKE "^[a-z]", 1, 2), name
+                ', array($query))->count;
+        }
+
+        $fragment = Fragments::instance()->where('smiles', $query)->get_one();
+
+        if($fragment->id)
+        {
+            $ids = Fragments_options::instance()->get_all_options_ids($fragment->id);
+
+            return $this->queryOne('
+                SELECT COUNT(s.id) as count
+                FROM substances s
+                JOIN substances_fragments sf ON sf.id_substance = s.id AND sf.id_fragment IN ("' . implode('","', $ids) . '")
+                ORDER BY sf.similarity DESC, IF(name RLIKE "^[a-z]", 1, 2) ASC, name ASC')->count;
+        }
+
+        $query_all = '%' . $query . '%';
 
         return $this->queryOne('
-            SELECT DISTINCT COUNT(s.id) as count
+            SELECT COUNT(s.id) as count
             FROM substances s
-            JOIN substances_fragments sf ON sf.id_substance = s.id 
-            JOIN fragments f ON f.id = sf.id_fragment AND f.smiles LIKE ?'
-            , array($query))
-        ->count;
+            JOIN (SELECT DISTINCT id_substance, IF(f.smiles = ?, 100/sf.total_fragments, 0) as exact
+                FROM substances_fragments sf 
+                JOIN fragments f ON f.id = sf.id_fragment AND f.smiles LIKE ?) as t ON s.id = t.id_substance 
+            ORDER BY exact DESC, IF(name RLIKE "^[a-z]", 1, 2) ASC, name ASC
+            ', array($query, $query_all))->count;
+        
+        
     }
     
     /**

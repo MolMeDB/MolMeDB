@@ -73,7 +73,7 @@ class Fragments_options extends Db
             ');
 
             $t1 = arr::get_values($t, 'id_parent');
-            $t2 = arr::get_values($t, 'id_child');
+            $t2 = arr::get_values($t, 'id_child');  
 
             $all = arr::union($all, $t1, $t2);
             $all = array_unique($all);

@@ -295,7 +295,7 @@ function sh_t(id)
   $('#'+id).addClass('active fade in');
 }
 
-sh_t("<?= $active_tab ?>");
+<?= isset($active_tab) ? "sh_t(\"$active_tab\")" : '' ?>;
 // sh_t("smiles");
 
 </script>

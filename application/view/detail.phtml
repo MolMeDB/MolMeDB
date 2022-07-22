@@ -23,7 +23,8 @@
                             </span>
                         </div>
                         <div class="structure">
-                            <div id="2dStructure" class="structure2D"></div>
+                            <div id="2dStructure" class="structure2D">
+                            </div>
                             <div id="loader"></div>
                         </div>
                     </div>
@@ -324,12 +325,18 @@
                     <div><b>Similar entries</b></div>
                 </div>
                 <div class="flex-row" style="width: 100%; overflow-x: auto; padding-bottom: 40px;">
+                <?php if(count($similar_entries)) : ?>
                     <?php foreach($similar_entries as $record) : ?>
                         <?= Render_similar_entry_item::print($record, $stats_interactions) ?>
                     <?php endforeach ?>
                     <?php if($total_similar_entries) : ?>
                         <?= Render_similar_entry_item::print_next($total_similar_entries, count($similar_entries)) ?>
-                    <?php endif ?> 
+                    <?php endif ?>
+                <?php else : ?>
+                    <div class="alert-panel" style="width: 100%;">
+                        <div>No data found...</div>
+                    </div> 
+                <?php endif ?>
                 </div>
             </div>
         </div>

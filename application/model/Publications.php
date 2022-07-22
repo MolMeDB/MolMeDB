@@ -83,24 +83,23 @@ class Publications extends Db
 
        return $this->queryAll('
             SELECT DISTINCT *
-            FROM
+            FROM substances
+            WHERE id IN
             (
-                SELECT DISTINCT s.*
+                SELECT DISTINCT i.id_substance
                 FROM interaction i 
-                JOIN datasets d ON d.id = i.id_dataset
-                JOIN publications p ON (p.id = d.id_publication OR p.id = i.id_reference) AND p.id = ?
-                JOIN substances s ON s.id = i.id_substance
+                JOIN datasets d ON d.id = i.id_dataset AND d.visibility = 1
+                WHERE i.id_reference = ? OR d.id_publication = ?
                 
                 UNION
 
-                SELECT DISTINCT s.*
+                SELECT DISTINCT t.id_substance
                 FROM transporters t
-                JOIN transporter_datasets td ON td.id = t.id_dataset
-                JOIN publications p ON (p.id = td.id_reference OR p.id = t.id_reference) AND p.id = ?
-                JOIN substances s ON s.id = t.id_substance
-            ) as t
+                JOIN transporter_datasets td ON td.id = t.id_dataset AND td.visibility = 1
+                WHERE td.id_reference = ? OR t.id_reference = ?
+            ) 
             LIMIT ?,10
-        ', array($this->id, $this->id, ($pagination-1)*10));
+        ', array($this->id, $this->id, $this->id, $this->id, ($pagination-1)*10));
     }
 
     /**
@@ -113,25 +112,24 @@ class Publications extends Db
         return $this->queryOne('
             SELECT COUNT(*) as count
             FROM
-            (SELECT DISTINCT *
-            FROM
+            (SELECT DISTINCT id
+                FROM substances
+                WHERE id IN
                 (
-                    SELECT DISTINCT s.*
+                    SELECT DISTINCT i.id_substance
                     FROM interaction i 
-                    JOIN datasets d ON d.id = i.id_dataset
-                    JOIN publications p ON (p.id = d.id_publication OR p.id = i.id_reference) AND p.id = ?
-                    JOIN substances s ON s.id = i.id_substance
+                    JOIN datasets d ON d.id = i.id_dataset AND d.visibility = 1
+                    WHERE i.id_reference = ? OR d.id_publication = ?
                     
                     UNION
 
-                    SELECT DISTINCT s.*
+                    SELECT DISTINCT t.id_substance
                     FROM transporters t
-                    JOIN transporter_datasets td ON td.id = t.id_dataset
-                    JOIN publications p ON (p.id = td.id_reference OR p.id = t.id_reference) AND p.id = ?
-                    JOIN substances s ON s.id = t.id_substance
-                ) as t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset AND td.visibility = 1
+                    WHERE td.id_reference = ? OR t.id_reference = ?
+                )
             ) as t2
-            ', array($this->id, $this->id))->count;
+            ', array($this->id, $this->id, $this->id, $this->id))->count;
     }
 
 
@@ -143,33 +141,34 @@ class Publications extends Db
     public function get_nonempty_refs()
     {
         return $this->queryAll('
-            SELECT DISTINCT tab.* 
-            FROM 
-            (
-                (SELECT p.*
-                FROM interaction as i 
-                JOIN publications as p ON i.id_reference = p.id 
-                WHERE p.id > 0 AND i.visibility = 1 
-                )
+            SELECT DISTINCT *
+            FROM publications
+            WHERE id IN (
+                SELECT id_reference
+                FROM interaction as i
+                WHERE id_reference > 0 AND i.visibility = 1
 
-                UNION
+                UNION 
 
-                (SELECT p.*
-                FROM datasets as d
-                JOIN publications as p ON d.id_publication = p.id 
-                WHERE p.id > 0 AND d.visibility = 1 
-                )
+                SELECT id_publication 
+                FROM datasets
+                WHERE id_publication > 0 AND visibility = 1
 
-                UNION
+                UNION 
 
-                (SELECT p.*
-                FROM transporters as t 
+                SELECT t.id_reference
+                FROM transporters t
                 JOIN transporter_datasets td ON td.id = t.id_dataset
-                JOIN publications as p ON (t.id_reference = p.id OR td.id_reference = p.id) 
-                WHERE p.id > 0 AND td.visibility = 1 
-                )
-            ) as tab
-            ORDER BY citation');
+                WHERE td.visibility = 1 AND t.id_reference > 0
+
+                UNION 
+
+                SELECT id_reference
+                FROM transporter_datasets
+                WHERE visibility = 1 AND id_reference > 0
+            )
+            ORDER BY citation
+        ');
     }
 
     /**

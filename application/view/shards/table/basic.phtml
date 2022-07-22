@@ -7,6 +7,7 @@
 <script src="<?= Url::base() ?>/media/js/bootstrap.min.js"></script>
 
 <div style="overflow: auto;">
+    <?php if(!$empty_data): ?>
     <table class="basic-table" style="<?= $css ?>">
     <tbody id="order-body_<?= $id ?>">
         <!-- FILTERS -->
@@ -53,10 +54,6 @@
         </tr>
         <!-- </thead> -->
         <!-- <tbody id="order-body"> -->
-            <?php if($empty_data) :?> 
-<!-- TODO -->
-            <?php else : ?>
-
             <?php $i = 1; ?>
             <?php foreach($data as $row) : ?>
                 <?php $visible = $i <= $pag_to && $i >= $pag_from ?>
@@ -93,7 +90,6 @@
             </tr>
             <?php $i++ ?>
             <?php endforeach ?>
-            <?php endif?>
 
             <tr class="table-pagination">
                 <td colspan="<?= $total_columns ?>">
@@ -128,6 +124,11 @@
             </tbody>
         <!-- </tbody> -->
     </table>
+    <?php else: ?>
+        <div class="alert-panel">
+            <div><?= $no_data_text ?></div>
+        </div>
+    <?php endif?>
 </div>
 
 <!-- Add javascript functions -->
@@ -285,6 +286,9 @@
                     $(e).hide();
                 }
             });
+
+            GLOBAL_TABLE_DATA["<?= $id ?>"].start_index = start_index;
+            GLOBAL_TABLE_DATA["<?= $id ?>"].end_index = end_index;
 
             // Append new sorted list
             let filters = $(GLOBAL_TABLE_DATA["<?= $id ?>"].tbody).find('.table-filters');

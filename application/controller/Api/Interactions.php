@@ -336,6 +336,7 @@ class ApiInteractions extends ApiController
             Table::S_PAGINATIOR_POSITION => 'left',
             Table::FILTER_HIDE_COLUMNS => true,
             Table::FILTER_HIDE_COLUMNS_DEFAULT => true,
+            Table::S_NODATA => "No data found..."
         ]);
 
         $t->column('membrane_name')

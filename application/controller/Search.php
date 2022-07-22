@@ -85,6 +85,7 @@ class SearchController extends Controller
 
         $this->view->membrane_categories = json_encode($membrane_categories);
         $this->view->method_categories = json_encode($method_categories);
+        $this->view->active_tab = $type;
 
         $this->paginator = new View_paginator();
         $this->paginator->path("$type")
@@ -165,7 +166,6 @@ class SearchController extends Controller
         $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
         $this->view->info = $info;
-        $this->view->active_tab = 'transporters';
         $this->paginator->total_records($total);
     }
 
@@ -207,7 +207,6 @@ class SearchController extends Controller
         $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
         $this->view->info = $info;
-        $this->view->active_tab = 'compound';
         $this->paginator->total_records($total);
     }
 
@@ -256,7 +255,6 @@ class SearchController extends Controller
 
         $this->view->list = $list;
         $this->view->count = $total;
-        $this->view->active_tab = 'membrane';
         $this->view->show_detail = True;
         $info = "Results for membrane '<b>" . Html::anchor(
             'browse/membranes?target=' . $membrane->id,
@@ -320,7 +318,6 @@ class SearchController extends Controller
         $this->view->count = $total;
         $this->view->show_detail = True;
         $info = "Results for SMILES '<b>" . rawurldecode($smiles ? $smiles : $query) . "</b>' ($total):";
-        $this->view->active_tab = 'smiles';
         $this->view->info = $info;
         $this->view->smiles = $smiles ? $smiles : $query;
         $this->paginator->total_records($total);
@@ -369,7 +366,6 @@ class SearchController extends Controller
 
         $this->view->count = $total;
         $this->view->list = $list;
-        $this->view->active_tab = 'method';
         $this->view->show_detail = True;
         $info = "Results for method '<b>" . Html::anchor(
             'browse/methods?target=' . $method->id,

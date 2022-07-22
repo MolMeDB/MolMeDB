@@ -289,3 +289,22 @@ tr.table-pagination .table-pagination-arrows span{
     position: inherit;
     color: red;
 }
+
+.alert-panel
+{
+    -webkit-box-shadow: 4px 5px 16px 2px rgba(0,0,0,0.17); 
+box-shadow: 4px 5px 16px 2px rgba(0,0,0,0.17);
+    font-family: Roboto, sans-serif;
+    text-indent: initial;
+    border-spacing: 2px;
+    border: 1px solid rgba(0,0,0,.12);
+    width: auto;
+    min-width: 500px;
+    max-width: 100%;
+    font-weight: bold;
+    font-size: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 150px;
+}

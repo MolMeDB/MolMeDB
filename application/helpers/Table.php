@@ -48,12 +48,16 @@ class Table
     const S_PER_PAGE_OPTIONS= 'per_page_options';
     const S_PAGINATIOR_POSITION = 'paginator_position';
     const S_CSS             = 'css';
+    const S_NODATA          = 'nodata_text';
     
     // SETTING FILTERS
     const FILTER_VISIBLE        = 'filter_visible';
     const FILTER_HIDE_COLUMNS      = 'hide_empty_columns';
     const FILTER_HIDE_COLUMNS_DEFAULT      = 'hide_empty_columns_default';
 
+    /** No data notification */
+    private $no_data_text = 'No data...';
+    
     /**
      * Filters holder
      */
@@ -88,6 +92,11 @@ class Table
         if($s->css)
         {
             $this->css = $s->css;
+        }
+
+        if($s->nodata_text)
+        {
+            $this->no_data_text = $s->nodata_text;
         }
 
         if($s->paginator_position)
@@ -249,6 +258,7 @@ class Table
         $output->show_pagination = $this->show_pagination;
         $output->active_page = $this->active_page;
         $output->css = $this->css();
+        $output->no_data_text = $this->no_data_text;
         $output->paginator_position = $this->paginator_position;
         $output->has_filter = $this->has_filter();
         $output->default_hide_empty_columns = isset($this->filters[self::FILTER_HIDE_COLUMNS_DEFAULT]) ? $this->filters[self::FILTER_HIDE_COLUMNS_DEFAULT] : false;

@@ -144,7 +144,8 @@ class MolController extends Controller
         $this->view->stats_interactions = (object)array
         (
             'total_passive' => $total_passive,
-            'total_active'  => $total_active
+            'total_active'  => $total_active,
+            'substance_name' => $substance->name
         );
 
         // Membranes and methods
@@ -192,9 +193,10 @@ class MolController extends Controller
         // Make table
         $table = new Table(array
         (
-            // Table::S_PAGINATIOR_POSITION => 'left',
-            Table::S_SHOW_PAGINATION => false,
-            Table::FILTER_HIDE_COLUMNS => true
+            Table::S_PAGINATIOR_POSITION => 'left',
+            Table::S_SHOW_PAGINATION => count($dataset) > 10 ? true : false,
+            Table::FILTER_HIDE_COLUMNS => true,
+            Table::S_NODATA => "No transporter data found."
         ));
 
         $table->column('target.name')

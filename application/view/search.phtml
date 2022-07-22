@@ -3,11 +3,11 @@
 
 <h3><b>Search compounds by:</b></h3>
 <ul class="nav nav-tabs">
-  <li class="active"><a data-toggle="tab" href="#compound">Name</a></li>
-  <li><a data-toggle="tab" href="#membrane">Membrane</a></li>
-  <li><a data-toggle="tab" href="#method">Method</a></li>
-  <li><a data-toggle="tab" href="#smiles">Structure</a></li>
-  <li><a data-toggle="tab" href="#transporters">Transporters</a></li>
+  <li id="tab-compound" class="active"><a data-toggle="tab" href="#compound">Name</a></li>
+  <li id="tab-membrane"><a data-toggle="tab" href="#membrane">Membrane</a></li>
+  <li id="tab-method"><a data-toggle="tab" href="#method">Method</a></li>
+  <li id="tab-smiles"><a data-toggle="tab" href="#smiles">Structure</a></li>
+  <li id="tab-transporters"><a data-toggle="tab" href="#transporters">Transporters</a></li>
   <!-- <li><a data-toggle="tab" href="#uniprot">Uniprot ID</a></li> -->
 </ul>
 
@@ -55,14 +55,12 @@
       <div class="panel panel-primary">
         <div class="panel-heading">Search compounds by structure</div>
         <div class="panel-body">
-          <form method="get" action="/search/smiles/1" autocomplete="off">
             <div style="margin-bottom: 5px; display: flex; flex-direction: row; justify-content: space-between; align-items:center;">
-              <input style="width: calc(100% - 70px) !important;" id="insert_smiles" type="text" class="searchEngine" name="q"  placeholder="Draw structure by SMILES">
+              <input style="width: calc(100% - 70px) !important;" value="<?=isset($smiles) ? $smiles : ''?>" id="insert_smiles" type="text" class="searchEngine" name="q"  placeholder="Draw structure by SMILES">
               <button type="button" id="insert_structure" class="btn btn-info pull-right">Insert</button>
             </div>
-              <iframe id="ketcher" src="/api/ketcher/run" width="100%" height="600"></iframe>
+              <iframe onload="document.getElementById('insert_structure').click();" id="ketcher" src="/api/ketcher/run" width="100%" height="600"></iframe>
               <button type="button" id="search_smiles" class="btn btn-success pull-right">Search</button>
-          </form>
         </div>
       </div>
     </div>
@@ -178,11 +176,15 @@
 <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
 <script src="https://cdn.amcharts.com/lib/5/hierarchy.js"></script>
 <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+
 <script>
+
   $(document).ready(function() 
   {
-    setTimeout(showContent, 1000);
+    setTimeout(showContent, 500);
   });
+
+  
 
   function showContent() {
     if (<?= $show_detail ?>) {
@@ -268,14 +270,33 @@ function show_sunburst(data, target_id, ontap)
     
     }); 
 }
-var mem_data = JSON.parse('<?= $nonsec_membrane_categories ?>');
-show_sunburst(mem_data, "membranechartdiv", (id) => {
-  redirect("search/membrane?id=" + id)
-});
-var met_data = JSON.parse('<?= $nonsec_method_categories ?>');
-show_sunburst(met_data, "methodchartdiv", (id) => {
-  redirect("search/method?id=" + id)
-});
+  var mem_data = JSON.parse('<?= $nonsec_membrane_categories ?>');
+  show_sunburst(mem_data, "membranechartdiv", (id) => {
+    redirect("search/membrane?id=" + id)
+  });
+  var met_data = JSON.parse('<?= $nonsec_method_categories ?>');
+  show_sunburst(met_data, "methodchartdiv", (id) => {
+    redirect("search/method?id=" + id)
+  });
+
+
+
+function sh_t(id)
+{
+  if(!$('#tab-' + id))
+  {
+    return;
+  }
+
+  $('#tab-' + id).tab('show');
+  $('.tab-pane').removeClass('active');
+  $('.tab-pane').removeClass('fade');
+  $('.tab-pane').removeClass('in');
+  $('#'+id).addClass('active fade in');
+}
+
+sh_t("<?= $active_tab ?>");
+// sh_t("smiles");
 
 </script>
 

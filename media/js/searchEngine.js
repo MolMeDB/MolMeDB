@@ -291,7 +291,7 @@
 
     // Add autocomplete listeners
     autocomplete(document.getElementById("compoundSearch"), "compounds");
-    autocomplete(document.getElementById("smilesSearch"), "smiles");
+    // autocomplete(document.getElementById("smilesSearch"), "smiles");
     autocomplete(document.getElementById("membraneSearch"), "membranes");
     autocomplete(document.getElementById("methodSearch"), "methods");
     autocomplete(document.getElementById("transporterSearch"), "transporter");

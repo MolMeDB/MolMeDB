@@ -47,7 +47,7 @@ abstract class Controller
     /**
      * @var HeaderParser
      */
-    protected $requested_header;
+    static protected $requested_header;
 
     /**
      * Constructor
@@ -57,7 +57,7 @@ abstract class Controller
         $this->config = new Config();
         $this->alert = new Alert();
         $this->form = new Form();
-        $this->requested_header = new HeaderParser();
+        self::$requested_header = self::$requested_header ?? new HeaderParser();
     }
     
     /**

@@ -151,7 +151,7 @@ class Enum_types extends Db
     }
 
 
-    function get_items($link_id, $suffix)
+    public function get_items($link_id, $suffix)
     {
         $et = new Enum_types();
 

@@ -95,6 +95,7 @@ class ApiInteractions extends ApiController
 				'QY_acc' 		=> $int->QY_acc,
 				'id_reference'	=> $int->id_reference,
 				'reference'		=> $int->reference ? $int->reference->citation : NULL,
+                'secondary_reference' => $int->dataset && $int->dataset->publication ? $int->dataset->publication->citation : null,
 				'id_dataset'	=> $int->id_dataset,
 				'id_substance'	=> $int->id_substance,
 				'id_membrane'	=> $int->id_membrane,
@@ -111,6 +112,21 @@ class ApiInteractions extends ApiController
 		}
 		
 		return $result;
+    }
+
+    /**
+     * Returns passive interactions by ids
+     * 
+     * @POST
+     * @INTERNAL
+     * 
+     * @param @required $id
+     * 
+     * @PATH(/detail/active)
+     */
+    public function get_active_interactions_POST($id)
+    {
+        return $this->get_active_interactions($id);
     }
 
     /**
@@ -164,6 +180,7 @@ class ApiInteractions extends ApiController
 				'IC50_acc'		=> $int->IC50_acc,
 				'id_reference'	=> $int->id_reference,
 				'reference'		=> $int->reference ? $int->reference->citation : NULL,
+                'secondary_reference' => $int->dataset->reference ? $int->dataset->reference->citation : null,
 				'id_dataset'	=> $int->id_dataset,
 				'id_substance'	=> $int->id_substance,
 				'uploaded'		=> $int->create_datetime
@@ -174,7 +191,6 @@ class ApiInteractions extends ApiController
 		{
 			$result = $result[0];
 		}
-
 		return $result;
     }
 
@@ -629,5 +645,158 @@ class ApiInteractions extends ApiController
         {
             $this->responses[HeaderParser::HTML] = $t->html();
         }
+    }
+
+    /**
+     * Returns counts of passive interactions for given params
+     * 
+     * @POST
+     * 
+     * @param @optional $id_membranes
+     * @param @optional $id_methods
+     * @param @optional $id_molecules
+     * @param @optional @default[true] $only_total
+     * @param @optional @default[AND] $logic
+     * 
+     * @Path(/count)
+     */
+    public function get_count($id_membranes, $id_methods, $id_molecules, $only_total, $logic)
+    {
+        $total = Interactions::instance()
+            ->where('visibility', Interactions::VISIBLE);
+
+        if(strtolower($logic) !== 'or')
+        {
+            $logic = 'AND';
+        }
+        else
+        {
+            $logic = "OR";
+        }
+
+        if($id_membranes)
+        {
+            if(!is_array($id_membranes))
+            {
+                $id_membranes = [$id_membranes];
+            }
+            
+            $total->in('id_membrane', $id_membranes);
+        }
+
+        if($id_methods)
+        {
+            if(!is_array($id_methods))
+            {
+                $id_methods = [$id_methods];
+            }
+            
+            $total->in('id_method', $id_methods);
+        }
+
+        if($id_molecules)
+        {
+            if(!is_array($id_molecules))
+            {
+                $id_molecules = [$id_molecules];
+            }
+
+            $total->in('id_substance', $id_molecules);
+        }
+
+        if(empty($id_methods) || empty($id_membranes) || $logic == "AND")
+        {
+            $total = $total->count_all();
+        }
+        else
+        {
+            if($id_molecules)
+            {
+                $total = Db::instance()->queryOne('
+                    SELECT COUNT(*) as count
+                    FROM
+                    (
+                        SELECT DISTINCT i.id
+                        FROM interaction i 
+                        WHERE (i.id_membrane IN ("' . implode('","',$id_membranes) . '") OR 
+                            i.id_method IN ("' . implode('","', $id_methods) . '")) AND 
+                            i.visibility = ? AND id_substance IN ("' . implode('","',$id_molecules) . '")
+                    ) as t
+                ', array(Interactions::VISIBLE))->count;
+            }
+            else
+            {
+                $total = Db::instance()->queryOne('
+                    SELECT COUNT(*) as count
+                    FROM
+                    (
+                        SELECT DISTINCT i.id
+                        FROM interaction i 
+                        WHERE (i.id_membrane IN ("' . implode('","',$id_membranes) . '") OR 
+                            i.id_method IN ("' . implode('","', $id_methods) . '")) AND 
+                            i.visibility = ? 
+                    ) as t
+                ', array(Interactions::VISIBLE))->count;
+            }
+        }
+
+        if($only_total)
+        {
+            return ['total' => $total];
+        }
+
+        $result = ['total' => $total];
+
+        // Get by groups
+        if(!$id_membranes && $id_methods)
+        {
+            $membranes = Membranes::instance()->get_all();
+
+            $result['membranes'] = [];
+
+            foreach($membranes as $mem)
+            {
+                $total = Interactions::instance()->where(array
+                (
+                    'visibility' => Interactions::VISIBLE,
+                    'id_membrane' => $mem->id
+                ))
+                    ->in('id_method', $id_methods)
+                    ->count_all();
+
+                $result['membranes'][] = array
+                (
+                    'id' => $mem->id,
+                    'name' => $mem->name,
+                    'total' => $total
+                );
+            }
+        }
+        else if($id_membranes && !$id_methods)
+        {
+            $methods = Methods::instance()->get_all();
+
+            $result['methods'] = [];
+
+            foreach($methods as $met)
+            {
+                $total = Interactions::instance()->where(array
+                (
+                    'visibility' => Interactions::VISIBLE,
+                    'id_method' => $met->id
+                ))
+                    ->in('id_membrane', $id_membranes)
+                    ->count_all();
+
+                $result['methods'][] = array
+                (
+                    'id' => $met->id,
+                    'name' => $met->name,
+                    'total' => $total
+                );
+            }
+        }
+
+        return $result;
     }
 }

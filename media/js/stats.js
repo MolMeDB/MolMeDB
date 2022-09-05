@@ -539,7 +539,7 @@ function makeColumnChart(data, divID, parameters = {})
     });
 }
 
-function show_sunburst(data, target_id, clickable = false)
+function show_sunburst(data, target_id, clickable = false, callback = null)
 {
     am4core.ready(function() {
         // Themes begin
@@ -587,21 +587,28 @@ function show_sunburst(data, target_id, clickable = false)
         
         if(clickable)
         {
-            level0SeriesTemplate.slices.template.events.on('hit', function(ev)
+            if(!callback)
             {
-                var el_id = ev.target.dataItem.sunburstDataItem._dataContext.id_element;
-                var last = ev.target.dataItem.sunburstDataItem._dataContext.last;
-
-                last = last ? 1 : 0;
-
-                if(!el_id)
+                level0SeriesTemplate.slices.template.events.on('hit', function(ev)
                 {
-                    console.log("Element id not found");
-                    return false;
-                }
+                    var el_id = ev.target.dataItem.sunburstDataItem._dataContext.id_element;
+                    var last = ev.target.dataItem.sunburstDataItem._dataContext.last;
 
-                redirect('browse/transporters/' + el_id + '/' + last);
-            });
+                    last = last ? 1 : 0;
+
+                    if(!el_id)
+                    {
+                        console.log("Element id not found");
+                        return false;
+                    }
+
+                    redirect('browse/transporters/' + el_id + '/' + last);
+                });
+            }
+            else
+            {
+                level0SeriesTemplate.slices.template.events.on('hit', callback);
+            }
         }
     
         var level1SeriesTemplate = level0SeriesTemplate.clone();

@@ -353,16 +353,25 @@ class HeaderParser
                         $this->content = [];
                         break;
                     }
+                    
+                    $json_parsed = json_decode($remote_params, true);
 
-                    $remote_params = json_decode($remote_params, true);
-
-                    if($remote_params === NULL)
+                    if($json_parsed === NULL)
                     {
-                        $this->content = [];
-                        break;
-                    }
+                        // Try to parse string
+                        parse_str($remote_params, $parsed);
 
-                    $this->content = $remote_params;                    
+                        if(empty($parsed))
+                        {
+                            $this->content = [];
+                        }
+                        
+                        $this->content = $parsed;
+                    }
+                    else
+                    {
+                        $this->content = $json_parsed;                    
+                    }
 
                     break;
 

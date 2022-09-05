@@ -1,0 +1,156 @@
+<div class="mpls-template">
+    <div class="mpls-title heading">
+        <?=$title?>
+    </div>
+    <div class="mpls-window">
+        <div>
+            <div class="mpls-win" id="left-items-<?= $prefix ?>">
+                <?php foreach ($dataset as $category => $data) : ?>
+                    <div>
+                        <div class="mpls-win-category mpls-win-category-<?= $prefix ?>">
+                            <div><?= $category ?></div>
+                            <button class="btn btn-sm btn-success switch-all-to-right-<?= $prefix ?>">Add all <span class="glyphicon glyphicon-arrow-right"></span></button>
+                        </div>
+                        <?php foreach ($data as $row) : ?>
+                            <div class="mpls-win-item mpls-win-item-<?= $prefix ?>">
+                                <div style="display: flex; flex-direction:column; justify-content:flex-start;">
+                                    <label><?= $row->name ?> <input class="<?= $prefix ?>" hidden value="<?= $row->value ?>"></label> 
+                                    <sublabel id="sublabel_<?= $prefix . '_' . $row->value?>"><?= $row->subtitle ?></sublabel>
+                                </div>
+                                <button class="btn btn-sm btn-success switch-to-right-<?= $prefix ?>"><span class="glyphicon glyphicon-arrow-right"></span></button>
+                            </div>
+                        <?php endforeach ?>
+                    </div>
+                <?php endforeach ?>
+            </div>
+            <div style="display: flex; flex-direction:row; justify-content: flex-end;">
+                Remaining: &nbsp<div id="remining_1<?= $prefix ?>"> </div>
+            </div>
+        </div>
+        <div class="mpls-win-middle">
+            <button class="btn btn-sm btn-success add-all-to-right-<?= $prefix ?>">Add all <span class="glyphicon glyphicon-arrow-right"></span></button> <br />
+            <button class="btn btn-sm btn-danger add-all-to-left-<?= $prefix ?>"><span class="glyphicon glyphicon-arrow-left"></span> Remove all</button>
+        </div>
+        <div>
+            <div class="mpls-win">
+                <div class="mpls-win-category mpls-win-category-<?= $prefix ?>">
+                    <div>Selected items</div>
+                </div>
+                <div id="mpls-selected-list-<?= $prefix ?>">
+                </div>
+            </div>
+            <div style="display: flex; flex-direction:row; justify-content: flex-end;">
+                Total: &nbsp<div id="remining_2<?= $prefix ?>"> </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var btn_left_template_<?=$prefix?> = '<button class="btn btn-sm btn-danger switch-to-left-<?= $prefix ?>"><span class="glyphicon glyphicon-arrow-left"></span></button>';
+    var btn_right_template_<?=$prefix?> = '<button class="btn btn-sm btn-success switch-to-right-<?= $prefix ?>"><span class="glyphicon glyphicon-arrow-right"></span></button>';
+
+    function update_counters_<?= $prefix ?>() {
+        var left = $("#remining_1<?= $prefix ?>");
+        var right = $("#remining_2<?= $prefix ?>");
+
+        var total_left = $('#left-items-<?= $prefix ?>').find(".mpls-win-item-<?= $prefix ?>:not(:hidden)").length;
+        var total_right = $(".switch-to-left-<?= $prefix ?>").length;
+
+        $(left).html(total_left);
+        $(right).html(total_right);
+    }
+
+    function update_callbacks_<?= $prefix ?>() {
+        $('.switch-to-right-<?= $prefix ?>, .switch-to-left-<?= $prefix ?>, .switch-all-to-right-<?= $prefix ?>').unbind('click');
+
+        $('.add-all-to-right-<?= $prefix ?>').on('click', function() {
+            $('#left-items-<?= $prefix ?>').find(".mpls-win-item-<?= $prefix ?>:not(:hidden)").find('.switch-to-right-<?= $prefix ?>').click();
+        });
+
+        $('.add-all-to-left-<?= $prefix ?>').on('click', function() {
+            $('#mpls-selected-list-<?= $prefix ?>').find('.switch-to-left-<?= $prefix ?>').click();
+        });
+
+        $('.switch-to-right-<?= $prefix ?>').on("click", function() {
+            var target = $('#mpls-selected-list-<?= $prefix ?>');
+
+            var parent = $(this).parent('.mpls-win-item-<?= $prefix ?>');
+            var label = $(parent).find('label')[0];
+            label = $(label).html();
+            var sublabel_el = $(parent).find('sublabel')[0];
+            sublabel = $(sublabel_el).html();
+            var sublabel_id = $(sublabel_el).attr('id');
+            var value = $(parent).find('input')[0];
+            value = $(value).val();
+
+            // category
+            var category_el = $(parent).siblings('.mpls-win-category-<?= $prefix ?>');
+            var remaining_visible = $(parent).siblings(':not(.mpls-win-item-<?= $prefix ?>:hidden)');
+            remaining_visible = remaining_visible.length - 1;
+
+            // Hide parent
+            $(parent).hide();
+
+            if (remaining_visible == 0) {
+                // Hide category
+                $(category_el).hide();
+            }
+
+            // Add element to right list
+            var n = "<div class='mpls-win-item mpls-win-item-<?=$prefix?>'>" + btn_left_template_<?=$prefix?> + "<div><div style='display: flex; flex-direction:column; justify-content:flex-start;align-items:end;'><label>" + label + "<input class='<?= $prefix ?>' hidden name='<?= $name ?>' value='" + value + "'></label><sublabel id='" + sublabel_id +"_2'>" + sublabel + "</sublabel></div></div></div>";
+            $(target).append(n);
+
+            update_callbacks_<?= $prefix ?>();
+
+            <?= $move_right_callback ? $move_right_callback . '();' : '' ?>
+        });
+
+        $('.switch-to-left-<?= $prefix ?>').on("click", function() {
+            var target = $('#left-items-<?= $prefix ?>');
+
+            var parent = $(this).parent('.mpls-win-item-<?= $prefix ?>');
+            var label = $(parent).find('label')[0];
+            label = $(label).html();
+            var value = $(parent).find('input')[0];
+            value = $(value).val();
+
+            // Find corresponding on left
+            var left_match = $(target).find('input.<?= $prefix ?>[value="' + value + "\"]").parent().parent().parent();
+
+            // category
+            var category_el = $(left_match).siblings('.mpls-win-category-<?= $prefix ?>');
+            $(category_el).show();
+
+            // Hide parent  
+            $(parent).remove();
+            $(left_match).show();
+
+            update_callbacks_<?= $prefix ?>();
+
+            <?= $move_left_callback ? $move_left_callback . '();' : '' ?>
+        });
+
+        $('.switch-all-to-right-<?= $prefix ?>').on('click', function() {
+            var parent = $(this).parent('.mpls-win-category-<?= $prefix ?>');
+            var toShow = $(parent).siblings('.mpls-win-item-<?= $prefix ?>:not(:hidden)');
+
+            if (!toShow.length) {
+                return;
+            }
+
+            $(toShow).each((i, el) => {
+                $(el).find('button.switch-to-right-<?= $prefix ?>').click();
+            });
+        });
+
+        update_counters_<?= $prefix ?>();
+
+        if(typeof multiple_selector_update !== "undefined")
+        {
+            multiple_selector_update();
+        }
+    }
+
+    window.addEventListener("load",  update_callbacks_<?= $prefix ?>, false);
+</script>

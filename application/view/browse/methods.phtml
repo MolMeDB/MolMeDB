@@ -27,6 +27,7 @@
                 <!-- <button type="button" onclick="addSetToComparator('method', '<?=$m->id?>')" style="margin-top: 15px;" class="btn btn-warning btn-sm pull-right">Add compounds to the comparator </button> -->
                 <button type="button" onclick="redirect('search/method?id=<?= $m->id ?>')" style="margin-top: 15px;" class="btn btn-info btn-sm pull-right">Show compounds </button>
                 <button type="button" onclick="redirect('export/method/<?= $m->id ?>')" style="margin-top: 15px; margin-right: 10px;" class="btn btn-danger btn-sm pull-right">Download data </button>
+                <button type="button" onclick="add_method_to_downloader('<?= $m->id ?>', '<?= $m->name ?>');" style="margin-top: 15px; margin-right: 10px;" class="btn btn-warning btn-sm pull-right">Add to downloader </button>
             </div>
         </div>
         <?php endforeach ?>

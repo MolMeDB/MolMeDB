@@ -68,7 +68,7 @@ body{
     width: 100%;
     min-height: 1050px;
     background-color: #fff;
-    padding: 30px 50px;
+    padding: 30px 50px 80px 50px;
     box-shadow: 0 10px 15px rgba(0,0,0,.3);
     margin-top: -20px;
     margin-bottom: -10px;
@@ -78,6 +78,8 @@ body{
 
 header{
     background-image: linear-gradient(to right, #4a82da, #3a68bb, #294f9c, #17377f, #002162);
+    min-width: max-content !important;
+    width: 100% !important;
 }
 
 .menu{
@@ -243,6 +245,8 @@ footer{
     color: white;
     position: relative;
     z-index: 251;
+    min-width: max-content !important;
+    width: 100% !important;
 }
 
 .footer-finance{
@@ -264,7 +268,7 @@ footer{
 #footer{
     display: flex !important;
     justify-content: space-between;
-    max-width: 1600px;
+    
     min-width: 1200px;
     /* display: block; */
     margin: auto;
@@ -341,4 +345,192 @@ footer{
 .onHover:hover{
     display: block;
     background:rgba(255, 255, 255, 1) !important;
+}
+
+/* Feedback */
+
+/* @keyframes cink_header_closed {
+    0%   {height: 50px;}
+    25%  {height: 60px;}
+    50%  {height: 70px;}
+    75%  {height: 60px;}
+    100% {height: 50px;}
+  } */
+
+.feedback{
+    position: absolute;
+    bottom: 0;
+    right: 20px;
+    padding-left: 10px;
+    width: 350px;
+    height: 50px;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    z-index: 1;
+    transition: height .5s ease;
+}
+
+.feedback.animate {
+    height: 60px;
+}
+
+.fb-visible{
+    height: 540px;
+}
+
+.feedback-title{
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    align-items: center;
+    height: 50px;
+    background-color: #d16c00;
+    padding: 15px;
+    color: #fff;
+    font-weight: bold;
+    font-size: 16px;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    text-decoration: none;
+    user-select: none;
+}
+
+.feedback-pic
+{
+    max-width: 25px;
+    max-height: 25px;
+}
+
+.feedback-title div:last-child{
+    font-size: 20px;
+}
+
+.feedback-form{
+    background-color: #fff;
+    /* padding: 10px 15px 15px 15px; */
+    padding: 0px 0px 15px 0px;
+    height: 480px;
+    max-height: 480px;
+    border-left: 1px solid #d16c00;
+    border-right: 1px solid #d16c00;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-collapse: collapse;
+    display: none;
+}
+
+.feedback-form textarea{
+    resize: none;
+}
+
+.feedback-buttons{
+    padding: 10px 10px 0 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+}
+
+.feedback-form button{
+    margin-top: 10px;
+}
+
+plussign{
+    content: url(../files/icons/add.png);
+    width: 20px;
+}
+
+.feedback-list{
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    height: 420px;
+}
+
+.feedback-list *{
+    user-select: none;
+}
+
+.feedback-list-category{
+    padding: 10px;
+    width: 100%;
+    height: 110px;
+    overflow: hidden;
+    transition: height .5s ease;
+}
+
+.extended-c{
+    height: 110px;
+}
+
+.scrollable-c{
+    overflow-x: unset;
+    height: 90%;
+}
+
+.feedback-list-category > div:first-child{
+    display: block;
+    border-bottom: 1px solid #d16c00;
+    color: #d16c00;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bold;
+}
+
+.feedback-basic-list-items{
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.feedback-list-items{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    overflow-y: auto;
+}
+
+.feedback-basic-list-items>div{
+    position: relative;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-bottom: 1px solid #d16c00;
+}
+
+.feedback-basic-list-items>div:hover{
+    font-weight: bold;
+}
+
+.feedback-list-items>div{
+    padding: 3px 16px 3px 5px;
+    border: 1px solid #d16c00;
+    margin-right: 5px;
+    margin-top: 5px;
+    margin: 5px 5px 1px 1px;
+    border-radius: 15px;
+    position: relative;
+    cursor: pointer;
+    text-overflow: ellipsis;
+}
+
+.feedback-list-items>div:hover::after, .feedback-basic-list-items>div:hover::before{
+    content: '\274c';
+    right: 4px;
+    font-size: 9px;
+    top: 7px;
+}
+
+.feedback-list-items>div:hover{
+    border-width: 2px;
+    margin: 4px 4px 0 0;
+}
+
+.feedback-list-items>div::after, .feedback-basic-list-items>div::before{
+    content: '\2716';
+    font-size: 11px;
+    top: 6px;
+    right: 5px;
+    position: absolute;
 }

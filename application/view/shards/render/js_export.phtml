@@ -1,0 +1,347 @@
+<head>
+    <style>
+        .downloader-blue{
+            width: 100px;
+        }
+
+        .prg-bar{
+            color: #000!important;
+            background-color: #f1f1f1!important;
+            border-radius: 16px;
+            box-sizing: inherit;
+            width: 75%;
+            margin-top: 15px;
+        }
+
+        .prg-bar-inner{
+            color: #fff!important;
+            background-color: #2196F3!important;
+            padding: 0.01em 16px;
+            border-radius: 16px;
+            box-sizing: inherit;
+            height: 30px;
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-end;
+            align-items: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<div style="margin-top: 110px;"></div>
+<div class="flex-column" style="align-items: center;">
+    <?= Html::image('icons/download-blue.png', 'downloader-blue') ?>
+    <div style='font-family: "noah_headbold"; font-size: 35px; margin-top: 15px;'>Data downloader</div>
+    <div class="prg-bar">
+        <div class="prg-bar-inner" id="progress-bar" style="width: 0%;"> 0</div>
+    </div>
+    <div id="status-text">
+        ...
+    </div>
+    <div style="margin-top: 15px;">
+        <?= Html::button("button", "Download", "btn-lg btn-success dwnload") ?>
+    </div>
+</div>
+
+<script>
+    // Prepare button
+    $('.dwnload').attr('disabled', true);
+    $('.dwnload').html('Please wait...');
+
+    let final_data = [];
+    let file = null;
+
+    let type = '<?= $type ?>';
+    
+    let passive_ids = type == '<?= ExportController::DOWN_TYPE_PASSIVE ?>' ? JSON.parse('<?= $ids?>') : null;
+    let active_ids = type == '<?= ExportController::DOWN_TYPE_ACTIVE ?>' ? JSON.parse('<?= $ids?>') : null;
+
+    if((!passive_ids || !passive_ids.length) &&
+        (!active_ids || !active_ids.length))
+    {
+        $('#status-text').html('No data found!');
+        $('.dwnload').html('Error');
+        throw new Error("No data found.");
+    }
+
+    async function index()
+    {
+        ///
+        /// Passive interactions export
+        ///
+        if(Array.isArray(passive_ids) && passive_ids.length > 0)
+        {
+            var total = passive_ids.length;
+            var processed = 0;
+
+            async function get_data()
+            {
+                let limit = 200;
+                var ids = [];
+
+                if(passive_ids.length == 0)
+                {
+                    prepare_download();
+                    return;
+                }
+
+                while(passive_ids.length && ids.length < limit)
+                {
+                    ids.push(passive_ids.pop());
+                }
+
+                update_progress_bar(processed,total, "Fetching database data... [" + (processed)  + "/" + total + "]");
+                
+                $.ajax({
+                    url: "/api/interactions/detail/passive",
+                    method: "POST",
+                    data: {id: ids},
+                    dataType: 'json',
+                    headers:{
+                        "Authorization": "Basic " + $('#api_internal_token').val(),
+                        Accept: "application/json"
+                    },
+                    async: true,
+                    success: function(response)
+                    {
+                        for(var i = 0; i < response.length; i++)
+                        {
+                            var row = response[i];
+                            final_data.push([
+                                row.substance.name,
+                                row.substance.SMILES,
+                                row.membrane,
+                                row.method,
+                                row.comment,
+                                row.charge,
+                                row.temperature,
+                                row.Position,
+                                row.Position_acc,
+                                row.LogK,
+                                row.LogK_acc,
+                                row.Penetration,
+                                row.Penetration_acc,
+                                row.LogPerm,
+                                row.LogPerm_acc,
+                                row.reference,
+                                row.secondary_reference                          
+                            ]);
+                        }
+
+                        processed += ids.length;
+                        get_data();
+                    },
+                    error: function()
+                    {
+                        console.log('error');
+                    }
+                });
+            }
+
+            function export_data()
+            {
+                var header = [
+                    "Name",
+                    "Smiles",
+                    "Membrane",
+                    "Method",
+                    "Note",
+                    "Q",
+                    "Temperature",
+                    "X_min",
+                    "X_min_acc",
+                    "LogK",
+                    "LogK_acc",
+                    "G_pen",
+                    "G_pen_acc",
+                    "LogPerm",
+                    "LogPerm_acc",
+                    "Primary reference",
+                    "Secondary reference"
+                ];
+
+                // Add header
+                final_data.push(header);
+                get_data();
+            }
+        }
+        ///
+        /// Active interactions export
+        ///
+        else if(Array.isArray(active_ids) && active_ids.length > 0)
+        {
+            var total = active_ids.length;
+            var processed = 0;
+
+            async function get_data()
+            {
+                let limit = 200;
+                var ids = [];
+
+                if(active_ids.length == 0)
+                {
+                    prepare_download();
+                    return;
+                }
+
+                while(active_ids.length && ids.length < limit)
+                {
+                    ids.push(active_ids.pop());
+                }
+
+                update_progress_bar(processed, total, "Fetching database data... [" + (processed)  + "/" + total + "]");
+                
+                $.ajax({
+                    url: "/api/interactions/detail/active",
+                    method: "POST",
+                    data: {id: ids},
+                    dataType: 'json',
+                    headers:{
+                        "Authorization": "Basic " + $('#api_internal_token').val(),
+                        Accept: "application/json"
+                    },
+                    async: true,
+                    success: function(response)
+                    {
+                        for(var i = 0; i < response.length; i++)
+                        {
+                            var row = response[i];
+
+                            final_data.push([
+                                row.substance.name,
+                                row.substance.SMILES,
+                                row.comment,
+                                row.type,
+                                row.target.name,
+                                row.target.uniprot_id,
+                                row.Km,
+                                row.Km_acc,
+                                row.EC50,
+                                row.EC50_acc,
+                                row.IC50,
+                                row.IC50_acc,
+                                row.Ki,
+                                row.Ki_acc,
+                                row.reference,
+                                row.secondary_reference                          
+                            ]);
+                        }
+
+                        processed += ids.length;
+                        get_data();
+                    },
+                    error: function()
+                    {
+                        console.log('error');
+                    }
+                });
+            }
+
+            function export_data()
+            {
+                var header = [
+                    "Name",
+                    "SMILES",
+                    "Note",
+                    "Type",
+                    "Target",
+                    "Uniprot_id",
+                    "Km",
+                    "Km_acc",
+                    "EC50",
+                    "EC50_acc",
+                    "IC50",
+                    "IC50_acc",
+                    "Ki",
+                    "Ki_acc",
+                    "Primary reference",
+                    "Secondary reference"
+                ];
+
+                // Add header
+                final_data.push(header);
+                get_data();
+            }
+        }
+
+        window.onbeforeunload = function() { return "Do you really want to cancel data downloading?"; };
+
+        if(typeof export_data !== 'undefined')
+        {
+            export_data();
+        }
+    }
+
+    $('.dwnload').on('click', function()
+    {
+        if(file == null)
+        {
+            return;
+        }
+
+        var url = window.URL.createObjectURL(file);
+        var anchor = document.createElement("a");
+        anchor.href=url;
+        anchor.download = "<?= $filename ?>";
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+        anchor.remove();
+    });
+
+    async function update_progress_bar(current = null, total = null, status = null)
+    {
+        if(current && total)
+        {
+            let percent;
+
+            if(current >= total)
+            {
+                percent = 100;
+            }
+            else
+            {
+                percent = 100*current / total;
+            }
+
+            percent = parseInt(percent);
+
+            if(percent < 0)
+            {
+                percent = 0;
+            }
+
+            $('#progress-bar').css('width', percent + '%');
+            $('#progress-bar').html(percent + "&nbsp;%");
+        }
+
+        if(status && status.toString().length > 0)
+        {
+            $('#status-text').html(status);
+        }
+    }
+
+    async function prepare_download()
+    {
+        await update_progress_bar(1,1, "Preparing data for download...");
+
+        // Make final file
+        var s = "";
+
+        final_data.forEach(function(row){
+            s += row.join(";");
+            s += "\n";
+        });
+
+        file = new Blob([s], {type: "text/csv"});
+
+        $('.dwnload').attr('disabled', false);
+        $('.dwnload').html('Download');
+
+        await update_progress_bar(1,1, "Ready to download.");
+    }
+
+    window.addEventListener("load", index, false);
+
+    // Get 
+</script>

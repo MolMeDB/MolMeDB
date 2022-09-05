@@ -106,7 +106,7 @@
 
   <div style="display:none" id="content">
     <?php if (isset($list)) : ?>
-      <div class="comp-addAll"><button class="btn btn-sm btn-primary pull-right btn-add" id="btn-addALL">Add list to the comparator </button></div><br />
+      <div class="comp-addAll"><button class="btn btn-sm btn-warning pull-right" id="btn-addALL">Add list to the downloader </button></div><br />
       <ul class="search-ul">
         <?php foreach ($list as $substance) : ?>
           <li>
@@ -114,8 +114,8 @@
               <div>
                 <div class="title">
                   <a href="/mol/<?= $substance->identifier ?>"><?= $substance->name ?></a>
-                  <button title="Add to comparator" id="<?= $substance->id ?>" type="button" class="btn btn-sm btn-primary btn-add">
-                    <span id="<?= $substance->name ?>" class="glyphicon glyphicon-plus"></span>
+                  <button title="Add to downloader" onclick='add_molecule_to_downloader("<?= $substance->id ?>","<?= $substance->name ?>")' type="button" class=" dwn-mol-<?= $substance->id ?> btn btn-sm btn-warning btn-add">
+                    <span class="glyphicon glyphicon-plus"></span>
                   </button>
                 </div>
                 <div class="info">

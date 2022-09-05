@@ -25,7 +25,7 @@ class MolController extends Controller
     public function index($identifier = NULL) 
     {
         // If not accept HTML, try API endpoint
-        if(!$this->requested_header->accept(HeaderParser::HTML))
+        if(!Controller::$requested_header->accept(HeaderParser::HTML))
         {
             ResponseBuilder::see_other(Url::rdf_domain() . 'compound/' . $identifier);
         }

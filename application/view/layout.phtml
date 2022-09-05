@@ -17,6 +17,7 @@
         <script src="//cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
         <script src="js/bootstrap.min.js"></script>
         <script src="js/MolMeDb.php?ver=<?=JS_VERSION?>"></script>
+        <script src="js/storage.js?ver=<?=JS_VERSION?>"></script>
         <script src="js/Chart.js?ver=<?=JS_VERSION?>"></script>
         <script src="js/materialize.js"></script>
         <script src="js/Chart.bundle.js?ver=<?=JS_VERSION?>"></script>
@@ -98,8 +99,50 @@
                         <div id="fs-loader"></div>
                         <p><b id="fs-overlay-text"></b></p>
                     </div>
-                    <div class="main-page">
+                    <div class="main-page" id="main-page">
                         <?php $controller->view->render(TRUE); ?>
+                        <div class="feedback" id="feedback">
+                            <div class="feedback-title" id="feedback-title">
+                                <div>Data downloader (<label id="downloader-fb-total">...</label>)</div>
+                                <img class="feedback-pic" src="files/icons/download.png">
+                            </div>
+                            <div class="feedback-form">
+                                <div class="feedback-list">
+                                    <div class="feedback-list-category">
+                                        <div style="display: flex; flex-direction: row; justify-content: space-between;">
+                                            <div>Chosen membranes <label id="dwn-sel-mems">(0)</label></div>
+                                            <div><span class="glyphicon glyphicon-resize-full" style="color: grey; cursor: pointer;"></span></div>
+                                        </div>
+                                        <div id="download-membrane-list" class="feedback-list-items">
+                                        </div>
+                                    </div>
+                                    <plussign></plussign>
+                                    <div class="feedback-list-category">
+                                    <div style="display: flex; flex-direction: row; justify-content: space-between;">
+                                            <div>Chosen methods <label id="dwn-sel-mets">(0)</label></div>
+                                            <div><span class="glyphicon glyphicon-resize-full" style="color: grey; cursor: pointer;"></span></div>
+                                        </div>
+                                        <div id="download-method-list" class="feedback-list-items">
+                                            
+                                        </div>
+                                    </div>
+                                    <plussign></plussign>
+                                    <div class="feedback-list-category extended-c">
+                                    <div style="display: flex; flex-direction: row; justify-content: space-between;">
+                                            <div>Chosen molecules <label id="dwn-sel-mols">(0)</label></div>
+                                            <div><span class="glyphicon glyphicon-resize-full" style="color: grey; cursor: pointer;"></span></div>
+                                        </div>
+                                        <div id="download-molecule-list" class="feedback-basic-list-items scrollable-c">
+                                            
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="feedback-buttons">
+                                    <button id="dwn-fast-download" class="btn btn-sm btn-success pull-right">Fast download</button>
+                                    <a href="/download"><button class="btn btn-sm btn-info pull-right">Open downloader</button></a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
         </div>        	

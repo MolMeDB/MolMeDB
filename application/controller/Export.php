@@ -429,4 +429,133 @@ class ExportController extends Controller
         
         $this->redirect('browse/transporters');
     }
+
+    /**
+     * Types
+     */
+    const DOWN_TYPE_PASSIVE = 1;
+    const DOWN_TYPE_ACTIVE  = 2;
+
+    /**
+     * Exports downloader data
+     * 
+     * @param int $type
+     */
+    public function downloader($type = self::DOWN_TYPE_ACTIVE)
+    {
+        if(!$_POST)
+        {
+            die('Invalid parameters');
+        }
+
+        if($type == self::DOWN_TYPE_PASSIVE)
+        {
+            $id_membranes = isset($_POST['id_membranes']) ? $_POST['id_membranes'] : [];
+            $id_methods = isset($_POST['id_methods']) ? $_POST['id_methods'] : [];
+            $id_substances = isset($_POST['id_molecules']) ? $_POST['id_molecules'] : [];
+            $logic = isset($_POST['logic']) ? $_POST['logic'] : null;
+
+            if(strtolower($logic) != 'and')
+            {
+                $logic = 'or';
+            }
+
+            $logic = strtolower($logic);
+
+            if(empty($id_membranes) && empty($id_methods))
+            {
+                // Download all
+                $stats = new Statistics();
+                $files = $stats->get_stat_files();
+
+                if(isset($files[Statistics::TYPE_INTER_ADD]) && $files[Statistics::TYPE_INTER_ADD])
+                {
+                    $this->redirect('file/download/' . $files[Statistics::TYPE_INTER_ADD]->id);
+                }
+
+                $query = 'SELECT id 
+                    FROM interaction
+                    WHERE visibility = 1';
+            }
+            else if(empty($id_membranes))
+            {
+                $query = 'SELECT id 
+                    FROM interaction
+                    WHERE visibility = 1 AND id_method IN ("' . implode('","', $id_methods) .'")';
+            }
+            else if(empty($id_methods))
+            {
+                $query = 'SELECT id 
+                    FROM interaction
+                    WHERE visibility = 1 AND id_membrane IN ("' . implode('","', $id_membranes) .'")';
+            }
+            else
+            {
+                $query = 'SELECT id 
+                    FROM interaction
+                    WHERE visibility = 1 AND (id_membrane IN ("' . implode('","', $id_membranes) . '") ' 
+                    . ($logic == 'and' ? "AND" : "OR") . ' id_method IN ("' . implode('","', $id_methods) .'"))';
+            }
+
+            if(!empty($id_substances))
+            {
+                $query .= ' AND id_substance IN ("' . implode('","', $id_substances) . '")';
+            }
+
+            $ids = Db::instance()->queryAll($query);
+        }
+        else if($type == self::DOWN_TYPE_ACTIVE)
+        {
+            if(!isset($_POST['id_group']) || !isset($_POST['is_last']))
+            {
+                die('Invalid parameters');
+            }
+
+            $id_group = $_POST['id_group'];
+            $is_last = $_POST['is_last'];
+
+            if($is_last)
+            {
+                $target = new Transporter_targets($id_group);
+
+                if(!$target->id)
+                {
+                    die('Transporter target not found.');
+                }
+
+                $ids = Db::instance()->queryAll('
+                    SELECT DISTINCT t.id
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset 
+                    WHERE t.id_target = ? AND td.visibility = ? 
+                ', array($target->id, Transporter_datasets::VISIBLE));
+            }
+            else
+            {
+                $enum_type_link = new Enum_type_links($id_group);
+                $enum_type = $enum_type_link->enum_type;
+
+                if($enum_type->type != Enum_types::TYPE_TRANSPORTER_CATS || !$enum_type->id)
+                {
+                    throw new Exception('Invalid transporter group.');
+                }
+
+                $els = $enum_type->get_items($enum_type_link->id, 'transporter_target');
+
+                $ids = Arr::get_values($els, 'id');
+
+                $ids = Db::instance()->queryAll('
+                    SELECT DISTINCT t.id
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    WHERE td.visibility = ? AND t.id_target IN ("' . implode('","', $ids) . '")
+                ', array(Transporter_datasets::VISIBLE));
+            }
+        }
+
+        $ids = Arr::get_values($ids, 'id');
+
+        $this->view = new Render_js_export($type);
+        $this->view->ids = json_encode($ids);
+    }
 }

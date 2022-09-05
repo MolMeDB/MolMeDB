@@ -1,0 +1,263 @@
+<h2>Downloader</h2>
+<div style="margin-bottom: 20px;">
+    <div class="btn-group btn-group-justified">
+        <a href="/download/passive" class="btn btn-primary <?= $page_type == DownloadController::PATH_PASSIVE ? 'active' : '' ?>">
+        <!-- <span class="glyphicon glyphicon-file"></span> -->
+            Passive interactions
+        </a>
+        <a href="/download/active" class="btn btn-primary <?= $page_type == DownloadController::PATH_ACTIVE ? 'active' : '' ?>">
+            Active interactions
+        </a>
+    </div>
+</div>
+<?php if($page_type == DownloadController::PATH_PASSIVE) : ?>
+<div style="display: flex; flex-direction: column; align-items: center;">
+    <?= $membrane_selector ?>
+    <?= $method_selector ?>
+    <div style="width:100%; display: flex; flex-direction: row; justify-content: flex-end; align-items:center;">
+    <?= Html::slider_2("Logical op.:", "OR", "AND", "logic", false, "logic"); ?>
+    </div>
+    <div style="width:100%; display: flex; flex-direction: row; justify-content: flex-end; align-items:center;">
+    <?= Html::slider("Include only selected molecules (<span id='only-selected-mols-count'>...</span>):", "only_selected_mols", FALSE, "only_selected_mols"); ?>
+    </div>
+    <div style="width:100%; display: flex; flex-direction: row; justify-content: flex-end; align-items:center; margin-top: 40px;">
+        <div style="font-size: 20px; display: flex;
+    color: green;
+    font-weight: bold;"><div style="margin-right: 30px;">Total interactions: </div><div id="total-count" style="margin-right: 10px;">?</div></div>
+        <div style="margin-left: 50px;">
+            <?= Html::button('button', 'Download data', 'btn-sm btn-info download-all', '') ?>
+        </div>
+    </div>
+    <div>
+    </div>
+</div>
+<?php else : ?>
+    <div id='chartdiv' style="height: 900px;"></div>
+    <form method="POST" action="/export/downloader/<?= ExportController::DOWN_TYPE_ACTIVE ?>">
+    <div style="width:100%; display: flex; flex-direction: row; justify-content: flex-end; align-items:center;">
+        <div style="font-size: 20px; display: flex;
+                    color: green;
+                    font-weight: bold;">
+                    <div style="margin-right: 30px;">Selected group: </div>
+                    <div id="selected-active-group" style="margin-right: 10px;">...</div>
+                    <input hidden name="id_group" id="selected_group_id">
+                    <input hidden name="is_last" id="selected_group_last">
+        </div>
+        <div style="margin-left: 50px;">
+            <?= Html::button('submit', 'Download data', 'btn-sm btn-info download-passive', '') ?>
+        </div>
+    </div>
+    </form>
+
+    <script src="js/amcharts64/themes/animated.js"></script>
+    <script src="js/stats.js"></script>
+    <script>
+        var data = JSON.parse('<?= json_encode($chart_data) ?>');
+        $('.download-passive').attr('disabled', true);
+        show_sunburst(data, "chartdiv", true, (event) => {
+            var name = event.target.dataItem.sunburstDataItem._dataContext.name;
+            var el_id = event.target.dataItem.sunburstDataItem._dataContext.id_element;
+            var last = event.target.dataItem.sunburstDataItem._dataContext.last;
+            last = last ? 1 : 0;
+
+            $('#selected-active-group').html(name);
+            $('#selected_group_id').val(el_id);
+            $('#selected_group_last').val(last);
+            $('.download-passive').attr('disabled', false);
+        });
+    </script>
+<?php endif ?>
+
+
+
+<script>
+    var updating = false;
+    var force_update = false;
+
+    $('#logic').change(function(){
+        multiple_selector_update();
+    });
+
+   async function multiple_selector_update()
+   {
+        if(updating)
+        {
+            force_update = true;
+            return;
+        }
+
+        updating = true;
+        $('.download-all').attr('disabled', true);
+        $('#total-count').html("Counting...");
+
+        // Get selected membranes
+        var selected_membranes = $('#mpls-selected-list-membranes').find('.mpls-win-item input.membranes');
+        var selected_methods = $('#mpls-selected-list-methods').find('.mpls-win-item input.methods');
+        var selected_mols = get_from_downloader(PREFIX_MOL);
+        var mem_ids = [];
+        var met_ids = [];
+        var mol_ids = [];
+
+        $(selected_membranes).each((i, el) => {
+            var v = $(el).val();
+            if(mem_ids.indexOf(v) == -1)
+            {
+                mem_ids.push(v);
+            }
+        });
+
+        $(selected_methods).each((i, el) => {
+            var v = $(el).val();
+            if(met_ids.indexOf(v) == -1)
+            {
+                met_ids.push(v);
+            }
+        });
+
+        if($('#only_selected_mols').prop('checked'))
+        {
+            selected_mols.forEach((el) => {
+                mol_ids.push(el.id);
+            });
+        }
+
+        let logic = $('#logic').prop('checked');
+
+        if(logic)
+        {
+            logic = "AND";
+        }
+        else
+        {
+            logic = "OR";
+        }
+
+        // Get data
+        $.ajax({
+            url: '/api/interactions/count',
+            method: "POST",
+            dataType: "json",
+            data: {'id_membranes': mem_ids, "id_methods": met_ids, "id_molecules": mol_ids, only_total: 1, logic: logic},
+            async: true,
+            success: function(data){
+                var met_details = data.methods;
+                $('#total-count').html(data.total);
+
+                if(data.total > 0)
+                {
+                    $('.download-all').attr('disabled', false);
+                }
+                
+                updating = false;
+
+                if(force_update)
+                {
+                    force_update = false;
+                    multiple_selector_update();
+                }
+            },
+            error: function(){
+                updating = false;
+                if(force_update)
+                {
+                    force_update = false;
+                    multiple_selector_update();
+                }
+                return;
+            }
+        });
+   }
+
+   $('.download-all').on('click', function() 
+   {
+        let form = $('<form method="POST" action="/export/downloader/<?= ExportController::DOWN_TYPE_PASSIVE ?>"></form>');
+
+        // Append selected membranes and methods
+        var mem_ids = [];
+        var met_ids = [];
+        $('#mpls-selected-list-membranes').find('input.membranes').each((i,e) => {
+            let id = $(e).val();
+            if(mem_ids.indexOf(id) != -1)
+            {
+                return;
+            }
+            mem_ids.push(id);
+
+            let el = $('<input name="id_membranes[]" hidden>');
+            $(el).val(id);
+            $(form).append(el);
+        });
+        $('#mpls-selected-list-methods').find('input.methods').each((i,e) => {
+            let id = $(e).val();
+            if(met_ids.indexOf(id) != -1)
+            {
+                return;
+            }
+            met_ids.push(id);
+
+            let el = $('<input name="id_methods[]" hidden>');
+            $(el).val(id);
+            $(form).append(el);
+        });
+
+        if($('#only_selected_mols').prop('checked'))
+        {
+            var selected_mols = get_from_downloader(PREFIX_MOL);
+            selected_mols.forEach((e) => {
+                let el = $('<input name="id_molecules[]" hidden>');
+                $(el).val(e.id);
+                $(form).append(el);
+            });
+        }
+
+        if($('#logic').prop('checked'))
+        {
+            $(form).append($('<input name="logic" value="AND" hidden>'));
+        }
+        else
+        {
+            $(form).append($('<input name="logic" value="OR" hidden>'));
+        }
+
+        $(form).appendTo('body').submit();
+   });  
+
+   function init_func()
+   {
+        let membranes = get_from_downloader("membrane");
+        let methods = get_from_downloader("method");
+        let mols = get_from_downloader('mol');
+
+        membranes.forEach((el) => {
+            let id = el.id;
+            let e = $('input.membranes[value=' + id + ']');
+            if(e)
+            {
+                e = $(e).parent().parent().parent().find('button.switch-to-right-membranes');
+                $(e).click();
+            }
+        });
+
+        methods.forEach((el) => {
+            let id = el.id;
+            let e = $('input.methods[value=' + id + ']');
+            if(e)
+            {
+                e = $(e).parent().parent().parent().find('button.switch-to-right-methods');
+                $(e).click();
+            }
+        });
+
+        if(!mols.length)
+        {
+            $('#only_selected_mols').parent().parent().hide();
+        }
+        else
+        {
+            $('#only_selected_mols').change(multiple_selector_update);
+        }
+   }
+
+   window.addEventListener("load",  multiple_selector_update(), false);
+   window.addEventListener("load",  init_func, false);
+</script>

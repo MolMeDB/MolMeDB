@@ -128,9 +128,9 @@ class Html
      * @param string $title
      * @param string $class
      */
-    public static function button($type, $title, $class = "")
+    public static function button($type, $title, $class = "", $style = null)
     {
-        return "<button style='margin-top: 10px;' type='$type' class='$class btn btn-sm'>$title</button>";
+        return "<button style='" . ($style !== null ? $style : 'margin-top:10px;') . "' type='$type' class='" . (preg_match("/btn-lg/", $class) ? '' : 'btn-sm' ) . " $class btn'>$title</button>";
     }
 
     /**
@@ -159,6 +159,40 @@ class Html
     public static function image_structure($smiles)
     {
         return self::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($smiles));
+    }
+
+    /**
+     * Returns slider
+     */
+    public static function slider($label, $input_name, $checked = false, $input_id = null)
+    {
+        return '<label style="margin-right: 10px;">
+            ' . $label . '
+            </label>
+            <label class="switch">
+                <input id="' . $input_id . '" name="' . $input_name . '" class="slider-i" ' . ($checked ? 'checked' : '') . ' type="checkbox">
+                <span class="slider round"></span>
+            </label>';
+    }
+
+    /**
+     * Returns slider
+     */
+    public static function slider_2($label, $option_1, $option_2, $input_name, $checked = false, $input_id = null)
+    {
+        return '<label style="margin-right: 10px;">
+            ' . $label . '
+            </label>
+            <label style="margin-right: 10px;">
+            ' . $option_1 . '
+            </label>
+            <label class="switch">
+                <input id="' . $input_id . '" name="' . $input_name . '" class="slider-i" ' . ($checked ? 'checked' : '') . ' type="checkbox">
+                <span class="slider round"></span>
+            </label>
+            <label style="margin-left: 10px;">
+            ' . $option_2 . '
+            </label>';
     }
 
 

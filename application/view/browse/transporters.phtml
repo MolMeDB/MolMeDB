@@ -9,14 +9,14 @@
         <div class="comp-addAll">
             <button type="button" onclick="redirect('export/transporter_data/<?= $element->id?>/<?=  $is_last ? 1 : 0?>');" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
             <!-- <button type="button" onclick="addSetToComparator('set', '<?=$publication->id?>')" class="btn btn-warning btn-sm pull-right" style="margin-bottom: 5px;">Add all compounds to the comparator </button> -->
-            <button class="btn btn-sm btn-primary pull-right btn-add" id="btn-addALL">Add list to the comparator </button>
+            <button class="btn btn-sm btn-warning pull-right" id="btn-addALL">Add list to the downloader </button>
         </div>
             <ul class="search-ul" id="search-list">
                     <?php foreach ($list as $substance) : ?>
                     <li>
                             <div class="title">
                                 <a href="/mol/<?= $substance->identifier?>"><?= $substance->name ?></a>
-                                <button title="Add to comparator" id="<?= $substance->id ?>" type="button" class="btn btn-sm btn-primary btn-add">
+                                <button title="Add to downloader" onclick='add_molecule_to_downloader("<?= $substance->id ?>","<?= $substance->name ?>")' type="button" class="dwn-mol-<?= $substance->id ?> btn btn-sm btn-warning btn-add">
                                     <span id="<?= $substance->name ?>" class="glyphicon glyphicon-plus"></span>
                                 </button>
                             </div>
@@ -70,4 +70,12 @@
 <script>
     var data = JSON.parse('<?= json_encode($chart_data) ?>');
     show_sunburst(data, "chartdiv", true);
+
+    var is_list = <?= isset($list) ? 1 : 0 ?>;
+    if(is_list)
+    {
+        $('html, body').animate({
+            scrollTop: 900
+        }, 2000);
+    }
 </script>

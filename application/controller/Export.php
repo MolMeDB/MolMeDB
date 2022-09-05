@@ -441,7 +441,7 @@ class ExportController extends Controller
      * 
      * @param int $type
      */
-    public function downloader($type = self::DOWN_TYPE_ACTIVE)
+    public function downloader($type = self::DOWN_TYPE_PASSIVE)
     {
         if(!$_POST)
         {
@@ -462,7 +462,11 @@ class ExportController extends Controller
 
             $logic = strtolower($logic);
 
-            if(empty($id_membranes) && empty($id_methods))
+            $query = 'SELECT id 
+                    FROM interaction
+                    WHERE visibility = 1';
+                
+            if(empty($id_membranes) && empty($id_methods) && empty($id_substances))
             {
                 // Download all
                 $stats = new Statistics();
@@ -472,28 +476,18 @@ class ExportController extends Controller
                 {
                     $this->redirect('file/download/' . $files[Statistics::TYPE_INTER_ADD]->id);
                 }
-
-                $query = 'SELECT id 
-                    FROM interaction
-                    WHERE visibility = 1';
             }
-            else if(empty($id_membranes))
+            else if(!empty($id_methods) && empty($id_membranes))
             {
-                $query = 'SELECT id 
-                    FROM interaction
-                    WHERE visibility = 1 AND id_method IN ("' . implode('","', $id_methods) .'")';
+                $query .= ' AND id_method IN ("' . implode('","', $id_methods) .'")';
             }
-            else if(empty($id_methods))
+            else if(!empty($id_membranes) && empty($id_methods))
             {
-                $query = 'SELECT id 
-                    FROM interaction
-                    WHERE visibility = 1 AND id_membrane IN ("' . implode('","', $id_membranes) .'")';
+                $query .= ' AND id_membrane IN ("' . implode('","', $id_membranes) .'")';
             }
-            else
+            else if(!empty($id_membranes) && !empty($id_methods))
             {
-                $query = 'SELECT id 
-                    FROM interaction
-                    WHERE visibility = 1 AND (id_membrane IN ("' . implode('","', $id_membranes) . '") ' 
+                $query .= ' AND (id_membrane IN ("' . implode('","', $id_membranes) . '") ' 
                     . ($logic == 'and' ? "AND" : "OR") . ' id_method IN ("' . implode('","', $id_methods) .'"))';
             }
 

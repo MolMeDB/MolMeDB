@@ -132,6 +132,8 @@ function enable_button(cl, html = "")
     $(cl).html(html ? html : 'Add to downloader');
 }
 
+var first_init = true;
+
 /**
  * Update downloader list
  */
@@ -255,12 +257,16 @@ function update_downloader_list()
     $('#dwn-sel-mems').html('(' + mem_s.length + ')');
     $('#dwn-sel-mets').html('(' + met_s.length + ')');
 
-    if(!$('.feedback').hasClass('fb-visible'))
+    if(!$('.feedback').hasClass('fb-visible') && !first_init)
     {
         $('.feedback').addClass('animate');
         setTimeout(function() {
             $('.feedback').removeClass('animate');
         }, 500);
+    }
+    else if(first_init)
+    {
+        first_init = false;
     }
 
     let all_green = true;

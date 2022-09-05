@@ -82,18 +82,18 @@ class Publications extends Db
         }
 
        return $this->queryAll('
-            SELECT DISTINCT *
+            SELECT *
             FROM substances
             WHERE id IN
             (
-                SELECT DISTINCT i.id_substance
+                SELECT i.id_substance
                 FROM interaction i 
                 JOIN datasets d ON d.id = i.id_dataset AND d.visibility = 1
                 WHERE i.id_reference = ? OR d.id_publication = ?
                 
                 UNION
 
-                SELECT DISTINCT t.id_substance
+                SELECT t.id_substance
                 FROM transporters t
                 JOIN transporter_datasets td ON td.id = t.id_dataset AND td.visibility = 1
                 WHERE td.id_reference = ? OR t.id_reference = ?

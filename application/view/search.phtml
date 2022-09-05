@@ -2,7 +2,7 @@
 <datalist id="search-datalist-smiles"></datalist>
 
 <h3><b>Search compounds by:</b></h3>
-<ul class="nav nav-tabs">
+<ul class="nav nav-tabs" id="nav-tabs">
   <li id="tab-compound" class="active"><a data-toggle="tab" href="#compound">Name</a></li>
   <li id="tab-membrane"><a data-toggle="tab" href="#membrane">Membrane</a></li>
   <li id="tab-method"><a data-toggle="tab" href="#method">Method</a></li>
@@ -11,7 +11,7 @@
   <!-- <li><a data-toggle="tab" href="#uniprot">Uniprot ID</a></li> -->
 </ul>
 
-<div class="tab-content">
+<div class="tab-content" id="tab-content">
   <div id="compound" class="tab-pane fade in active">
     <div class="panel-group">
       <div class="panel panel-primary">
@@ -181,7 +181,7 @@
 
   $(document).ready(function() 
   {
-    setTimeout(showContent, 500);
+    setTimeout(showContent, 200);
   });
 
   
@@ -293,6 +293,12 @@ function sh_t(id)
   $('.tab-pane').removeClass('fade');
   $('.tab-pane').removeClass('in');
   $('#'+id).addClass('active fade in');
+
+  if (<?= $show_detail ?>) {
+    $('html, body').animate({
+            scrollTop: $('#tab-' + id).offset().top
+      }, 1000);
+  }
 }
 
 <?= isset($active_tab) ? "sh_t(\"$active_tab\")" : '' ?>;

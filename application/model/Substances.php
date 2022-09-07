@@ -178,8 +178,7 @@ class Substances extends Db
             $pairs[$fragmentation->id_substance][] = $r;
         }
 
-        // Find molecules composed of core + some func. group deletion
-        // Get all molecule fragmentations
+        // Find all smaller molecules
         $all_fragmentations = Fragmentation::get_all_substance_fragmentations($substance->id);
 
         $func_g_fragmentations = $all_fragmentations;
@@ -223,11 +222,24 @@ class Substances extends Db
             }
             else
             {
-                continue;
+                $cores = $frag->raw_fragments;
             }
 
             foreach($cores as $c)
             {
+                foreach($frag->raw_fragments as $f)
+                {
+                    if(!$f->links || $f->id_fragment == $c->id_fragment)
+                    {
+                        continue;
+                    }
+
+                    if(count(explode(',', $f->links)) > 1)
+                    {
+                        continue 2;
+                    }
+                }
+
                 $fragment = $c->fragment;
                 $atom_count = $fragment->get_atom_count();
 
@@ -238,27 +250,28 @@ class Substances extends Db
                     continue;
                 }
 
-                $variants = Fragments_options::instance()->get_all_options_ids($fragment->id);
+                // $variants = Fragments_options::instance()->get_all_options_ids($fragment->id, TRUE);
 
                 // Get compounds of the same group + func. groups
                 $candidates = Db::instance()->queryAll('
                     SELECT DISTINCT id, id_substance, order_number
-                    FROM (SELECT *, LENGTH(REPLACE(REPLACE(GROUP_CONCAT(fg), ",", ""), "0", "")) as total_fg
-                    FROM
-                    (
-                        SELECT DISTINCT sf.*, IF(fet.id IS NOT NULL, "1", "0") as fg
-                        FROM `substances_fragments` sf 
-                        LEFT JOIN fragments_enum_types fet ON fet.id_fragment = sf.id_fragment
-                        JOIN(
-                            SELECT id_substance, order_number
-                            FROM substances_fragments sf
-                            WHERE sf.id_fragment IN ("' . implode('","', $variants) . '")
-                            ) as t1 ON t1.id_substance = sf.id_substance AND t1.order_number = sf.order_number
-                        WHERE sf.id_substance != ?
-                    ) as t  
-                    GROUP BY id_substance, order_number) as t
+                    FROM (
+                        SELECT *, LENGTH(REPLACE(REPLACE(GROUP_CONCAT(fg), ",", ""), "0", "")) as total_fg
+                        FROM
+                            (
+                                SELECT DISTINCT sf.*, IF(fet.id IS NOT NULL, "1", "0") as fg
+                                FROM `substances_fragments` sf 
+                                LEFT JOIN fragments_enum_types fet ON fet.id_fragment = sf.id_fragment
+                                JOIN(
+                                    SELECT id_substance, order_number
+                                    FROM substances_fragments sf
+                                    WHERE sf.id_fragment = ?
+                                    ) as t1 ON t1.id_substance = sf.id_substance AND t1.order_number = sf.order_number
+                                WHERE sf.id_substance != ?
+                            ) as t  
+                        GROUP BY id_substance, order_number) as t
                     WHERE total_fragments-total_fg < 2 AND total_fragments-total_fg >= 0
-                ', array($c->id_substance));
+                ', array($fragment->id, $c->id_substance));
 
                 foreach($candidates as $cand)
                 {
@@ -266,6 +279,18 @@ class Substances extends Db
                     {
                         $pairs[$cand->id_substance] = [];
                     }
+                    
+                    // Check, if candidate is valid
+                    $fragmentation = new Fragmentation($cand->id);
+
+                    foreach($fragmentation->raw_fragments as $f)
+                    {
+                        if(count(explode(',',$f->links)) > 1 && $f->id_fragment !== $fragment->id)
+                        {
+                            continue 2;
+                        }
+                    }
+
                     
                     $r = new Substance_pairs();
 
@@ -277,11 +302,36 @@ class Substances extends Db
 
                     $pairs[$cand->id_substance][] = $r;
                 }
+
+                // Get all smaller
+                $no_link_fragment = $fragment->remove_links();
+
+                $candidate = Substances_fragments::instance()
+                    ->where('id_fragment', $no_link_fragment->id)
+                    ->get_one();
+
+                if($candidate->id)
+                {
+                    if(!isset($pairs[$candidate->id_substance]))
+                    {
+                        $pairs[$candidate->id_substance] = [];
+                    }
+                    
+                    $r = new Substance_pairs();
+
+                    $r->id_substance_1 = $substance->id;
+                    $r->id_substance_2 = $candidate->id_substance;
+                    $r->id_core = $no_link_fragment->id;
+                    $r->substance_1_fragmentation_order = $frag->order_number;
+                    $r->substance_2_fragmentation_order = 1;
+
+                    $pairs[$candidate->id_substance][] = $r;
+                }
             }
         }
 
         // Remove old and save new data
-        Db::instance()->query('DELETE FROM substance_fragmentation_pairs WHERE id_substance_1 = ? OR id_substance_2 = ?', array($substance->id, $substance->id));
+        Db::instance()->query('DELETE FROM substance_fragmentation_pairs WHERE id_substance_1 = ?', array($substance->id));
 
         foreach($pairs as $id => $data)
         {
@@ -300,7 +350,10 @@ class Substances extends Db
             }
 
             // Save record
-            $best->save();
+            if($best)
+            {
+                $best->save();
+            }
         }
     }
 

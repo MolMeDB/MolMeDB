@@ -41,7 +41,8 @@ class SchedulerController extends Controller
         'run',
         // 'log_sub_changes',
         // 'fragment_molecules'
-        'validate_substance_identifiers'
+        // 'validate_substance_identifiers',
+        'match_functional_pairs'
     );
 
     /**

@@ -53,10 +53,11 @@ class Fragments_options extends Db
      * Returns all options for given fragment
      * 
      * @param int $id_fragment
+     * @param bool $exclude bigger - Finds only smaller or equal fragments
      * 
      * @return int[]
      */
-    public function get_all_options_ids($id_fragment)
+    public function get_all_options_ids($id_fragment, $exclude_bigger = false)
     {
         $all = [$id_fragment];
         $c1 = 0;
@@ -66,17 +67,33 @@ class Fragments_options extends Db
         {
             $c1 = count($all);
 
-            $t = $this->queryAll('
-                SELECT id_parent, id_child
-                FROM fragments_options
-                WHERE id_child IN ("' . implode('","', $all) . '") OR id_parent IN ("' . implode('","', $all) . '")
-            ');
+            if($exclude_bigger)
+            {
+                $t = $this->queryAll('
+                    SELECT id_child, 0 as id_parent
+                    FROM fragments_options
+                    WHERE id_parent IN ("' . implode('","', $all) . '")
+                ');
 
-            $t1 = arr::get_values($t, 'id_parent');
-            $t2 = arr::get_values($t, 'id_child');  
+                $t2 = arr::get_values($t, 'id_child');  
 
-            $all = arr::union($all, $t1, $t2);
-            $all = array_unique($all);
+                $all = arr::union($all, $t2);
+                $all = array_unique($all);
+            }
+            else
+            {
+                $t = $this->queryAll('
+                    SELECT id_parent, id_child
+                    FROM fragments_options
+                    WHERE id_child IN ("' . implode('","', $all) . '") OR id_parent IN ("' . implode('","', $all) . '")
+                ');
+
+                $t1 = arr::get_values($t, 'id_parent');
+                $t2 = arr::get_values($t, 'id_child');  
+
+                $all = arr::union($all, $t1, $t2);
+                $all = array_unique($all);
+            }
             
             $c2 = count($all);
         }

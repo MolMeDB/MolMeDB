@@ -345,6 +345,35 @@ class Fragments extends Db
 
         parent::save();
 
+        // Match functional groups
+        if($this->id)
+        {
+            $func_groups = Enum_types::get_by_type(Enum_types::TYPE_FRAGMENT_CATS);
+
+            if(!$func_groups)
+            {
+                return;
+            }
+
+            foreach($func_groups as $fg)
+            {
+                if($fg->content === NULL || $fg->content == "")
+                {
+                    continue;
+                }
+
+                if(preg_match("/$fg->content/", $this->smiles))
+                {
+                    $new = new Fragments_enum_types();
+
+                    $new->id_fragment = $this->id;
+                    $new->id_enum_type = $fg->id;
+
+                    $new->save();
+                }
+            }
+        }
+
         // After adding new fragment, create options
         if($this->id)
         {

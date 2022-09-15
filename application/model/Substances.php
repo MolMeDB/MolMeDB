@@ -82,6 +82,39 @@ class Substances extends Db
     }
 
     /**
+     * Returns total count of atoms in fragment
+     * 
+     * @return int
+     */
+    public function get_atom_count()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        $sf = Substances_fragments::instance()->where(array
+        (
+            'id_substance' => $this->id,
+            'order_number' => 1
+        ))->get_one();
+
+        if(!$sf->id)
+        {
+            return null;
+        }
+
+        $f = new Fragments($sf->id_fragment);
+
+        if(!$f->id)
+        {
+            return null;
+        }
+
+        return $f->get_atom_count();
+    }
+
+    /**
      * Returns molecules differing in the presence of a functional group
      * 
      * @param int $id_substance

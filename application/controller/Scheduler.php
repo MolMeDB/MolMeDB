@@ -42,7 +42,8 @@ class SchedulerController extends Controller
         // 'log_sub_changes',
         // 'fragment_molecules'
         // 'validate_substance_identifiers',
-        'match_functional_pairs'
+        'match_functional_pairs',
+        "update_pair_groups"
     );
 
     /**
@@ -131,6 +132,18 @@ class SchedulerController extends Controller
                 $this->protected_call('delete_empty_membranes_methods', []);
             }
 
+            // Once per day, run pair group update
+            if($this->check_time('23:20'))
+            {
+                $this->protected_call('update_pair_groups', []);
+            }
+
+            // Each 10 minutes, update one pair_group interactions
+            if($this->check_time('XX:10'))
+            {
+                $this->protected_call('update_pair_group_interactions', []);
+            }
+
             // Run always
             if(TRUE)
             {
@@ -173,6 +186,37 @@ class SchedulerController extends Controller
         }
 
         $this->print('-------------------------');
+    }
+
+    /**
+     * Updates table with pair groups
+     * 
+     * @author Jakub Juracka
+     */
+    public function update_pair_groups()
+    {
+        $model = new Substance_pair_groups();
+        $model->update_all();
+    }
+
+    /**
+     * Updates tables with pair group interactions
+     * 
+     * @author Jakub Juracka
+     */
+    public function update_pair_group_interactions()
+    {
+        $model = new Substance_pair_group_type_interactions();
+        $id = $model->update_one_group();
+
+        $group = new Substance_pair_groups($id);
+
+        if(!$group->id)
+        {
+            return;
+        }
+
+        $group->save_group_distributions();
     }
 
     /**

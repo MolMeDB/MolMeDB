@@ -127,6 +127,106 @@ class arr
     }
 
     /**
+     * Sums numbers in array
+     * 
+     * @param array $arr
+     * 
+     * @return int|double
+     */
+    public static function sum($arr)
+    {
+        $total = 0;
+        foreach($arr as $v)
+        {
+            if(is_numeric($v))
+            {
+                $total += floatval($v);
+            }
+        }
+        return round($total, 2);
+    }
+
+    /**
+     * Computes average from array
+     * 
+     * @param array $arr
+     * 
+     * @return int|double
+     */
+    public static function average($arr)
+    {
+        $total_numeric = self::total_numeric($arr);
+        if($total_numeric == 0)
+        {
+            return 0;
+        }
+        return self::sum($arr) / $total_numeric;
+    }
+
+    /**
+     * Returns total numeric values in array
+     * 
+     * @param array $arr
+     * 
+     * @return int
+     */
+    public static function total_numeric($arr)
+    {
+        $total_numeric = 0;
+        foreach($arr as $v)
+        {
+            if(is_numeric($v))
+            {
+                $total_numeric++;
+            }
+        }
+
+        return $total_numeric;
+    }
+
+    /**
+     * Computes standard deviation from array
+     * 
+     * @param array $arr
+     * 
+     * @return int|double
+     */
+    public static function sd($arr)
+    {
+        return sqrt(self::variance($arr));
+    }
+
+    /**
+     * Computes variance from array
+     * 
+     * @param array $arr
+     * 
+     * @return int|double
+     */
+    public static function variance($arr)
+    {
+        $total_numeric = self::total_numeric($arr);
+
+        if($total_numeric == 0)
+        {
+            return 0;
+        }
+
+        $sum = 0;
+        $avg = self::average($arr);
+
+        foreach($arr as $v)
+        {
+            if(is_numeric($v))
+            {
+                $sum += pow(floatval($v)-$avg, 2);
+            }
+        }
+
+        return (1/$total_numeric)*$sum;
+    }
+
+    /**
      * Sorts array by given key
      * !!! REMOVES GIVEN ARR KEYS
      * 

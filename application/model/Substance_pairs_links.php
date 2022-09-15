@@ -8,9 +8,9 @@
  * @property Substance_pairs $pair
  * @property int $type
  * @property int $id_substance_1_fragment
- * @property Substances_fragments $substance_1_Fragment
+ * @property Substances_fragments $substance_1_fragment
  * @property int $id_substance_2_fragment
- * @property Substances_fragments $substance_2_Fragment
+ * @property Substances_fragments $substance_2_fragment
  * @property int $id_core
  * @property Fragments $core
  * 
@@ -53,12 +53,12 @@ class Substance_pairs_links extends Db
         ),
         'id_substance_1_fragment' => array
         (
-            'var' => 'substance_1_Fragment',
+            'var' => 'substance_1_fragment',
             'class' => 'Substances_fragments'
         ),
         'id_substance_2_fragment' => array
         (
-            'var' => 'substance_2_Fragment',
+            'var' => 'substance_2_fragment',
             'class' => 'Substances_fragments'
         ),
         'id_core' => array

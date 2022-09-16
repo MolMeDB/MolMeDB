@@ -1,5 +1,7 @@
 <?php
 
+use Egulias\EmailValidator\Result\Reason\CharNotAllowed;
+
 /**
  * Holds info about substance pairs
  * 
@@ -52,50 +54,17 @@ class Substance_pair_groups extends Db
     public function update_all()
     {
         $data = $this->queryAll('
-            SELECT t1, t2, f1, g1, f2, g2, COUNT(CONCAT(f1,f2)) as total
-            FROM
-            (
-                SELECT 
-                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(f1.id IS NULL, "", f1.id) ORDER BY f1.smiles ASC), ",,", ",")) as t1, 
-                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(f2.id IS NULL, "", f2.id) ORDER BY f1.smiles ASC), ",,", "")) as t2, 
-                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(f1.smiles IS NULL, "", f1.smiles) ORDER BY f1.smiles ASC), ",,", ",")) as f1, 
-                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(et1.name IS NULL, "", et1.name) ORDER BY f1.smiles ASC), ",,", ",")) as g1, 
-                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(f2.smiles IS NULL, "", f2.smiles) ORDER BY f1.smiles ASC), ",,", ",")) as f2,
-                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(et2.name IS NULL, "", et2.name) ORDER BY f1.smiles ASC), ",,", ",")) as g2
-                FROM (
-                    SELECT id, l.id_substance_pair, type, IF(t.switch = 0, id_substance_1_fragment, id_substance_2_fragment) as id_substance_1_fragment, IF(t.switch = 0, id_substance_2_fragment, id_substance_1_fragment) as id_substance_2_fragment
-                    FROM substance_fragmentation_pair_links l
-                    JOIN (
-                        SELECT l.id_substance_pair, 
-                            IF(STRCMP(
-                            CONCAT(
-                                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(f1.id IS NULL, "", f1.id) ORDER BY f1.id ASC), ",,", ",")),
-                                "/",
-                                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(f2.id IS NULL, "", f2.id) ORDER BY f1.id ASC), ",,", ","))
-                            ),
-                            CONCAT(
-                                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(f2.id IS NULL, "", f2.id) ORDER BY f2.id ASC), ",,", ",")),
-                                "/",
-                                TRIM("," FROM REPLACE(GROUP_CONCAT(IF(f1.id IS NULL, "", f1.id) ORDER BY f2.id ASC), ",,", ","))
-                            )) = -1, 1, 0) as switch
-                        FROM substance_fragmentation_pair_links l
-                        LEFT JOIN substances_fragments sf1 ON sf1.id = l.id_substance_1_fragment
-                        LEFT JOIN substances_fragments sf2 ON sf2.id = l.id_substance_2_fragment
-                        LEFT JOIN fragments f1 ON f1.id = sf1.id_fragment
-                        LEFT JOIN fragments f2 ON f2.id = sf2.id_fragment
-                        GROUP BY id_substance_pair
-                    ) as t ON t.id_substance_pair = l.id_substance_pair
-                ) as l
+            SELECT GROUP_CONCAT(id_substance_pair) as ids, CONCAT(f2,"/",f1) as func_groups, f2, f1, COUNT(CONCAT(f2,"/",f1)) as total
+            FROM (
+                SELECT id_substance_pair, 
+                    TRIM("," FROM REPLACE(GROUP_CONCAT(IF(sf2.id_fragment IS NULL, "", sf2.id_fragment) ORDER BY sf2.id_fragment ASC), ",,", ",")) as f2,
+                    TRIM("," FROM REPLACE(GROUP_CONCAT(IF(sf1.id_fragment IS NULL, "", sf1.id_fragment) ORDER BY sf2.id_fragment ASC), ",,", ",")) as f1 
+                FROM substance_fragmentation_pair_links as l
                 LEFT JOIN substances_fragments sf1 ON sf1.id = l.id_substance_1_fragment
                 LEFT JOIN substances_fragments sf2 ON sf2.id = l.id_substance_2_fragment
-                LEFT JOIN fragments f1 ON f1.id = sf1.id_fragment
-                LEFT JOIN fragments f2 ON f2.id = sf2.id_fragment
-                LEFT JOIN fragments_enum_types fet1 ON fet1.id_fragment = f1.id
-                LEFT JOIN fragments_enum_types fet2 ON fet2.id_fragment = f2.id
-                LEFT JOIN enum_types et1 ON et1.id = fet1.id_enum_type
-                LEFT JOIN enum_types et2 ON et2.id = fet2.id_enum_type
-                GROUP BY id_substance_pair) as t
-            GROUP BY CONCAT(f1,"/",f2)
+                GROUP BY id_substance_pair
+            ) as t
+            GROUP BY CONCAT(f2,"/",f1)
             ORDER BY total DESC
         ');
 
@@ -108,9 +77,11 @@ class Substance_pair_groups extends Db
 
         foreach($data as $row)
         {
-            $id_fragments_1 = array_values(array_filter(explode(',', $row->t1 ?? ""), 'rem_empty'));
-            $id_fragments_2 = array_values(array_filter(explode(',', $row->t2 ?? ""), 'rem_empty'));
+            $id_fragments_1 = array_values(array_filter(explode(',', $row->f1 ?? ""), 'rem_empty'));
+            $id_fragments_2 = array_values(array_filter(explode(',', $row->f2 ?? ""), 'rem_empty'));
             $total = $row->total;
+
+            $pair_ids = explode(',', $row->ids);
 
             if($total < 10)
             {
@@ -123,130 +94,261 @@ class Substance_pair_groups extends Db
                 continue;   // Invalid substitution
             }
 
-            if(count($id_fragments_2) > count($id_fragments_1))
-            {
-                $t = $id_fragments_1;
-                $id_fragments_1 = $id_fragments_2;
-                $id_fragments_2 = $t;
-            }
-
-            asort($id_fragments_1);
             $type = Substance_pairs_links::TYPE_ADD;
 
-            if(count($id_fragments_2))
+            if(count($id_fragments_1))
             {
                 $type = Substance_pairs_links::TYPE_SUBS;
-
-                $t = $id_fragments_2;
-                $id_fragments_2 = []; $i = 0;
-
-                foreach($id_fragments_1 as $key => $val)
-                {
-                    $id = $t[$i++];
-                    $f = new Fragments($id);
-
-                    if($f->get_functional_group() === null)
-                    {
-                        continue 2;
-                    }
-
-                    $id_fragments_2[$key] = $id;
-                }
             }
 
             // Check, if data are valid func. groups
-            foreach($id_fragments_1 as $id)
+            foreach($id_fragments_2 as $k => $id)
             {
                 $f = new Fragments($id);
+                $f2 = new Fragments(!empty($id_fragments_1) ? $id_fragments_1[$k] : null);
 
-                if($f->get_functional_group() === null)
+                if($f->get_functional_group() === null || 
+                    ($f2->id && $f2->get_functional_group() === null))
                 {
                     continue 2;
                 }
             }
-        
-            $record = new Substance_pair_groups();
 
-            $record->type = $type;
-            $record->total_pairs = $total;
-            $record->adjustment = $type == Substance_pairs_links::TYPE_ADD ?
-                implode(',', $id_fragments_1) :
-                implode(',', $id_fragments_1) . '/' . implode(',', $id_fragments_2);
+            try
+            {
+                Db::beginTransaction();
+            
+                $record = new Substance_pair_groups();
 
-            $record->save();
+                $record->type = $type;
+                $record->total_pairs = $total;
+                $record->adjustment = $type == Substance_pairs_links::TYPE_ADD ?
+                    implode(',', $id_fragments_2) :
+                    implode(',', $id_fragments_1) . '/' . implode(',', $id_fragments_2);
 
-            $processed[] = $record->id;
+                $record->save();
+
+                // Update substance pairs
+                Db::instance()->query('
+                    UPDATE `substance_fragmentation_pairs`
+                    SET id_group = ? 
+                    WHERE id IN ("' . implode('","', $pair_ids) .  '")
+                ', array($record->id));
+
+                Db::commitTransaction();
+
+                $processed[] = $record->id;
+            }
+            catch(Exception $e)
+            {
+                Db::rollbackTransaction();
+                throw $e;
+            }
         }
 
         // Delete old records
         $this->query('
-            DELETE FROM substance_pair_groups WHERE id NOT IN ("' . implode('","', $processed) . '";
+            DELETE FROM substance_pair_groups WHERE id NOT IN ("' . implode('","', $processed) . '");
         ');
     }
 
-    
     /**
-     * Returns distribution of values for given group
+     * Updates group stats
      * 
-     * @param int $id_group
      * 
-     * @return array|null
      */
-    public function save_group_distributions($id_group = NULL)
+    public function update_group_stats($id_group = null)
     {
         if(!$id_group)
         {
-            $id_group = $this->id;
+            $group = $this->order_by('datetime ASC, id ', 'ASC')->get_one();
         }
-
-        $group =  new Substance_pair_groups($id_group);
+        else
+        {
+            $group = new Substance_pair_groups($id_group); 
+        }
 
         if(!$group->id)
         {
-            return null;
+            return;
         }
 
-        $types = Substance_pair_group_types::instance()->where('id_group', $group->id)->get_all();
+        $pairs = Substance_pairs::instance()->where('id_group', $group->id)->get_all();
 
-        if(!count($types))
+        $substance_ids = [];
+
+        foreach($pairs as $p)
         {
-            return null;
+            $substance_ids[] = [$p->id_substance_1, $p->id_substance_2];
         }
 
-        foreach($types as $type)
-        {
-            $t =  Substance_pair_group_type_interactions::instance()->where('id_group_type', $type->id)->get_all();
-            $attrs = self::$attr_of_interest['passive'];
+        // Passive
+        $ints = $this->queryAll('
+            SELECT DISTINCT i1.id_membrane as id_membrane, i1.id_method as id_method, i1.charge as charge
+            FROM (
+                SELECT *
+                FROM substance_fragmentation_pairs
+                WHERE id_group = ?
+            ) as p
+            JOIN interaction i1 ON i1.id_substance = p.id_substance_1
+            JOIN interaction i2 ON i2.id_substance = p.id_substance_2 AND i1.id_membrane = i2.id_membrane AND i1.id_method = i2.id_method && i1.charge = i2.charge
+        ', [$group->id]);
 
-            foreach($t as $record)
+        foreach($ints as $i)
+        {
+            $record = new Substance_pair_group_types();
+
+            $record->id_group = $group->id;
+            $record->id_membrane = $i->id_membrane;
+            $record->id_method = $i->id_method;
+            $record->charge = $i->charge;
+
+            $record->save();
+
+            $attrs = array_keys(self::$attr_of_interest['passive']);
+
+            foreach($attrs as $key => $val)
             {
-                $int1 = new Interactions($record->id_interaction_1);
-                $int2 = new Interactions($record->id_interaction_2);
+                $attrs[$key] = "(i2.$val - i1.$val) as $val";
+            }
 
-                if(!$int1->id || !$int2->id)
+            // Update stats
+            $is = $this->queryAll('
+                SELECT ' . implode(', ', $attrs) . '
+                FROM (
+                    SELECT *
+                    FROM substance_fragmentation_pairs
+                    WHERE id_group = ?
+                ) as p
+                JOIN interaction i1 ON i1.id_substance = p.id_substance_1
+                JOIN interaction i2 ON i2.id_substance = p.id_substance_2 AND i2.id_membrane = i1.id_membrane AND i2.id_method = i1.id_method AND i2.charge = i1.charge
+                WHERE i1.id_membrane = ? AND i1.id_method = ? AND i1.charge '  . ($record->charge === null ? 'IS NULL ' : ' LIKE "' . $record->charge . '"') . '
+            ', array($group->id, $record->id_membrane, $record->id_method));
+
+            $join = self::$attr_of_interest['passive'];
+
+            foreach($is as $i)
+            {
+                foreach($join as $key => $v)
                 {
+                    if(!is_array($join[$key]))
+                    {
+                        $join[$key] = []; 
+                    }
+
+                    if(is_numeric($i->$key))
+                        $join[$key][] = $i->$key;
+                }
+            }   
+
+            $stats = [];
+
+            foreach($join as $att => $data)
+            {
+                $total = arr::total_numeric($data);
+
+                if($total < 5)
+                {
+                    $stats[$att] = ['total' => $total];
                     continue;
                 }
 
-                foreach($attrs as $attr => $v)
-                {
-                    if(!is_array($attrs[$attr]))
-                    {
-                        $attrs[$attr] = [];
-                    }
-
-                    if($int1->$attr === null || $int1->$attr === null)
-                    {
-                        continue;
-                    }
-
-                    $attrs[$attr][] = round(floatval($int1->$attr) - floatval($int2->$attr), 2);
-                }
+                $stats[$att] = array
+                (
+                    'average' => arr::average($data),
+                    'sd'      => arr::sd($data),
+                    'total'   => $total
+                );
             }
 
-            $type->stats = json_encode($attrs);
-            $type->save();
+            $record->stats = json_encode($stats);
+            $record->save();
         }
+
+        // Active
+        $ints = $this->queryAll('
+            SELECT DISTINCT i1.id_target as id_target
+            FROM (
+                SELECT *
+                FROM substance_fragmentation_pairs
+                WHERE id_group = ?
+            ) as p
+            JOIN transporters i1 ON i1.id_substance = p.id_substance_1
+            JOIN transporters i2 ON i2.id_substance = p.id_substance_2 AND i1.id_target = i2.id_target 
+        ', [$group->id]);
+
+        foreach($ints as $i)
+        {
+            $record = new Substance_pair_group_types();
+
+            $record->id_group = $group->id;
+            $record->id_target = $i->id_target;
+
+            $record->save();
+
+            $attrs = self::$attr_of_interest['active'];
+
+            foreach($attrs as $key => $val)
+            {
+                $attrs[$key] = "(i2.$val - i1.$val) as $val";
+            }
+
+            // Update stats
+            $is = $this->queryAll('
+                SELECT ' . implode(', ', $attrs) . '
+                FROM (
+                    SELECT *
+                    FROM substance_fragmentation_pairs
+                    WHERE id_group = ?
+                ) as p
+                JOIN transporters i1 ON i1.id_substance = p.id_substance_1
+                JOIN transporters i2 ON i2.id_substance = p.id_substance_2 AND i1.id_target = i2.id_target 
+                WHERE i1.id_target = ?
+            ', array($group->id, $record->id_target));
+
+            $t = self::$attr_of_interest['active'];
+            $join = [];
+
+            foreach($is as $i)
+            {
+                foreach($t as $key)
+                {
+                    if(!isset($join[$key]))
+                    {
+                        $join[$key] = []; 
+                    }
+
+                    if(is_numeric($i->$key))
+                        $join[$key][] = $i->$key;
+                }
+            }   
+
+            $stats = [];
+
+            foreach($join as $att => $data)
+            {
+                $total = arr::total_numeric($data);
+
+                if($total < 5)
+                {
+                    $stats[$att] = ['total' => $total];
+                    continue;
+                }
+
+                $stats[$att] = array
+                (
+                    'average' => arr::average($data),
+                    'sd'      => arr::sd($data),
+                    'total'   => $total
+                );
+            }
+
+            $record->stats = json_encode($stats);
+            $record->save();
+        }
+
+        $group->datetime = date('Y-m-d H:i:s');
+        $group->save();
     }
 
     /**
@@ -262,6 +364,11 @@ class Substance_pair_groups extends Db
 
             if($exists->id)
             {
+                if($exists->total_pairs !== $this->total_pairs)
+                {
+                    $exists->datetime = NULL;
+                }
+
                 $exists->total_pairs = $this->total_pairs;
                 $exists->save();
 

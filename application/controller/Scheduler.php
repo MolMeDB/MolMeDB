@@ -41,9 +41,9 @@ class SchedulerController extends Controller
         'run',
         // 'log_sub_changes',
         // 'fragment_molecules'
-        // 'validate_substance_identifiers',
+        'update_pair_group_interactions',
         'match_functional_pairs',
-        // "update_pair_groups"
+        "update_pair_groups"
     );
 
     /**
@@ -135,13 +135,13 @@ class SchedulerController extends Controller
             // Once per day, run pair group update
             if($this->check_time('23:20'))
             {
-                $this->protected_call('update_pair_groups', []);
+                // $this->protected_call('update_pair_groups', []);
             }
 
             // Each 10 minutes, update one pair_group interactions
             // if($this->check_time('XX:10'))
             // {
-                $this->protected_call('update_pair_group_interactions', []);
+                // $this->protected_call('update_pair_group_interactions', []);
             // }
 
             // Run always
@@ -206,18 +206,19 @@ class SchedulerController extends Controller
      */
     public function update_pair_group_interactions()
     {
-        $model = new Substance_pair_group_type_interactions();
-        $id = $model->update_one_group();
+        $model = new Substance_pair_groups();
 
-        $group = new Substance_pair_groups($id);
-
-        if(!$group->id)
+        try
         {
-            $this->print('No group id returned.');
-            return;
+            Db::beginTransaction();
+            $model->update_group_stats();
+            Db::commitTransaction();
         }
-
-        $group->save_group_distributions();
+        catch(Exception $e)
+        {
+            Db::rollbackTransaction();
+            throw $e;
+        }
     }
 
     /**

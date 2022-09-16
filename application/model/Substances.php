@@ -177,7 +177,7 @@ class Substances extends Db
         foreach($options as $id)
         {
             $bigger = array_merge($bigger, Fragmentation::get_all_with_fragment_id($id, $substance->id));
-        }
+        } 
 
         // Save pairs
         foreach($bigger as $fragmentation)
@@ -189,7 +189,8 @@ class Substances extends Db
 
             foreach($fragmentation->raw_fragments as $sf)
             {
-                if($sf->fragment->get_functional_group() === null && $sf->fragment->id !== $fragmentation->core->fragment->id)
+                if(($sf->fragment->get_functional_group() === null && $sf->id !== $fragmentation->core->id) || 
+                    (count(explode(',',$sf->links)) > 1 && $sf->id !== $fragmentation->core->id))
                 {
                     continue 2;
                 }
@@ -275,21 +276,18 @@ class Substances extends Db
 
                 $fragment = $c->fragment;
                 $atom_count = $fragment->get_atom_count();
+                $is_func_group = $fragment->get_functional_group(null, true) !== null;
 
-                if($atom_count < 5 
-                    // && ($fragment->get_functional_group() !== null)
-                    )
+                if($atom_count < 5)
                 {
                     continue;
                 }
-
-                // $variants = Fragments_options::instance()->get_all_options_ids($fragment->id, TRUE);
 
                 // Get compounds of the same group + func. groups
                 $candidates = Db::instance()->queryAll('
                     SELECT DISTINCT id, id_substance, order_number
                     FROM (
-                        SELECT *, LENGTH(REPLACE(REPLACE(GROUP_CONCAT(fg), ",", ""), "0", "")) as total_fg
+                        SELECT *, (LENGTH(REPLACE(REPLACE(GROUP_CONCAT(fg), ",", ""), "0", "")) - ' . ($is_func_group ? 1 : 0) . ') as total_fg
                         FROM
                             (
                                 SELECT DISTINCT sf.*, IF(fet.id IS NOT NULL, "1", "0") as fg
@@ -324,7 +322,6 @@ class Substances extends Db
                         }
                     }
 
-                    
                     $r = new Substance_pairs();
 
                     $r->id_substance_1 = $substance->id;
@@ -362,9 +359,6 @@ class Substances extends Db
                 }
             }
         }
-
-        // Remove old and save new data
-        Db::instance()->query('DELETE FROM substance_fragmentation_pairs WHERE id_substance_1 = ?', array($substance->id));
 
         foreach($pairs as $id => $data)
         {

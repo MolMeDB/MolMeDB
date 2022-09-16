@@ -12,6 +12,8 @@
  * @property Fragmentation $fragmentation_2
  * @property int $id_core
  * @property Fragments $core
+ * @property int $id_group
+ * @property Substance_pair_groups $group
  * @property int $substance_1_fragmentation_order
  * @property int $substnace_2_fragmentation_order
  * @property string $datetime
@@ -75,6 +77,11 @@ class Substance_pairs extends Db
             'var' => 'core',
             'class' => 'Fragments'
         ),
+        'id_group' => array
+        (
+            'var' => 'group',
+            'class' => 'Substance_pair_groups'
+        ),
     );
 
     /**
@@ -137,7 +144,6 @@ class Substance_pairs extends Db
                 'id_substance_1' => $this->id_substance_2,
             ))
             ->get_one();
-            $reverse = true;
         }
 
         if($exists->id)
@@ -187,6 +193,18 @@ class Substance_pairs extends Db
             return;
         }
 
+        if($comp->reverse)
+        {
+            $t = $this->id_substance_1;
+            $t1 = $this->substance_1_fragmentation_order;
+            $this->id_substance_1 = $this->id_substance_2;
+            $this->id_substance_2 = $t;
+            $this->substance_1_fragmentation_order = $this->substnace_2_fragmentation_order;
+            $this->substnace_2_fragmentation_order = $t1;
+
+            $this->save();
+        }
+
         foreach($comp->additions as $a)
         {
             $a->save();
@@ -230,6 +248,118 @@ class Substance_pairs extends Db
 
         return $result;
     }
+
+    /**
+     * Fills group ids for given group
+     * 
+     * @param int $group_id
+     */
+    public function assign_group_pairs($group_id)
+    {
+        $group = new Substance_pair_groups($group_id);
+
+        if(!$group->id)
+        {
+            throw new Exception();
+        }
+
+        $adj = explode('/', $group->adjustment);
+        $g1 = explode(',',$adj[0]);
+        $g2 = isset($adj[1]) ? explode(',', $adj[1]) : [];
+        $total = count($g1);
+
+        $where = 'WHERE ';
+
+        foreach($g1 as $key => $id1)
+        {
+            $t1 = "(sf1.id_fragment = $id1";
+            $t2 = "(sf2.id_fragment = $id1";
+
+            if(isset($g2[$key]))
+            {
+                $id2 = $g2[$key];
+                $t1 .= " AND sf2.id_fragment = $id2";
+                $t2 .= " AND sf1.id_fragment = $id2";
+            }
+            else
+            {
+                $t1 .= " AND l.id_substance_2_fragment IS NULL";
+                $t2 .= " AND l.id_substance_1_fragment IS NULL";
+            }
+
+            $t1 .= ')'; $t2 .= ')';
+            $where .= $t1 . ' OR ' . $t2 . ' OR ';
+        }
+
+        $where = preg_replace('/\s*OR\s*$/', '', $where);
+
+        $candidate_pairs = $this->queryAll("
+            SELECT DISTINCT t.id_substance_pair
+            FROM (
+                SELECT l.id, l.id_substance_pair, COUNT(l.id_substance_pair) as c
+                FROM substance_fragmentation_pair_links l
+                JOIN (
+                    SELECT id_substance_pair, COUNT(id_substance_pair) as c
+                    FROM substance_fragmentation_pair_links
+                    GROUP BY id_substance_pair
+                ) as t ON t.id_substance_pair = l.id_substance_pair AND t.c = ?
+                LEFT JOIN substances_fragments sf1 ON sf1.id = l.id_substance_1_fragment
+                LEFT JOIN substances_fragments sf2 ON sf2.id = l.id_substance_2_fragment
+                $where 
+                GROUP BY l.id_substance_pair 
+            ) as t
+            WHERE t.c = ?
+        ", array($total, $total));
+
+        foreach($candidate_pairs as $p)
+        {
+            $pair_row_links = Substance_pairs_links::instance()->where('id_substance_pair', $p->id_substance_pair)->get_all();
+            $t1 = $g1;
+            $t2 = $g2;
+
+            if(count($pair_row_links) !== $total)
+            {
+                continue;
+            }
+
+            foreach($pair_row_links as $prl)
+            {
+                $id1 = $prl->id_substance_1_fragment ? intval($prl->substance_1_fragment->id_fragment) : null;
+                $id2 = $prl->id_substance_2_fragment ? intval($prl->substance_2_fragment->id_fragment) : null;
+
+                foreach($g1 as $key => $val1)
+                {
+                    if(!isset($t1[$key]))
+                    {
+                        continue;
+                    }
+
+                    $val1 = intval($val1);
+                    $val2 = isset($t2[$key]) ? intval($t2[$key]) : null;
+
+                    if(($val1 === $id1 && $val2 === $id2) || 
+                        ($val2 === $id1 && $val1 === $id2))
+                    {
+                        unset($t1[$key]);
+
+                        if(isset($t2[$key]))
+                        {
+                            unset($t2[$key]);
+                        }
+
+                        continue 2;
+                    }
+                }
+            }  
+
+            if(!count($t1) && !count($t2))
+            {
+                $pair = new Substance_pairs($p->id_substance_pair);
+                $pair->id_group = $group->id;
+                $pair->save();  
+            }
+        }
+    }
 }
 
 
@@ -247,6 +377,9 @@ class Substance_pairs_comparison
 
     /** @var bool */
     public $status = false;
+
+    /** @var bool */
+    public $reverse = false;
 
     /**
      * Constructor
@@ -313,9 +446,10 @@ class Substance_pairs_comparison
 
                 $link->id_substance_pair = $pair->id;
                 $link->type = $link::TYPE_ADD;
-                $link->id_substance_1_fragment = $f->id;
-                $link->id_substance_2_fragment = NULL;
-                // $link->id_core = $core->id;
+                $link->id_substance_1_fragment = NULL;
+                $link->id_substance_2_fragment = $f->id;
+
+                $this->reverse = true;
 
                 $additions[] = $link;
             }
@@ -330,7 +464,8 @@ class Substance_pairs_comparison
                 $link->type = $link::TYPE_ADD;
                 $link->id_substance_1_fragment = NULL;
                 $link->id_substance_2_fragment = $f->id;
-                // $link->id_core = $core->id;
+
+                $this->reverse = false;
 
                 $additions[] = $link;
             }
@@ -342,13 +477,12 @@ class Substance_pairs_comparison
 
             if(count($links_1) !== count($links_2))
             {
-                print_r($links_1);
-                print_r($links_2);
-                print_r($pair);
-                die;
-
                 throw new MmdbException('Invalid fragmentation pair.');
             }
+
+            $pairs = [];
+            $t1 = [];
+            $t2 = [];
 
             foreach(range(0, count($links_1)-1) as $i)
             {
@@ -374,13 +508,31 @@ class Substance_pairs_comparison
                     throw new MmdbException('Invalid fragmentation pair.');
                 }
 
+                $pairs[] = [$f1->id, $f2->id];
+                $t1[] = $f1->id;
+                $t2[] = $f2->id;
+            }
+
+            asort($t1);
+            asort($t2);
+
+            $t1 = implode(',', $t1);
+            $t2 = implode(',', $t2);
+
+            if(strcmp($t1, $t2) > 0)
+            {
+                $this->reverse = true;
+            }
+
+            foreach($pairs as $p)
+            {
                 // save substitution
                 $link = new Substance_pairs_links();
 
                 $link->id_substance_pair = $pair->id;
                 $link->type = $link::TYPE_SUBS;
-                $link->id_substance_1_fragment = $f1->id;
-                $link->id_substance_2_fragment = $f2->id;
+                $link->id_substance_1_fragment = $this->reverse ? $p[1] : $p[0];
+                $link->id_substance_2_fragment = $this->reverse ? $p[0] : $p[1];
 
                 $substitutions[] = $link;
             }

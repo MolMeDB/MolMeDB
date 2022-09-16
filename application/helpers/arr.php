@@ -160,7 +160,7 @@ class arr
         {
             return 0;
         }
-        return self::sum($arr) / $total_numeric;
+        return round(self::sum($arr) / $total_numeric, 3);
     }
 
     /**
@@ -193,7 +193,7 @@ class arr
      */
     public static function sd($arr)
     {
-        return sqrt(self::variance($arr));
+        return round(sqrt(self::variance($arr)), 3);
     }
 
     /**
@@ -223,7 +223,7 @@ class arr
             }
         }
 
-        return (1/$total_numeric)*$sum;
+        return round((1/$total_numeric)*$sum, 3);
     }
 
     /**

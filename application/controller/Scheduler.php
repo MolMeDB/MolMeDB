@@ -43,7 +43,7 @@ class SchedulerController extends Controller
         // 'fragment_molecules'
         // 'validate_substance_identifiers',
         'match_functional_pairs',
-        "update_pair_groups"
+        // "update_pair_groups"
     );
 
     /**
@@ -139,10 +139,10 @@ class SchedulerController extends Controller
             }
 
             // Each 10 minutes, update one pair_group interactions
-            if($this->check_time('XX:10'))
-            {
+            // if($this->check_time('XX:10'))
+            // {
                 $this->protected_call('update_pair_group_interactions', []);
-            }
+            // }
 
             // Run always
             if(TRUE)
@@ -213,6 +213,7 @@ class SchedulerController extends Controller
 
         if(!$group->id)
         {
+            $this->print('No group id returned.');
             return;
         }
 

@@ -215,7 +215,7 @@ class Substance_pair_groups extends Db
 
         foreach($types as $type)
         {
-            $t =  $this->where('id_group_type', $type->id)->get_all();
+            $t =  Substance_pair_group_type_interactions::instance()->where('id_group_type', $type->id)->get_all();
             $attrs = self::$attr_of_interest['passive'];
 
             foreach($t as $record)

@@ -16,7 +16,7 @@ $upgrade_sql = array
     "ALTER TABLE `substance_pair_group_types` ADD FOREIGN KEY (`id_method`) REFERENCES `methods`(`id`) ON DELETE CASCADE ON UPDATE RESTRICT;",
     "ALTER TABLE `substance_pair_group_types` ADD FOREIGN KEY (`id_target`) REFERENCES `transporter_targets`(`id`) ON DELETE CASCADE ON UPDATE RESTRICT;",
 
-    "CREATE TABLE `substance_pair_group_type_interactions` ( `id` BIGINT NOT NULL AUTO_INCREMENT , `id_interaction` INT NULL DEFAULT NULL , `id_transporter` INT NULL DEFAULT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
+    "CREATE TABLE `substance_pair_group_type_interactions` ( `id` INT NOT NULL AUTO_INCREMENT , `id_interaction` BIGINT NULL DEFAULT NULL , `id_transporter` INT NULL DEFAULT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
     "ALTER TABLE `substance_pair_group_type_interactions` ADD FOREIGN KEY (`id_interaction`) REFERENCES `interaction`(`id`) ON DELETE CASCADE ON UPDATE RESTRICT;",
     "ALTER TABLE `substance_pair_group_type_interactions` ADD FOREIGN KEY (`id_transporter`) REFERENCES `transporters`(`id`) ON DELETE CASCADE ON UPDATE RESTRICT;",
     "ALTER TABLE `substance_pair_group_type_interactions` ADD `id_group_type` INT NOT NULL AFTER `id`;",

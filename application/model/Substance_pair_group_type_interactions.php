@@ -245,8 +245,8 @@ class Substance_pair_group_type_interactions extends Db
                     // Save Interactions details
                     $s_int = new Substance_pair_group_type_interactions();
                     $s_int->id_group_type = $record->id;
-                    $s_int->id_trasporter_1 = !$switch ? $i->id1 : $i->id2;
-                    $s_int->id_trasporter_2 = !$switch ? $i->id2 : $i->id1;
+                    $s_int->id_transporter_1 = !$switch ? $i->id1 : $i->id2;
+                    $s_int->id_transporter_2 = !$switch ? $i->id2 : $i->id1;
                     $s_int->save();
                 }
             }
@@ -255,7 +255,6 @@ class Substance_pair_group_type_interactions extends Db
             $group->save();
 
             return $group->id;
-
             Db::commitTransaction();
         }
         catch(Exception $e)
@@ -284,6 +283,10 @@ class Substance_pair_group_type_interactions extends Db
             {
                 $where['id_interaction_1'] = $this->id_interaction_1;
                 $where['id_interaction_2'] = $this->id_interaction_2;
+            }
+            else
+            {
+                throw new MmdbException('Invalid record values.');
             }
 
             $exists = $this->where($where)->get_one();

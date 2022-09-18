@@ -161,7 +161,14 @@ class Substance_pair_groups extends Db
     {
         if(!$id_group)
         {
-            $group = $this->order_by('datetime ASC, id ', 'ASC')->get_one();
+            if($this->id)
+            {
+                $group = $this;
+            }
+            else
+            {
+                $group = $this->order_by('datetime ASC, id ', 'ASC')->get_one();
+            }
         }
         else
         {

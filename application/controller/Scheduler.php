@@ -34,6 +34,11 @@ class SchedulerController extends Controller
     private $runs = [];
 
     /**
+     * @var int
+     */
+    private $timeout_limit = null;
+
+    /**
      * Specifies publicly accessible functions
      */
     static $accessible = array
@@ -135,14 +140,10 @@ class SchedulerController extends Controller
             // Once per day, run pair group update
             if($this->check_time('23:20'))
             {
-                // $this->protected_call('update_pair_groups', []);
+                $this->protected_call('update_pair_groups', []);
             }
 
-            // Each 10 minutes, update one pair_group interactions
-            // if($this->check_time('XX:10'))
-            // {
-                // $this->protected_call('update_pair_group_interactions', []);
-            // }
+            $this->protected_call('update_pair_group_interactions', [], 1800);
 
             // Run always
             if(TRUE)
@@ -206,13 +207,23 @@ class SchedulerController extends Controller
      */
     public function update_pair_group_interactions()
     {
-        $model = new Substance_pair_groups();
-
         try
         {
-            Db::beginTransaction();
-            $model->update_group_stats();
-            Db::commitTransaction();
+            $groups = Substance_pair_groups::instance()->order_by('datetime ASC, id ', 'ASC')->get_one();
+
+            foreach($groups as $g)
+            {
+                if($this->can_continue())
+                {
+                    Db::beginTransaction();
+                    $g->update_group_stats();
+                    Db::commitTransaction();
+                }
+                else
+                {
+                    return;
+                }
+            }
         }
         catch(Exception $e)
         {
@@ -336,13 +347,15 @@ class SchedulerController extends Controller
         }
     }
 
-    /*
+    /** 
      * Checks, if given method is not calling too often
      * 
      * @param string $name
      * @param array $arguments
+     * @param int $timeout_end - Number of seconds, after which should be function safely ended
+     * 
      */
-    private function protected_call($name, $arguments)
+    private function protected_call($name, $arguments, $timeout_end = NULL)
     {
         // Check, if exists
         if(!method_exists($this, $name))
@@ -373,11 +386,18 @@ class SchedulerController extends Controller
             }
         }
 
+        $start = strtotime('now');
+
+        if($timeout_end)
+        {
+            $this->timeout_limit = $start + $timeout_end;
+        }
+
         $run->pid = $this->pid;
         $run->method = $name;
         $run->params = json_encode($arguments);
         $run->status = $run::STATE_RUNNING;
-        $run->datetime = date('Y-m-d H:i:s');
+        $run->datetime = date('Y-m-d H:i:s', $start);
         $run->save();
 
         // $this->runs[$name] = $run;
@@ -425,6 +445,21 @@ class SchedulerController extends Controller
         $run->status = $run::STATE_DONE;
         $run->save();
         $this->print("Method `$name` executed.");
+        return true;
+    }
+
+    /**
+     * Checks, if function can continue
+     * 
+     * @return bool
+     */
+    private function can_continue()
+    {
+        if($this->timeout_limit)
+        {
+            return strtotime('now') < $this->timeout;
+        }
+
         return true;
     }
 

@@ -155,6 +155,7 @@ class Substance_pair_groups extends Db
     /**
      * Updates group stats
      * 
+     * @param int|null $id_group
      * 
      */
     public function update_group_stats($id_group = null)
@@ -250,8 +251,14 @@ class Substance_pair_groups extends Db
 
             $stats = [];
 
+            if(!function_exists('t44124'))
+            {
+                function t44124($v){return round($v,2);}
+            }
             foreach($join as $att => $data)
             {
+                $data = array_map('t44124', $data);
+
                 $total = arr::total_numeric($data);
 
                 if($total < 5)
@@ -264,7 +271,9 @@ class Substance_pair_groups extends Db
                 (
                     'average' => arr::average($data),
                     'sd'      => arr::sd($data),
-                    'total'   => $total
+                    'total'   => $total,
+                    'bins_sd' => arr::total_items(arr::to_bins($data, 8, arr::METHOD_SD), true) ?? $data,
+                    'bins_eq' => arr::total_items(arr::to_bins($data, 8, arr::METHOD_EQ_DIST), true)
                 );
             }
 

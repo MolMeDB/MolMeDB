@@ -209,7 +209,7 @@ class SchedulerController extends Controller
     {
         try
         {
-            $groups = Substance_pair_groups::instance()->order_by('datetime ASC, id ', 'ASC')->get_one();
+            $groups = Substance_pair_groups::instance()->order_by('datetime ASC, id ', 'ASC')->get_all();
 
             foreach($groups as $g)
             {
@@ -457,7 +457,7 @@ class SchedulerController extends Controller
     {
         if($this->timeout_limit)
         {
-            return strtotime('now') < $this->timeout;
+            return strtotime('now') < $this->timeout_limit;
         }
 
         return true;

@@ -115,6 +115,184 @@ class arr
     }
 
     /**
+     * Returns only numeric values from array
+     * 
+     * @param array $arr
+     * 
+     * @return array
+     */
+    public static function numeric($arr)
+    {
+        return array_map("floatval", array_filter($arr, 'is_numeric'));
+    }
+
+
+    /**
+     * Method bins
+     */
+    const METHOD_SD = 1;
+    const METHOD_EQ_DIST = 2;
+
+    /**
+     * Differs data to bins
+     * 
+     * @param array $arr
+     * @param int $total_bins
+     * 
+     * @return array|false
+     */
+    public static function to_bins($arr, $total_bins, $method = self::METHOD_SD)
+    {
+        $total = self::total_numeric($arr);
+        $arr = self::numeric($arr);
+
+        if($total < $total_bins || $total_bins < 4)
+        {
+            return false;
+        }
+
+        asort($arr);
+
+        $avg = self::average($arr);
+        $sd = self::sd($arr);
+
+        $min = min($arr);
+        $max = max($arr);
+
+        $interval_limits = [];
+
+        if($method == self::METHOD_SD)
+        {
+            if(!$sd)
+            {
+                return false;
+            }
+
+            if($total_bins == 4)
+            {
+                $interval_limits = array
+                (
+                    round((-3*$sd)+$avg, 2),
+                    round((-1.5*$sd)+$avg, 2),
+                    round($avg, 2),
+                    round((1.5*$sd)+$avg, 2),
+                    round((3*$sd)+$avg, 2)
+                );  
+            }
+            else
+            {
+                $total_bins -= 2;
+
+                $step = (6*$sd)/($total_bins);
+                $c = (-3*$sd)+$avg;
+                $interval_limits = [];
+
+                $interval_limits[] = -99999999;
+
+                foreach(range(0, $total_bins) as $i)
+                {
+                    $interval_limits[] = round($c + ($step * $i), 2);
+                }
+
+                $interval_limits[] = 99999999;
+            }
+        }
+        else
+        {
+            $min = floor($min);
+            $max = ceil($max);
+
+            $range = $max - $min;
+            $step = $range / $total_bins;
+
+            $c = $min;
+
+            while($c <= $max)
+            {
+                $interval_limits[] = round($c, 2);
+                $c = $c + $step;
+            }
+        }
+
+        $bins = [];
+
+        foreach($arr as $v)
+        {
+            foreach(range(1, count($interval_limits)-1) as $i)
+            {
+                $key = $i-1;
+                $upper_bound = floatval($interval_limits[$i]);
+                $v = floatval($v);
+
+                if(!isset($bins[$key]))
+                {
+                    $bins[$key] = [];
+                }
+
+                if($v < $upper_bound && $upper_bound < $avg)
+                {
+                    $bins[$key][] = $v;
+                    break;
+                }
+                else if($v <= $upper_bound && $upper_bound >= $avg)
+                {
+                    $bins[$key][] = $v;
+                    break;
+                }
+            }
+        }
+
+        foreach(range(0, count($interval_limits)-2) as $i)
+        {
+            if(!isset($bins[$i]))
+            {
+                $bins[$i] = [];
+            }
+
+            $itv = $interval_limits[$i] . ':' . $interval_limits[$i+1];
+
+            $itv = $interval_limits[$i] < $avg ? '[' . $itv : '(' . $itv;
+            $itv = $interval_limits[$i+1] < $avg ? $itv . ')' : $itv . ']';
+
+            $bins[$itv] = $bins[$i];
+        }
+        
+        $bins = array_filter($bins, 'is_string', ARRAY_FILTER_USE_KEY);
+
+        return $bins;
+    }
+
+    /**
+     * Returns counts of array/subarrays with persisted keys
+     * 
+     * @param array $arr
+     * @param bool $to_depth
+     * 
+     * @return $arr
+     */
+    public static function total_items($arr, $to_depth = false)
+    {
+        if(!is_array($arr))
+        {
+            return null;
+        }
+
+        if(!$to_depth)
+        {
+            return count($arr);
+        }
+
+        $arr = array_filter($arr, 'is_array');
+
+        foreach($arr as $key => $items)
+        {
+            $arr[$key] = count($items);
+        }
+
+        return $arr;
+    }
+
+    /**
      * Get max value from array
      * 
      * @param array $data
@@ -223,7 +401,7 @@ class arr
             }
         }
 
-        return round((1/$total_numeric)*$sum, 3);
+        return round((1/($total_numeric-1))*$sum, 3);
     }
 
     /**

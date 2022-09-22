@@ -1,0 +1,506 @@
+<head>
+    <base href="<?= PROTOCOL . URL ?>/<?= MEDIA_ROOT ?>" />
+    <script src="js/jquery-3.2.1.js"></script>
+    <script src="js/MolMeDb.php"></script>
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+
+    <style>
+        .col-center {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+        }
+
+        .mod-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+
+        .mod-row-el table,
+        th,
+        td {
+            border: 1px solid;
+            border-collapse: collapse;
+        }
+
+        table{
+            margin-bottom: 10px;
+        }
+
+        td,
+        th {
+            padding: 5px 10px;
+        }
+
+        .right-arr::after {
+            content: "\2794";
+            font-size: 20;
+        }
+
+        .chart {
+            width: 500px;
+            height: 500px;
+        }
+    </style>
+</head>
+
+<div class="col-center">
+    <h3>Type</h3>
+    <div>
+        <select id="group_type">
+            <?php foreach ($groups as $g) : ?>
+                <option value="<?= $g->id ?>"><?= $g->id ?></option>
+            <?php endforeach ?>
+        </select>
+    </div>
+
+    <h3>Modification detail</h3>
+    <div id="adjustments" style="display:flex; flex-direction: column; justify-content:flex-start;"></div>
+
+    <h3>Details of changing interaction values</h3>
+    <div id="charts">
+        <div class="chart" id="chart1_1"></div>
+        <div id="chart1_2"></div>
+    </div>
+</div>
+
+<script>
+    window.onload = function() {
+        $('#group_type').on('change', function() {
+            update_content($(this).val());
+        });
+
+        update_content(1);
+    }
+
+    function make_adj_table(id = null, group = null, img = null)
+    {
+        return '<div class="mod-row-el"> ' +
+                '<table>' +
+                    '<tbody>' +
+                        '<tr>' +
+                            '<th>ID</th>' +
+                            '<td>' + (id ?? "NA") + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                            '<th>Func. group</th> ' +
+                            '<td>' + (group ?? "NA") + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                            '<th>Structure</th>' +
+                            '<td>' + (img ?? "NA") + '</td>'+
+                        '</tr>'+
+                    '</tbody>'+
+                '</table>'+
+            '</div>'
+    }
+
+    var roots = {};
+
+    function update_content(id) {
+        var data = ajax_request('pairs/group/detail/' + id);
+
+        if (!data) {
+            alert('No data.');
+            return;
+        }
+
+        // Delete old charts
+        var tar = $('#charts');
+        $(tar).html('');
+        roots = {};
+
+        let j = 1;
+
+        var adj = data.adjustment;
+        data = data.data;
+
+        // Generate adjustment
+        var adj_target = $('#adjustments');
+        $(adj_target).html('');
+
+        adj.forEach((a) => {
+            var t = $('<div class="mod-row"></div>');
+
+            if(a[0] == null)
+            {
+                left = make_adj_table();
+            }
+            else
+            {
+                left = make_adj_table(a[0].id, a[0].group, a[0].img)
+            }
+
+            let middle = $(' <div class="col-center" style="justify-content: center; padding: 0 50px;"><span class="right-arr"></span>Substitution<span class="right-arr"></span></div>');
+
+            right = make_adj_table(a[1].id, a[1].group, a[1].img);
+
+            $(t).append(left);
+            $(t).append(middle);
+            $(t).append(right);
+
+            $(adj_target).append(t);
+        });
+
+        data.forEach((type) => {
+            let is_passive = type.target === null;
+            let stats = type['stats'];
+            let i = 1;
+
+            if (is_passive) {
+                title = "[bold]Mem:[/] " + type.membrane + "; [bold]Met:[/] " + type.method + "; [bold]Q:[/] " + type.charge;
+            } else {
+                title = "Transporter: " + type.transporter;
+            }
+
+            $.each(stats, function(key, val) {
+                let total = val.total;
+                let target = $('<div class="chart" id="chart' + i + '_' + j + '"></div>');
+
+                if (total <= 0 || !('bins_sd' in val)) {
+                    return;
+                }
+
+                let has_stats = Array.isArray(val['bins_sd']) ? false : (
+                    (typeof val["bins_sd"] === "object") ? true : null
+                );
+
+                if (has_stats === null) {
+                    return;
+                }
+
+                let tit = "[bold]Attr:[/] [#F00]" + key + "[/]; " + title;
+
+                $(tar).append(target);
+                generate_chart("chart" + i + '_' + j, val, tit, has_stats);
+                i++;
+            });
+
+            j++;
+        });
+    }
+
+    function prepare_cat_data(obj, avg) {
+        var d = [];
+        let interval_size = 2000;
+        var keys = {};
+        var keys_arr = [];
+
+        $.each(obj, function(key, value) {
+            var k = key.toString().replace(/[\[\(\]\)]/g, '');
+            var vals = k.split(':');
+
+            let iv = Math.abs((parseFloat(vals[1]) - parseFloat(vals[0]))).toPrecision(2);
+
+            if (iv < interval_size) {
+                interval_size = iv;
+            }
+
+            keys[parseFloat(vals[0])] = key;
+            keys_arr.push(parseFloat(vals[0]));
+        });
+
+        keys_arr.sort(function(a,b){return a < b ? -1 : 1});
+
+        interval_size = parseFloat(interval_size);
+
+        keys_arr.forEach((k) => {
+            key = keys[k];
+            value = obj[key];
+
+            var k = key.toString().replace(/[\[\(\]\)]/g, '');
+            var vals = k.split(':');
+            vals[0] = parseFloat(vals[0]);
+            vals[1] = parseFloat(vals[1]);
+
+            if (Math.abs(vals[0] - avg) < Math.abs(vals[1] - avg)) {
+                vals[1] = vals[0] + interval_size;
+            } else {
+                vals[0] = vals[1] - interval_size;
+            }
+
+            vals[1] = parseFloat(vals[1].toPrecision(2));
+            vals[0] = parseFloat(vals[0].toPrecision(2));
+
+            d.push({
+                'total': value,
+                'from': vals[0],
+                'to': vals[1],
+                'label': vals[0] + " < x < " + vals[1],
+                'coord': (vals[0] + vals[1]) / 2
+            });
+
+        });
+
+        return d;
+    }
+
+    function get_norm_distr(avg, sd) {
+        let from = avg - 4.1 * sd;
+        let to = avg + 4.1 * sd;
+        step = (to - from) / 1000;
+
+        let d = [];
+
+        for (var i = 0; i < 1000; i++) {
+            let x = from + (step * i);
+            let y = 1 / (sd * Math.sqrt(2 * Math.PI)) * Math.pow(Math.E, (-1 / 2 * (Math.pow((x - avg) / sd, 2))));
+
+            d.push({
+                'x': x,
+                'y': y
+            });
+        }
+
+        return d;
+    }
+
+    function generate_chart(id, data, title = "", statsChart = true) {
+        am5.ready(function() {
+
+            if (!(id in roots)) {
+                roots[id] = am5.Root.new(id);
+            }
+
+            root = roots[id];
+
+            // Set themes
+            root.setThemes([
+                am5themes_Animated.new(root)
+            ]);
+
+            // Create chart
+            // https://www.amcharts.com/docs/v5/charts/xy-chart/
+            var chart = root.container.children.push(
+                am5xy.XYChart.new(root, {
+                    focusable: true,
+                    panX: false,
+                    panY: false,
+                    pinchZoomX: false
+                })
+            );
+
+            if(statsChart)
+            {
+                // X AXIS for distribution curve
+                var xAxis_dist = chart.xAxes.push(
+                    am5xy.ValueAxis.new(root, {
+                        renderer: am5xy.AxisRendererX.new(root, {
+                            minGridDistance: 25
+                        }),
+                        tooltip: am5.Tooltip.new(root, {})
+                    })
+                );
+
+                xAxis_dist.children.push(
+                    am5.Label.new(root, {
+                        text: "Mean: " + data['average'] + "; SD: " + data['sd'] + '; Total: ' + data['total'],
+                        x: am5.p50,
+                        centerX: am5.p50
+                    })
+                );
+
+                xAxis_dist.children.push(
+                    am5.Label.new(root, {
+                        text: title,
+                        x: am5.p50,
+                        y: am5.p50,
+                        centerX: am5.p50
+                    })
+                );
+
+                var yAxis1 = chart.yAxes.push(
+                    am5xy.ValueAxis.new(root, {
+                        // maxDeviation: 0.01,
+                        renderer: am5xy.AxisRendererY.new(root, {}),
+                        tooltip: null
+                    })
+                );
+
+                yAxis1.get("renderer").labels.template.set("forceHidden", true);
+                yAxis1.get("renderer").grid.template.set("forceHidden", true);
+
+                var series1 = chart.series.push(
+                    am5xy.LineSeries.new(root, {
+                        xAxis: xAxis_dist,
+                        yAxis: yAxis1,
+                        valueYField: "y",
+                        valueXField: "x",
+                    })
+                );
+
+                series1.data.setAll(get_norm_distr(data['average'], data['sd']));
+
+                // Create column series and related axes
+                var xAxis2 = chart.xAxes.push(
+                    am5xy.CategoryAxis.new(root, {
+                        categoryField: "coord",
+                        maxDeviation: 0.1,
+                        renderer: am5xy.AxisRendererX.new(root, {
+                            minGridDistance: 50
+                        }),
+                        // tooltip: am5.Tooltip.new(root, {})
+                    })
+                );
+
+                xAxis2.get("renderer").labels.template.set("forceHidden", true);
+                xAxis2.get("renderer").grid.template.set("forceHidden", true);
+
+                xAxis2.data.setAll(prepare_cat_data(data['bins_sd'], data['average']));
+
+                // var xAxis3 = chart.xAxes.push(
+                //     am5xy.CategoryAxis.new(root, {
+                //         categoryField: "coord",
+                //         maxDeviation: 0.1,
+                //         renderer: am5xy.AxisRendererX.new(root, {
+                //             minGridDistance: 50
+                //         })
+                //     })
+                // );
+
+                // xAxis3.data.setAll(prepare_cat_data(data['LogPerm']['bins_eq'], data['LogPerm']['average']));
+
+                var yAxis2 = chart.yAxes.push(
+                    am5xy.ValueAxis.new(root, {
+                        maxDeviation: 0.1,
+                        renderer: am5xy.AxisRendererY.new(root, {})
+                    })
+                );
+
+                var series2 = chart.series.unshift(
+                    am5xy.ColumnSeries.new(root, {
+                        xAxis: xAxis2,
+                        yAxis: yAxis2,
+                        valueYField: "total",
+                        categoryXField: "coord",
+                        tooltip: am5.Tooltip.new(root, {
+                            pointerOrientation: "horizontal",
+                            labelText: "SD range\n{label}\nTotal: {valueY}"
+                        })
+                    })
+                );
+
+                series2.columns.template.setAll({
+                    width: am5.percent(50),
+                    // tooltipY: 0
+                });
+
+                // var series3 = chart.series.unshift(
+                //     am5xy.ColumnSeries.new(root, {
+                //         xAxis: xAxis2,
+                //         yAxis: yAxis2,
+                //         valueYField: "total",
+                //         categoryXField: "coord",
+                //         tooltip: am5.Tooltip.new(root, {
+                //             pointerOrientation: "horizontal",
+                //             labelText: "Equidistant range\n{label}\nTotal: {valueY}"
+                //         })
+                //     })
+                // );
+
+                // series3.columns.template.setAll({
+                //     width: am5.percent(90),
+                //     // tooltipY: 0
+                // });
+
+                // console.log(generateHourlyData());
+                // console.log(generateDailyData());
+
+                series2.data.setAll(prepare_cat_data(data['bins_sd'], data['average']));
+                // series3.data.setAll(prepare_cat_data(data['LogPerm']['bins_eq'], data['LogPerm']['average']));
+
+                // Add cursor
+                // https://www.amcharts.com/docs/v5/charts/xy-chart/cursor/
+                var cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
+                    // xAxis: xAxis_dist
+                }));
+                cursor.lineY.set("visible", false);
+
+                // Make stuff animate on load
+                // https://www.amcharts.com/docs/v5/concepts/animations/
+                series1.appear(1000, 100);
+                series2.appear(1000, 100);
+                chart.appear(1000, 100);
+            }
+            else
+            {
+                // Prepare data
+                let d = [];
+                let index = 1;
+
+                data['bins_sd'].forEach((v) => {
+                    d.push({
+                        'x': index++,
+                        'y': v
+                    });
+                });
+
+                var xAxis = chart.xAxes.push(am5xy.ValueAxis.new(root, {
+                    renderer: am5xy.AxisRendererX.new(root, { minGridDistance: 50 }),
+                    tooltip: am5.Tooltip.new(root, {})
+                }));
+
+                xAxis.children.push(
+                    am5.Label.new(root, {
+                        text: "Mean: " + data['average'] + "; SD: " + data['sd'] + "; Total: " + data['total'],
+                        x: am5.p50,
+                        centerX: am5.p50
+                    })
+                );
+
+                xAxis.children.push(
+                    am5.Label.new(root, {
+                        text: title,
+                        x: am5.p50,
+                        y: am5.p50,
+                        centerX: am5.p50
+                    })
+                );
+
+                var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+                    renderer: am5xy.AxisRendererY.new(root, {}),
+                    tooltip: am5.Tooltip.new(root, {})
+                }));
+
+                var series0 = chart.series.push(am5xy.LineSeries.new(root, {
+                    calculateAggregates: true,
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    valueYField: "y",
+                    valueXField: "x",
+                    tooltip: am5.Tooltip.new(root, {
+                        labelText: "Order: {valueX} Difference: {valueY}"
+                    })
+                }));
+
+                series0.bullets.push(function() {
+                    var graphics = am5.Triangle.new(root, {
+                        fill: series0.get("fill"),
+                        width: 15,
+                        height: 13
+                    });
+                    return am5.Bullet.new(root, {
+                        sprite: graphics
+                    });
+                });
+
+                chart.set("cursor", am5xy.XYCursor.new(root, {
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    // snapToSeries: [series0]
+                }));
+
+                series0.data.setAll(d);
+
+                // Make stuff animate on load
+                series0.appear(1000);
+                chart.appear(1000, 100);
+            }
+
+        }); // end am5.ready()
+    }
+</script>

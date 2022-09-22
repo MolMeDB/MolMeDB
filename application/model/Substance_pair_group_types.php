@@ -5,10 +5,13 @@
  * 
  * @property int $id
  * @property int $id_group
+ * @property Substance_pair_groups $group
  * @property int $id_membrane
- * @property int $id_method
+ * @property Membranes $membrane
+ * @property Methods $method
  * @property string $charge
  * @property int $id_target
+ * @property Transporter_targets $target
  * @property string $stats
  * 
  * @author Jakub Juracka
@@ -23,6 +26,30 @@ class Substance_pair_group_types extends Db
         $this->table = 'substance_pair_group_types';
         parent::__construct($id);
     }
+
+    protected $has_one = array
+    (
+        'id_group' => array
+        (
+            'class' => 'Substance_pair_groups',
+            'var'   => 'group'
+        ),
+        'id_membrane' => array
+        (
+            'class' => 'Membranes',
+            'var'   => 'membrane'
+        ),
+        'id_method' => array
+        (
+            'class' => 'Methods',
+            'var'   => 'method'
+        ),
+        'id_target' => array
+        (
+            'class' => 'Transporter_targets',
+            'var'   => 'target'
+        )
+    );
 
     /**
      * Save 

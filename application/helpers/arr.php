@@ -187,14 +187,14 @@ class arr
                 $c = (-3*$sd)+$avg;
                 $interval_limits = [];
 
-                $interval_limits[] = -99999999;
+                $interval_limits[] = -999;
 
                 foreach(range(0, $total_bins) as $i)
                 {
                     $interval_limits[] = round($c + ($step * $i), 2);
                 }
 
-                $interval_limits[] = 99999999;
+                $interval_limits[] = 999;
             }
         }
         else
@@ -206,6 +206,11 @@ class arr
             $step = $range / $total_bins;
 
             $c = $min;
+
+            if($step <= 0 || $min >= $max)
+            {
+                return null;
+            }
 
             while($c <= $max)
             {

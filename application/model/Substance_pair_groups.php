@@ -48,6 +48,74 @@ class Substance_pair_groups extends Db
     }
 
     /**
+     * Returns detail of adjustment for given group
+     * 
+     * @return array
+     */
+    public function get_adjustment_detail()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        $adj = explode('/', $this->adjustment);
+        $left = explode(',',$adj[0]);
+        $right = isset($adj[1]) ? explode(',',$adj[1]) : null;
+
+        if(is_array($right) && count($left) && count($right) && count($left) !== count($right))
+        {
+            return null;
+        }
+
+        $result = [];
+
+        foreach($left as $k => $id)
+        {
+            $f1 = new Fragments($id);
+            $f1g = $f1->get_functional_group();
+
+            if(!$f1->id) // Invalid fragment
+            {
+                return null;
+            }
+
+            if(is_array($right))
+            {
+                $f2 = new Fragments($right[$k]);
+                if(!$f2->id)
+                {
+                    return null;
+                }
+                $f2g = $f2->get_functional_group();
+
+                $result[] = [array
+                (
+                    'id' => $f1->id,
+                    'group' => $f1g ? $f1g->name : null,
+                    'img'   => Html::image_structure($f1->add_hydrogens())
+                ), array
+                (
+                    'id' => $f2->id,
+                    'group' => $f2g ? $f2g->name : null,
+                    'img'   => Html::image_structure($f2->add_hydrogens())
+                )];
+            }
+            else
+            {
+                $result[] = [null,array
+                (
+                    'id' => $f1->id,
+                    'group' => $f1g ? $f1g->name : null,
+                    'img'   => Html::image_structure($f1->add_hydrogens())
+                )];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Updates all groups in db
      * 
      */
@@ -181,14 +249,14 @@ class Substance_pair_groups extends Db
             return;
         }
 
-        $pairs = Substance_pairs::instance()->where('id_group', $group->id)->get_all();
+        // $pairs = Substance_pairs::instance()->where('id_group', $group->id)->get_all();
 
-        $substance_ids = [];
+        // // $substance_ids = [];
 
-        foreach($pairs as $p)
-        {
-            $substance_ids[] = [$p->id_substance_1, $p->id_substance_2];
-        }
+        // foreach($pairs as $p)
+        // {
+        //     // $substance_ids[] = [$p->id_substance_1, $p->id_substance_2];
+        // }
 
         // Passive
         $ints = $this->queryAll('
@@ -217,7 +285,7 @@ class Substance_pair_groups extends Db
 
             foreach($attrs as $key => $val)
             {
-                $attrs[$key] = "(i2.$val - i1.$val) as $val";
+                $attrs[$key] = "ROUND((i2.$val - i1.$val), 2) as $val";
             }
 
             // Update stats
@@ -249,21 +317,18 @@ class Substance_pair_groups extends Db
                 }
             }   
 
+            // Clear memory
+            $is = $i = null;
+
             $stats = [];
 
-            if(!function_exists('t44124'))
-            {
-                function t44124($v){return round($v,2);}
-            }
             foreach($join as $att => $data)
             {
-                $data = array_map('t44124', $data);
-
                 $total = arr::total_numeric($data);
 
-                if($total < 5)
+                if($total < 4)
                 {
-                    $stats[$att] = ['total' => $total];
+                    $stats[$att] = ['total' => $total, 'data' => $data];
                     continue;
                 }
 
@@ -279,6 +344,8 @@ class Substance_pair_groups extends Db
 
             $record->stats = json_encode($stats);
             $record->save();
+
+            $stats = $join = $record = null;
         }
 
         // Active
@@ -306,7 +373,7 @@ class Substance_pair_groups extends Db
 
             foreach($attrs as $key => $val)
             {
-                $attrs[$key] = "(i2.$val - i1.$val) as $val";
+                $attrs[$key] = "ROUND((i2.$val - i1.$val), 2) as $val";
             }
 
             // Update stats
@@ -339,6 +406,8 @@ class Substance_pair_groups extends Db
                 }
             }   
 
+            $is = null;
+
             $stats = [];
 
             foreach($join as $att => $data)
@@ -347,7 +416,7 @@ class Substance_pair_groups extends Db
 
                 if($total < 5)
                 {
-                    $stats[$att] = ['total' => $total];
+                    $stats[$att] = ['total' => $total, 'data' => $data];
                     continue;
                 }
 
@@ -355,12 +424,16 @@ class Substance_pair_groups extends Db
                 (
                     'average' => arr::average($data),
                     'sd'      => arr::sd($data),
-                    'total'   => $total
+                    'total'   => $total,
+                    'bins_sd' => arr::total_items(arr::to_bins($data, 8, arr::METHOD_SD), true) ?? $data,
+                    'bins_eq' => arr::total_items(arr::to_bins($data, 8, arr::METHOD_EQ_DIST), true)
                 );
             }
 
             $record->stats = json_encode($stats);
             $record->save();
+
+            $stats = $join = null;
         }
 
         $group->datetime = date('Y-m-d H:i:s');

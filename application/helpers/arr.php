@@ -380,6 +380,58 @@ class arr
     }
 
     /**
+     * Computes n-th central moment
+     * 
+     * @param array $arr
+     * @param int $n
+     * 
+     * @return double
+     */
+    public static function central_moment($arr, $n)
+    {
+        $total_numeric = self::total_numeric($arr);
+
+        if($total_numeric == 0)
+        {
+            return 0;
+        }
+
+        $n = intval($n);
+
+        $sum = 0;
+        $avg = self::average($arr);
+
+        foreach($arr as $v)
+        {
+            if(is_numeric($v))
+            {
+                $sum += pow(floatval($v)-$avg, $n);
+            }
+        }
+
+        return round((1/($total_numeric))*$sum, 3);
+    }
+
+    /**
+     * Approximates skewness of data
+     * 
+     * @param array $arr
+     * 
+     * @return double
+     */
+    public static function skewness($arr)
+    {
+        $sd = self::sd($arr);
+
+        if(!$sd)
+        {
+            return 0;
+        }
+
+        return round((self::central_moment($arr, 3))/(pow($sd, 3)),3); 
+    }
+
+    /**
      * Computes variance from array
      * 
      * @param array $arr

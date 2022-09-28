@@ -336,9 +336,12 @@ class Substance_pair_groups extends Db
                 (
                     'average' => arr::average($data),
                     'sd'      => arr::sd($data),
+                    'cm_2'    => arr::central_moment($data, 2),
+                    'cm_3'    => arr::central_moment($data, 3),
+                    'skewness'=> arr::skewness($data),
                     'total'   => $total,
-                    'bins_sd' => arr::total_items(arr::to_bins($data, 8, arr::METHOD_SD), true) ?? $data,
-                    'bins_eq' => arr::total_items(arr::to_bins($data, 8, arr::METHOD_EQ_DIST), true)
+                    'bins_sd' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_SD), true) ?? $data,
+                    'bins_eq' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_EQ_DIST), true)
                 );
             }
 
@@ -424,9 +427,12 @@ class Substance_pair_groups extends Db
                 (
                     'average' => arr::average($data),
                     'sd'      => arr::sd($data),
+                    'cm_2'    => arr::central_moment($data, 2),
+                    'cm_3'    => arr::central_moment($data, 3),
+                    'skewness'=> arr::skewness($data),
                     'total'   => $total,
-                    'bins_sd' => arr::total_items(arr::to_bins($data, 8, arr::METHOD_SD), true) ?? $data,
-                    'bins_eq' => arr::total_items(arr::to_bins($data, 8, arr::METHOD_EQ_DIST), true)
+                    'bins_sd' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_SD), true) ?? $data,
+                    'bins_eq' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_EQ_DIST), true)
                 );
             }
 

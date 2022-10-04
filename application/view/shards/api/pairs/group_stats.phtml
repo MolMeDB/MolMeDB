@@ -71,8 +71,8 @@
         }
 
         .chart {
-            width: 350px;
-            height: 350px;
+            width: 500px;
+            height: 400px;
             padding-right: 40px;
             padding-bottom: 20px;
         }
@@ -108,6 +108,7 @@
 
     <h3>Details of changing interaction values</h3>
     <div id="charts">
+        <div id="chartdiv" class="chart"></div>
     </div>
 </div>
 
@@ -121,7 +122,7 @@
             update_content($('#group_type').val());
         });
 
-        update_content(1);
+        update_content($('#group_type').val());
     }
 
     function make_adj_table(id = null, group = null, img = null)
@@ -313,53 +314,20 @@
 
     function prepare_cat_data(obj, avg, sd) {
         var d = [];
-        let interval_size = 2000;
-        var keys = {};
-        var keys_arr = [];
+
         let min = avg - 3 * sd;
         let max = avg + 3 * sd;
 
         $.each(obj, function(key, value) {
             var k = key.toString().replace(/[\[\(\]\)]/g, '');
             var vals = k.split(':');
-
-            let iv = Math.abs((parseFloat(vals[1]) - parseFloat(vals[0]))).toPrecision(2);
-
-            if (iv < interval_size) {
-                interval_size = iv;
-            }
-
-            keys[parseFloat(vals[0])] = key;
-            keys_arr.push(parseFloat(vals[0]));
-        });
-
-        keys_arr.sort(function(a,b){return a < b ? -1 : 1});
-
-        interval_size = parseFloat(interval_size);
-        let total_bins = keys_arr.length;
-        let i = 0;
-        let step_bin = (max-min)/total_bins;
-
-        keys_arr.forEach((k) => {
-            key = keys[k];
-            value = obj[key];
-
-            var k = key.toString().replace(/[\[\(\]\)]/g, '');
-            var vals = k.split(':');
             vals[0] = parseFloat(vals[0]);
             vals[1] = parseFloat(vals[1]);
 
-            if (Math.abs(vals[0] - avg) < Math.abs(vals[1] - avg)) {
-                vals[1] = vals[0] + interval_size;
-            } else {
-                vals[0] = vals[1] - interval_size;
-            }
+            vals[0] = vals[0] < -100 ? (vals[1]-sd) : vals[0]; 
+            vals[1] = vals[1] > 100 ? (vals[0]+sd) : vals[1]; 
 
-            vals[1] = parseFloat(vals[1].toPrecision(2));
-            vals[0] = parseFloat(vals[0].toPrecision(2));
-
-            let coord = min + (step*i);
-            i++;
+            let coord = (vals[1]+vals[0])/2;
 
             d.push({
                 'total': value,
@@ -369,6 +337,53 @@
                 'coord': coord
             });
         });
+
+        return d;
+    }
+
+    function prepare_boxplot_data(obj, avg, sd) 
+    {
+        var d = [];
+        let min = avg - 3 * sd;
+        let max = avg + 3 * sd;
+
+        for(key in obj)
+        {
+            var k = key.toString().replace(/[\[\(\]\)]/g, '');
+            var vals = k.split(':');
+            vals[0] = parseFloat(vals[0]);
+            vals[1] = parseFloat(vals[1]);
+
+            vals[0] = vals[0] < -100 ? (vals[1]-sd) : vals[0]; 
+            vals[1] = vals[1] > 100 ? (vals[0]+sd) : vals[1]; 
+
+            let t = obj[key];
+
+            let coord = (vals[1]+vals[0])/2;
+
+            if('values' in t)
+            {
+                // Not enough values
+                d.push({
+                    'q0': t["values"].length > 1 ? Math.min(t["values"]) : (t["values"].length ? t["values"][0] : 0),
+                    'q1': t["values"].length > 1 ? Math.min(t["values"]) : (t["values"].length ? t["values"][0] : 0),
+                    'q2': 0,
+                    'q3': t["values"].length > 1 ? Math.max(t["values"]) : (t["values"].length ? t["values"][0] : 0),
+                    'q4': t["values"].length > 1 ? Math.max(t["values"]) : (t["values"].length ? t["values"][0] : 0),
+                    'coord': coord
+                })
+                continue;
+            }
+
+            d.push({
+                'q0': t['min'],
+                'q1': t['q1'],
+                'q2': t['q2'],
+                'q3': t['q3'],
+                'q4': t['max'],
+                'coord': coord
+            });
+        }
 
         return d;
     }
@@ -434,17 +449,264 @@
         return z;
     }
 
-    function generate_chart(id, data, title = "", statsChart = true) {
-        am5.ready(function() {
+    // let d = {
+    //     "sd": 1.178,
+    //     "total": 38,
+    //     "average": -0.653,
+    //     "bins_eq": {
+    //         "[-4:-3.42)": 0,
+    //         "(0.05:0.08]": 0,
+    //         "(0.08:0.67]": 3,
+    //         "(0.67:1.25]": 3,
+    //         "(1.25:1.83]": 0,
+    //         "(1.83:2.42]": 1,
+    //         "(-0.05:0.05]": 0,
+    //         "(-0.5:-0.05]": 2,
+    //         "[-1.08:-0.5]": 13,
+    //         "[-1.67:-1.08)": 12,
+    //         "[-2.25:-1.67)": 1,
+    //         "[-2.83:-2.25)": 1,
+    //         "[-3.42:-2.83)": 1
+    //     },
+    //     "bins_sd": {
+    //         "(2.88:999]": 2,
+    //         "(0.05:0.76]": 3,
+    //         "(0.76:1.47]": 3,
+    //         "(1.47:2.17]": 5,
+    //         "(2.17:2.88]": 6,
+    //         "(-0.05:0.05]": 8,
+    //         "[-999:-4.19)": 9,
+    //         "(-0.65:-0.05]": 11,
+    //         "[-1.36:-0.65]": 22,
+    //         "[-2.07:-1.36)": 10,
+    //         "[-2.77:-2.07)": 6,
+    //         "[-3.48:-2.77)": 7,
+    //         "[-4.19:-3.48)": 3
+    //     },
+    //     "skewness": 0.852,
+    //     "bins_atom_counts_eq_stats": {
+    //         "[-4:-3.42)": {
+    //             "total": 0,
+    //             "values": []
+    //         },
+    //         "(0.05:0.08]": {
+    //             "total": 0,
+    //             "values": []
+    //         },
+    //         "(0.08:0.67]": {
+    //             "total": 3,
+    //             "values": [
+    //                 6,
+    //                 9,
+    //                 8
+    //             ]
+    //         },
+    //         "(0.67:1.25]": {
+    //             "total": 3,
+    //             "values": [
+    //                 9,
+    //                 9,
+    //                 6
+    //             ]
+    //         },
+    //         "(1.25:1.83]": {
+    //             "total": 0,
+    //             "values": []
+    //         },
+    //         "(1.83:2.42]": {
+    //             "total": 1,
+    //             "values": [
+    //                 6
+    //             ]
+    //         },
+    //         "(-0.05:0.05]": {
+    //             "total": 0,
+    //             "values": []
+    //         },
+    //         "(-0.5:-0.05]": {
+    //             "total": 2,
+    //             "values": [
+    //                 5,
+    //                 10
+    //             ]
+    //         },
+    //         "[-1.08:-0.5]": {
+    //             "q1": 7.5,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.923,
+    //             "iqr": 2.5,
+    //             "max": 10,
+    //             "min": 6,
+    //             "total": 13
+    //         },
+    //         "[-1.67:-1.08)": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.583,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 12
+    //         },
+    //         "[-2.25:-1.67)": {
+    //             "total": 1,
+    //             "values": [
+    //                 6
+    //             ]
+    //         },
+    //         "[-2.83:-2.25)": {
+    //             "total": 1,
+    //             "values": [
+    //                 10
+    //             ]
+    //         },
+    //         "[-3.42:-2.83)": {
+    //             "total": 1,
+    //             "values": [
+    //                 10
+    //             ]
+    //         }
+    //     },
+    //     "bins_atom_counts_sd_stats": {
+    //         "(2.88:999]": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "(0.05:0.76]": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "(0.76:1.47]": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "(1.47:2.17]": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "(2.17:2.88]": {
+    //             "q1": 1,
+    //             "q2": 3,
+    //             "q3": 7,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 1,
+    //             "total": 22
+    //         },
+    //         "(-0.05:0.05]": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "[-999:-4.19)": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "(-0.65:-0.05]": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "[-1.36:-0.65]": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "[-2.07:-1.36)": {
+    //             "total": 2,
+    //             "values": [
+    //                 10,
+    //                 10
+    //             ]
+    //         },
+    //         "[-2.77:-2.07)": {
+    //             "total": 2,
+    //             "values": [
+    //                 10,
+    //                 6
+    //             ]
+    //         },
+    //         "[-3.48:-2.77)": {
+    //             "q1": 6,
+    //             "q2": 10,
+    //             "q3": 10,
+    //             "avg": 8.636,
+    //             "iqr": 4,
+    //             "max": 10,
+    //             "min": 5,
+    //             "total": 22
+    //         },
+    //         "[-4.19:-3.48)": {
+    //             "total": 0,
+    //             "values": []
+    //         }
+    //     }
+    // };
 
+    // generate_chart('chartdiv', d, 'test');
+
+    function generate_chart(id, data, title = "", statsChart = true) 
+    {
+        console.log(data);
+
+        am5.ready(function() 
+        {
             if (!(id in roots)) {
                 roots[id] = am5.Root.new(id);
             }
 
             root = roots[id];
 
-            let from = data['average'] - 3 * data['sd'];
-            let to = data['average'] + 3 * data['sd'];
+            let from = data['average'] - 3.5 * data['sd'];
+            let to = data['average'] + 3.5 * data['sd'];
 
             // Set themes
             root.setThemes([
@@ -479,6 +741,7 @@
                 xAxis_dist.children.push(
                     am5.Label.new(root, {
                         text: "Mean: " + data['average'] + "; SD: " + data['sd'] + '; Skewness: ' + data['skewness'] +  '; Total: ' + data['total'],
+                        fontSize: 13,
                         x: am5.p50,
                         centerX: am5.p50
                     })
@@ -486,6 +749,7 @@
 
                 xAxis_dist.children.push(
                     am5.Label.new(root, {
+                        fontSize: 15,
                         text: title,
                         x: am5.p50,
                         y: am5.p50,
@@ -496,7 +760,8 @@
                 var yAxis1 = chart.yAxes.push(
                     am5xy.ValueAxis.new(root, {
                         // maxDeviation: 0.01,
-                        renderer: am5xy.AxisRendererY.new(root, {}),
+                        renderer: am5xy.AxisRendererY.new(root, {
+                        }),
                         tooltip: null
                     })
                 );
@@ -506,6 +771,7 @@
 
                 var series1 = chart.series.push(
                     am5xy.LineSeries.new(root, {
+                        stroke: am5.Color.fromString("#ff000000"),
                         xAxis: xAxis_dist,
                         yAxis: yAxis1,
                         valueYField: "y",
@@ -515,85 +781,112 @@
 
                 series1.data.setAll(get_norm_distr(data['average'], data['sd'], data['skewness']));
 
-                // Create column series and related axes
                 var xAxis2 = chart.xAxes.push(
-                    am5xy.CategoryAxis.new(root, {
-                        categoryField: "coord",
+                    am5xy.ValueAxis.new(root, {
                         maxDeviation: 0.1,
                         renderer: am5xy.AxisRendererX.new(root, {
-                            minGridDistance: 50
+                            minGridDistance: 30
                         }),
                         min: from,
                         max: to,
-                        // tooltip: am5.Tooltip.new(root, {})
+                        tooltip: am5.Tooltip.new(root, {})
                     })
                 );
 
                 xAxis2.get("renderer").labels.template.set("forceHidden", true);
                 xAxis2.get("renderer").grid.template.set("forceHidden", true);
 
-                xAxis2.data.setAll(prepare_cat_data(data['bins_sd'], data['average'], data['sd']));
-
-                // var xAxis3 = chart.xAxes.push(
-                //     am5xy.CategoryAxis.new(root, {
-                //         categoryField: "coord",
-                //         maxDeviation: 0.1,
-                //         renderer: am5xy.AxisRendererX.new(root, {
-                //             minGridDistance: 50
-                //         })
-                //     })
-                // );
-
-                // xAxis3.data.setAll(prepare_cat_data(data['LogPerm']['bins_eq'], data['LogPerm']['average']));
-
                 var yAxis2 = chart.yAxes.push(
                     am5xy.ValueAxis.new(root, {
                         maxDeviation: 0.1,
-                        renderer: am5xy.AxisRendererY.new(root, {})
-                    })
-                );
-
-                var series2 = chart.series.unshift(
-                    am5xy.ColumnSeries.new(root, {
-                        xAxis: xAxis2,
-                        yAxis: yAxis2,
-                        valueYField: "total",
-                        categoryXField: "coord",
-                        tooltip: am5.Tooltip.new(root, {
-                            pointerOrientation: "horizontal",
-                            labelText: "SD range\n{label}\nTotal: {valueY}"
+                        numberFormat: "#' atoms'",
+                        syncWithAxis: yAxis1,
+                        renderer: am5xy.AxisRendererY.new(root, {
+                            opposite: true
                         })
                     })
                 );
 
-                series2.columns.template.setAll({
-                    width: am5.percent(50),
-                    // tooltipY: 0
+                var yAxis3 = chart.yAxes.push(
+                    am5xy.ValueAxis.new(root, {
+                        maxDeviation: 0.1,
+                        numberFormat: "#' pairs'",
+                        syncWithAxis: yAxis2,
+                        renderer: am5xy.AxisRendererY.new(root, {
+                            opposite: false
+                        })
+                    })
+                );
+
+                var series2 = chart.series.push(
+                    am5xy.CandlestickSeries.new(root, {
+                        name: 'Text',
+                        xAxis: xAxis2,
+                        yAxis: yAxis2,
+                        valueYField: 'q3',
+                        openValueYField: 'q1',
+                        lowValueYField: 'q0',
+                        highValueYField: 'q4',
+                        valueXField: 'coord',
+                        // fill: am5.Color.fromString("#ff000000"),
+                        tooltip: am5.Tooltip.new(root, {
+                            pointerOrientation: "vertical",
+                            labelText: "Min: {q0}\n1th quartile: {q1}\n2nd quartile (mode): {q2}\n3rd quartile: {q3},\nMax: {q4}"
+                        })
+                    })
+                );
+                
+                // Set colors
+                series2.columns.template.states.create("riseFromOpen", {
+                    fill: chart.get("colors").getIndex(12),
+                    stroke: chart.get("colors").getIndex(12)
                 });
 
-                // var series3 = chart.series.unshift(
-                //     am5xy.ColumnSeries.new(root, {
-                //         xAxis: xAxis2,
-                //         yAxis: yAxis2,
-                //         valueYField: "total",
-                //         categoryXField: "coord",
-                //         tooltip: am5.Tooltip.new(root, {
-                //             pointerOrientation: "horizontal",
-                //             labelText: "Equidistant range\n{label}\nTotal: {valueY}"
-                //         })
-                //     })
-                // );
+                series2.columns.template.states.create("dropFromOpen", {
+                    fill: chart.get("colors").getIndex(12),
+                    stroke: chart.get("colors").getIndex(12)
+                });
 
-                // series3.columns.template.setAll({
-                //     width: am5.percent(90),
-                //     // tooltipY: 0
-                // });
+                var series3 = chart.series.unshift(
+                    am5xy.ColumnSeries.new(root, {
+                        xAxis: xAxis2,
+                        yAxis: yAxis3,
+                        valueYField: "total",
+                        valueXField: "coord",
+                        tooltip: am5.Tooltip.new(root, {
+                            pointerOrientation: "vertical",
+                            labelText: "SD range: {label}\nTotal: {valueY}"
+                        })
+                    })
+                );
 
-                // console.log(generateHourlyData());
-                // console.log(generateDailyData());
+                series3.columns.template.setAll({
+                    width: 12,
+                });
 
-                series2.data.setAll(prepare_cat_data(data['bins_sd'], data['average'], data['sd']));
-                // series3.data.setAll(prepare_cat_data(data['LogPerm']['bins_eq'], data['LogPerm']['average']));
+                series3.data.setAll(prepare_cat_data(data['bins_sd'], data['average'], data['sd']));
+
+                series2.columns.template.setAll({
+                    strokeWidth: 2,
+                    width: 7,
+                });
+
+                // mediana series
+                var medianaSeries = chart.series.push(
+                    am5xy.StepLineSeries.new(root, {
+                        // stroke: root.interfaceColors.get("background"),
+                        xAxis: xAxis2,
+                        yAxis: yAxis2,
+                        valueYField: "q2",
+                        valueXField: "coord",
+                        noRisers: true,
+                        stepWidth: 20,
+                        locationX: 0
+                    })
+                );
+
+                // medianaSeries.data.setAll(prepare_boxplot_data(d['bins_atom_counts_sd_stats'], d['average'], d['sd']));
+                series2.data.setAll(prepare_boxplot_data(data['bins_atom_counts_sd_stats'], data['average'], data['sd']));
 
                 // Add cursor
                 // https://www.amcharts.com/docs/v5/charts/xy-chart/cursor/
@@ -606,6 +899,7 @@
                 // https://www.amcharts.com/docs/v5/concepts/animations/
                 series1.appear(1000, 100);
                 series2.appear(1000, 100);
+                series3.appear(1000, 100);
                 chart.appear(1000, 100);
             }
             else

@@ -75,4 +75,26 @@ class ApiPairs extends ApiController
 
         $view->render();
     }
+
+    /**
+     * @GET 
+     * 
+     * @param @required $id
+     * 
+     * @PATH(/group/show/<id:\d+>)
+     */
+    public function show_pair($id)
+    {
+        $group = new Substance_pair_groups($id);
+
+        if(!$group->id)
+        {
+            ResponseBuilder::not_found('Invalid group id.');
+        }
+
+        $view = new View('api/pairs/group_stats');
+        $view->groups = [$group];
+
+        $view->render();
+    }
 }

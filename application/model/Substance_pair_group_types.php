@@ -81,8 +81,9 @@ class Substance_pair_group_types extends Db
 
             if($exists->id)
             {
+                $d = $this->stats;
                 parent::__construct($exists->id);
-                return;
+                $this->stats = $d;
             }
         }
 

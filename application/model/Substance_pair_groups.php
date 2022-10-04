@@ -249,15 +249,6 @@ class Substance_pair_groups extends Db
             return;
         }
 
-        // $pairs = Substance_pairs::instance()->where('id_group', $group->id)->get_all();
-
-        // // $substance_ids = [];
-
-        // foreach($pairs as $p)
-        // {
-        //     // $substance_ids[] = [$p->id_substance_1, $p->id_substance_2];
-        // }
-
         // Passive
         $ints = $this->queryAll('
             SELECT DISTINCT i1.id_membrane as id_membrane, i1.id_method as id_method, i1.charge as charge
@@ -290,7 +281,7 @@ class Substance_pair_groups extends Db
 
             // Update stats
             $is = $this->queryAll('
-                SELECT ' . implode(', ', $attrs) . '
+                SELECT i1.id_substance as id_substance_1, i2.id_substance as id_substance_2, ' . implode(', ', $attrs) . '
                 FROM (
                     SELECT *
                     FROM substance_fragmentation_pairs
@@ -302,18 +293,37 @@ class Substance_pair_groups extends Db
             ', array($group->id, $record->id_membrane, $record->id_method));
 
             $join = self::$attr_of_interest['passive'];
+            $sizes = self::$attr_of_interest['passive'];
 
             foreach($is as $i)
             {
+                $sf2 = Substances_fragments::instance()->where(array
+                    (
+                        'id_substance' => $i->id_substance_2,
+                        'order_number' => 1    
+                    ))
+                    ->get_one();
+
+                if(!$sf2->id || !$sf2->fragment)
+                {
+                    continue;
+                }
+
+                $id_key = $i->id_substance_1 . '_'  . $i->id_substance_2;
+
                 foreach($join as $key => $v)
                 {
                     if(!is_array($join[$key]))
                     {
                         $join[$key] = []; 
+                        $sizes[$key] = []; 
                     }
 
                     if(is_numeric($i->$key))
-                        $join[$key][] = $i->$key;
+                    {
+                        $join[$key][$id_key] = $i->$key;
+                        $sizes[$key][$id_key] = $sf2->fragment->get_atom_count();
+                    }
                 }
             }   
 
@@ -332,16 +342,81 @@ class Substance_pair_groups extends Db
                     continue;
                 }
 
+                $bins_keys_sd = arr::to_bins_keys($data, $total > 12 ? 12 : 8, arr::METHOD_SD, ["+/- 0.05"]);
+                $bins_keys_eq = arr::to_bins_keys($data, $total > 12 ? 12 : 8, arr::METHOD_EQ_DIST, ["+/- 0.05"]);
+
+                $t = $bins_keys_sd;
+                foreach($t as $interval => $values)
+                {
+                    foreach($values as $kk => $v)
+                    {
+                        $bins_keys_sd[$interval][$kk] = $sizes[$att][$v];
+                    }
+
+                    // Add description stats
+                    $d =  $bins_keys_sd[$interval];
+
+                    if(!empty($d) && count($d) > 4)
+                    {
+                        $bins_keys_sd[$interval] = array
+                        (
+                            'total' => arr::total_numeric($d),
+                            'avg'   => arr::average($d),
+                            'min'   => min($d),
+                            'max'   => max($d),
+                            'q1'    => arr::k_quartile($d, 1),
+                            'q2'    => arr::k_quartile($d, 2),
+                            'q3'    => arr::k_quartile($d, 3),
+                            'iqr'   => arr::iqr($d)
+                        );
+                    }
+                    else
+                    {
+                        $bins_keys_sd[$interval] = ['total' => arr::total_numeric($d), 'values' => $d];
+                    }
+                }
+
+                $t = $bins_keys_eq;
+                foreach($t as $interval => $values)
+                {
+                    foreach($values as $kk => $v)
+                    {
+                        $bins_keys_eq[$interval][$kk] = $sizes[$att][$v];
+                    }
+
+                    // Add description stats
+                    $d =  $bins_keys_eq[$interval];
+
+                    if(!empty($d) && count($d) > 4)
+                    {
+                        $bins_keys_eq[$interval] = array
+                        (
+                            'total' => arr::total_numeric($d),
+                            'avg'   => arr::average($d),
+                            'min'   => min($d),
+                            'max'   => max($d),
+                            'q1'    => arr::k_quartile($d, 1),
+                            'q2'    => arr::k_quartile($d, 2),
+                            'q3'    => arr::k_quartile($d, 3),
+                            'iqr'   => arr::iqr($d)
+                        );
+                    }
+                    else
+                    {
+                        $bins_keys_eq[$interval] = ['total' => arr::total_numeric($d), 'values' => $d];
+                    }
+                }
+
                 $stats[$att] = array
                 (
                     'average' => arr::average($data),
                     'sd'      => arr::sd($data),
-                    'cm_2'    => arr::central_moment($data, 2),
-                    'cm_3'    => arr::central_moment($data, 3),
                     'skewness'=> arr::skewness($data),
                     'total'   => $total,
-                    'bins_sd' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_SD), true) ?? $data,
-                    'bins_eq' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_EQ_DIST), true)
+                    'bins_sd' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_SD, ["+/- 0.05"]), true) ?? $data,
+                    'bins_eq' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_EQ_DIST,["+/- 0.05"]), true),
+                    'bins_atom_counts_sd_stats' => $bins_keys_sd,
+                    'bins_atom_counts_eq_stats' => $bins_keys_eq
                 );
             }
 
@@ -417,22 +492,87 @@ class Substance_pair_groups extends Db
             {
                 $total = arr::total_numeric($data);
 
-                if($total < 5)
+                if($total < 4)
                 {
                     $stats[$att] = ['total' => $total, 'data' => $data];
                     continue;
+                }
+
+                $bins_keys_sd = arr::to_bins_keys($data, $total > 12 ? 12 : 8, arr::METHOD_SD, ["+/- 0.05"]);
+                $bins_keys_eq = arr::to_bins_keys($data, $total > 12 ? 12 : 8, arr::METHOD_EQ_DIST, ["+/- 0.05"]);
+
+                $t = $bins_keys_sd;
+                foreach($t as $interval => $values)
+                {
+                    foreach($values as $kk => $v)
+                    {
+                        $bins_keys_sd[$interval][$kk] = $sizes[$att][$v];
+                    }
+
+                    // Add description stats
+                    $d =  $bins_keys_sd[$interval];
+
+                    if(!empty($d) && count($d) > 4)
+                    {
+                        $bins_keys_sd[$interval] = array
+                        (
+                            'total' => arr::total_numeric($d),
+                            'avg'   => arr::average($d),
+                            'min'   => min($d),
+                            'max'   => max($d),
+                            'q1'    => arr::k_quartile($d, 1),
+                            'q2'    => arr::k_quartile($d, 2),
+                            'q3'    => arr::k_quartile($d, 3),
+                            'iqr'   => arr::iqr($d)
+                        );
+                    }
+                    else
+                    {
+                        $bins_keys_sd[$interval] = ['total' => arr::total_numeric($d), 'values' => $d];
+                    }
+                }
+
+                $t = $bins_keys_eq;
+                foreach($t as $interval => $values)
+                {
+                    foreach($values as $kk => $v)
+                    {
+                        $bins_keys_eq[$interval][$kk] = $sizes[$att][$v];
+                    }
+
+                    // Add description stats
+                    $d =  $bins_keys_eq[$interval];
+
+                    if(!empty($d) && count($d) > 4)
+                    {
+                        $bins_keys_eq[$interval] = array
+                        (
+                            'total' => arr::total_numeric($d),
+                            'avg'   => arr::average($d),
+                            'min'   => min($d),
+                            'max'   => max($d),
+                            'q1'    => arr::k_quartile($d, 1),
+                            'q2'    => arr::k_quartile($d, 2),
+                            'q3'    => arr::k_quartile($d, 3),
+                            'iqr'   => arr::iqr($d)
+                        );
+                    }
+                    else
+                    {
+                        $bins_keys_eq[$interval] = ['total' => arr::total_numeric($d), 'values' => $d];
+                    }
                 }
 
                 $stats[$att] = array
                 (
                     'average' => arr::average($data),
                     'sd'      => arr::sd($data),
-                    'cm_2'    => arr::central_moment($data, 2),
-                    'cm_3'    => arr::central_moment($data, 3),
                     'skewness'=> arr::skewness($data),
                     'total'   => $total,
-                    'bins_sd' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_SD), true) ?? $data,
-                    'bins_eq' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_EQ_DIST), true)
+                    'bins_sd' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_SD, ["+/- 0.05"]), true) ?? $data,
+                    'bins_eq' => arr::total_items(arr::to_bins($data, $total > 12 ? 12 : 8, arr::METHOD_EQ_DIST,["+/- 0.05"]), true),
+                    'bins_atom_counts_sd_stats' => $bins_keys_sd,
+                    'bins_atom_counts_eq_stats' => $bins_keys_eq
                 );
             }
 

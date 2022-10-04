@@ -128,62 +128,70 @@ class Substance_pairs extends Db
      */
     public function save()
     {
-        // check if exists
-        $exists = $this->where(array
-        (
-            'id_substance_1' => $this->id_substance_1,
-            'id_substance_2' => $this->id_substance_2,
-        ))
-        ->get_one();
+        $old_fo = [$this->substance_1_fragmentation_order, $this->substance_2_fragmentation_order];
+        $exists = null;
 
-        if(!$exists->id)
+        if(!$this->id)
         {
+            // check if exists
             $exists = $this->where(array
             (
-                'id_substance_2' => $this->id_substance_1,
-                'id_substance_1' => $this->id_substance_2,
+                'id_substance_1' => $this->id_substance_1,
+                'id_substance_2' => $this->id_substance_2,
             ))
             ->get_one();
+
+            if(!$exists->id)
+            {
+                $exists = $this->where(array
+                (
+                    'id_substance_2' => $this->id_substance_1,
+                    'id_substance_1' => $this->id_substance_2,
+                ))
+                ->get_one();
+            }
+
+            if($exists->id)
+            {
+                $t = $this;
+                parent::__construct($exists->id);
+                $this->id_substance_1 = $t->id_substance_1;
+                $this->id_substance_2 = $t->id_substance_2;
+                $this->substance_1_fragmentation_order = $t->substance_1_fragmentation_order;
+                $this->substance_2_fragmentation_order = $t->substance_2_fragmentation_order;
+                $this->id_core = $t->id_core;
+                $this->id_group = $t->id_group;
+            }
         }
 
-        if($exists->id)
+        if($this->substance_2_fragmentation_order == 1 && 
+            $this->substance_1_fragmentation_order > 1)
         {
-            $f1_total = Substances_fragments::instance()->where(
-                array
-                (
-                    'id_substance' => $this->id_substance_2,
-                    'order_number' => $this->substance_2_fragmentation_order
-                ))
-                ->get_one()->total_fragments;
-
-            $f2_total = Substances_fragments::instance()->where(
-                array
-                (
-                    'id_substance' => $exists->id_substance_2,
-                    'order_number' => $exists->substance_2_fragmentation_order
-                ))
-                ->get_one()->total_fragments;
-
-            if($f1_total > $f2_total)
-            {
-                $exists->id_core = $this->id_core;
-                $exists->substance_1_fragmentation_order = $this->substance_1_fragmentation_order;
-                $exists->substance_2_fragmentation_order = $this->substnace_2_fragmentation_order;
-
-                $exists->save();
-            }
-            parent::__construct($exists->id);
-            return;
+            // Swap order
+            $t_id = $this->id_substance_2;
+            $t_order = $this->substance_2_fragmentation_order;
+            $this->id_substance_2 = $this->id_substance_1;
+            $this->substance_2_fragmentation_order = $this->substance_1_fragmentation_order;
+            $this->id_substance_1 = $t_id;
+            $this->substance_1_fragmentation_order = $t_order;
         }
 
         parent::save();
 
-        $this->load_fragmentations();
-
-        if(!$this->id)
+        if(!$this->id || 
+            ($exists && $exists->id && 
+            in_array($exists->substance_1_fragmentation_order, $old_fo) && 
+            in_array($exists->substance_2_fragmentation_order, $old_fo)))
         {
             return;
         }
+
+        // First, remove existing fragmentations
+        Db::instance()->query('
+            DELETE FROM substance_fragmentation_pair_links WHERE id_substance_pair = ?
+        ', array($this->id));
+
+        $this->load_fragmentations();
 
         // Add detail with substitutions and aditions
         $comp = $this->compare();

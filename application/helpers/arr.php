@@ -218,14 +218,13 @@ class arr
                 $step = (6*$sd)/($total_bins);
                 $c = (-3*$sd)+$avg;
 
-                $interval_limits[] = -999;
-
                 foreach(range(0, $total_bins) as $i)
                 {
                     $interval_limits[] = round($c + ($step * $i), 2);
                 }
 
-                $interval_limits[] = 999;
+                $interval_limits[] = round(min($interval_limits)-$step,2);
+                $interval_limits[] = round(max($interval_limits)+$step,2);
             }
         }
         else

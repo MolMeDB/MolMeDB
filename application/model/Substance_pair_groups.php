@@ -19,7 +19,7 @@ class Substance_pair_groups extends Db
     /**
      * Which attributes are interesting to analyze?
      */
-    private static $attr_of_interest = array
+    public static $attr_of_interest = array
     (
         'passive' => array
         (

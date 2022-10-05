@@ -36,7 +36,7 @@ class ApiPairs extends ApiController
         {
             $ind = $t->id_target ? 'active' : 'passive';
 
-            if(!isset($result[$ind][$t->$group_by]))
+            if(!isset($result[$ind][$t->$group_by ?? "all"]))
             {
                 $result[$ind][$t->$group_by ?? 'all'] = [];
             }

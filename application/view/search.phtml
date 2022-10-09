@@ -7,7 +7,7 @@
   <li id="tab-membrane"><a data-toggle="tab" href="#membrane">Membrane</a></li>
   <li id="tab-method"><a data-toggle="tab" href="#method">Method</a></li>
   <li id="tab-smiles"><a data-toggle="tab" href="#smiles">Structure</a></li>
-  <li id="tab-transporters"><a data-toggle="tab" href="#transporters">Transporters</a></li>
+  <li id="tab-transporter"><a data-toggle="tab" href="#transporter">Transporters</a></li>
   <!-- <li><a data-toggle="tab" href="#uniprot">Uniprot ID</a></li> -->
 </ul>
 
@@ -20,7 +20,9 @@
 
           <form method="get" action="/search/compound/1" autocomplete="off">
             <div class="autocomplete">
-              <input class="searchEngine" type="text" name="q" placeholder="Search compounds (e.g. Caffeine)" id="compoundSearch">
+              <input class="searchEngine" value="<?= $active_tab == SearchController::T_COMPOUND ? $searchInput : '' ?>" type="text" name="q" placeholder="Search compounds (e.g. Caffeine)" id="compoundSearch">
+              <div id="autocomplete-list" class="autocomplete-items">
+              </div>
             </div>
             <button type="submit" class="btn btn-success pull-right">Search</button>
           </form>
@@ -28,6 +30,7 @@
       </div>
     </div>
   </div>
+
 
   <div id="membrane" class="tab-pane fade in ">
     <div class="panel-group">
@@ -55,24 +58,24 @@
       <div class="panel panel-primary">
         <div class="panel-heading">Search compounds by structure</div>
         <div class="panel-body">
-            <div style="margin-bottom: 5px; display: flex; flex-direction: row; justify-content: space-between; align-items:center;">
-              <input style="width: calc(100% - 70px) !important;" value="<?=isset($smiles) ? $smiles : ''?>" id="insert_smiles" type="text" class="searchEngine" name="q"  placeholder="Draw structure by SMILES">
-              <button type="button" id="insert_structure" class="btn btn-info pull-right">Insert</button>
-            </div>
-              <iframe onload="document.getElementById('insert_structure').click();" id="ketcher" src="/api/ketcher/run" width="100%" height="600"></iframe>
-              <button type="button" id="search_smiles" class="btn btn-success pull-right">Search</button>
+          <div style="margin-bottom: 5px; display: flex; flex-direction: row; justify-content: space-between; align-items:center;">
+            <input style="width: calc(100% - 70px) !important;" value="<?= isset($smiles) ? $smiles : '' ?>" id="insert_smiles" type="text" class="searchEngine" name="q" placeholder="Draw structure by SMILES">
+            <button type="button" id="insert_structure" class="btn btn-info pull-right">Insert</button>
+          </div>
+          <iframe onload="document.getElementById('insert_structure').click();" id="ketcher" src="/api/ketcher/run" width="100%" height="600"></iframe>
+          <button type="button" id="search_smiles" class="btn btn-success pull-right">Search</button>
         </div>
       </div>
     </div>
   </div>
-  <div id="transporters" class="tab-pane fade">
+  <div id="transporter" class="tab-pane fade">
     <div class="panel-group">
       <div class="panel panel-primary">
         <div class="panel-heading">Search compounds by transporter targets</div>
         <div class="panel-body">
           <form method="get" action="/search/transporter/1" autocomplete="off">
             <div class="autocomplete">
-              <input type="text" class="searchEngine" name="q" id='transporterSearch' placeholder="Search compounds by transporter">
+              <input type="text" value="<?= $active_tab == SearchController::T_TRANSPORTER ? $searchInput : '' ?>" class="searchEngine" name="q" id='transporterSearch' placeholder="Search compounds by transporter">
             </div>
             <button type="submit" class="btn btn-success pull-right">Search</button>
           </form>
@@ -178,13 +181,11 @@
 <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
 
 <script>
-
-  $(document).ready(function() 
-  {
+  $(document).ready(function() {
     setTimeout(showContent, 200);
   });
 
-  
+
 
   function showContent() {
     if (<?= $show_detail ?>) {
@@ -193,83 +194,79 @@
     }
   }
 
-function show_sunburst(data, target_id, ontap)
-{
+  function show_sunburst(data, target_id, ontap) {
     am4core.ready(function() {
-        // Themes begin
-        am4core.useTheme(am4themes_animated);
-        // Themes end
-    
-        // create chart
-        var chart = am4core.create(target_id, am4plugins_sunburst.Sunburst);
-        chart.padding(0,0,0,0);
-        chart.radius = am4core.percent(98);
-    
-        chart.data = data;
-    
-        chart.colors.step = 2;
-        chart.fontSize = 11;
-        chart.innerRadius = am4core.percent(10);
-    
-        // define data fields
-        chart.dataFields.value = "value";
-        chart.dataFields.name = "name";;
-        chart.dataFields.children = "children";
-    
-    
-        var level0SeriesTemplate = new am4plugins_sunburst.SunburstSeries();
-        level0SeriesTemplate.hiddenInLegend = false;
-        chart.seriesTemplates.setKey("0", level0SeriesTemplate)
-        level0SeriesTemplate.labels.template.text = "{category}";
-        level0SeriesTemplate.slices.template.tooltipText = "{category}";
-    
-        // this makes labels to be hidden if they don't fit
-        level0SeriesTemplate.labels.template.truncate = true;
-        level0SeriesTemplate.labels.template.hideOversized = true;
-    
-        level0SeriesTemplate.labels.template.adapter.add("rotation", function(rotation, target) {
-            target.maxWidth = target.dataItem.slice.radius - target.dataItem.slice.innerRadius - 10;
-            target.maxHeight = Math.abs(target.dataItem.slice.arc * (target.dataItem.slice.innerRadius + target.dataItem.slice.radius) / 2 * am4core.math.RADIANS);
-    
-            return rotation;
-        })
+      // Themes begin
+      am4core.useTheme(am4themes_animated);
+      // Themes end
 
-        level0SeriesTemplate.slices.template.events.on('hit', function(ev)
-        {
-            var el_id = ev.target.dataItem.sunburstDataItem._dataContext.id_element;
-            var last = ev.target.dataItem.sunburstDataItem._dataContext.last;
+      // create chart
+      var chart = am4core.create(target_id, am4plugins_sunburst.Sunburst);
+      chart.padding(0, 0, 0, 0);
+      chart.radius = am4core.percent(98);
 
-            if(!last)
-            {
-                return;
-            }
-            
-            if(!el_id)
-            {
-                console.log("Element id not found");
-                return false;
-            }
+      chart.data = data;
 
-            ontap(el_id);
-        });
-    
-    
-        var level1SeriesTemplate = level0SeriesTemplate.clone();
-        chart.seriesTemplates.setKey("1", level1SeriesTemplate)
-        level1SeriesTemplate.fillOpacity = 0.75;
-        level1SeriesTemplate.hiddenInLegend = true;
-        // level1SeriesTemplate.labels.template.text = "{category}";
-    
-        var level2SeriesTemplate = level0SeriesTemplate.clone();
-        chart.seriesTemplates.setKey("2", level2SeriesTemplate)
-        level2SeriesTemplate.fillOpacity = 0.5;
-        level2SeriesTemplate.hiddenInLegend = true;
-        // level2SeriesTemplate.labels.template.text = "{category}";
-        level2SeriesTemplate.labels.template.fill = am4core.color("#000");
-        chart.legend = new am4charts.Legend();
-    
-    }); 
-}
+      chart.colors.step = 2;
+      chart.fontSize = 11;
+      chart.innerRadius = am4core.percent(10);
+
+      // define data fields
+      chart.dataFields.value = "value";
+      chart.dataFields.name = "name";;
+      chart.dataFields.children = "children";
+
+
+      var level0SeriesTemplate = new am4plugins_sunburst.SunburstSeries();
+      level0SeriesTemplate.hiddenInLegend = false;
+      chart.seriesTemplates.setKey("0", level0SeriesTemplate)
+      level0SeriesTemplate.labels.template.text = "{category}";
+      level0SeriesTemplate.slices.template.tooltipText = "{category}";
+
+      // this makes labels to be hidden if they don't fit
+      level0SeriesTemplate.labels.template.truncate = true;
+      level0SeriesTemplate.labels.template.hideOversized = true;
+
+      level0SeriesTemplate.labels.template.adapter.add("rotation", function(rotation, target) {
+        target.maxWidth = target.dataItem.slice.radius - target.dataItem.slice.innerRadius - 10;
+        target.maxHeight = Math.abs(target.dataItem.slice.arc * (target.dataItem.slice.innerRadius + target.dataItem.slice.radius) / 2 * am4core.math.RADIANS);
+
+        return rotation;
+      })
+
+      level0SeriesTemplate.slices.template.events.on('hit', function(ev) {
+        var el_id = ev.target.dataItem.sunburstDataItem._dataContext.id_element;
+        var last = ev.target.dataItem.sunburstDataItem._dataContext.last;
+
+        if (!last) {
+          return;
+        }
+
+        if (!el_id) {
+          console.log("Element id not found");
+          return false;
+        }
+
+        ontap(el_id);
+      });
+
+
+      var level1SeriesTemplate = level0SeriesTemplate.clone();
+      chart.seriesTemplates.setKey("1", level1SeriesTemplate)
+      level1SeriesTemplate.fillOpacity = 0.75;
+      level1SeriesTemplate.hiddenInLegend = true;
+      // level1SeriesTemplate.labels.template.text = "{category}";
+
+      var level2SeriesTemplate = level0SeriesTemplate.clone();
+      chart.seriesTemplates.setKey("2", level2SeriesTemplate)
+      level2SeriesTemplate.fillOpacity = 0.5;
+      level2SeriesTemplate.hiddenInLegend = true;
+      // level2SeriesTemplate.labels.template.text = "{category}";
+      level2SeriesTemplate.labels.template.fill = am4core.color("#000");
+      chart.legend = new am4charts.Legend();
+
+    });
+  }
   var mem_data = JSON.parse('<?= $nonsec_membrane_categories ?>');
   show_sunburst(mem_data, "membranechartdiv", (id) => {
     redirect("search/membrane?id=" + id)
@@ -279,32 +276,27 @@ function show_sunburst(data, target_id, ontap)
     redirect("search/method?id=" + id)
   });
 
+  function sh_t(id) {
+    if (!$('#tab-' + id)) {
+      return;
+    }
 
+    $('#tab-' + id).tab('show');
+    $('.tab-pane').removeClass('active');
+    $('.tab-pane').removeClass('fade');
+    $('.tab-pane').removeClass('in');
+    $('#' + id).addClass('active fade in');
 
-function sh_t(id)
-{
-  if(!$('#tab-' + id))
-  {
-    return;
-  }
-
-  $('#tab-' + id).tab('show');
-  $('.tab-pane').removeClass('active');
-  $('.tab-pane').removeClass('fade');
-  $('.tab-pane').removeClass('in');
-  $('#'+id).addClass('active fade in');
-
-  if (<?= $show_detail ?>) {
-    $('html, body').animate({
-            scrollTop: $('#tab-' + id).offset().top
+    if (<?= $show_detail ?>) {
+      $('html, body').animate({
+        scrollTop: $('#tab-' + id).offset().top
       }, 1000);
+    }
   }
-}
 
-<?= isset($active_tab) ? "sh_t(\"$active_tab\")" : '' ?>;
-// sh_t("smiles");
-
+  <?= isset($active_tab) ? "sh_t(\"$active_tab\")" : '' ?>;
+  // sh_t("smiles");
 </script>
 
-<script src="js/searchEngine.js?<?=JS_VERSION?>" >
+<script src="js/searchEngine.js?<?= JS_VERSION ?>">
 </script>

@@ -1062,17 +1062,19 @@ class Substances extends Db
     public function loadSearchWhisper($q)
     {
         $data = $this->queryAll('
-            SELECT DISTINCT name, "" as altername 
+            SELECT DISTINCT name, "" as altername, SMILES as smiles, MW, inchikey, identifier, pubchem, drugbank, chEMBL
             FROM substances 
-            WHERE name LIKE ? 
+            WHERE name LIKE ? AND identifier IS NOT NULL
             
             UNION
             
-            SELECT DISTINCT s.name name, a.name altername
-            FROM alternames a
-            JOIN substances s ON s.id = a.id_substance
-            WHERE a.name LIKE ? LIMIT 20
-            ', array($q, $q));
+            SELECT DISTINCT s.name as name, i.value as altername, s.SMILES as smiles, s.MW, s.inchikey, s.identifier,
+                s.pubchem, s.drugbank, s.chEMBL
+            FROM validator_identifiers i
+            JOIN substances s ON s.id = i.id_substance AND i.identifier = ? AND i.value LIKE ? AND s.identifier IS NOT NULL
+            
+            LIMIT 4
+            ', array($q, Validator_identifiers::ID_NAME, $q));
         
         $res = array();
         $used = array();
@@ -1086,8 +1088,16 @@ class Substances extends Db
 
             $res[] = array
             (
+                'identifier'=> $row->identifier,
+                'pubchem'   => $row->pubchem ? $row->pubchem : 'N/A',
+                'drugbank'  => $row->drugbank ? $row->drugbank : 'N/A',
+                'chembl'    => $row->chEMBL ? $row->chEMBL : 'N/A',
                 'name'      => $row->name,
-                'pattern'   => trim($row->altername) != '' ? 'Alter. name: ' . $row->altername : ''
+                'smiles'    => $row->smiles ? $row->smiles : 'N/A',
+                'mw'        => $row->MW ? $row->MW : 'N/A',
+                'inchikey'  => $row->inchikey ? $row->inchikey : 'N/A',
+                'altername' => $row->altername,
+                'img'       => Html::image_structure($row->smiles)
             );
             
             $used[] = $row->name;

@@ -76,6 +76,7 @@ abstract class Controller
      * Adds warning message
      * 
      * @param string $message
+     * @deprecated - Use alert->warning instead
      */
     public function addMessageWarning($message)
     {
@@ -86,6 +87,7 @@ abstract class Controller
      * Adds success message
      * 
      * @param string $message
+     * @deprecated - Use alert->success instead
      */
     public function addMessageSuccess($message)
     {
@@ -96,6 +98,7 @@ abstract class Controller
      * Adds error message
      * 
      * @param string $message
+     * @deprecated - Use alert->error instead
      */
     public function addMessageError($message)
     {

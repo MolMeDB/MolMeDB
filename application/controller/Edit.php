@@ -366,7 +366,6 @@ class EditController extends Controller
                 $detail->drugbank = $_POST['drugbank'];
                 $detail->chEBI = $_POST['chEBI'];
                 $detail->chEMBL = $_POST['chEMBL'];
-                $detail->validated = Validator::NOT_VALIDATED;
 
                 $diff = $detail->get_changes(True);
 

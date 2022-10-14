@@ -663,8 +663,6 @@ class Substances extends Db
 
         $vi = new Validator_identifiers();
 
-        $vi->init_substance_identifiers($this);
-
         $name = $vi->get_active_substance_value($this->id, $vi::ID_NAME);
         $smiles = $vi->get_active_substance_value($this->id, $vi::ID_SMILES);
         $inchikey = $vi->get_active_substance_value($this->id, $vi::ID_INCHIKEY);
@@ -674,110 +672,55 @@ class Substances extends Db
         $chembl = $vi->get_active_substance_value($this->id, $vi::ID_CHEMBL);
         $pdb = $vi->get_active_substance_value($this->id, $vi::ID_PDB);
 
-        // Check identifier validity
-        
-        if($chembl->id)
+        $exists = $vi->where(array
+        (
+            'id_substance'  => $this->id,
+            'identifier'    => $vi::ID_NAME,
+            'value'         => $this->identifier 
+        ))->get_one();
+
+        if(!$exists->id)
         {
-            try
-            {
-                $checked = Upload_validator::get_attr_val(Upload_validator::CHEMBL_ID, $chembl->value);
-
-                if(!$checked)
-                {
-                    throw new SchedulerException('Chembl id doesn\'t match pattern.');
-                }
-                else
-                {
-                    // Check, if exists
-                    $chembl_server = new Chembl();
-                    
-                    if($chembl_server->is_valid_identifier($chembl->value) === false)
-                    {
-                        throw new SchedulerException('Cannot find identifier on remote server.');
-                    }
-                }
-            }
-            catch(SchedulerException $e)
-            {
-                $chembl->active = $chembl::INACTIVE;
-                $chembl->active_msg = $e->getMessage();
-                $chembl->state = $vi::STATE_INVALID;
-                $chembl->save();
-
-                $chembl = null; 
-            }
-            catch(Exception $e)
-            {
-                
-            }
-        }
-        if($drugbank->id)
-        {
-            try
-            {
-                $checked = Upload_validator::get_attr_val(Upload_validator::DRUGBANK, $drugbank->value);
-
-                if(!$checked)
-                {
-                    throw new SchedulerException('Drugbank id doesn\'t match pattern.');
-                }
-                else
-                {
-                    // Check, if exists
-                    $drugbank_server = new Drugbank();
-                    
-                    if($drugbank_server->is_valid_identifier($drugbank->value) === false)
-                    {
-                        throw new SchedulerException('Cannot find identifier on remote server.');
-                    }
-                }
-            }
-            catch(SchedulerException $e)
-            {
-                $drugbank->active = $drugbank::INACTIVE;
-                $drugbank->active_msg = $e->getMessage();
-                $drugbank->state = $vi::STATE_INVALID;
-                $drugbank->save();
-
-                $drugbank = null; 
-            }
-            catch(Exception $e)
-            {
-                
-            }
+            $exists = new Validator_identifiers();
+            $exists->id_substance = $this->id;
+            $exists->id_source = NULL;
+            $exists->server = NULL;
+            $exists->identifier = $vi::ID_NAME;
+            $exists->id_user = NULL;
+            $exists->value = $this->identifier;
+            $exists->state = $vi::STATE_VALIDATED;
+            $exists->active = $vi::INACTIVE;
+            $exists->save();
         }
 
-        if($name && $name->id)
+        // Find best name
+        if(!$name->value || Identifiers::is_valid($name->value))
         {
-            $this->name = $name->value;
-        }
-        else
-        {
-            $this->name = $this->identifier;
-            $exists = $vi->where(array
+            $name = $exists;
+
+            $candidates = Validator_identifiers::instance()->where(array
             (
                 'id_substance'  => $this->id,
                 'identifier'    => $vi::ID_NAME,
-                'value'         => $this->identifier 
-            ))->get_one();
+                'state'         => $vi::STATE_VALIDATED,
+            ))->order_by('LENGTH(value)', 'ASC')
+            ->get_all();
 
-            if(!$exists->id)
+            foreach($candidates as $c)
             {
-                $exists = new Validator_identifiers();
-                $exists->id_substance = $this->id;
-                $exists->id_source = NULL;
-                $exists->server = NULL;
-                $exists->identifier = $vi::ID_NAME;
-                $exists->id_user = NULL;
-                $exists->value = $this->identifier;
+                if(Identifiers::is_valid($c->value))
+                {
+                    continue;
+                }
+
+                $name = $c;
+                break;
             }
 
-            $exists->state = $vi::STATE_VALIDATED;
-            $exists->active = $vi::ACTIVE;
-
-            $exists->save();
+            $name->activate();
         }
         
+        $this->name = $name && $name->id ? $name->value : NULL;
         $this->SMILES = $smiles && $smiles->id ? $smiles->value : NULL;
         $this->inchikey = $inchikey && $inchikey->id ? $inchikey->value : NULL;
         $this->pubchem = $pubchem && $pubchem->id ? $pubchem->value : NULL;
@@ -1617,36 +1560,60 @@ class Substances extends Db
      */
     public function exists($name, $SMILES, $pdb = NULL, $drugbank = NULL, $pubchem = NULL, $chEBI = NULL, $chEMBL = NULL)
 	{
-        $res = $this->queryAll(
-            'SELECT DISTINCT s.id, s.identifier
-            FROM substances s
-            LEFT JOIN alternames a ON a.id_substance = s.id 
-            WHERE SMILES LIKE ? OR pdb LIKE ? OR chEBI LIKE ? OR 
-                chEMBL LIKE ? OR drugbank LIKE ? OR pubchem LIKE ? OR 
-                s.name LIKE ? OR a.name LIKE ? OR uploadName LIKE ?',
-            array
-            (
-                $SMILES,
-                $pdb,
-                $chEBI,
-                $chEMBL,
-                $drugbank,
-                $pubchem,
-                $name, 
-                $name, 
-                $name,
-            )
-        );
+        $candidates = $this->queryAll('
+            SELECT id_substance, SUM(score) as score
+            FROM (
+                SELECT id_substance, 
+                    IF(identifier = ?, 100, 
+                    IF(identifier = ?, 200,
+                    IF(identifier = ?, 1000,
+                    IF(identifier = ?, 1000,
+                    IF(identifier = ?, 1000,
+                    IF(identifier = ?, 1000,
+                    IF(identifier = ?, 1000, 0))))))) as score
+                FROM validator_identifiers
+                WHERE state = ? AND (
+                    (value LIKE ? AND identifier = ? AND STATE = ?) OR
+                    (value LIKE ? AND identifier = ? AND STATE = ?) OR
+                    (value LIKE ? AND identifier = ? AND STATE = ?) OR 
+                    (value LIKE ? AND identifier = ? AND STATE = ?) OR 
+                    (value LIKE ? AND identifier = ? AND STATE = ?) OR
+                    (value LIKE ? AND identifier = ? AND STATE = ?) OR
+                    (value LIKE ? AND identifier = ? AND STATE = ?)
+                )) as t
+            GROUP BY id_substance
+            ORDER BY score DESC
+        ', array
+        (
+            //SELECT
+            Validator_identifiers::ID_NAME,
+            Validator_identifiers::ID_SMILES,
+            Validator_identifiers::ID_PDB,
+            Validator_identifiers::ID_PUBCHEM,
+            Validator_identifiers::ID_DRUGBANK,
+            Validator_identifiers::ID_CHEMBL,
+            Validator_identifiers::ID_CHEBI,
+            // WHERE
+            Validator_identifiers::STATE_VALIDATED,
+            $name, Validator_identifiers::ID_NAME, Validator_identifiers::STATE_VALIDATED,
+            $SMILES, Validator_identifiers::ID_SMILES, Validator_identifiers::STATE_VALIDATED,
+            $pdb, Validator_identifiers::ID_PDB, Validator_identifiers::STATE_VALIDATED,
+            $pubchem, Validator_identifiers::ID_PUBCHEM, Validator_identifiers::STATE_VALIDATED,
+            $drugbank, Validator_identifiers::ID_DRUGBANK, Validator_identifiers::STATE_VALIDATED,
+            $chEMBL, Validator_identifiers::ID_CHEMBL, Validator_identifiers::STATE_VALIDATED,
+            $chEBI, Validator_identifiers::ID_CHEBI, Validator_identifiers::STATE_VALIDATED
+        ));
 
-        $total = count($res);
+        $total = count($candidates);
 
         if($total > 1)
         {
             $ids = '';
 
-            foreach($res as $row)
+            foreach($candidates as $row)
             {
-                $ids .= $row->identifier  . ', ';
+                $s = new Substances($row->id_substance);
+                $ids .= $s->identifier  . ', ';
             }
 
             $ids = trim(trim($ids), ',');
@@ -1656,47 +1623,11 @@ class Substances extends Db
 
         if($total)
         {
-            $res = $res[0];
+            return new Substances($candidates[0]->id_substance);
         }
 
-        return new Substances($res->id);
+        return new Substances();
     }
-    
-    // /**
-    //  * Checks if exists substances for given names
-    //  * DEPRECATED - USE exists method instead
-    //  * 
-    //  * @param string $ligand
-    //  * @param string $uploadName
-    //  * 
-    //  * @return integer|null ID of found substance
-    //  */
-    // public function test_duplicates($ligand, $uploadName)
-    // {
-    //     $result = $this->queryOne("
-    //         SELECT id_substance 
-    //         FROM alternames 
-    //         WHERE name = ? OR name = ? 
-    //         LIMIT 1", 
-    //         array($ligand, $uploadName));
-        
-    //     if($result->id)
-    //     {
-    //         return $result->id;
-    //     }
-
-    //     $result = $this->queryOne("
-    //         SELECT id FROM substances WHERE uploadName = ? OR name = ? OR uploadName = ? OR name = ? LIMIT 1", 
-    //         array
-    //         (
-    //             $ligand, 
-    //             $uploadName, 
-    //             $uploadName, 
-    //             $ligand
-    //         ));
-
-    //     return $result->id;
-    // }
     
     /**
 	 * Get substances for given membrane x method
@@ -1729,106 +1660,79 @@ class Substances extends Db
                     . 'ORDER BY name', array($idMethod));
         }
     }
-    
-    // /**
-    //  * Label given substance as possible duplicity for current object
-    //  * 
-    //  * @param $id_substance - Found duplicity
-    //  * @param $duplicity - Duplicity detail
-    //  */
-    // public function add_duplicity($id_substance, $duplicity)
-    // {
-    //     if(!$this->id || !$id_substance)
-    //     {
-    //         throw new Exception('Cannot add duplicity. Invalid instance or substance_id.');
-    //     }
 
-    //     $validation = new Validator();
+    /**
+     * Overloading of save() function
+     * 
+     * @param int $id_dataset_passive
+     * @param int $id_dataset_active
+     */
+    public function save($id_dataset_passive = null, $id_dataset_active = NULL)
+    {
+        $identifiers = [];
+        $new = false;
 
-    //     $exists = $validation->where(array
-    //         (
-    //             'id_substance_1' => $this->id,
-    //             'id_substance_2' => $id_substance,
-    //             'duplicity LIKE' => $duplicity
-    //         ))
-    //         ->get_one();
+        if(!$this->id)
+        {  
+            $new = true;
+            // Log all new values
+            $links = array
+            (
+                Validator_identifiers::ID_NAME => 'name',
+                Validator_identifiers::ID_SMILES => 'SMILES',
+                Validator_identifiers::ID_INCHIKEY => 'inchikey',
+                Validator_identifiers::ID_CHEBI => 'chEBI',
+                Validator_identifiers::ID_CHEMBL => 'chEMBL',
+                Validator_identifiers::ID_PDB => 'pdb',
+                Validator_identifiers::ID_PUBCHEM => 'pubchem',
+                Validator_identifiers::ID_DRUGBANK => 'drugbank',
+            );
 
-    //     if(!$exists->id)
-    //     {
-    //         $validation->id_substance_1 = $this->id;
-    //         $validation->id_substance_2 = $id_substance;
-    //         $validation->duplicity = $duplicity;
+            foreach($links as $type => $attr)
+            {
+                if($this->$attr === NULL)
+                {
+                    continue;
+                }
 
-    //         $validation->save();
-    //     }
+                $record = new Validator_identifiers();
+                $record->id_substance = $this->id;
+                $record->identifier = $type;
+                $record->value = $this->$attr;
+                $record->id_source = NULL;
+                $record->server = NULL;
+                $record->id_user = session::user_id();
+                $record->state = Validator_identifiers::STATE_VALIDATED;
+                $record->active = Validator_identifiers::ACTIVE;
+                $record->id_dataset_passive = $id_dataset_passive;
+                $record->id_dataset_active = $id_dataset_active;
+                $record->flag = NULL;
 
-    //     // Label molecule as possible duplicity
-    //     $this->prev_validation_state = $this->validated;
-    //     $this->validated = Validator::POSSIBLE_DUPLICITY;
-    //     $this->waiting = 1;
-    //     $this->save();
-    // }
+                $identifiers[] = $record;
+            }
+        }
 
-    // /**
-    //  * Overloading of save() function
-    //  * 
-    //  * @param int $source - For logging source of changes
-    //  */
-    // public function save($source = NULL)
-    // {
-    //     if($source)
-    //     {
-    //         // Get all changes
-    //         $changes = $this->get_attribute_changes();
+        parent::save();
 
-    //         print_r($changes);
-    //         die;
+        // Valid save?
+        if($new && $this->id)
+        {
+            foreach($identifiers as $i)
+            {
+                $i->id_substance = $this->id;
+                $i->save();
+            }
 
-    //         foreach($changes as $attr => $vals)
-    //         {
-    //             switch($attr)
-    //             {
-    //                 case 'pubchem':
-    //                     $flag = Validator_state::FLAG_PUBCHEM;
-    //                     break;
-    //                 case 'drugbank':
-    //                     $flag = Validator_state::FLAG_DRUGBANK;
-    //                     break;
-    //                 case 'chEBI':
-    //                     $flag = Validator_state::FLAG_CHEBI;
-    //                     break;
-    //                 case 'pdb':
-    //                     $flag = Validator_state::FLAG_PDB;
-    //                     break;
-    //                 case 'chEMBL':
-    //                     $flag = Validator_state::FLAG_CHEMBL;
-    //                     break;
-    //                 case 'inchikey':
-    //                     $flag = Validator_state::FLAG_INCHIKEY;
-    //                     break;
-    //                 case 'SMILES':
-    //                     $flag = Validator_state::FLAG_SMILES;
-    //                     break;
-    //                 case 'name':
-    //                     $flag = Validator_state::FLAG_NAME;
-    //                     break;
-    //                 case 'LogP':
-    //                     $flag = Validator_state::FLAG_LOGP;
-    //                     break;
-    //                 default:
-    //                     $flag = NULL;
-    //                     break;
-    //             }
+            if(!Identifiers::is_valid($this->identifier))
+            {
+                $this->identifier = Identifiers::generate_substance_identifier($this->id);
+            }
 
-    //             if(!$flag)
-    //             {
-    //                 continue;
-    //             }
+            // Save identifier and check names
+            $this->name = !$this->name || trim($this->name) == '' ? $this->identifier : $this->name;
+            $this->uploadName = !$this->uploadName || trim($this->uploadName) == '' ? $this->name : $this->uploadName;
 
-    //             // Validator_attr_change::add($this, $flag, $vals['new_value'])
-    //         }
-    //     }
-
-    //     parent::save();
-    // }
+            parent::save();
+        }
+    }
 }

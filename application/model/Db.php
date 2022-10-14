@@ -741,7 +741,11 @@ class Db extends Iterable_object
             {
                 if($val == "NULL")
                 {
-                    $this->where .= $attr . ' ' . $val;
+                    $this->where .= $attr . ' NULL';
+                }
+                else if(trim($val) === '')
+                {
+                    $this->where .= '(' . $attr . ' NULL OR ' . $attr . ' "")';
                 }
                 else if(strtolower($multiparams[1]) == 'regexp')
                 {
@@ -749,7 +753,10 @@ class Db extends Iterable_object
                 }
                 else
                 {
-                    $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
+                    if(is_string($val))
+                    {
+                        $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
+                    }
                     $this->where .= $attr . ' "' . $val . '"';
                 }
             }
@@ -757,9 +764,16 @@ class Db extends Iterable_object
             {
                 $this->where .= $attr . ' IS NULL';
             }
+            else if(trim($val) === '')
+            {
+                $this->where .= '(' . $attr . ' IS NULL OR ' . $attr . ' LIKE "")';
+            }
             else
             {
-                $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
+                if(is_string($val))
+                {
+                    $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
+                }
                 $this->where .= $attr . ' = "' . $val . '"';
             }
 
@@ -773,26 +787,29 @@ class Db extends Iterable_object
             foreach($where as $attr => $val)
             {
                 $attr = trim($attr);
-                $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
 
-                // echo($attr . ' / ' . $val . '<br/>');
+                if(is_string($val))
+                {
+                    $val = preg_replace('/[\\\]{1}/', '\\\\\\\\\\\\\\', $val);
+                }
 
                 if (count(explode(' ', $attr)) > 1) 
                 {
-                    if ($val == "NULL") {
-                        $this->where .= $attr . ' ' . $val;
+                    if ($val == "NULL" || trim($val) === '') {
+                        $this->where .= $attr . ' NULL';
                     } 
                     else 
                     {
                         $this->where .= $attr . ' "' . $val . '"';
                     }
-
-                    // echo($this->where . '<br/>');
                 } 
                 else if(strtoupper($val) === 'NULL' || $val === NULL)
                 {
-                    $this->where .= $attr . ' IS NULL';
-                    // echo($this->where . '<br/>');
+                    $this->where .=  $attr . ' IS NULL';
+                }
+                else if(trim($val) === '')
+                {
+                    $this->where .= '(' . $attr . ' IS NULL OR ' . $attr . ' LIKE "")';
                 }
                 else if(is_numeric($attr))
                 {

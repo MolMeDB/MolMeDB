@@ -121,6 +121,18 @@ class Datasets extends Db
     }
 
     /**
+     * Checks, if dataset can be deleted
+     * 
+     * @return bool
+     */
+    public function is_deletable()
+    {
+        return Validator_identifiers::instance()->where('id_dataset_passive', $this->id)->count_all() || 
+            Upload_queue::instance()->where('id_dataset_passive', $this->id)->count_all()
+            ? FALSE : TRUE;
+    }
+
+    /**
      * Get duplicate datasets
      * 
      * @return array - Returns dataset IDS grouped by duplicities

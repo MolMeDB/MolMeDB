@@ -8,13 +8,17 @@
  * @property string $name
  * @property string $comment
  * @property string $mime
- * @property double $file_size
+ * @property double $size
  * @property string $hash
  * @property string $path
  * @property int $id_user
  * @property Users $user
  * @property int $id_validator_structure
  * @property Validator_structure $validator_structure
+ * @property int $id_dataset_passive
+ * @property Datasets $dataset_passive
+ * @property int $id_dataset_active
+ * @property Transporter_datasets $dataset_active
  * @property string $datetime
  * 
  * @property File $file_handler
@@ -33,12 +37,20 @@ class Files extends Db
     const T_RDF_VOCABULARY = 100;
     const T_EXAMPLE_ENERGY = 51;
 
+    /** UPLOAD FILES */
+    const T_UPLOAD_PASSIVE  = 20;
+    const T_UPLOAD_ACTIVE   = 21;
+    const T_UPLOAD_ENERGY   = 22;
+
     private static $valid_types = array
     (
         self::T_STATS_INTERACTIONS_ALL,
         self::T_STATS_ACTIVE_PASSIVE,
         self::T_STATS_IDENTIFIERS,
-        self::T_STATS_SUBST_INTERACTIONS
+        self::T_STATS_SUBST_INTERACTIONS,
+        self::T_UPLOAD_ACTIVE,
+        self::T_UPLOAD_PASSIVE,
+        self::T_UPLOAD_ENERGY
     );
 
     private static $type_path = array
@@ -46,7 +58,33 @@ class Files extends Db
         self::T_STATS_INTERACTIONS_ALL  => File::FOLDER_STATS_DOWNLOAD . 'interactions_all',
         self::T_STATS_ACTIVE_PASSIVE    => File::FOLDER_STATS_DOWNLOAD . 'active_passive_interactions',
         self::T_STATS_IDENTIFIERS       => File::FOLDER_STATS_DOWNLOAD . 'identifiers',
-        self::T_STATS_SUBST_INTERACTIONS => File::FOLDER_STATS_DOWNLOAD . 'substances_interactions'
+        self::T_STATS_SUBST_INTERACTIONS => File::FOLDER_STATS_DOWNLOAD . 'substances_interactions',
+        self::T_UPLOAD_ACTIVE           => File::FOLDER_DATASETS . 'active',
+        self::T_UPLOAD_PASSIVE           => File::FOLDER_DATASETS . 'passive',
+        self::T_UPLOAD_ENERGY           => File::FOLDER_DATASETS . 'energy',
+    );
+
+    /**
+     * 
+     */
+    protected $has_one = array
+    (
+        'id_user',
+        'id_validator_structure' => array
+        (
+            'var' => 'validator_structure',
+            'class' => 'Validator_structure'
+        ),
+        'id_dataset_passive' => array
+        (
+            'var' => 'dataset_passive',
+            'class' => 'Datasets'
+        ),
+        'id_dataset_active' => array
+        (
+            'var' => 'dataset_active',
+            'class' => 'Transporter_datasets'
+        )
     );
 
     /**
@@ -67,6 +105,35 @@ class Files extends Db
     public static function instance()
     {
         return parent::instance();
+    }
+
+    /**
+     * Returns file instance by hash
+     * 
+     * @param string|File $obj
+     * 
+     * @return Files
+     */
+    public function get_by_hash($obj)
+    {
+        if($obj instanceof File)
+        {
+            if(file_exists($obj->path))
+            {
+                $hash = sha1_file($obj->path, false);
+            }
+        }
+        else if(is_string($obj))
+        {
+            $hash = $obj;
+        }
+
+        if(!isset($hash) || $hash === false)
+        {
+            return new Files();
+        }
+
+        return $this->where('HEX(hash) LIKE', $hash)->get_one();
     }
 
     /**
@@ -178,10 +245,10 @@ class Files extends Db
             $this->mime = mime_content_type($f->path);
         }
 
-        if(!$this->file_size)
+        if(!$this->size)
         {
             // Add size
-            $this->file_size = filesize($f->path);
+            $this->size = filesize($f->path);
         }
 
         if(!$this->hash)
@@ -190,10 +257,37 @@ class Files extends Db
             $this->hash = sha1_file($f->path, true);
         }
 
+        // Exists?
+        if(!$this->id)
+        {
+            $exists = $this->where('HEX(hash) LIKE', sha1_file($f->path, false))->get_one();
+
+            if($exists->id)
+            {
+                parent::__construct($exists->id);
+                return;
+            }
+        }
+
         parent::save();
     }
 
     /**
-     * Returns file content
-     */
+     * 
+     * Deletes file with content
+     * 
+     * @author Jakub Juracka
+    */    
+    public function delete()
+    {
+        $path = $this->path;
+        parent::delete();
+
+        // Delete file if exists
+        if($this->id && file_exists($path))
+        {
+            unlink($path);
+        }
+
+    }
 }

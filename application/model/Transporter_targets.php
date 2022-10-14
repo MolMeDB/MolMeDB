@@ -45,9 +45,7 @@ class Transporter_targets extends Db
             )
         );
         
-        $t = new Transporter_targets($t->id);
-        
-        return $t;
+        return new Transporter_targets($t->id);
     }
 
     /**

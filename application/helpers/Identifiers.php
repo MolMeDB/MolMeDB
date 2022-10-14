@@ -27,7 +27,7 @@ class Identifiers
 
 		if(!$id || $exists->id || $exists_2->id)
 		{
-			$id = Db::getLastIdSubstance() + 1;
+			$id = Db::instance()->getLastIdSubstance() + 1;
 			return self::get_identifier($id);
 		}
 		else

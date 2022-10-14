@@ -83,4 +83,16 @@ class Transporter_datasets extends Db
 
 		return '';
 	}  
+
+    /**
+     * Checks, if dataset is deletable
+     * 
+     * @return bool
+     */
+    public function is_deletable()
+    {
+        return !$this->id || Validator_identifiers::instance()->where('id_dataset_active', $this->id)->count_all() || 
+            Upload_queue::instance()->where('id_dataset_active', $this->id)->count_all()
+            ? FALSE : TRUE;
+    }
 }

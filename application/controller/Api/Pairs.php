@@ -10,10 +10,11 @@ class ApiPairs extends ApiController
      * @GET
      * 
      * @param @required $id
+     * @param @optional $group_by
      * 
      * @PATH(/group/detail/<id:\d+>)
      */
-    public function get_group_detail($id)
+    public function get_group_detail($id, $group_by = NULL)
     {
         $group = new Substance_pair_groups($id);
 
@@ -22,13 +23,25 @@ class ApiPairs extends ApiController
             ResponseBuilder::not_found('Invalid group id.');
         }
 
+        if(!$group_by || !in_array($group_by, ['id_membrane', 'id_method', 'charge']))
+        {
+            $group_by = 'id_membrane';
+        }
+
         $types = Substance_pair_group_types::instance()->where('id_group', $group->id)->order_by('id_membrane ASC, id_method ASC, charge ASC, id_target ', 'ASC')->get_all();
 
-        $result = [];
+        $result = ['passive' => [], 'active' => []];
 
         foreach($types as $t)
         {
-            $result[] = array
+            $ind = $t->id_target ? 'active' : 'passive';
+
+            if(!isset($result[$ind][$t->$group_by ?? "all"]))
+            {
+                $result[$ind][$t->$group_by ?? 'all'] = [];
+            }
+
+            $result[$ind][$t->$group_by ?? 'all'][] = array
             (
                 'id_membrane' => $t->id_membrane,
                 'id_method' => $t->id_method,
@@ -59,6 +72,28 @@ class ApiPairs extends ApiController
 
         $view = new View('api/pairs/group_stats');
         $view->groups = $groups;
+
+        $view->render();
+    }
+
+    /**
+     * @GET 
+     * 
+     * @param @required $id
+     * 
+     * @PATH(/group/show/<id:\d+>)
+     */
+    public function show_pair($id)
+    {
+        $group = new Substance_pair_groups($id);
+
+        if(!$group->id)
+        {
+            ResponseBuilder::not_found('Invalid group id.');
+        }
+
+        $view = new View('api/pairs/group_stats');
+        $view->groups = [$group];
 
         $view->render();
     }

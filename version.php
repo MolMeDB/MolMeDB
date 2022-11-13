@@ -4,5 +4,5 @@
 define('DB_VERSION', 'molmedb~alpha_1.20');
 
 // JS/CSS version
-define("JS_VERSION", "3.3");
-define("CSS_VERSION", "3.4");
+define("JS_VERSION", "3.5");
+define("CSS_VERSION", "3.5");

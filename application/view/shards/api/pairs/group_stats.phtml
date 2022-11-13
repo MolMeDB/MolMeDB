@@ -41,21 +41,66 @@
             font-size: 20;
         }
 
+        .charts-section > div:nth-child(1){
+            font-weight: bold;
+            padding: 50px 0 0 20px;
+            border-bottom: 1px solid;
+        }
+
+        .charts-group {
+            padding: 20px;
+        }
+
+        .charts-group > div:nth-child(2){
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        .charts-group > div:nth-child(1){
+            font-size: 20px;
+            border-bottom: 1px dashed;
+            padding-top: 30px;
+        }
+
+        .charts{
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
         .chart {
             width: 500px;
-            height: 500px;
+            height: 400px;
+            padding-right: 40px;
+            padding-bottom: 20px;
         }
     </style>
 </head>
 
 <div class="col-center">
-    <h3>Type</h3>
-    <div>
-        <select id="group_type">
-            <?php foreach ($groups as $g) : ?>
-                <option value="<?= $g->id ?>"><?= $g->id ?></option>
-            <?php endforeach ?>
-        </select>
+    <div style="display: flex; flex-direction: row; justify-content: center;">
+        <div>
+            <h3>Type</h3>
+            <div>
+                <select id="group_type">
+                    <?php foreach ($groups as $g) : ?>
+                        <option value="<?= $g->id ?>"><?= $g->id ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+        </div>
+        <div style="padding-left: 20px">
+            <h3>Group by</h3>
+            <div>
+                <select id="group_by">
+                    <option value="membrane">Membrane</option>
+                    <option value="method">Method</option>
+                    <option value="charge">Charge</option>
+                </select>
+            </div>
+        </div>
     </div>
 
     <h3>Modification detail</h3>
@@ -63,8 +108,7 @@
 
     <h3>Details of changing interaction values</h3>
     <div id="charts">
-        <div class="chart" id="chart1_1"></div>
-        <div id="chart1_2"></div>
+        <div id="chartdiv" class="chart"></div>
     </div>
 </div>
 
@@ -74,7 +118,11 @@
             update_content($(this).val());
         });
 
-        update_content(1);
+        $('#group_by').on('change', function() {
+            update_content($('#group_type').val());
+        });
+
+        update_content($('#group_type').val());
     }
 
     function make_adj_table(id = null, group = null, img = null)
@@ -102,7 +150,22 @@
     var roots = {};
 
     function update_content(id) {
-        var data = ajax_request('pairs/group/detail/' + id);
+        let gb = $('#group_by').val();
+
+        if(gb.toLowerCase() == 'method')
+        {  
+            group_by = 'id_method';
+        }
+        else if(gb.toLowerCase() == 'charge')
+        {  
+            group_by = 'charge';
+        }
+        else
+        {
+            group_by = 'id_membrane';
+        }
+
+        var data = ajax_request('pairs/group/detail/' + id + '?group_by=' + group_by);
 
         if (!data) {
             alert('No data.');
@@ -146,127 +209,253 @@
             $(adj_target).append(t);
         });
 
-        data.forEach((type) => {
-            let is_passive = type.target === null;
-            let stats = type['stats'];
-            let i = 1;
+        // First passive
+        var section = $('<div class="charts-section"><div>Passive interactions</div></div>');
+        section.appendTo(tar);
 
-            if (is_passive) {
-                title = "[bold]Mem:[/] " + type.membrane + "; [bold]Met:[/] " + type.method + "; [bold]Q:[/] " + type.charge;
-            } else {
-                title = "Transporter: " + type.transporter;
+        for(const id_group in data['passive'])
+        {
+            if(data['passive'][id_group].length < 1)
+            {
+                continue;
             }
 
-            $.each(stats, function(key, val) {
-                let total = val.total;
-                let target = $('<div class="chart" id="chart' + i + '_' + j + '"></div>');
+            var chart_group = $('<div class="charts-group"></div>');
+            $(chart_group).html('<div>Group: ' + data['passive'][id_group][0][gb.toLowerCase()] + "</div>");
+            chart_group.appendTo(section);
+            var t = $('<div></div>');
+            t.appendTo(chart_group);
 
-                if (total <= 0 || !('bins_sd' in val)) {
-                    return;
-                }
+            data['passive'][id_group].forEach((type) => {
+                let stats = type['stats'];
+                let i = 1;
 
-                let has_stats = Array.isArray(val['bins_sd']) ? false : (
-                    (typeof val["bins_sd"] === "object") ? true : null
-                );
+                title = "[bold]Mem:[/] " + type.membrane + "; [bold]Met:[/] " + type.method + "; [bold]Q:[/] " + type.charge;
 
-                if (has_stats === null) {
-                    return;
-                }
+                $.each(stats, function(key, val) {
+                    let total = val.total;
+                    let tt = $('<div><div class="chart-btns"></div></div>');
+                    let target = $('<div class="chart" id="chart' + i + '_' + j + '"></div>');
 
-                let tit = "[bold]Attr:[/] [#F00]" + key + "[/]; " + title;
+                    if (total <= 0 || !('bins_sd' in val)) {
+                        return;
+                    }
 
-                $(tar).append(target);
-                generate_chart("chart" + i + '_' + j, val, tit, has_stats);
-                i++;
+                    let has_stats = Array.isArray(val['bins_sd']) ? false : (
+                        (typeof val["bins_sd"] === "object") ? true : null
+                    );
+
+                    if (has_stats === null) {
+                        return;
+                    }
+
+                    let tit = "[bold]Attr:[/] [#F00]" + key + "[/]; " + title;
+
+                    $(target).appendTo(tt);
+                    $(t).append(tt);
+                    generate_chart("chart" + i + '_' + j, val, tit, has_stats);
+                    i++;
+                });
+
+                j++;
             });
+        }
 
-            j++;
-        });
+        // Active
+        var section = $('<div class="charts-section"><div>Active interactions</div></div>');
+        section.appendTo(tar);
+
+        for(const id_group in data['active'])
+        {
+            if(data['active'][id_group].length < 1)
+            {
+                continue;
+            }
+
+            var chart_group = $('<div class="charts-group"></div>');
+            $(chart_group).html('<div>Group: All</div>');
+            chart_group.appendTo(section);
+            var t = $('<div></div>');
+            t.appendTo(chart_group);
+
+            data['active'][id_group].forEach((type) => {
+                let stats = type['stats'];
+                let i = 1;
+
+                title = "Target: " + type.target;
+
+                $.each(stats, function(key, val) {
+                    let total = val.total;
+                    let target = $('<div class="chart" id="chart' + i + '_' + j + '"></div>');
+
+                    if (total <= 0 || !('bins_sd' in val)) {
+                        return;
+                    }
+
+                    let has_stats = Array.isArray(val['bins_sd']) ? false : (
+                        (typeof val["bins_sd"] === "object") ? true : null
+                    );
+
+                    if (has_stats === null) {
+                        return;
+                    }
+
+                    let tit = "[bold]Attr:[/] [#F00]" + key + "[/]; " + title;
+
+                    $(t).append(target);
+                    generate_chart("chart" + i + '_' + j, val, tit, has_stats);
+                    i++;
+                });
+
+                j++;
+            });
+        }
     }
 
-    function prepare_cat_data(obj, avg) {
+    function prepare_cat_data(obj, avg, sd) {
         var d = [];
-        let interval_size = 2000;
-        var keys = {};
-        var keys_arr = [];
+
+        avg = parseFloat(avg);
+        sd  = parseFloat(sd);
 
         $.each(obj, function(key, value) {
-            var k = key.toString().replace(/[\[\(\]\)]/g, '');
-            var vals = k.split(':');
-
-            let iv = Math.abs((parseFloat(vals[1]) - parseFloat(vals[0]))).toPrecision(2);
-
-            if (iv < interval_size) {
-                interval_size = iv;
-            }
-
-            keys[parseFloat(vals[0])] = key;
-            keys_arr.push(parseFloat(vals[0]));
-        });
-
-        keys_arr.sort(function(a,b){return a < b ? -1 : 1});
-
-        interval_size = parseFloat(interval_size);
-
-        keys_arr.forEach((k) => {
-            key = keys[k];
-            value = obj[key];
-
             var k = key.toString().replace(/[\[\(\]\)]/g, '');
             var vals = k.split(':');
             vals[0] = parseFloat(vals[0]);
             vals[1] = parseFloat(vals[1]);
 
-            if (Math.abs(vals[0] - avg) < Math.abs(vals[1] - avg)) {
-                vals[1] = vals[0] + interval_size;
-            } else {
-                vals[0] = vals[1] - interval_size;
-            }
-
-            vals[1] = parseFloat(vals[1].toPrecision(2));
-            vals[0] = parseFloat(vals[0].toPrecision(2));
+            let coord = (vals[1]+vals[0])/2;
 
             d.push({
                 'total': value,
                 'from': vals[0],
                 'to': vals[1],
                 'label': vals[0] + " < x < " + vals[1],
-                'coord': (vals[0] + vals[1]) / 2
+                'coord': coord
             });
-
         });
 
         return d;
     }
 
-    function get_norm_distr(avg, sd) {
-        let from = avg - 4.1 * sd;
-        let to = avg + 4.1 * sd;
-        step = (to - from) / 1000;
+    function prepare_boxplot_data(obj, avg, sd) 
+    {
+        var d = [];
 
-        let d = [];
+        for(key in obj)
+        {
+            var k = key.toString().replace(/[\[\(\]\)]/g, '');
+            var vals = k.split(':');
 
-        for (var i = 0; i < 1000; i++) {
-            let x = from + (step * i);
-            let y = 1 / (sd * Math.sqrt(2 * Math.PI)) * Math.pow(Math.E, (-1 / 2 * (Math.pow((x - avg) / sd, 2))));
+            vals[0] = parseFloat(vals[0]);
+            vals[1] = parseFloat(vals[1]); 
+
+            let t = obj[key];
+
+            let coord = (vals[1]+vals[0])/2;
+
+            if('values' in t)
+            {
+                let lwr = t["values"].length > 1 ? Math.min(...t["values"]) : (t["values"].length ? t["values"][0] : 0);
+                let upr = t["values"].length > 1 ? Math.max(...t["values"]) : (t["values"].length ? t["values"][0] : 0);
+                // Not enough values
+                d.push({
+                    'q0': lwr,
+                    'q1': lwr,
+                    'q2': parseInt((lwr+upr)/2),
+                    'q3': upr,
+                    'q4': upr,
+                    'coord': coord
+                });
+                continue;
+            }
 
             d.push({
-                'x': x,
-                'y': y
+                'q0': t['min'],
+                'q1': t['q1'],
+                'q2': t['q2'],
+                'q3': t['q3'],
+                'q4': t['max'],
+                'coord': coord
             });
         }
 
         return d;
     }
 
-    function generate_chart(id, data, title = "", statsChart = true) {
-        am5.ready(function() {
+    function pms_f(x, avg, sd)
+    {
+        return 1 / (sd * Math.sqrt(2 * Math.PI)) * Math.pow(Math.E, (-1 / 2 * (Math.pow((x - avg) / sd, 2))));
+    }
 
+    function cdf_f(x)
+    {
+        return 1/2 * (1+erf(x/(Math.sqrt(2))));
+    }
+
+    function get_norm_distr(avg, sd, skew = 0) {
+        let from = avg - 3 * sd;
+        let to = avg + 3 * sd;
+        step = (to - from) / 1000;
+
+        let d = [];
+
+        skew = -skew;
+
+        for (var i = 0; i < 1000; i++) {
+            let x = from + (step * i);
+            if(skew == 0)
+            {
+                y = pms_f(x,avg,sd);
+            }
+            else
+            {
+                y = 2*pms_f(x,avg,sd)*cdf_f(x*skew);
+            }
+
+            d.push({
+                'x': x,
+                'y': y
+            });
+        }
+        return d;
+    }
+
+    function erf(x) {
+        var z;
+        const ERF_A = 0.147; 
+        var the_sign_of_x;
+        if(0==x) {
+            the_sign_of_x = 0;
+            return 0;
+        } else if(x>0){
+            the_sign_of_x = 1;
+        } else {
+            the_sign_of_x = -1;
+        }
+
+        var one_plus_axsqrd = 1 + ERF_A * x * x;
+        var four_ovr_pi_etc = 4/Math.PI + ERF_A * x * x;
+        var ratio = four_ovr_pi_etc / one_plus_axsqrd;
+        ratio *= x * -x;
+        var expofun = Math.exp(ratio);
+        var radical = Math.sqrt(1-expofun);
+        z = radical * the_sign_of_x;
+        return z;
+    }
+
+    function generate_chart(id, data, title = "", statsChart = true) 
+    {
+        am5.ready(function() 
+        {
             if (!(id in roots)) {
                 roots[id] = am5.Root.new(id);
             }
 
             root = roots[id];
+
+            let from = data['average'] - 3.5 * data['sd'];
+            let to = data['average'] + 3.5 * data['sd'];
 
             // Set themes
             root.setThemes([
@@ -287,25 +476,84 @@
             if(statsChart)
             {
                 // X AXIS for distribution curve
-                var xAxis_dist = chart.xAxes.push(
+                // var xAxis_dist = chart.xAxes.push(
+                //     am5xy.ValueAxis.new(root, {
+                //         renderer: am5xy.AxisRendererX.new(root, {
+                //             minGridDistance: 40
+                //         }),
+                //         min: from,
+                //         max: to,
+                //         tooltip: am5.Tooltip.new(root, {})
+                //     })
+                // );
+
+                // xAxis_dist.children.push(
+                //     am5.Label.new(root, {
+                //         text: "Mean: " + data['average'] + "; SD: " + data['sd'] + '; Skewness: ' + data['skewness'] +  '; Total: ' + data['total'],
+                //         fontSize: 13,
+                //         x: am5.p50,
+                //         centerX: am5.p50
+                //     })
+                // );
+
+                // xAxis_dist.children.push(
+                //     am5.Label.new(root, {
+                //         fontSize: 15,
+                //         text: title,
+                //         x: am5.p50,
+                //         y: am5.p50,
+                //         centerX: am5.p50
+                //     })
+                // );
+
+                // var yAxis1 = chart.yAxes.push(
+                //     am5xy.ValueAxis.new(root, {
+                //         // maxDeviation: 0.01,
+                //         renderer: am5xy.AxisRendererY.new(root, {
+                //         }),
+                //         tooltip: null
+                //     })
+                // );
+
+                // yAxis1.get("renderer").labels.template.set("forceHidden", true);
+                // yAxis1.get("renderer").grid.template.set("forceHidden", true);
+
+                // var series1 = chart.series.push(
+                //     am5xy.LineSeries.new(root, {
+                //         stroke: am5.Color.fromString("#00ff00"),
+                //         xAxis: xAxis_dist,
+                //         yAxis: yAxis1,
+                //         valueYField: "y",
+                //         valueXField: "x",
+                //     })
+                // );
+
+                // series1.data.setAll(get_norm_distr(data['average'], data['sd'], data['skewness']));
+
+                var xAxis2 = chart.xAxes.push(
                     am5xy.ValueAxis.new(root, {
+                        maxDeviation: 0.1,
                         renderer: am5xy.AxisRendererX.new(root, {
-                            minGridDistance: 25
+                            minGridDistance: 30
                         }),
+                        min: from,
+                        max: to,
                         tooltip: am5.Tooltip.new(root, {})
                     })
                 );
 
-                xAxis_dist.children.push(
+                xAxis2.children.push(
                     am5.Label.new(root, {
-                        text: "Mean: " + data['average'] + "; SD: " + data['sd'] + '; Total: ' + data['total'],
+                        text: "Mean: " + data['average'] + "; SD: " + data['sd'] + '; Skewness: ' + data['skewness'] +  '; Total: ' + data['total'],
+                        fontSize: 13,
                         x: am5.p50,
                         centerX: am5.p50
                     })
                 );
 
-                xAxis_dist.children.push(
+                xAxis2.children.push(
                     am5.Label.new(root, {
+                        fontSize: 15,
                         text: title,
                         x: am5.p50,
                         y: am5.p50,
@@ -313,105 +561,109 @@
                     })
                 );
 
-                var yAxis1 = chart.yAxes.push(
-                    am5xy.ValueAxis.new(root, {
-                        // maxDeviation: 0.01,
-                        renderer: am5xy.AxisRendererY.new(root, {}),
-                        tooltip: null
-                    })
-                );
+                // xAxis2.get("renderer").labels.template.set("forceHidden", true);
+                // xAxis2.get("renderer").grid.template.set("forceHidden", true);
 
-                yAxis1.get("renderer").labels.template.set("forceHidden", true);
-                yAxis1.get("renderer").grid.template.set("forceHidden", true);
+                var yRenderer = am5xy.AxisRendererY.new(root, {
+                    opposite: true,
+                });
 
-                var series1 = chart.series.push(
-                    am5xy.LineSeries.new(root, {
-                        xAxis: xAxis_dist,
-                        yAxis: yAxis1,
-                        valueYField: "y",
-                        valueXField: "x",
-                    })
-                );
-
-                series1.data.setAll(get_norm_distr(data['average'], data['sd']));
-
-                // Create column series and related axes
-                var xAxis2 = chart.xAxes.push(
-                    am5xy.CategoryAxis.new(root, {
-                        categoryField: "coord",
-                        maxDeviation: 0.1,
-                        renderer: am5xy.AxisRendererX.new(root, {
-                            minGridDistance: 50
-                        }),
-                        // tooltip: am5.Tooltip.new(root, {})
-                    })
-                );
-
-                xAxis2.get("renderer").labels.template.set("forceHidden", true);
-                xAxis2.get("renderer").grid.template.set("forceHidden", true);
-
-                xAxis2.data.setAll(prepare_cat_data(data['bins_sd'], data['average']));
-
-                // var xAxis3 = chart.xAxes.push(
-                //     am5xy.CategoryAxis.new(root, {
-                //         categoryField: "coord",
-                //         maxDeviation: 0.1,
-                //         renderer: am5xy.AxisRendererX.new(root, {
-                //             minGridDistance: 50
-                //         })
-                //     })
-                // );
-
-                // xAxis3.data.setAll(prepare_cat_data(data['LogPerm']['bins_eq'], data['LogPerm']['average']));
+                yRenderer.grid.template.set("strokeOpacity", 0.05);
+                yRenderer.labels.template.set("fill", chart.get("colors").getIndex(8));
+                yRenderer.setAll({
+                    stroke: chart.get("colors").getIndex(8),
+                    strokeOpacity: 1,
+                    opacity: 1
+                });
 
                 var yAxis2 = chart.yAxes.push(
                     am5xy.ValueAxis.new(root, {
                         maxDeviation: 0.1,
-                        renderer: am5xy.AxisRendererY.new(root, {})
+                        numberFormat: "#' atoms'",
+                        // syncWithAxis: yAxis1,
+                        renderer: yRenderer
                     })
                 );
 
-                var series2 = chart.series.unshift(
-                    am5xy.ColumnSeries.new(root, {
-                        xAxis: xAxis2,
-                        yAxis: yAxis2,
-                        valueYField: "total",
-                        categoryXField: "coord",
-                        tooltip: am5.Tooltip.new(root, {
-                            pointerOrientation: "horizontal",
-                            labelText: "SD range\n{label}\nTotal: {valueY}"
+                var yAxis3 = chart.yAxes.push(
+                    am5xy.ValueAxis.new(root, {
+                        maxDeviation: 0.1,
+                        numberFormat: "#' pairs'",
+                        syncWithAxis: yAxis2,
+                        renderer: am5xy.AxisRendererY.new(root, {
+                            opposite: false
                         })
                     })
                 );
 
-                series2.columns.template.setAll({
-                    width: am5.percent(50),
-                    // tooltipY: 0
+                var series2 = chart.series.push(
+                    am5xy.CandlestickSeries.new(root, {
+                        name: 'Text',
+                        xAxis: xAxis2,
+                        yAxis: yAxis2,
+                        valueYField: 'q3',
+                        openValueYField: 'q1',
+                        lowValueYField: 'q0',
+                        highValueYField: 'q4',
+                        valueXField: 'coord',
+                        tooltip: am5.Tooltip.new(root, {
+                            pointerOrientation: "vertical",
+                            labelText: "Max: {q4}\n3rd quartile: {q3}\n2nd quartile (mode): {q2}\n1th quartile: {q1}\nMin: {q0}"
+                        })
+                    })
+                );
+                
+                // Set colors
+                series2.columns.template.states.create("riseFromOpen", {
+                    fill: chart.get("colors").getIndex(8),
+                    stroke: chart.get("colors").getIndex(8)
                 });
 
-                // var series3 = chart.series.unshift(
-                //     am5xy.ColumnSeries.new(root, {
-                //         xAxis: xAxis2,
-                //         yAxis: yAxis2,
-                //         valueYField: "total",
-                //         categoryXField: "coord",
-                //         tooltip: am5.Tooltip.new(root, {
-                //             pointerOrientation: "horizontal",
-                //             labelText: "Equidistant range\n{label}\nTotal: {valueY}"
-                //         })
-                //     })
-                // );
+                series2.columns.template.states.create("dropFromOpen", {
+                    fill: chart.get("colors").getIndex(8),
+                    stroke: chart.get("colors").getIndex(8)
+                });
 
-                // series3.columns.template.setAll({
-                //     width: am5.percent(90),
-                //     // tooltipY: 0
-                // });
+                var series3 = chart.series.unshift(
+                    am5xy.ColumnSeries.new(root, {
+                        xAxis: xAxis2,
+                        yAxis: yAxis3,
+                        valueYField: "total",
+                        valueXField: "coord",
+                        tooltip: am5.Tooltip.new(root, {
+                            pointerOrientation: "vertical",
+                            labelText: "SD range: {label}\nTotal: {valueY}"
+                        })
+                    })
+                );
 
-                // console.log(generateHourlyData());
-                // console.log(generateDailyData());
+                series3.columns.template.setAll({
+                    width: 12,
+                });
 
-                series2.data.setAll(prepare_cat_data(data['bins_sd'], data['average']));
-                // series3.data.setAll(prepare_cat_data(data['LogPerm']['bins_eq'], data['LogPerm']['average']));
+                series3.data.setAll(prepare_cat_data(data['bins_sd'], data['average'], data['sd']));
+
+                series2.columns.template.setAll({
+                    strokeWidth: 2,
+                    width: 7,
+                });
+
+                // mediana series
+                var medianaSeries = chart.series.push(
+                    am5xy.StepLineSeries.new(root, {
+                        // stroke: root.interfaceColors.get("background"),
+                        xAxis: xAxis2,
+                        yAxis: yAxis2,
+                        valueYField: "q2",
+                        valueXField: "coord",
+                        noRisers: true,
+                        stepWidth: 20,
+                        locationX: 0
+                    })
+                );
+
+                // medianaSeries.data.setAll(prepare_boxplot_data(d['bins_atom_counts_sd_stats'], d['average'], d['sd']));
+                series2.data.setAll(prepare_boxplot_data(data['bins_atom_counts_sd_stats'], data['average'], data['sd']));
 
                 // Add cursor
                 // https://www.amcharts.com/docs/v5/charts/xy-chart/cursor/
@@ -422,8 +674,9 @@
 
                 // Make stuff animate on load
                 // https://www.amcharts.com/docs/v5/concepts/animations/
-                series1.appear(1000, 100);
+                // series1.appear(1000, 100);
                 series2.appear(1000, 100);
+                series3.appear(1000, 100);
                 chart.appear(1000, 100);
             }
             else

@@ -134,14 +134,16 @@ class arr
     const METHOD_EQ_DIST = 2;
 
     /**
-     * Differs data to bins
+     * Returns bins for given settings
      * 
      * @param array $arr
      * @param int $total_bins
+     * @param int $method
+     * @param array $include_limits
      * 
      * @return array|false
      */
-    public static function to_bins($arr, $total_bins, $method = self::METHOD_SD)
+    public static function get_bins_limits($arr, $total_bins, $method = self::METHOD_SD, $include_limits = [])
     {
         $total = self::total_numeric($arr);
         $arr = self::numeric($arr);
@@ -160,6 +162,36 @@ class arr
         $max = max($arr);
 
         $interval_limits = [];
+        $exclude_intervals = [];
+
+        if(is_array($include_limits) && !empty($include_limits))
+        {
+            foreach($include_limits as $limit)
+            {
+                $flag = false;
+                if(preg_match('/^\s*\+\/-/', $limit))
+                {
+                    $limit = preg_replace('/^\s*\+\/-\s*/', '', $limit);
+                    $flag = true;
+                    $v = floatval($limit);
+                    if($v > 0)
+                    {
+                        $exclude_intervals[] = [-$v, $v];
+                    }
+                    else 
+                    {
+                        $exclude_intervals[] = [$v, -$v];
+                    }
+                }
+
+                $interval_limits[] = floatval($limit);
+
+                if($flag)
+                {
+                    $interval_limits[] = -floatval($limit);
+                }
+            }
+        }
 
         if($method == self::METHOD_SD)
         {
@@ -170,14 +202,14 @@ class arr
 
             if($total_bins == 4)
             {
-                $interval_limits = array
+                $interval_limits = array_merge($interval_limits, array
                 (
                     round((-3*$sd)+$avg, 2),
                     round((-1.5*$sd)+$avg, 2),
                     round($avg, 2),
                     round((1.5*$sd)+$avg, 2),
                     round((3*$sd)+$avg, 2)
-                );  
+                ));  
             }
             else
             {
@@ -185,16 +217,14 @@ class arr
 
                 $step = (6*$sd)/($total_bins);
                 $c = (-3*$sd)+$avg;
-                $interval_limits = [];
-
-                $interval_limits[] = -999;
 
                 foreach(range(0, $total_bins) as $i)
                 {
                     $interval_limits[] = round($c + ($step * $i), 2);
                 }
 
-                $interval_limits[] = 999;
+                $interval_limits[] = round(min($interval_limits)-$step,2);
+                $interval_limits[] = round(max($interval_limits)+$step,2);
             }
         }
         else
@@ -218,6 +248,57 @@ class arr
                 $c = $c + $step;
             }
         }
+
+        foreach($exclude_intervals as $int)
+        {
+            $t = $interval_limits;
+            foreach($t as $k => $limit)
+            {
+                if($limit > $int[0] && $limit < $int[1])
+                {
+                    unset($interval_limits[$k]);
+                }
+            }
+        }
+
+        $interval_limits = array_unique($interval_limits);
+
+        if(!function_exists('comp_12345'))
+        {
+            function comp_12345($a, $b)
+            {
+                return floatval($a) > floatval($b);
+            }
+        }
+
+        usort($interval_limits, 'comp_12345');
+
+        return $interval_limits;
+    }
+
+    /**
+     * Differs data to bins
+     * 
+     * @param array $arr
+     * @param int $total_bins
+     * 
+     * @return array|false
+     */
+    public static function to_bins($arr, $total_bins, $method = self::METHOD_SD, $include_limits = [])
+    {
+        $interval_limits = self::get_bins_limits($arr, $total_bins, $method, $include_limits);
+
+        $total = self::total_numeric($arr);
+        $arr = self::numeric($arr);
+
+        if($total < $total_bins || $total_bins < 4)
+        {
+            return false;
+        }
+
+        asort($arr);
+
+        $avg = self::average($arr);
 
         $bins = [];
 
@@ -265,6 +346,139 @@ class arr
         $bins = array_filter($bins, 'is_string', ARRAY_FILTER_USE_KEY);
 
         return $bins;
+    }
+
+    /**
+     * Differs data to bins
+     * Save behaviour as to_bins, but returns keys of $arr
+     * 
+     * @param array $arr
+     * @param int $total_bins
+     * 
+     * @return array|false
+     */
+    public static function to_bins_keys($arr, $total_bins, $method = self::METHOD_SD, $include_limits = [])
+    {
+        $interval_limits = self::get_bins_limits($arr, $total_bins, $method, $include_limits);
+
+        $total = self::total_numeric($arr);
+        $arr = self::numeric($arr);
+
+        if($total < $total_bins || $total_bins < 4)
+        {
+            return false;
+        }
+
+        asort($arr);
+
+        $avg = self::average($arr);
+
+        $bins = [];
+
+        foreach($arr as $kk => $v)
+        {
+            foreach(range(1, count($interval_limits)-1) as $i)
+            {
+                $key = $i-1;
+                $upper_bound = floatval($interval_limits[$i]);
+                $v = floatval($v);
+
+                if(!isset($bins[$key]))
+                {
+                    $bins[$key] = [];
+                }
+
+                if($v < $upper_bound && $upper_bound < $avg)
+                {
+                    $bins[$key][] = $kk;
+                    break;
+                }
+                else if($v <= $upper_bound && $upper_bound >= $avg)
+                {
+                    $bins[$key][] = $kk;
+                    break;
+                }
+            }
+        }
+
+        foreach(range(0, count($interval_limits)-2) as $i)
+        {
+            if(!isset($bins[$i]))
+            {
+                $bins[$i] = [];
+            }
+
+            $itv = $interval_limits[$i] . ':' . $interval_limits[$i+1];
+
+            $itv = $interval_limits[$i] < $avg ? '[' . $itv : '(' . $itv;
+            $itv = $interval_limits[$i+1] < $avg ? $itv . ')' : $itv . ']';
+
+            $bins[$itv] = $bins[$i];
+        }
+        
+        $bins = array_filter($bins, 'is_string', ARRAY_FILTER_USE_KEY);
+
+        return $bins;
+    }
+
+    /**
+     * Returns k-quartil of the data
+     * 
+     * @param array $arr
+     * @param int $k_quartile
+     * 
+     * @return float
+     */
+    public static function k_quartile($arr, $k_quartile)
+    {
+        $arr = array_map('floatval', $arr);
+        sort($arr);
+
+        if($k_quartile < 0 || $k_quartile > 4 || !count($arr))
+        {
+            return false;
+        }
+
+        if($k_quartile == 0)
+        {
+            return min($arr);
+        }
+
+        if($k_quartile == 4)
+        {
+            return max($arr);
+        }
+
+        $k_quartile = intval($k_quartile);
+
+        $ratio = $k_quartile/4;
+
+        $total = count($arr);
+
+        $index = (($total+1)*$ratio)-1;
+
+        if(intval($index) === $index)
+        {
+            return $arr[$index];
+        }
+
+        $fraction = $index - intval($index);
+
+        // Interpolate
+        $index = intval($index);
+        return $arr[$index] + ($arr[$index+1] - $arr[$index])*$fraction;
+    }
+
+    /**
+     * Computes inter-quartil range
+     * 
+     * @param array $arr
+     * 
+     * @return float
+     */
+    public static function iqr($arr)
+    {
+        return self::k_quartile($arr, 3) - self::k_quartile($arr, 1);
     }
 
     /**
@@ -377,6 +591,58 @@ class arr
     public static function sd($arr)
     {
         return round(sqrt(self::variance($arr)), 3);
+    }
+
+    /**
+     * Computes n-th central moment
+     * 
+     * @param array $arr
+     * @param int $n
+     * 
+     * @return double
+     */
+    public static function central_moment($arr, $n)
+    {
+        $total_numeric = self::total_numeric($arr);
+
+        if($total_numeric == 0)
+        {
+            return 0;
+        }
+
+        $n = intval($n);
+
+        $sum = 0;
+        $avg = self::average($arr);
+
+        foreach($arr as $v)
+        {
+            if(is_numeric($v))
+            {
+                $sum += pow(floatval($v)-$avg, $n);
+            }
+        }
+
+        return round((1/($total_numeric))*$sum, 3);
+    }
+
+    /**
+     * Approximates skewness of data
+     * 
+     * @param array $arr
+     * 
+     * @return double
+     */
+    public static function skewness($arr)
+    {
+        $sd = self::sd($arr);
+
+        if(!$sd)
+        {
+            return 0;
+        }
+
+        return round((self::central_moment($arr, 3))/(pow($sd, 3)),3); 
     }
 
     /**

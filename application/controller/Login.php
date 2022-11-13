@@ -15,12 +15,23 @@ class LoginController extends Controller
 
     public function index()
     {
-        if($_POST)
+        $forge = new Forge('Login');
+
+        $forge->add('molmedb_username')
+            ->title('Username');
+
+        $forge->add('molmedb_password')
+            ->type('password')
+            ->title('Password');
+
+        $forge->submit('Login');
+
+        if($this->form->is_post())
         {
             $userManager = new Users();
             try
             {
-                $userManager->login($_POST['name'], $_POST['password']);
+                $userManager->login($this->form->param->molmedb_username, $this->form->param->molmedb_password);
                 $this->addMessageSuccess('Success!');
 
                 if(session::is_admin())
@@ -33,17 +44,15 @@ class LoginController extends Controller
             catch (ErrorUser $ex) 
             {
                 $this->addMessageError($ex->getMessage());
-                $this->redirect('login');
             }
             catch (MmdbException $e)
             {
                 $this->addMessageError($e);
-                $this->redirect('login');
             }
-            
         }
 
-        $this->title = 'LogIn';
-        $this->view = new View('login');
+        $this->title = 'Login';
+        $this->view = new View('forge');
+        $this->view->forge = $forge;
     }
 }

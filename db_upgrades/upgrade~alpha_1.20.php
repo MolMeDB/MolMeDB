@@ -22,5 +22,6 @@ $upgrade_sql = array
     "ALTER TABLE `upload_queue` ADD FOREIGN KEY (`id_dataset_passive`) REFERENCES `datasets`(`id`) ON DELETE CASCADE ON UPDATE RESTRICT;",
     "ALTER TABLE `upload_queue` ADD FOREIGN KEY (`id_file`) REFERENCES `files`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
     "ALTER TABLE `upload_queue` ADD FOREIGN KEY (`id_user`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
-    'ALTER TABLE `upload_queue` ADD `run_info` JSON NULL DEFAULT NULL AFTER `id_file`;'
+    'ALTER TABLE `upload_queue` ADD `run_info` JSON NULL DEFAULT NULL AFTER `id_file`;',
+    "ALTER TABLE `upload_queue` ADD `type` TINYINT NULL DEFAULT NULL AFTER `id`;",
 );

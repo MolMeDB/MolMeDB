@@ -22,11 +22,7 @@ class Configs extends Db
     
     // Scheduler attributes
     const S_ACTIVE = 'scheduler_active';
-    const S_SMILES_VALIDATIONS = 'scheduler_smiles_validations';
-    const S_3D_STRUCTURE_AUTOFILL = 'scheduler_3D_structure_autofill';
     const S_DUPL_CHECK = 'scheduler_duplicity_check';  
-    const S_FILL_MISSING_RDKIT = 'scheduler_fill_missing_rdkit';  
-    const S_FILL_MISSING_REMOTE = 'scheduler_fill_missing_remote';  
     const S_DELETE_EMPTY_SUBSTANCES = 'scheduler_delete_empty_substances';
     const S_DELETE_EMPTY_SUBSTANCES_TIME = 'scheduler_delete_empty_substances_TIME';
     const S_VALIDATE_PASSIVE_INT = 'scheduler_validate_passive_int';
@@ -41,6 +37,11 @@ class Configs extends Db
     const S_CHECK_PUBLICATIONS_TIME = 'scheduler_check_publications_time';
     const S_CHECK_MEMBRANES_METHODS = 'scheduler_check_membranes_methods';
     const S_CHECK_MEMBRANES_METHODS_TIME = 'scheduler_check_membranes_methods_time';
+    const S_FRAGMENT_MOLECULES = 'scheduler_fragment_molecules';
+    const S_UPDATE_PAIR_GROUPS = 'scheduler_update_pair_groups';
+    const S_UPDATE_PAIR_GROUPS_TIME = 'scheduler_update_pair_groups_time';
+    const S_UPDATE_PAIR_GROUPS_STATS_TIME = 'scheduler_update_pair_groups_stats_time';
+    const S_MATCH_FUNCT_PAIRS = 'scheduler_match_func_pairs';
 
     // Email attributes
     const EMAIL_ENABLED = "email_enabled";
@@ -65,11 +66,7 @@ class Configs extends Db
         self::DB_CHEMBL_PATTERN,
         self::DB_PDB_PATTERN,
         self::S_ACTIVE,
-        self::S_SMILES_VALIDATIONS,
-        self::S_3D_STRUCTURE_AUTOFILL,
         self::S_DUPL_CHECK,
-        self::S_FILL_MISSING_RDKIT,
-        self::S_FILL_MISSING_REMOTE,
         self::S_DELETE_EMPTY_SUBSTANCES,
         self::S_DELETE_EMPTY_SUBSTANCES_TIME,
         self::S_VALIDATE_PASSIVE_INT,
@@ -84,6 +81,11 @@ class Configs extends Db
         self::S_CHECK_PUBLICATIONS_TIME,
         self::S_CHECK_MEMBRANES_METHODS,
         self::S_CHECK_MEMBRANES_METHODS_TIME,
+        self::S_FRAGMENT_MOLECULES,
+        self::S_UPDATE_PAIR_GROUPS,
+        self::S_UPDATE_PAIR_GROUPS_TIME,
+        self::S_UPDATE_PAIR_GROUPS_STATS_TIME,
+        self::S_MATCH_FUNCT_PAIRS,
         self::EMAIL_ENABLED,
         self::EMAIL,
         self::EMAIL_SERVER_USERNAME,

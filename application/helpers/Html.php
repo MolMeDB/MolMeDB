@@ -116,9 +116,22 @@ class Html
      * 
      * @return string
      */
-    public static function checkbox_input($name, $value, $checked = 'false')
+    public static function checkbox_input($name, $value, $checked = 'false', $disabled = 'false')
     {
-        return "<input type='checkbox' name='$name' value='$value' " . ($checked === 'true' ? 'checked' : '') . ">";
+        return "<input type='checkbox' name='$name' value='$value' " . ($checked === 'true' ? 'checked' : ' ') . ($disabled === 'true' ? 'disabled' : '') . ">";
+    }
+
+    /**
+     * Generates password input
+     * 
+     * @param string $name
+     * @param string $value
+     * 
+     * @return string
+     */
+    public static function password_input($name, $value)
+    {
+        return "<input class='form-control' type='password' name='$name' value='$value'>";
     }
 
     /**

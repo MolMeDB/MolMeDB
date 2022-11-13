@@ -4,6 +4,7 @@
  * Upload queue model
  * 
  * @property integer $id
+ * @property integer $type
  * @property integer $id_dataset_passive
  * @property Datasets $dataset_passive
  * @property integer $id_dataset_active
@@ -23,6 +24,11 @@
  */
 class Upload_queue extends Db
 {
+    // Types
+    const TYPE_PASSIVE_DATASET = 1;
+    const TYPE_ACTIVE_DATASET = 2;
+    const TYPE_ENERGY = 3;
+
     /**
      * Constructor
      */
@@ -61,16 +67,18 @@ class Upload_queue extends Db
     const STATE_RUNNING = 1;
     const STATE_DONE = 2;
     const STATE_ERROR = 3;   
+    const STATE_CANCELED = 4;   
 
     /**
      * Enum states
      */
     private static $enum_states = array
     (
-        self::STATE_PENDING => 'Pending',
-        self::STATE_RUNNING => 'Running',
-        self::STATE_DONE    => 'Done',
-        self::STATE_ERROR   => 'Error'
+        self::STATE_PENDING     => 'Pending',
+        self::STATE_RUNNING     => 'Running',
+        self::STATE_DONE        => 'Done',
+        self::STATE_ERROR       => 'Error',
+        self::STATE_CANCELED    => 'Canceled',
     );
 
     /**

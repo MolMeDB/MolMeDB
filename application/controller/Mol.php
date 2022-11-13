@@ -32,8 +32,6 @@ class MolController extends Controller
 
         $energyModel = new Energy();
         $methodModel = new Methods();
-        // $substanceModel = new Substances();
-        $link_model = new Substance_links();
 
         try
         {
@@ -47,7 +45,7 @@ class MolController extends Controller
                 throw new MmdbException('Record was not found.');
             }
 
-            // Get all membranes/methods
+            // Get all methods
             $methods_cat = $methodModel->get_structured_for_substance($substance->id, true);
 
             // Get available energy data
@@ -113,7 +111,7 @@ class MolController extends Controller
 
             if($by_link)
             {
-                $this->addMessageWarning('Your request has been redirected from record ' . $identifier);
+                $this->alert->warning('Your request has been redirected from record ' . $identifier);
             }
         } 
         catch (MmdbException $ex) 
@@ -132,6 +130,7 @@ class MolController extends Controller
 
         // 3D structure
         $this->view->structures_3d = $substance->get_all_3D_structures();
+
 
         // Similar entries
         $this->view->similar_entries = $similar_entries;

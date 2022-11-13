@@ -494,6 +494,11 @@
                 });
             });
 
+            if(ids.length == 0)
+            {
+                return;
+            }
+
             var data = ajax_request('energy/detail', {'id': ids});
             
             if(!data)

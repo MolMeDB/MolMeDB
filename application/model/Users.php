@@ -76,7 +76,7 @@ class Users extends Db
 
         if(!$user->id)
         {
-            throw new ErrorUser('Try again');
+            throw new ErrorUser('Invalid username or password!');
         }
 
         $admin = $this->queryOne('
@@ -106,7 +106,7 @@ class Users extends Db
      */
     public function saveLog($user_id, $log_in = True)
     {
-        $this->insert('log_login', array('user_id' => $user_id, 'login' => $log_in));
+        // $this->insert('log_login', array('user_id' => $user_id, 'login' => $log_in));
     }
     
     /**

@@ -334,13 +334,6 @@ class ExportController extends Controller
     }
 
     /**
-     * Exports data for given transporter group
-     * 
-     * @param int $id_method
-     * 
-     * @author Jakub Juracka
-     */
-    /**
      * Transporter browser
      * 
      * @param int $element_id
@@ -551,5 +544,42 @@ class ExportController extends Controller
 
         $this->view = new Render_js_export($type);
         $this->view->ids = json_encode($ids);
+    }
+
+    /**
+     * Exports uploded file
+     * 
+     * @param int $id - File ID
+     */
+    public function uploadFile($id = NULL)
+    {
+        $file = new Files($id);
+
+        if(!$file->id)
+        {
+            $this->alert->error('Invalid file id.');
+            $this->redirect('error');
+        }
+
+        // TODO - Access rights
+        if(!session::is_logged_in())
+        {
+            $this->redirect('login');
+        }
+
+        // Make final final
+        if(!($file_stream = fopen($file->path, 'r')))
+        {
+            $this->alert->error('Cannot open the target file.');
+            $this->redirect('error');
+        } 
+
+        header('Content-Tpe: text/csv');
+        // tell the browser we want to download it instead of displaying it
+        header('Content-Disposition: attachment; filename="'.$file->name.'.csv"');
+        header("Pragma: no-cache"); 
+        header("Expires: 0"); 
+        fpassthru($file_stream);
+        die;
     }
 }

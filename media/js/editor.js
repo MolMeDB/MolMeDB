@@ -95,7 +95,7 @@ function editMembrane(id)
 function editMethod(id)
 {
     // Get data
-    var data = ajax_request("methods/get", { id: id });
+    var data = ajax_request("methods/detail", { id: id });
 
     if (data === false) 
     {

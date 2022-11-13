@@ -42,6 +42,11 @@ class Files extends Db
     const T_UPLOAD_ACTIVE   = 21;
     const T_UPLOAD_ENERGY   = 22;
 
+    /** SCHEDULER REPORTS */
+    const T_SCHEDULER_REPORT = 30;
+    const T_SCHEDULER_DEL_EMPTY_SUBSTANCES = 31;
+    const T_SCHEDULER_CHECK_PASSIVE_DATASETS = 32;
+
     private static $valid_types = array
     (
         self::T_STATS_INTERACTIONS_ALL,

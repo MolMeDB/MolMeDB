@@ -129,7 +129,8 @@ class Interactions extends Db
 	 */
 	public function change_dataset_id($from_id, $to_id)
 	{
-		return $this->query('
+		// Change interactions ids
+		$this->query('
 			UPDATE `interaction`
 			SET `id_dataset` = ?
 			WHERE `id_dataset` = ?

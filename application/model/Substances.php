@@ -82,6 +82,23 @@ class Substances extends Db
     }
 
     /**
+     * Returns string representation of molecule
+     * 
+     * @return string
+     */
+    public function toStr()
+    {
+        $name = $this->name;
+
+        if(strlen($name) > 16)
+        {
+            return $this->identifier;
+        }
+        
+        return $name;
+    }
+
+    /**
      * Returns total count of atoms in fragment
      * 
      * @return int
@@ -1075,6 +1092,7 @@ class Substances extends Db
                 FROM substances s
                 LEFT JOIN interaction i ON i.id_substance = s.id AND i.id_method != ?
                 LEFT JOIN transporters t ON t.id_substance = s.id
+                WHERE s.pubchem IS NULL AND s.drugbank IS NULL AND s.chEBI IS NULL AND s.pdb IS NULL AND s.chEMBL IS NULL
                 GROUP BY id
             ) as t
             WHERE t.iid IS NULL AND t.tid IS NULL
@@ -1659,6 +1677,90 @@ class Substances extends Db
                     . 'WHERE id_method = ?) '
                     . 'ORDER BY name', array($idMethod));
         }
+    }
+
+    /**
+     * Saves substances with checking and loging changes in identfiers
+     * 
+     * @author Jakub Juracka
+     */
+    public function save_checking_identifiers()
+    {
+        if(!$this->id)
+        {
+            return $this->save();
+        }
+
+        $links = array
+        (
+            Validator_identifiers::ID_NAME => 'name',
+            Validator_identifiers::ID_SMILES => 'SMILES',
+            Validator_identifiers::ID_INCHIKEY => 'inchikey',
+            Validator_identifiers::ID_CHEBI => 'chEBI',
+            Validator_identifiers::ID_CHEMBL => 'chEMBL',
+            Validator_identifiers::ID_PDB => 'pdb',
+            Validator_identifiers::ID_PUBCHEM => 'pubchem',
+            Validator_identifiers::ID_DRUGBANK => 'drugbank',
+        );
+
+        $diff = $this->get_changes();
+
+        foreach($diff as $attr => $change)
+        {
+            $p = $change->prev == 'NULL' ? NULL : $change->prev;
+            $c = $change->curr == 'NULL' ? NULL : $change->curr;
+            $id_type = in_array($attr, $links) ? array_search($attr, $links) : NULL;
+
+            if(!$id_type)
+            {
+                continue;
+            }
+
+            if(empty($c) && !empty($p))
+            {
+                // Check, if new value exists for given molecule
+                $exists = Validator_identifiers::instance()->where(array
+                (
+                    'id_substance'  => $this->id,
+                    'identifier'    => $id_type,
+                    'value'         => $p
+                ))->get_one();
+
+                if($exists->id)
+                {
+                    $exists->inactivate();
+                }
+
+                continue;
+            }
+
+            // Check, if new value exists for given molecule
+            $exists = Validator_identifiers::instance()->where(array
+            (
+                'id_substance'  => $this->id,
+                'identifier'    => $id_type,
+                'value'         => $c
+            ))->get_one();
+
+            $exists = new Validator_identifiers($exists->id);
+
+            if($exists->id)
+            {
+                $exists->validate();
+            }
+
+            $exists->id_substance = $this->id;
+            $exists->identifier = $id_type;
+            $exists->value = $c;
+            $exists->id_user = session::user_id();
+            $exists->state = $exists::STATE_VALIDATED;
+            $exists->active = 0;
+            $exists->save();
+
+            $exists->activate();
+        }
+
+        return $this->save();
     }
 
     /**

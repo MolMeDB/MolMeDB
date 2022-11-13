@@ -8,37 +8,37 @@
         <div class="col-md-12">
             <label><b>DOI</b></label>
             <a style="cursor: pointer;" title="Download publication detail by DOI" class="glyphicon glyphicon-download" onclick="get_reference_by_doi('doi')"></a>
-            <input class="form-control" type="text" name="doi" id="doi"/>
+            <input class="form-control" type="text" name="doi" id="doi" value="<?= $form_data->doi ?>"/>
         
             <label><b>Authors</b></label>
-            <input type="text" class="form-control" name="authors" id="authors" />
+            <input type="text" class="form-control" name="authors" id="authors" value="<?= $form_data->authors ?>" />
         
             <label><b>PmID</b></label>
-            <input type="text" class="form-control" name="pmid" id="pmid" />
+            <input type="text" class="form-control" name="pmid" id="pmid" value="<?= $form_data->pmid ?>" />
         
             <label><b>Title</b></label>
-            <input type="text" class="form-control" name="title" id="title" />
+            <input type="text" class="form-control" name="title" id="title" value="<?= $form_data->title ?>" />
         
             <label><b>Journal</b></label>
-            <input type="text" class="form-control" name="journal" id="journal"  />
+            <input type="text" class="form-control" name="journal" id="journal"  value="<?= $form_data->journal ?>" />
         
             <label><b>Volume</b></label>
-            <input type="text" class="form-control" name="volume" id="volume"  />
+            <input type="text" class="form-control" name="volume" id="volume"  value="<?= $form_data->volume ?>" />
         
             <label><b>Issue</b></label>
-            <input type="text" class="form-control" name="issue" id="issue"  />
+            <input type="text" class="form-control" name="issue" id="issue"  value="<?= $form_data->issue ?>" />
         
             <label><b>Pages</b></label>
-            <input type="text" class="form-control" name="page" id="page"  />
+            <input type="text" class="form-control" name="page" id="page"  value="<?= $form_data->page ?>" />
         
             <label><b>Year</b></label>
-            <input type="text" class="form-control" name="year" id="year" />
+            <input type="text" class="form-control" name="year" id="year" value="<?= $form_data->year ?>" />
         
             <label><b>Date of publication [d-m-y]</b></label>
-            <input type="text" class="form-control" name="publicated_date" id="publicated_date" />
+            <input type="text" class="form-control" name="publicated_date" id="publicated_date" value="<?= $form_data->publicated_date ?>" />
             
             <label><b>Citation</b></label>
-            <input type="text" class="form-control" name="citation" id="citation" required />
+            <input type="text" class="form-control" name="citation" id="citation" required value="<?= $form_data->citation ?>" />
         </div>
         <button style="margin:20px;" class="btn btn-success pull-right">Save</button>
     </form>

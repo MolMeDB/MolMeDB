@@ -532,6 +532,34 @@ class Validator_identifiers extends Db
     }
 
     /**
+     * Inactivates record
+     * 
+     * @param int $id
+     */
+    public function inactivate($id = NULL)
+    {
+        if(!$id && $this)
+        {
+            $id = $this->id;
+        }
+
+        $r = new Validator_identifiers($id);
+
+        if(!$r->id)
+        {
+            throw new Exception('Invalid ID. Cannot validate record.');
+        }
+
+        if($r->active == self::INACTIVE)
+        {
+            return;
+        }
+
+        $r->active = self::INACTIVE;
+        $r->save(); 
+    }
+
+    /**
      * Returns duplicate identifiers for multiple compounds
      * 
      * @return object[]

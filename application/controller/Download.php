@@ -21,12 +21,18 @@ class DownloadController extends Controller
     const PATH_ACTIVE = "active";
     const PATH_PASSIVE = "passive";
 
+    static $valid_paths = array
+    (
+        self::PATH_ACTIVE,
+        self::PATH_PASSIVE,
+    );
+
     /**
      * Main function
      */
     public function index($path = self::PATH_PASSIVE)
     {
-        if(!in_array($path, [self::PATH_ACTIVE, self::PATH_PASSIVE]))
+        if(!in_array($path, self::$valid_paths))
         {
             $this->redirect('download/' . self::PATH_PASSIVE);
         }

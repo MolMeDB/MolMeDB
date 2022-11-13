@@ -56,7 +56,7 @@ class Html
     {
         if(!preg_match('/^http/', $url))
         {
-            $url = PROTOCOL . URL . '/' . $url;
+            $url = Url::base() . rtrim($url, '/');
         }
 
         if(!strlen(trim($title)))

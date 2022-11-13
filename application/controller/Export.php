@@ -542,8 +542,12 @@ class ExportController extends Controller
 
         $ids = Arr::get_values($ids, 'id');
 
+        
         $this->view = new Render_js_export($type);
         $this->view->ids = json_encode($ids);
+        
+        $this->title = 'Data export';
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Downloader', 'download', TRUE)->add('Export selected data');
     }
 
     /**

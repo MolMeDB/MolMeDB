@@ -1,5 +1,5 @@
 <head>
-    <base href="<?= PROTOCOL . URL ?>/<?= MEDIA_ROOT ?>" />
+    <base href="<?= Url::base() . MEDIA_ROOT ?>" />
     <script src="js/jquery-3.2.1.js"></script>
     <script src="js/MolMeDb.php"></script>
     <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
@@ -467,9 +467,10 @@
             var chart = root.container.children.push(
                 am5xy.XYChart.new(root, {
                     focusable: true,
-                    panX: false,
+                    panX: true,
                     panY: false,
-                    pinchZoomX: false
+                    pinchZoomX: true,
+                    wheelY: "zoomX"
                 })
             );
 

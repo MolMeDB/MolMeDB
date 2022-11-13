@@ -5,9 +5,7 @@ if(FALSE): ?> <script> <?php endif?>
 var detail;
 var membranes;
 var methods;
-var protocol = "<?=$_SERVER['SERVER_PROTOCOL'] ?>";
-protocol = protocol.startsWith('HTTPS') ? 'https://' : 'http://';
-var url_prefix = protocol + "<?= $_SERVER['HTTP_HOST'] ?>";
+var url_prefix = window.location.protocol + "//" + window.location.host;
 
 /**
  * Creates new message span

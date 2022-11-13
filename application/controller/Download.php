@@ -94,5 +94,8 @@ class DownloadController extends Controller
         $this->view->method_selector = $method_selector;
         $this->view->page_type = $path;
         $this->view->chart_data = isset($transporter_data) ? $transporter_data : null;
+
+        $this->title = 'Downloader';
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Downloader');
     }
 }

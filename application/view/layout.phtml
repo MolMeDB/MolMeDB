@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="cs-cz">
 	<head>
-		<base href="<?= PROTOCOL . URL ?>/<?=MEDIA_ROOT?>" />
+		<base href="<?= Url::base() . MEDIA_ROOT ?>" />
 		<meta charset="UTF-8" />
         <?= GOOGLE_ANALYTICS ?>
 		<title><?= $title ?> | MolMeDB</title>
         <!-- <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> -->
         <meta name="description" content="<?= $description ?>">
-        <meta name="URL" id="URL" content="<?= URL ?>"/>
+        <meta name="URL" id="URL" content="<?= Url::base() ?>"/>
         <link rel="stylesheet" href="css/bootstrap.min.css"/>
         <link rel="stylesheet" href="css/LiteMol-plugin.min.css">
         <input hidden id="api_internal_token" value="<?= session::instance()->api_internal_token ?>">
@@ -75,17 +75,6 @@
                     <div><div onclick="redirect('stats/show_all')"><img src="files/icons/chart-bar.svg" class="svg-white">Statistics</div></div>
                     <div><div onclick="redirect('detail/documentation')"><img src="files/icons/folder-open.svg" class="svg-white">Documentation</div></div>
                     <div><div onclick="redirect('detail/contact')"><img src="files/icons/info-circle.svg" class="svg-white">About</div></div>
-                    <!-- <div class="menu-dropdown">
-                        <div><img src="files/icons/chart-line.svg" class="svg-white">Comparator <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
-                        <div class="menu-dropdown-list">
-                            <div class="menu-dropdown-item" onclick="redirect('compare')">Open comparator</div>
-                            <div class="menu-dropdown-item" onclick="flush_comparator_list()">Delete all</div>
-                            <div class="dropdown-line"></div>
-                            <div class="dropdown-title">Compounds:</div>
-                            <div id="comparator-ul">
-                            </div>
-                        </div>
-                    </div> -->
                 </div>
             </div>
 		</header>

@@ -45,9 +45,9 @@ class DeleteController extends Controller
         {
             $detail->delete();        
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
-            $this->addMessageError($e->getMessage());
+            $this->alert->error($e);
             $this->redirect($redirection);
         }
 
@@ -77,9 +77,9 @@ class DeleteController extends Controller
         {
             $detail->delete();        
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
-            $this->addMessageError($e->getMessage());
+            $this->alert->error($e);
             $this->redirect($redirection);
         }
 
@@ -108,9 +108,9 @@ class DeleteController extends Controller
         {
             $detail->delete();        
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
-            $this->addMessageError($e->getMessage());
+            $this->alert->error($e);
             $this->redirect('error');
         }
 
@@ -118,13 +118,6 @@ class DeleteController extends Controller
         $this->redirect('detail/intro');
     }
 
-    // /**
-    //  * Deletes interadataset
-    //  */
-    // public function dataset($type, $id)
-    // {
-        
-    // }
 
     /**
      * Deletes interaction 
@@ -151,9 +144,9 @@ class DeleteController extends Controller
                 $dataset->delete();    
                 $this->addMessageSuccess('Dataset was deleted.');    
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->alert->error($e);
             }
 
             
@@ -174,9 +167,9 @@ class DeleteController extends Controller
                 $interaction->delete();
                 $this->addMessageSuccess('Interaction [ID: ' . $id . '] was deleted.');
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->alert->error($e);
             }
         }
         else
@@ -212,9 +205,9 @@ class DeleteController extends Controller
                 $dataset->delete();    
                 $this->addMessageSuccess('Dataset was deleted.');    
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->alert->error($e);
             }
 
             
@@ -235,9 +228,9 @@ class DeleteController extends Controller
                 $interaction->delete();
                 $this->addMessageSuccess('Transporter detail [ID: ' . $id . '] was deleted.');
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->alert->error($e);
             }
         }
         else

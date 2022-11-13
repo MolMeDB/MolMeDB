@@ -9,44 +9,50 @@ class File
     public $name;
     public $extension;
     public $size;
+    public $path;
     public $origin_path;
     private $FILE;
 
     // 3dstructure folder
     const FOLDER_3DSTRUCTURES = MEDIA_ROOT . "files/3DStructures/";
-    
-    // 
     const FOLDER_STATS_DOWNLOAD = MEDIA_ROOT . 'files/download/stats/';
-
     const FOLDER_PUBLICATION_DOWNLOAD = MEDIA_ROOT . 'files/download/publication/';
     const FOLDER_MEMBRANE_DOWNLOAD = MEDIA_ROOT . 'files/download/membrane/';
     const FOLDER_METHOD_DOWNLOAD = MEDIA_ROOT . 'files/download/method/';
     const FOLDER_TRANSPORTER_DOWNLOAD = MEDIA_ROOT . 'files/download/transporter/';
+    const FOLDER_DATASETS = MEDIA_ROOT . 'files/datasets/';
 
     /**
      * Constructor
      * 
-     * @param string $path - PATH to the file
+     * @param string|int|Files $path - PATH to the file
      */
     function __construct($path = NULL)
     {
-        if($path && is_array($path)) // Uploaded file
+        // File model id
+        if(is_numeric($path))
         {
-            $this->origin_path = $path['tmp_name'];
+            $f = new Files($path);
+            $path = $f->path;
+        }
+        else if($path instanceof Files)
+        {
+            $path = $path->path;
+        }
+        
+        if($path && is_array($path) && 
+            isset($path['tmp_name']) && // Uploaded file
+            isset($path['size']) && // Uploaded file
+            isset($path['name'])) // Uploaded file
+        {
+            $this->origin_path = $this->path = $path['tmp_name'];
             $this->size = $path['size'];
             $this->extension = pathinfo($path['name'], PATHINFO_EXTENSION);
             $this->name = rtrim($path['name'], '.'. $this->extension);
         }
-        else if($path)
+        else if($path && file_exists($path))
         {
-            $this->origin_path = $path;
-
-            // Check if exists
-            if(!file_exists($path))
-            {
-                throw new Exception("File '$path' was not found.");
-            }
-
+            $this->origin_path = $this->path = $path;
             $this->get_file_info($path);
         }
     }
@@ -72,8 +78,18 @@ class File
 
         // Set default values
         $this->FILE = fopen($filePath, $type);
-        $this->origin_path = $filePath;
-        $this->name = $filePath ? substr($filePath, $last_slash + 1) : null;
+        $this->origin_path = $this->path = $filePath;
+        $this->name = substr($filePath, $last_slash + 1);
+    }
+
+    /**
+     * Checks, if file exists
+     * 
+     * @return bool
+     */
+    public function exists()
+    {
+        return $this->path && file_exists($this->path);
     }
 
     /**
@@ -126,6 +142,21 @@ class File
     }
 
     /**
+     * Writes content to the file
+     * 
+     * @param string $text
+     */
+    public function write($text)
+    {
+        if(!$this->FILE)
+        {
+            throw new Exception('Wrong file instance');
+        }
+
+        fwrite($this->FILE, $text);
+    }
+
+    /**
      * Makes new filename
      * 
      * @return string
@@ -168,15 +199,19 @@ class File
 
         $target = $dir_path . '/' . $this->name . '.' . $this->extension;
 
-        if(file_exists($target))
+        $i = 0;
+        while(file_exists($target))
         {
-            throw new Exception('Sorry, file "' . $target . '" already exists.');
+            $i++;
+            $target = $dir_path . '/' . $this->name . '_' . $i . '.' . $this->extension;
         }
 
         if(!rename($this->origin_path, $target))
         {
             throw new Exception('Cannot move uploaded file to target directory.');
         }
+
+        $this->path = $target;
 
         return True;
     }
@@ -199,6 +234,8 @@ class File
             throw new Exception('Cannot rename file.');
         }
 
+        $this->path = $path . $new_name . '.' . $this->extension;
+
         return True;
     }
 
@@ -218,54 +255,6 @@ class File
     }
 
     /**
-     * Checks if exists 3d structure for given molecule identifier
-     * 
-     * @param string $identifier
-     */
-    public function structure_file_exists($identifier)
-    {
-        // If not exists, then make folder
-        $this->make_path(self::FOLDER_3DSTRUCTURES);
-
-        $path = self::FOLDER_3DSTRUCTURES . $identifier . '.mol';
-
-        return file_exists($path) && filesize($path);
-    }
-
-    /**
-     * Saves new file structure
-     * 
-     * @param string $identifier
-     * @param string $content
-     */
-    public function save_structure_file($identifier, $content)
-    {
-        if($this->structure_file_exists($identifier))
-        {
-            $this->remove_structure_file($identifier);
-        }
-
-        $file = fopen(self::FOLDER_3DSTRUCTURES . $identifier . '.mol', 'w');
-        fwrite($file, $content);
-        fclose($file);
-    }
-
-    /**
-     * Removes structure file
-     * 
-     * @param string $identifier
-     */
-    public function remove_structure_file($identifier)
-    {
-        $path = self::FOLDER_3DSTRUCTURES . $identifier . '.mol';
-
-        if($this->structure_file_exists($identifier))
-        {
-            unlink($path);
-        }
-    }
-
-    /**
      * Gets FILE
      * 
      * @return File
@@ -281,6 +270,36 @@ class File
     }
 
     /**
+     * Parses file content
+     * 
+     * @param string $delimiter
+     * 
+     * @return array
+     */
+    public function parse_csv_content($delimiter)
+    {
+        $data = [];
+
+        if(!$this->path || !file_exists($this->path))
+        {
+            return [];
+        }
+
+        if(!($file = fopen($this->path, 'r')))
+        {
+            return [];
+        }
+
+        while($row = fgets($file))
+		{
+			$row = str_replace(array("\n","\r\n","\r"), '', $row);
+			$data[] = explode($delimiter, $row);
+		}
+
+        return $data;
+    }
+
+    /**
      * Transform data array to CSV and make file
      * 
      * @return string|null
@@ -290,6 +309,11 @@ class File
         if(!$data || !is_array($data) || !is_array($data[0]))
         {
             return null;
+        }
+
+        if(!$prefix)
+        {
+            $prefix = '';
         }
 
         if(!$file_name)
@@ -349,6 +373,11 @@ class File
         if(file_exists($target))
         {
             unlink($target);
+        }
+
+        if(!preg_match('/\.zip$/', $target))
+        {
+            $target .= '.zip';
         }
 
         if ($zip->open($target, ZIPARCHIVE::CREATE) != TRUE) 

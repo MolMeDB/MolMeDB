@@ -18,7 +18,7 @@
             </thead>
             <tbody>
                 <?php foreach($datasets as $d) : ?>
-                <tr <?php if(isset($info->id) && $info->id === $d->id) : ?> class='active' <?php endif ?> onclick="redirect('edit/dsInteractions/<?=$d->id ?>')">
+                <tr <?php if(isset($dataset->id) && $dataset->id === $d->id) : ?> class='active' <?php endif ?> onclick="redirect('edit/dsInteractions/<?=$d->id ?>')">
                     <td><?=$d->id ?></td>
                     <td><?=$d->name ?></td>
                     <td><?=$d->method->name ?></td>
@@ -42,8 +42,8 @@
                             <b>Name:</b>  
                         </td>
                         <td>
-                            <?=$info['name'] ?>
-                            <input type="number" name="id_dataset" id="id_dataset" hidden value="<?=$info->id ?>">
+                            <?=$dataset->name ?>
+                            <input type="number" name="id_dataset" id="id_dataset" hidden value="<?=$dataset->id ?>">
                         </td>
                     </tr>
                     <tr>
@@ -51,7 +51,7 @@
                             <b>Author:</b>
                         </td>
                         <td>
-                            <?=$info->author ? $info->author->name : NULL ?>
+                            <?=$dataset->author ? $dataset->author->name : NULL ?>
                         </td>
                     </tr>
                     <tr>
@@ -59,7 +59,7 @@
                             <b>Last edit by:</b>   
                         </td>
                         <td>
-                            <?=$info->editor ? $info->editor->name : NULL ?>
+                            <?=$dataset->editor ? $dataset->editor->name : NULL ?>
                         </td>
                     </tr>
                     <tr>
@@ -67,7 +67,7 @@
                             <b>Last update: </b> 
                         </td>
                         <td>
-                            <?=$info->lastUpdateDatetime ?>
+                            <?=$dataset->lastUpdateDatetime ?>
                         </td>
                     </tr>
                     <tr>
@@ -75,7 +75,7 @@
                             <b>Uploaded: </b> 
                         </td>
                         <td>
-                            <?=$info->createDateTime ?>
+                            <?=$dataset->createDateTime ?>
                         </td>
                     </tr>
                     <tr>
@@ -83,8 +83,8 @@
                             <b>Membrane: </b> 
                         </td>
                         <td>
-                            <?=$info->membrane->name ?>
-                            <input type="number" id="id_membrane" hidden value="<?=$info->membrane->id ?>">
+                            <?=$dataset->membrane->name ?>
+                            <input type="number" id="id_membrane" hidden value="<?=$dataset->membrane->id ?>">
                         </td>
                     </tr>
                     <tr>
@@ -92,8 +92,8 @@
                             <b>Method: </b> 
                         </td>
                         <td>
-                            <?=$info->method->name ?>
-                            <input type="number" id="id_method" hidden value="<?=$info->method->id ?>">
+                            <?=$dataset->method->name ?>
+                            <input type="number" id="id_method" hidden value="<?=$dataset->method->id ?>">
                         </td>
                     </tr>
                     <tr>
@@ -101,8 +101,8 @@
                             <b>Publication: </b> 
                         </td>
                         <td>
-                            <?=$info->publication->citation ?>
-                            <input type="number" id="idPublication" hidden value="<?=$info->publication->id ?>">
+                            <?=$dataset->publication->citation ?>
+                            <input type="number" id="idPublication" hidden value="<?=$dataset->publication->id ?>">
                         </td>
                     </tr>
                     <tr>
@@ -110,14 +110,14 @@
                             <b>Visibility: </b> 
                         </td>
                         <td>
-                            <?=$info->get_enum_visibility() ?>
-                            <input type="number" id="visibility_num" hidden value="<?=$info->visibility ?>">
+                            <?=$dataset->get_enum_visibility() ?>
+                            <input type="number" id="visibility_num" hidden value="<?=$dataset->visibility ?>">
                         </td>
                     </tr>
                     
             <tr></tr>
         </table>
-        <button onclick="delete_dataset('<?=$info->id ?>')" type='button' class='btn pull-left btn-sm btn-danger'> <span class='glyphicon glyphicon-remove'></span>  Delete dataset</button>
+        <button onclick="delete_dataset('<?=$dataset->id ?>')" type='button' class='btn pull-left btn-sm btn-danger'> <span class='glyphicon glyphicon-remove'></span>  Delete dataset</button>
         <button onclick='edit_basic_info(this)' type='button' class='btn pull-right btn-sm btn-primary'> <span class='glyphicon glyphicon-pencil'></span>  Edit </button>
     </div>
         
@@ -141,11 +141,11 @@
                     <td><?=$user['access']?></td>
                     <td><?=$user['inherited']?></td>
                     <?php if($user['access'] === "YES" && $user['inherited'] === "NO") :?>
-                        <td title='Remove rights' onclick="toggle_rights('<?=$info->id?>','<?=$user['id']?>')" class='td-edit'><span class="glyphicon glyphicon-remove"></span></td>
+                        <td title='Remove rights' onclick="toggle_rights('<?=$dataset->id?>','<?=$user['id']?>')" class='td-edit'><span class="glyphicon glyphicon-remove"></span></td>
                     <?php elseif($user['access'] === "YES") : ?>
                         <td title="Changes are not allowed. User rights are inherited from group."><span class="glyphicon glyphicon-info-sign"></span>
                     <?php else : ?>
-                        <td title='Add rights' onclick="toggle_rights('<?=$info->id ?>','<?=$user['id']?>')" class='td-edit'><span class="glyphicon glyphicon-ok"></span></td>
+                        <td title='Add rights' onclick="toggle_rights('<?=$dataset->id ?>','<?=$user['id']?>')" class='td-edit'><span class="glyphicon glyphicon-ok"></span></td>
                     <?php endif?>
                     
                 </tr>
@@ -169,11 +169,11 @@
                         <td><?=$group['name']?></td>
                         <td><?=$group['access']?></td>
                         <?php if($group['access'] === "YES" && $group['name'] !== "ADMINS") :?>
-                            <td title='Remove rights' onclick="toggle_rights('<?=$info->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-remove"></span></td>
+                            <td title='Remove rights' onclick="toggle_rights('<?=$dataset->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-remove"></span></td>
                         <?php elseif($group['name'] === "ADMINS") : ?>
                             <td></td>
                         <?php else : ?>
-                            <td title='Add rights' onclick="toggle_rights('<?=$info->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-ok"></span></td>
+                            <td title='Add rights' onclick="toggle_rights('<?=$dataset->id?>','<?=$group['id']?>', true)" class='td-edit'><span class="glyphicon glyphicon-ok"></span></td>
                         <?php endif ?>
                     </tr>
                     <?php endforeach ?>
@@ -181,7 +181,7 @@
             </table>
         </div>
     </div>
-    <?php if($total_duplicity): ?>
+    <!-- <?php if($total_duplicity): ?>
     <div class="col-md-12">
         <div class="col-md-5 o-card">
             <h4><b>Validator</b></h4>
@@ -196,34 +196,21 @@
                     <?php foreach ($rights_groups as $group) : ?>
                     <tr>
                         <td>Total unresolved duplicites: <?= $total_duplicity ?></td>
-                        <td><button onclick="redirect('validator/unlabel_duplicity/<?= $info->id ?>')" class="btn btn-sm btn-warning"> Set all as non-duplicity</button></td>
+                        <td><button onclick="redirect('validator/unlabel_duplicity/<?= $dataset->id ?>')" class="btn btn-sm btn-warning"> Set all as non-duplicity</button></td>
                     </tr>
                     <?php endforeach ?>
                 </tbody>
             </table>
         </div>
     </div>
-    <?php endif ?>
+    <?php endif ?> -->
     <div class="col-md-12 o-card">
         <h4><b>Interactions</b></h4> 
         <h5 style="color:red;"><b>Warning! Some interactions may be missing in the current dataset if only older records were edited during upload.</b></h5>
         <h5 style="color:red;"><b>Warning! Empty columns are hidden.</b></h5>
         <?= $nonsec_interaction_table ?>
     </div>
-    <?php if(isset($total) && $total) : ?>
-        <div class="text-center">
-            <ul class="pagination pagination-lg" id="paginator">
-            <?php for ($i = 1; $i < ($total / 100) + 1; $i++) : ?>
-                <?php if ($i == $pagination) : ?>
-                <li class="active" id="activePag"><a href="/edit/dsInteractions/<?= $info->id ?>/<?= $i ?>"><?= $i ?></a></li>
-                <?php else : ?>
-                <li><a href="/edit/dsInteractions/<?= $info->id ?>/<?= $i ?>"><?= $i ?></a></li>
-                <?php endif ?>
-            <?php endfor ?>
-            <script>verifyPagination('paginator');</script>
-            </ul>
-        </div>
-    <?php endif ?>
+    <?= Render_pagination::print_arr($pagination_setting); ?>
 <?php endif ?>
 </div>
 
@@ -299,15 +286,15 @@
                         <tbody>
                             <tr>
                                 <td><b>Membrane:</b></td>
-                                <td id="membrane_name"><?=$info->membrane->name ?></td>
+                                <td id="membrane_name"><?=$dataset->membrane->name ?></td>
                             </tr>
                             <tr>
                                 <td><b>Method:</b></td>
-                                <td id="method_name"><?=$info->method->name ?></td>
+                                <td id="method_name"><?=$dataset->method->name ?></td>
                             </tr>
                             <tr>
                                 <td><b>Publication:</b></td>
-                                <td id="reference"><?=$info->publication->citation ?></td>
+                                <td id="reference"><?=$dataset->publication->citation ?></td>
                             </tr>
                             <tr>
                                 <td><b>Last update: </b></td>

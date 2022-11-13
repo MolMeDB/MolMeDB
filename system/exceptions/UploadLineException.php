@@ -1,6 +1,6 @@
 <?php
 
-class UploadLineException extends Exception
+class UploadLineException extends MmdbException
 {
-
+    
 }

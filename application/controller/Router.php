@@ -5,7 +5,10 @@
  */
 class RouterController extends Controller
 {
-    protected $controller;
+    /** @var Controller */
+    public $controller;
+
+    public $messages = [];
 
     /**
      * Constructor
@@ -43,6 +46,7 @@ class RouterController extends Controller
         $parsedURL["path"] = ltrim($parsedURL["path"], "/");
         $parsedURL["path"] = trim($parsedURL["path"]);
         $dividedRoute = explode("/", $parsedURL["path"]);
+
         return $dividedRoute;
     }
 
@@ -54,13 +58,17 @@ class RouterController extends Controller
     public function parse($parameters)
     {
         // If maintenance is in progress, show directly this site
-        if(MAINTENANCE && !isset($_SESSION['user']))
+        if(Server::is_maintenance())
         {
-            $this->view = 'maintenance';
+            $this->view = new View('maintenance');
+            $this->view->render(TRUE);
             return;
         }
 
         $parsedURL = $this->parseURL($parameters);
+
+        // Check and save token for internal requests
+        session::check_api_token();
 
         // If not set endpoint
         if (!isset($parsedURL[0]) || empty($parsedURL[0]))
@@ -75,8 +83,8 @@ class RouterController extends Controller
         // REST API direct redirection
         if($classController == 'ApiController')
         {
-            $api_controller = new ApiController(...$parsedURL);
-            $api_controller->parse();
+            $api_controller = new ApiController($parsedURL);
+            $api_controller->index();
             die;
         }
 
@@ -84,7 +92,7 @@ class RouterController extends Controller
         if($classController === 'SchedulerController')
         {
             // Can be access only from local machine
-            if (server::remote_addr() != server::server_addr() &&
+            if (!DEBUG && server::remote_addr() != server::server_addr() &&
                 server::remote_addr() != "127.0.0.1")
             {
                 echo 'access denied';
@@ -93,6 +101,7 @@ class RouterController extends Controller
 
             if(!in_array($targetFunction, SchedulerController::$accessible))
             {
+                echo 'Endpoint is not remotely accessible.';
                 die;
             }
 
@@ -127,28 +136,33 @@ class RouterController extends Controller
         }
         else
         {
-            $targetFunction = 'parse';
+            $targetFunction = 'index';
         }
 
         if (!method_exists($this->controller, $targetFunction)) 
         {
-            $this->addMessageError('Endpoint was not found.');
+            $this->alert->error('Endpoint was not found.');
             $this->redirect('error');
         }
 
         try
         {
+            ob_start();
             $this->controller->$targetFunction(...$parsedURL);
         }
         catch(Exception $e)
         {
-            die($e->getMessage());
+            ob_clean();
+
+            Server::print_global_exception($e);
         }
 
-        $this->data['title'] = $this->controller->header['title'];
-        $this->data['description'] = $this->controller->header['description'];
-        $this->data['messages'] = $this->alert->get_all();
-        $this->view = 'layout';
+        $this->view = new View('layout');
+        $this->view->title = $this->controller->title;
+        $this->view->breadcrumbs = $this->controller->breadcrumbs;
+        $this->view->controller = $this->controller;
+        $this->view->messages = $this->alert->get_all();
+        $this->view->render(TRUE);
     }
 
 }

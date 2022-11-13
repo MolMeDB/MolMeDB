@@ -22,8 +22,11 @@ class System_config
         // Connect to DB
         self::DB_CONNECT();
 
-        // Check DB version
-        self::check_DB_version();
+        if(!Server::is_maintenance())
+        {
+            // Check DB version
+            self::check_DB_version();
+        }
     }
 
     /**
@@ -34,6 +37,9 @@ class System_config
     {
         // GET version from DB
         $db = new Db();
+
+        // Check, if GROUP_BY is not restricted
+        $db->check_group_by_restrictions();
 
         $db_ver = $db->get_db_version();
         $app_ver = DB_VERSION;
@@ -174,6 +180,15 @@ class System_config
      */
     public static function autoloadFunction($class)
     {
+        $targets = array
+        (
+            APP_ROOT . 'helpers/',
+            APP_ROOT . 'libraries/',
+            APP_ROOT . 'model/',
+            'system/exceptions/',
+            'system/'
+        );
+
         // Default destinations for fast loading
         if (preg_match('/Controller$/', $class))
         {
@@ -181,31 +196,45 @@ class System_config
             {
                 $class = str_replace('Controller', '', $class);
             }
-            require(APP_ROOT . "controller/" . $class . ".php");
+            require_once(APP_ROOT . "controller/" . $class . ".php");
         }
-        else if (preg_match('/^Api/', $class))
+        else if (preg_match('/^Api/', $class) 
+            && file_exists(APP_ROOT . "controller/Api/" . substr($class, 3) . ".php"))
         {
             $class = str_replace('Api', '', $class);
             require(APP_ROOT . "controller/Api/" . $class . ".php");
         }
-        else if (file_exists( APP_ROOT . "model/" . $class . ".php"))
+        else if (preg_match('/^Mol_/', $class) 
+            && file_exists(APP_ROOT . "libraries/Mol/" . ucfirst(substr($class, 4)) . ".php"))
         {
-            require( APP_ROOT . "model/" . $class . ".php");
+            $class = ucfirst(str_replace('Mol_', '', $class));
+            require(APP_ROOT . "libraries/Mol/" . $class . ".php");
         }
-        // Helpers
-        else if (file_exists(APP_ROOT . "helpers/" . $class . ".php"))
+        else if (preg_match('/^View_/', $class) 
+            && file_exists(APP_ROOT . "libraries/View/" . ucfirst(substr($class, 5)) . ".php"))
         {
-            require( APP_ROOT . "helpers/" . $class . ".php");
+            $class = ucfirst(str_replace('View_', '', $class));
+            require(APP_ROOT . "libraries/View/" . $class . ".php");
         }
-        // Libraries
-        else if (file_exists(APP_ROOT . "libraries/" . $class . ".php"))
+        else if (preg_match('/^Render_/', $class) 
+            && file_exists(APP_ROOT . "helpers/Render/" . ucfirst(str_replace('Render_', '', $class)) . ".php"))
         {
-            require( APP_ROOT . "libraries/" . $class . ".php");
+            $class = ucfirst(str_replace('Render_', '', $class));
+            require(APP_ROOT . "helpers/Render/" . $class . ".php");
         }
-        // Exceptions
-        else if (file_exists("system/exceptions/" . $class . ".php"))
+        else
         {
-            require("system/exceptions/" . $class . ".php");
+            foreach($targets as $folder)
+            {
+                if(file_exists($folder . $class . ".php"))
+                {
+                    require_once($folder . $class . ".php");
+                }
+                else if(file_exists($folder . strtolower($class) . ".php"))
+                {
+                    require_once($folder . strtolower($class) . ".php");
+                }
+            }
         }
     }   
 }

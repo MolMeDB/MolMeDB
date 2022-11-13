@@ -15,6 +15,147 @@ class ExportController extends Controller
         parent::__construct();
     }
 
+
+    /**
+     * Interaction types
+     */
+    const PASSIVE = 'passive';
+    const ACTIVE  = 'active';
+
+    /**
+     * Exports passive interaction data for given molecule
+     * 
+     * @param string $type
+     * @param int $id_substance
+     */
+    public function mol($type = self::PASSIVE, $id_substance)
+    {
+        $substance = new Substances($id_substance);
+
+        if(!$substance->id)
+        {
+            echo 'Molecule with given ID does not exist.';
+            die;
+        }
+
+        if(!in_array($type, [self::PASSIVE, self::ACTIVE]))
+        {
+            echo 'Invalid interaction type.';
+            die;
+        }
+
+        $data = [];
+
+        try
+        {
+            if($type == self::PASSIVE)
+            {
+                $suffix = 'passive';
+                $raw_data = Interactions::instance()->where(array
+                    (
+                        'id_substance'  => $substance->id,
+                        'visibility'    => Interactions::VISIBLE,
+                    ))
+                    ->get_all();
+
+                foreach($raw_data as $row)
+                {
+                    $data[] = array
+                    (
+                        'substance' => $row->substance->name,
+                        'substance_identifier' => $row->substance->identifier,
+                        'membrane' => $row->membrane->name,
+                        'method'    => $row->method->name,
+                        'charge'    => $row->charge,
+                        'temperature' => $row->temperature,
+                        'note'      => $row->comment,
+                        'x_min'     => $row->Position,
+                        'x_min_acc' => $row->Position_acc,
+                        'g_pen'     => $row->Penetration,
+                        'g_pen_acc' => $row->Penetration_acc,
+                        'g_wat'     => $row->Water,
+                        'g_wat_acc' => $row->Water_acc,
+                        'log_k'     => $row->LogK,
+                        'log_k_acc' => $row->LogK_acc,
+                        'log_perm'  => $row->LogPerm,
+                        'log_perm_acc'  => $row->LogPerm_acc,
+                        'primary_publication' => $row->publication ? $row->publication->citation : null,
+                        'secondary_publication' => $row->dataset && $row->dataset->publication ? $row->dataset->publication->citation : null,
+                    );
+                }
+            }
+            else
+            {
+                $suffix = 'transporters';
+                $raw_data = Transporters::instance()
+                    ->where(array
+                    (
+                        'id_substance' => $substance->id,
+                    ))
+                ->get_all();
+
+                foreach($raw_data as $row)
+                {
+                    if($row->dataset->visibility != Interactions::VISIBLE)
+                    {
+                        continue;
+                    }
+
+                    $data[] = array
+                    (
+                        'substance' => $row->substance->name,
+                        'substance_identifier' => $row->substance->identifier,
+                        'target'    => $row->target->name,
+                        'type' => Transporters::instance()->get_enum_type($row->type),
+                        'note' => $row->note,
+                        'Km'    => $row->Km,
+                        'Km_acc' => $row->Km_acc,
+                        'EC50'  => $row->EC50,
+                        'EC50_acc' => $row->EC50_acc,
+                        'Ki'    => $row->Ki,
+                        'Ki_acc' => $row->Ki_acc,
+                        'IC50' => $row->IC50,
+                        'IC50_acc' => $row->IC50_acc,
+                        'primary_publication' => $row->reference ? $row->reference->citation : null,
+                        'secondary_publication' => $row->dataset->reference ? $row->dataset->reference->citation : null
+                    );
+                }
+            }
+
+            // Set filename
+            $filename = $substance->identifier . '_' . $suffix . '.csv';
+
+        }
+        catch(Exception $e)
+        {
+            $this->alert->error('Error occured while getting server data.');
+            $this->redirect('mol/' . $substance->identifier);
+        }
+
+        // Make final final
+        $file = fopen('php://output', 'w');
+
+        if(count($data))
+        {
+            // First, add header
+            $header = array_keys($data[0]);
+            fputcsv($file, $header, ';');
+
+            foreach($data as $row)
+            {
+                fputcsv($file, $row, ';');
+            }
+        }
+
+        header('Content-Tpe: text/csv');
+        // tell the browser we want to download it instead of displaying it
+        header('Content-Disposition: attachment; filename="'.$filename.'"');
+        header("Pragma: no-cache"); 
+        header("Expires: 0"); 
+        fpassthru($file);
+        die;
+    }
+
     /**
      * Exports data from given publication
      * 
@@ -193,13 +334,6 @@ class ExportController extends Controller
     }
 
     /**
-     * Exports data for given transporter group
-     * 
-     * @param int $id_method
-     * 
-     * @author Jakub Juracka
-     */
-    /**
      * Transporter browser
      * 
      * @param int $element_id
@@ -281,11 +415,175 @@ class ExportController extends Controller
             readfile("$file_path");
             die;
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
-            $this->alert->error($e->getMessage());
+            $this->alert->error($e);
         }
         
         $this->redirect('browse/transporters');
+    }
+
+    /**
+     * Types
+     */
+    const DOWN_TYPE_PASSIVE = 1;
+    const DOWN_TYPE_ACTIVE  = 2;
+
+    /**
+     * Exports downloader data
+     * 
+     * @param int $type
+     */
+    public function downloader($type = self::DOWN_TYPE_PASSIVE)
+    {
+        if(!$_POST)
+        {
+            die('Invalid parameters');
+        }
+
+        if($type == self::DOWN_TYPE_PASSIVE)
+        {
+            $id_membranes = isset($_POST['id_membranes']) ? $_POST['id_membranes'] : [];
+            $id_methods = isset($_POST['id_methods']) ? $_POST['id_methods'] : [];
+            $id_substances = isset($_POST['id_molecules']) ? $_POST['id_molecules'] : [];
+            $logic = isset($_POST['logic']) ? $_POST['logic'] : null;
+
+            if(strtolower($logic) != 'and')
+            {
+                $logic = 'or';
+            }
+
+            $logic = strtolower($logic);
+
+            $query = 'SELECT id 
+                    FROM interaction
+                    WHERE visibility = 1';
+                
+            if(empty($id_membranes) && empty($id_methods) && empty($id_substances))
+            {
+                // Download all
+                $stats = new Statistics();
+                $files = $stats->get_stat_files();
+
+                if(isset($files[Statistics::TYPE_INTER_ADD]) && $files[Statistics::TYPE_INTER_ADD])
+                {
+                    $this->redirect('file/download/' . $files[Statistics::TYPE_INTER_ADD]->id);
+                }
+            }
+            else if(!empty($id_methods) && empty($id_membranes))
+            {
+                $query .= ' AND id_method IN ("' . implode('","', $id_methods) .'")';
+            }
+            else if(!empty($id_membranes) && empty($id_methods))
+            {
+                $query .= ' AND id_membrane IN ("' . implode('","', $id_membranes) .'")';
+            }
+            else if(!empty($id_membranes) && !empty($id_methods))
+            {
+                $query .= ' AND (id_membrane IN ("' . implode('","', $id_membranes) . '") ' 
+                    . ($logic == 'and' ? "AND" : "OR") . ' id_method IN ("' . implode('","', $id_methods) .'"))';
+            }
+
+            if(!empty($id_substances))
+            {
+                $query .= ' AND id_substance IN ("' . implode('","', $id_substances) . '")';
+            }
+
+            $ids = Db::instance()->queryAll($query);
+        }
+        else if($type == self::DOWN_TYPE_ACTIVE)
+        {
+            if(!isset($_POST['id_group']) || !isset($_POST['is_last']))
+            {
+                die('Invalid parameters');
+            }
+
+            $id_group = $_POST['id_group'];
+            $is_last = $_POST['is_last'];
+
+            if($is_last)
+            {
+                $target = new Transporter_targets($id_group);
+
+                if(!$target->id)
+                {
+                    die('Transporter target not found.');
+                }
+
+                $ids = Db::instance()->queryAll('
+                    SELECT DISTINCT t.id
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset 
+                    WHERE t.id_target = ? AND td.visibility = ? 
+                ', array($target->id, Transporter_datasets::VISIBLE));
+            }
+            else
+            {
+                $enum_type_link = new Enum_type_links($id_group);
+                $enum_type = $enum_type_link->enum_type;
+
+                if($enum_type->type != Enum_types::TYPE_TRANSPORTER_CATS || !$enum_type->id)
+                {
+                    throw new Exception('Invalid transporter group.');
+                }
+
+                $els = $enum_type->get_items($enum_type_link->id, 'transporter_target');
+
+                $ids = Arr::get_values($els, 'id');
+
+                $ids = Db::instance()->queryAll('
+                    SELECT DISTINCT t.id
+                    FROM transporters t
+                    JOIN transporter_datasets td ON td.id = t.id_dataset
+                    WHERE td.visibility = ? AND t.id_target IN ("' . implode('","', $ids) . '")
+                ', array(Transporter_datasets::VISIBLE));
+            }
+        }
+
+        $ids = Arr::get_values($ids, 'id');
+
+        
+        $this->view = new Render_js_export($type);
+        $this->view->ids = json_encode($ids);
+        
+        $this->title = 'Data export';
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Downloader', 'download', TRUE)->add('Export selected data');
+    }
+
+    /**
+     * Exports uploded file
+     * 
+     * @param int $id - File ID
+     */
+    public function uploadFile($id = NULL)
+    {
+        $file = new Files($id);
+
+        if(!$file->id)
+        {
+            $this->alert->error('Invalid file id.');
+            $this->redirect('error');
+        }
+
+        // TODO - Access rights
+        if(!session::is_logged_in())
+        {
+            $this->redirect('login');
+        }
+
+        // Make final final
+        if(!($file_stream = fopen($file->path, 'r')))
+        {
+            $this->alert->error('Cannot open the target file.');
+            $this->redirect('error');
+        } 
+
+        header('Content-Tpe: text/csv');
+        // tell the browser we want to download it instead of displaying it
+        header('Content-Disposition: attachment; filename="'.$file->name.'.csv"');
+        header("Pragma: no-cache"); 
+        header("Expires: 0"); 
+        fpassthru($file_stream);
+        die;
     }
 }

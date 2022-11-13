@@ -31,8 +31,6 @@ class SearchController extends Controller
         parent::__construct();
     }
 
-
-
     /**
      * Main search engine parser
      * 
@@ -41,7 +39,7 @@ class SearchController extends Controller
      * 
      * @author Jakub Juračka
      */
-    public function parse($type = self::T_COMPOUND, $pagination = 1) 
+    public function index($type = self::T_COMPOUND, $pagination = 1, $per_page = 10) 
     {
         // Is type valid?
         if(!in_array($type, $this->valid_types))
@@ -50,24 +48,54 @@ class SearchController extends Controller
             $this->redirect('search/' . self::T_COMPOUND);
         }
 
+        if(!$pagination || !is_numeric($pagination))
+        {
+            $pagination = 1;
+        }
+
         $list = array();
         $info = '';
 
         $query = isset($_GET['q']) ? $_GET['q'] : NULL;
+        $id = isset($_GET['id']) ? $_GET['id'] : NULL;
+
+        try
+        {
+            $enum_type_model = new Enum_types();
+
+            $membrane_categories = $enum_type_model->get_categories(Enum_types::TYPE_MEMBRANE_CATS);
+            $method_categories = $enum_type_model->get_categories(Enum_types::TYPE_METHOD_CATS);
+        }
+        catch(MmdbException $e)
+        {
+            $this->alert->warning($e);
+        }
 
         // Set main variables
-        $this->view = 'search';
-        $this->header['title'] = 'Search';
-        $this->data['count'] = 0;
-        $this->data['list'] = $list;
-        $this->data['info'] = $info;
-        $this->data['pagination'] = $pagination;
-        $this->data['searchInput'] = $query;
-        $this->data['searchType'] = $type;
-        $this->data['show_detail'] = false;
+        $this->title = 'Search';
+
+        $this->view = new View('search');
+        $this->view->count = 0;
+        $this->view->list = $list;
+        $this->view->info = $info;
+        $this->view->pagination = $pagination;
+        $this->view->searchInput = $query;
+        $this->view->searchType = $type;
+        $this->view->show_detail = false;
+
+        $this->view->membrane_categories = json_encode($membrane_categories);
+        $this->view->method_categories = json_encode($method_categories);
+        $this->view->active_tab = $type;
+
+        $this->paginator = new View_paginator();
+        $this->paginator->path("$type")
+            ->active($pagination)
+            ->records_per_page($per_page);
+        
+        $this->view->paginator($this->paginator);
 
         // If not sent query, return
-        if(!$query)
+        if(!$query && !$id)
         {
             return;
         }
@@ -87,10 +115,10 @@ class SearchController extends Controller
                 return $this->by_compound($query, $pagination);
 
             case self::T_MEMBRANE:
-                return $this->by_membrane($query, $pagination);
+                return $this->by_membrane($id, $pagination);
 
             case self::T_METHOD:
-                return $this->by_method($query, $pagination);
+                return $this->by_method($id, $pagination);
 
             case self::T_SMILES:
                 return $this->by_smiles($query, $pagination);
@@ -98,6 +126,7 @@ class SearchController extends Controller
             case self::T_TRANSPORTER:
                 return $this->by_transporter($query, $pagination);
         }
+        
     }
 
     /**
@@ -124,11 +153,20 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['list'] = $list;
-        $this->data['count'] = $total;
-        $this->data['show_detail'] = True;
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/transporter/{pagination}?q=' . $query
+        );
+
+        $this->view->list = $list;
+        $this->view->count = $total;
+        $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
     /**
@@ -156,31 +194,50 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['list'] = $list;
-        $this->data['count'] = $total;
-        $this->data['show_detail'] = True;
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/compound/{pagination}?q=' . $query
+        );
+
+        $this->view->list = $list;
+        $this->view->count = $total;
+        $this->view->show_detail = True;
         $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
     /**
      * Search compounds by membrane
      * 
-     * @param string $query
+     * @param int $id
      * @param integer $pagination
      * 
      */
-    private function by_membrane($query, $pagination)
+    private function by_membrane($id, $pagination)
     {
-        $substance_model = new Substances();
-
         $list = array();
         $total = 0;
         
+        $id = intval($id);
+
+
+        $sub_model = new Substances();
+        $membrane = new Membranes($id);
+
+        if(!$membrane->id)
+        {
+            $this->alert->error('Membrane not found.');
+            $this->redirect('search');
+        }
+
         try 
         {
-            $list = $substance_model->search_by_membrane($query, $pagination);
-            $total = $substance_model->search_by_membrane_count($query);
+            $list = $sub_model->search_by_membrane($id, $pagination);
+            $total = $sub_model->search_by_membrane_count($id);
         } 
         catch (ErrorUser $ex) 
         {
@@ -188,11 +245,23 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['list'] = $list;
-        $this->data['count'] = $total;
-        $this->data['show_detail'] = True;
-        $info = "Results for name '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/membrane/{pagination}?id=' . $id
+        );
+
+        $this->view->list = $list;
+        $this->view->count = $total;
+        $this->view->show_detail = True;
+        $info = "Results for membrane '<b>" . Html::anchor(
+            'browse/membranes?target=' . $membrane->id,
+            $membrane->name,
+            ) . "</b>' ($total):";
+        $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
     /**
@@ -220,10 +289,16 @@ class SearchController extends Controller
             $query = substr($query, $start, $len);
         }
 
+        $rdkit = new Rdkit();
+
+        $smiles = $rdkit->canonize_smiles($query);
+
         try 
         {
-            $list = $substance_model->search_by_smiles($query, $pagination);
-            $total = $substance_model->search_by_smiles_count($query);
+            $smiles = $rdkit->canonize_smiles($query);
+
+            $list = $substance_model->search_by_smiles($smiles ? $smiles : $query, $pagination);
+            $total = $substance_model->search_by_smiles_count($smiles ? $smiles : $query);
         } 
         catch (ErrorUser $ex) 
         {
@@ -231,31 +306,49 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['list'] = $list;
-        $this->data['count'] = $total;
-        $this->data['show_detail'] = True;
-        $info = "Results for SMILES '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/smiles/{pagination}?q=' . $query
+        );
+
+        $this->view->list = $list;
+        $this->view->count = $total;
+        $this->view->show_detail = True;
+        $info = "Results for SMILES '<b>" . rawurldecode($smiles ? $smiles : $query) . "</b>' ($total):";
+        $this->view->info = $info;
+        $this->view->smiles = $smiles ? $smiles : $query;
+        $this->paginator->total_records($total);
     }
 
     /**
      * Search compounds by method
      * 
-     * @param string $query
+     * @param string $id
      * @param integer $pagination
      * 
      */
-    private function by_method($query, $pagination)
+    private function by_method($id, $pagination)
     {
         $substance_model = new Substances();
 
         $list = array();
         $total = 0;
+
+        $method = new Methods($id);
+
+        if(!$method->id)
+        {
+            $this->alert->warning('Method not found.');
+            $this->redirect('search');
+        }
         
         try 
         {
-            $list = $substance_model->search_by_method($query, $pagination);
-            $total = $substance_model->search_by_method_count($query);
+            $list = $substance_model->search_by_method($id, $pagination);
+            $total = $substance_model->search_by_method_count($id);
         } 
         catch (ErrorUser $ex) 
         {
@@ -263,11 +356,23 @@ class SearchController extends Controller
             $this->redirect('search');
         }
 
-        $this->data['count'] = $total;
-        $this->data['list'] = $list;
-        $this->data['show_detail'] = True;
-        $info = "Results for method '<b>" . rawurldecode($query) . "</b>' ($total):";
-        $this->data['info'] = $info;
+        $this->view->pagination_setting = array
+        (
+            'total_items' => $total,
+            'items_per_page' => 10,
+            'active_page'   => $pagination,
+            'callback' => 'search/method/{pagination}?q=' . $id
+        );
+
+        $this->view->count = $total;
+        $this->view->list = $list;
+        $this->view->show_detail = True;
+        $info = "Results for method '<b>" . Html::anchor(
+            'browse/methods?target=' . $method->id,
+            $method->name,
+            ) . "</b>' ($total):";
+        $this->view->info = $info;
+        $this->paginator->total_records($total);
     }
 
 }

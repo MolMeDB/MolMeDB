@@ -1,65 +1,58 @@
     var btns_add = $('.btn-add');
+    var ketcher = null; 
+
+    function init_ketcher()
+    {
+        if(ketcher)
+        {
+            return;
+        }
+
+        var ketcherFrame = document.getElementById('ketcher');
+
+        if ('contentDocument' in ketcherFrame)
+            ketcher = ketcherFrame.contentWindow.ketcher;
+        else // IE7
+            ketcher = document.frames['ifKetcher'].window.ketcher;
+    }
 
     /**
-     * Callback for adding/removing items to comparator list
+     * Finds molecules by smiles
      */
-    $('.btn-add').each(function(index, obj)
+    $('#search_smiles').on('click', async function(el)
     {
-        // Add all button
-        if(index === 0)
-        {
-            $(obj).click(function()
-            {
-                // Is already in list? Then remove
-                if (this.classList.contains("btn-primary")) 
-                {
-                    this.innerHTML = "Delete list from the comparator";
-                    for (i = 1; i < btns_add.length; i++) 
-                    {
-                        if (btns_add[i].classList.contains("btn-primary"))
-                        {
-                            btns_add[i].click();
-                        }
-                    }
-                } 
-                else // Else add 
-                {
-                    this.innerHTML = "Add list to the comparator";
-                    for (i = 1; i < btns_add.length; i++) 
-                    {
-                        if (btns_add[i].classList.contains("btn-danger"))
-                        {
-                            btns_add[i].click();
-                        }
-                    }
-                }
-                this.classList.toggle("btn-primary");
-                this.classList.toggle("btn-danger");
-            })
-        }
-        else // Add/remove one 
-        {
-            // Set button ID
-            var ID = $(obj).attr('id');
-            $(obj).attr('id', get_search_list_id(ID));
+        init_ketcher();
 
-            // Click callback
-            $(obj).click(function()
-            {
-                var span = this.children[0];
-                var name = span.id;
-
-                if(is_in_comparator(ID))
-                {
-                    remove_from_comparator(ID);
-                }
-                else
-                {
-                    add_to_comparator(ID, name);
-                }
-            })
+        if(!ketcher)
+        {
+            return;
         }
+
+        var smiles = await ketcher.getSmiles();
+
+        if(!smiles)
+        {
+            return; // TODO
+        }
+
+        $('<form method="GET" action="/search/smiles/1"><input name="q" value="' + smiles + '"></form>').appendTo('body').submit();
     });
+
+    $('#insert_structure').on('click', function(e)
+    {
+        init_ketcher();
+
+        let smiles = $('#insert_smiles').val();
+
+        if(!smiles || !ketcher)
+        {
+            return;
+        }
+
+        ketcher.setMolecule(smiles);
+    });
+
+    var loading = false;
 
     /**
      *  Autocomplete callback for search engine form
@@ -69,151 +62,203 @@
      */
     function autocomplete(input, type) 
     {
-        var currentFocus;
-
         if(!input)
         {
             return;
         }
 
+        var val = "";
+        var timeout, timeout_done = false;
+        var pending = false;
+
         /* execute a function when someone writes in the text field: */
-        input.addEventListener("input", function(e) 
+        input.addEventListener("input", async function(e) 
         {
-            var a, b, i, val = this.value;
-            var arr;
+            val = this.value;
+            t = this;
             
-            /*close any already open lists of autocompleted values*/
-            closeAllLists();
-            if (!val || val.length < 3) 
+            if(loading)
             {
+                pending = true;
                 return false;
             }
+            else if(!timeout_done)
+            {
+                // TODO: Show loader
+                closeAllLists();
+                if(timeout)
+                {
+                    window.clearTimeout(timeout);
+                }
+                timeout = window.setTimeout(function() {
+                    timeout_done = false;
+                    whisper(t);
+                }, 500);
+            }
+        });
+
+        async function whisper(input)
+        {
+            pending = false;
+            if (!val || val.length < 3) 
+            {
+                hideLoader();
+                return false;
+            }
+
+            var a, b, i;
+            var arr;
             currentFocus = -1;
             
             /*create a DIV element that will contain the items (values):*/
             a = document.createElement("DIV");
-            a.setAttribute("id", this.id + "autocomplete-list");
+            a.setAttribute("id", input.id + "autocomplete-list");
             a.setAttribute("class", "autocomplete-items");
-           
+            
             /*append the DIV element as a child of the autocomplete container:*/
-            this.parentNode.appendChild(a);
+            input.parentNode.appendChild(a);
+            
+            showLoader(a);
 
-            // Get data
-            var data = ajax_request("searchEngine/search", {
-                q: val,
-                type: type
-            });
-
-            if (!data || data == false) 
-            {
-                return;
-            }
-
-            arr = data;
-
-            // Show MAX 20 items
-            var count;
-            if (arr.length < 21) 
-            {
-                count = arr.length;
-            } 
-            else
-            {
-                count = 20;
-            }
-
-            // For each item, create row
-            for (i = 0; i < count; i++) 
-            {
-                var j = 0;
-                var limit = 0;
-
-                var text = arr[i].name;
-
-                if(arr[i].pattern)
+            // Load data
+            $.ajax({
+                url: '/api/search/all',
+                method: "GET",
+                dataType: "json",
+                headers:{
+                    "Authorization": "Basic " + $('#api_internal_token').val(),
+                    Accept: "application/json"
+                },
+                data: {'type': type, "query": val.trim()},
+                async: true,
+                success: function(data)
                 {
-                    text += arr[i].pattern != '' ? " - [" + arr[i].pattern + "]" : "";
+                    if(pending)
+                    {
+                        whisper(input);
+                        return;
+                    }
+
+                    if (!data || data == false) 
+                    {
+                        hideLoader();
+                        return;
+                    }
+
+                    arr = data;
+
+                    // Show MAX 20 items
+                    var count = arr.length;
+
+                    if(count > 0 && arr[0].identifier)
+                    {
+                        expanded = true;
+                    }
+                    else
+                    {
+                        expanded = false;
+                    }
+
+                    // For each item, create row
+                    for (i = 0; i < count; i++) 
+                    {
+                        var j = 0;
+                        var text = arr[i].name + " [" + arr[i].uniprot_id + "]";
+
+                        if(arr[i].pattern)
+                        {
+                            text += arr[i].pattern != '' ? " - [" + arr[i].pattern + "]" : "";
+                        }
+
+                        /*check if the item starts with the same letters as the text field value:*/
+                        while (!(text.substr(j, val.length).toUpperCase() == val.toUpperCase()) && j < text.length) 
+                        {
+                            j++;
+                        }
+
+                        if(expanded)
+                        {
+
+                            b = $('<div class="autocomplete-item"></div>');
+                            $('<div class="autocomplete-item-content"></div>').append(
+                                $('<div></div>').append(
+                                    $('<div class="autocomplete-item-title"><p>' + arr[i].name + '</p></div>')
+                                ).append(
+                                    $('<table style="width:fit-content;"></table>').append(
+                                        [...$('<tr><th>ID:</th><td>' + arr[i].identifier + '</td></tr>'),
+                                        $('<tr><th>Pubchem ID:</th><td>' + arr[i].pubchem + '</td></tr>'),
+                                        $('<tr><th>Drugbank ID:</th><td>' + arr[i].drugbank + '</td></tr>'),
+                                        $('<tr><th>Chembl ID:</th><td>' + arr[i].chembl + '</td></tr>'),
+                                        arr[i].altername ? $('<tr><th>Alternative name:</th><td>' + arr[i].altername + '</td></tr>') : null,
+                                            $('<tr><th>MW:</th><td>' + arr[i].mw + '</td></tr>'),
+                                            $('<tr><th>InchiKey:</th><td>' + arr[i].inchikey + '</td></tr>')
+                                        ]
+                                    )
+                                )).append(
+                                    $('<div>' + arr[i].img + '</div>')
+                                ).appendTo(b);
+
+                                $('<input type="hidden" value="' + arr[i].identifier + '">').appendTo(b);
+
+                                $(b).on('click', function(e) 
+                                {
+                                    let v = $(this).find('input')[0];
+                                    v = $(v).val();
+
+                                    redirect('mol/' + v);
+                                });
+
+                                $(a).append(b);
+                        }
+                        else
+                        {
+                            /*create a DIV element for each matching element:*/
+                            b = document.createElement("DIV");
+                            /*make the matching letters bold:*/
+                            b.classList.add("autocomplete-item-short")
+                            b.innerHTML = text.substr(0, j);
+                            b.innerHTML += "<strong>" + text.substr(j, val.length) + "</strong>";
+                            b.innerHTML += text.substr(val.length + j);
+                            b.innerHTML += "<input type='hidden' value='" + arr[i].name + "'>";
+                            /*execute a function when someone clicks on the item value (DIV element):*/
+                            b.addEventListener("click", function(e) 
+                            {
+                                /*insert the value for the autocomplete text field:*/
+                                let val = this.getElementsByTagName("input")[0].value;
+                                // Send form
+                                $('<form method="GET" action="/search/' + type + '/1"></form>').append(
+                                    $('<input type="hidden" name="q" value="' + val + '">')
+                                ).appendTo('body').submit();
+                            });
+                            a.appendChild(b);
+                        }
+                    }
+
+                    let btn = $('<button type="submit" class="btn btn-warning">Show more...</button>');
+
+                    // Show more button
+                    let form = $('<div class="autocomplete-show-all"></div>').append(
+                        $('<form action="/search/' + type + '/1" method="GET">').append(
+                            $('<input type="hidden" value="' + val + '" name="q">')
+                        ).append(
+                            btn
+                        )
+                    );
+
+                    $(form).appendTo(a);
+                    hideLoader();
+                },
+                error: function(){
+                    if(pending)
+                    {
+                        whisper(input);
+                        return;
+                    }
+                    hideLoader();
                 }
+            })
+        }
 
-                /*check if the item starts with the same letters as the text field value:*/
-                while (!(text.substr(j, val.length).toUpperCase() == val.toUpperCase()) && j < text.length) 
-                {
-                    j++;
-                }
-
-                /*create a DIV element for each matching element:*/
-                b = document.createElement("DIV");
-                /*make the matching letters bold:*/
-                b.innerHTML = text.substr(0, j);
-                b.innerHTML += "<strong>" + text.substr(j, val.length) + "</strong>";
-                b.innerHTML += text.substr(val.length + j);
-                /*insert a input field that will hold the current array item's value:*/
-                b.innerHTML += "<input type='hidden' value='" + arr[i].name + "'>";
-                /*execute a function when someone clicks on the item value (DIV element):*/
-                b.addEventListener("click", function(e) 
-                {
-                    /*insert the value for the autocomplete text field:*/
-                    input.value = this.getElementsByTagName("input")[0].value;
-                    /*close the list of autocompleted values,
-                    (or any other open lists of autocompleted values:*/
-                    closeAllLists();
-                });
-                a.appendChild(b);
-            }
-        });
-        /*execute a function presses a key on the keyboard:*/
-        input.addEventListener("keydown", function(e) 
-        {
-            var x = document.getElementById(this.id + "autocomplete-list");
-            if (x) x = x.getElementsByTagName("div");
-            if (e.keyCode == 40) 
-            {
-                /*If the arrow DOWN key is pressed,
-                increase the currentFocus variable:*/
-                currentFocus++;
-                /*and and make the current item more visible:*/
-                addActive(x);
-            } 
-            else if (e.keyCode == 38) 
-            { //up
-                /*If the arrow UP key is pressed,
-                decrease the currentFocus variable:*/
-                currentFocus--;
-                /*and and make the current item more visible:*/
-                addActive(x);
-            } 
-            else if (e.keyCode == 13) 
-            {
-                /*If the ENTER key is pressed, prevent the form from being submitted,*/
-                //        e.preventDefault();
-                if (currentFocus > -1) 
-                {
-                    /*and simulate a click on the "active" item:*/
-                    if (x) x[currentFocus].click();
-                }
-            }
-      });
-
-      function addActive(x) 
-      {
-            /*a function to classify an item as "active":*/
-            if (!x) return false;
-            /*start by removing the "active" class on all items:*/
-            removeActive(x);
-            if (currentFocus >= x.length) currentFocus = 0;
-            if (currentFocus < 0) currentFocus = (x.length - 1);
-            /*add class "autocomplete-active":*/
-            x[currentFocus].classList.add("autocomplete-active");
-      }
-
-      function removeActive(x) 
-      {
-            /*a function to remove the "active" class from all autocomplete items:*/
-            for (var i = 0; i < x.length; i++) 
-            {
-                x[i].classList.remove("autocomplete-active");
-            }
-      }
 
       function closeAllLists(elmnt) 
       {
@@ -229,17 +274,43 @@
             }
       }
 
+      function showLoader(target)
+        {
+            hideLoader();
+            loading = true;
+            var el = $('<div id="se-loader"><div style="display:flex; flex-direction:row; justify-content:center; align-items:center; height:150px; width:100%;">' +
+            '<div style="display:flex; flex-direction: column;">' +
+                '<div class="ripple-loader">' +
+                '<div></div>' +
+                '<div></div>' +
+                '</div>' +
+                '<div style="color: grey;">' +
+                'Searching...' +
+                '</div>' +
+            '</div>' +
+            '</div>' +
+        '</div>')
+
+        $(target).append(el);
+        }
+
+        function hideLoader()
+        {
+            $('#se-loader').remove();
+            loading = false;
+        }
+
       /*execute a function when someone clicks in the document:*/
       document.addEventListener("click", function(e) 
       {
-          closeAllLists(e.target);
+            if(e.target.classList.contains("btn-warning"))
+            {
+                return;
+            }
+            closeAllLists(e.target);
       });
     }
 
     // Add autocomplete listeners
-    autocomplete(document.getElementById("compoundSearch"), "compounds");
-    autocomplete(document.getElementById("smilesSearch"), "smiles");
-    autocomplete(document.getElementById("membraneSearch"), "membranes");
-    autocomplete(document.getElementById("methodSearch"), "methods");
+    autocomplete(document.getElementById("compoundSearch"), "compound");
     autocomplete(document.getElementById("transporterSearch"), "transporter");
-    autocomplete(document.getElementById("uniprotSearch"), "uniprot");

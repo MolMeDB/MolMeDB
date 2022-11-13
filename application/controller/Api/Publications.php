@@ -2,27 +2,29 @@
 
 class ApiPublications extends ApiController
 {   
-    /**
-     * Constructor
-     */
-    function __construct()
-    {
-        
-    }
 
     /**
-     * Returns publictaion detail
+     * Returns publication detail
      * 
      * @GET
-     * @param id
+     * 
+     * @param $id
+     * @param $doi
+     * 
+     * @Path(/detail)
      */
-    public function get($id)
+    public function detail($id, $doi)
     {
         $ref = new Publications($id);
 
         if(!$ref->id)
         {
-            $this->answer(array(), self::CODE_OK_NO_CONTENT);
+            $ref = $ref->where('doi', $doi ? $doi : "NONSENSE!@#")->get_one();
+
+            if(!$ref->id)
+            {
+                ResponseBuilder::not_found('Publication info not found.');
+            }
         }
 
         $result = array
@@ -42,13 +44,15 @@ class ApiPublications extends ApiController
             'created'   => $ref->createDateTime
         );
 
-        $this->answer($result);
+        return $result;
     }
 
     /**
-     * Gets all publications
+     * Returns all publications
      * 
      * @GET
+     * 
+     * @Path(/all)
      */
     public function getAll()
     {
@@ -56,23 +60,26 @@ class ApiPublications extends ApiController
         
         $data = $publ_model->order_by("citation")->get_all();
         
-        $this->answer($data->as_array(NULL, FALSE));
+        return $data;
     }
 
     /**
-     * Gets publication detail by DOI from remote server
+     * Gets publication detail by param from remote server
      * 
      * @GET
-     * @param doi 
      * 
+     * @param $doi
+     * @param @DEFAULT[FALSE] $all - Return all results?
+     * 
+     * @Path(/find/remote)
      */
-    public function get_by_doi($doi)
+    public function get_by_doi($doi, $all)
     {
         $PMC = new EuropePMC();
 
         if(!$PMC->is_connected())
         {
-            $this->answer(NULL, self::CODE_FORBIDDEN);
+            ResponseBuilder::server_error('Cannot establish a connection to the EuropePMC server.');
         }
 
         $publ = $PMC->search($doi);
@@ -80,10 +87,15 @@ class ApiPublications extends ApiController
         // Should contains max one result
         if(!isset($publ[0]))
         {
-            $this->answer(NULL, self::CODE_OK_NO_CONTENT);
+            ResponseBuilder::ok_no_content();
         }
 
-        $this->answer($publ[0]);
+        if($all)
+        {
+            return $publ;
+        }
+
+        return $publ[0];
     }
     
 }

@@ -2,298 +2,200 @@
 
 /**
  * API controller
+ * 
+ * Usage:
+ * Api endpoints must be defined in corresponding files in ./Api/ folder.
+ * For defining of the new endpoint, create class method and define following 
+ * params in method documentation:
+ *  - @[METHOD] - required param specifiing HTTP METHOD, e.g. @POST/@GET
+ *  - @path([PATH]) - required param specifying uri of defined endpoint, e.g. @Path(/get/byId)
+ *  - @param [OPTIONS] $[NAME] - optional param specifying parameter given by client for method execution
+ *      - can be included multiple times (once for each parameter)
+ *      - $[NAME] - name has to correspond to exactly one method parameter name
+ *      - OPTIONS:
+ *          - @required - specifies, that parameter has to be passed by client side
+ *          - @default[VALUE] - specifies default value of given param
+ *              - if DEFAULT is set, REQUIRED is ignored
+ *              - VALUE must match following regexp [0-9,a-z,_,\,]+
+ *              - if multiple values required, use "," char as sepearator
  */
 class ApiController extends Controller 
 {
     /** Class variables */
-    private $endpoint;
-    private $function;
     protected $user;
     protected $request_method;
+    public $parsed_request;
+    protected $api_endpoint;
+    private $encoded_response;
 
-    /** RESPONSE CODES */
-    const CODE_OK = 200;
-    const CODE_OK_NO_CONTENT = 204;
-    const CODE_BAD_REQUEST = 400;
-    const CODE_UNAUTHORIZED = 401;
-    const CODE_FORBIDDEN = 403;
-    const CODE_NOT_FOUND = 404;
+    private $headers = [];
 
-    /** API ENDPOINTS */
-    const COMPARATOR = 'comparator';
-    const DETAIL = 'detail';
-    const EDITOR = 'editor';
-    const INTERACTIONS = 'interactions';
-    const MEMBRANES = 'membranes';
-    const METHODS   = 'methods';
-    const PUBLICATION = 'publications';
-    const S_ENGINE = 'searchEngine';
-    const SMILES = 'smiles';
-    const SETTINGS = 'settings';
-    const STATS = 'stats';
-    const UPLOADER = 'uploader';
-
-    // Valid endpoints
-    private $valid_endpoints = array
-    (
-        self::COMPARATOR,
-        self::DETAIL,
-        self::EDITOR,
-        self::INTERACTIONS,
-        self::MEMBRANES,
-        self::METHODS,
-        self::S_ENGINE,
-        self::SETTINGS,
-        self::SMILES,
-        self::STATS,
-        self::PUBLICATION,
-        self::UPLOADER,
-    );
-
-    /** REQUEST METHODS */
-    const METHOD_POST = 'POST';
-    const METHOD_GET = 'GET';
-
-    /** Now allowed just GET/POST requests */
-    private $valid_request_methods = array
-    (
-        self::METHOD_GET,
-        self::METHOD_POST
-    );
+    /** Holds different return type data */
+    public $responses = [];
 
     /**
      * Main constructor
      */
-    function __construct($endPoint = NULL, $function = NULL)
+    function __construct($requested_endpoint = NULL)
     {
         parent::__construct();
-        
-        // If not valid entry
-        if(!$endPoint || !$function)
-        {
-            $this->answer(NULL, self::CODE_NOT_FOUND);
-        }
-
-        // Is endpoint valid?
-        if(!in_array($endPoint, $this->valid_endpoints))
-        {
-            $this->answer(NULL, self::CODE_NOT_FOUND);
-        }
-
-        // Get request method
-        $this->request_method = $_SERVER['REQUEST_METHOD'];
-
-        // Is request method valid?
-        if(!in_array($this->request_method, $this->valid_request_methods))
-        {
-            $this->answer(NULL, self::CODE_BAD_REQUEST);
-        }
-
-        $this->endpoint = $endPoint;
-        $this->function = $function;
-    }
-
-    /**
-     * Return server answer to request
-     * 
-     * @param string $message
-     * @param integer $code
-     * 
-     */
-    protected function answer($message, $code = self::CODE_OK)
-    {
-        if((!$message || $message == '') && $code == self::CODE_OK)
-        {
-            $code = self::CODE_OK_NO_CONTENT;
-        }
-
-        http_response_code($code);
-        header('Content-Type: application/json');
-
-        if($message || is_array($message))
-        {
-            echo(json_encode($message));
-        }
-        else
-        {
-            echo($code);
-        }
-        die;
-    }
-
-    /**
-     * Sends BAD REQUEST shortcut
-     */
-    protected function bad_request()
-    {
-        return $this->answer(NULL, SELF::CODE_BAD_REQUEST);
+        //Parsing request header
+        $this->parsed_request = new HeaderParser($requested_endpoint);
     }
 
     /**
      * Main function for processing request
      */
-    public function parse() 
+    public function index() 
     {   
         try
         {
-            $file = ucwords($this->endpoint);
-            $className = "Api" . $file;
-            $func = $this->function;
+            $this->api_endpoint = new ApiEndpoint($this->parsed_request);
 
-            if(file_exists(APP_ROOT . 'controller/Api/' . $file . '.php'))
+            //Calling parsed endpoint and its params
+            $res = $this->api_endpoint->call();
+
+            if($res)
             {
-                $class = new $className();
-
-                if(!method_exists($class, $func))
-                {
-                    throw new Exception();
-                }
-
-                // Get function setting and get required params
-                $params = $this->check_validity_endpoint($className, $func);
-
-                $class->$func(...$params);
+                $this->responses = ['default' => $res];
             }
             else
             {
-                $this->answer(NULL, self::CODE_NOT_FOUND);
+                $this->responses = $this->api_endpoint->responses();
+            }
+
+            //No content was found
+            if(empty($this->responses))
+            {
+                ResponseBuilder::ok_no_content();
+            }
+
+            $this->create_response();
+
+            if($this->encoded_response === null)
+            {
+                ResponseBuilder::ok_no_content();
             }
         }
-        catch(Exception $ex)
+        catch(MmdbException $ex)
         {
-            $this->answer($ex->getMessage(), self::CODE_NOT_FOUND);
+            ResponseBuilder::server_error($ex);
         }
+        catch(Exception $e)
+        {
+            ResponseBuilder::server_error(new ApiException($e->getMessage(), '500 SERVER ERROR', $e->getCode(), $e));
+        }
+             
+        ResponseBuilder::ok($this->encoded_response, $this->headers);
     }
     
+
     /**
-     * Checks if request if valid 
-     * by given method params
-     * 
-     * @param string $class_name
-     * @param string $function
-     * 
-     * @throws Exception
+    * Method for creating HTTP response  
+    * 
+    * @author Jakub Juracka
+    *
+    * @throws ApiException 
+    */
+    protected function create_response()
+    {
+        foreach ($this->parsed_request->accept_type as $at_item) 
+        {
+            if(array_key_exists($at_item, HeaderParser::$accept_type_method))
+            {
+                try
+                {
+                    $to_encode = isset($this->responses[$at_item]) ? $this->responses[$at_item] : (isset($this->responses['default']) ? $this->responses['default'] : null);
+
+                    if(!$to_encode)
+                    {
+                        continue;
+                    }
+
+                    $response_method = HeaderParser::$accept_type_method[$at_item];
+                    $response_encoded = $response_method($to_encode);
+
+                    if($response_encoded !== false)
+                    {
+                        $this->encoded_response = $response_encoded;
+                        $this->headers[] = 'Content-Type: '.$at_item;
+                        return;
+                    }
+                }
+                catch(Exception $e)
+                {
+                    continue;
+                }
+            }
+        }
+
+        // If no response
+        if(in_array(HeaderParser::ALL_TYPES, $this->parsed_request->accept_type))
+        {
+            // Try all
+            foreach(HeaderParser::$accept_type_method as $type => $method)
+            {
+                try
+                {
+                    $to_encode = isset($this->responses[$type]) ? $this->responses[$type] : (isset($this->responses['default']) ? $this->responses['default'] : null);
+
+                    if(!$to_encode)
+                    {
+                        continue;
+                    }
+
+                    $response_encoded = $method($to_encode);
+
+                    if($response_encoded !== false)
+                    {
+                        $this->encoded_response = $response_encoded;
+                        $this->headers[] = 'Content-Type: '. $type;
+                        return;
+                    }
+                }
+                catch(Exception $e)
+                {
+                    continue;
+                }
+            }
+        }
+
+        throw new ApiException("Cannot encode output to the required format. Please, try to expand your `Accept` request header options.");
+    }
+
+    /**
+     * Returns list of requested accept types called by user
+     *
      * @return array
      */
-    private function check_validity_endpoint($class_name, $function)
+    public function get_accept_list()
     {
-        $rf_method = new ReflectionMethod($class_name, $function);
-
-        // Split by "*" char
-        $rf = array_map('trim', explode('*', $rf_method->getDocComment()));
-        // Filter comments
-        $rf = array_filter($rf, array($this, 'filter_comments'));
-
-        $required_method = NULL;
-
-        // Get required method
-        foreach($this->valid_request_methods as $method)
-        {
-            foreach($rf as $key => $row)
-            {
-                if ($row == "@$method") 
-                {
-                    $required_method = $method;
-                    unset($rf[$key]);
-                    break;
-                }
-            }
-        }
-
-        if(!$required_method || $required_method != $this->request_method)
-        {
-            throw new Exception();
-        }
-
-        $remote_params = array();
-
-        if($required_method === self::METHOD_GET)
-        {
-            $remote_params = $_GET;
-        }
-        else if($required_method === self::METHOD_POST)
-        {
-            $remote_params = $_POST;
-        }
-
-        $params = array();
-
-        // Get required params
-        foreach($rf as $row)
-        {
-            if(substr($row, 0, 6) != '@param')
-            {
-                continue;
-            }
-
-            $key = explode(" ", trim(str_replace('@param', '', $row)))[0];
-
-            if(!isset($remote_params[$key]))
-            {
-                $value = NULL;
-            }
-            else
-            {
-                $value = $this->remove_empty_values($remote_params[$key]);
-            }
-
-            $params[] = $value;
-        }
-
-        return $params;
+        return $this->parsed_request->accept_type;
     }
-
 
     /**
-     * Callback function for filtering comments
-     * 
-     * @param string $string
-     * 
-     * @return boolean
+     * Returns preffered return type from given allow list
+     *
+     * @param array $options
+     *
+     * @return int|null
      */
-    private function filter_comments($string)
+    public function get_preffered_accept_from_list($options)
     {
-        $string = trim($string);
-
-        if(substr($string, 0, 1) === '@')
+        foreach($this->parsed_request->accept_type as $at)
         {
-            return True;
-        }
-
-        return False;
-    }
-    
-    
-    protected function remove_empty_values($arr = array(), $recursive = false)
-    {
-        if(!is_array($arr))
-        {
-            if(!strval($arr) !== "0" && !$arr)
+            if(in_array($at, $options))
             {
-                return NULL;
-            }
-            else
-            {
-                return $arr;
+                return $at;
             }
         }
 
-        for($i = 0; $i < count($arr); $i++)
+        if(in_array(HeaderParser::ALL_TYPES, $this->parsed_request->accept_type) &&
+            count($options))
         {
-            if($recursive && is_array($arr[$i]))
-            {
-                $arr[$i] = self::remove_empty_values($arr[$i]);
-            }
-            
-            $arr[$i] = trim($arr[$i]);
-            
-            if($arr[$i] === '' || $arr[$i] === NULL)
-            {
-                unset($arr[$i]);
-            }
+            return $options[0];
         }
         
-        return $arr;
+        return null;
     }
-    
 }

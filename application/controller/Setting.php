@@ -24,9 +24,6 @@ class SettingController extends Controller
      */
     public function system()
     {
-        // Email setting forge
-        $email_templ_model = new Email_template();
-
         $forge = new Forge('Email');
 
         $forge->add('email_enabled')
@@ -56,6 +53,7 @@ class SettingController extends Controller
             ->value($this->config->get(Configs::EMAIL_SMTP_USERNAME));
 
         $forge->add('smpt_password')
+            ->type("password")
             ->title('SMTP password')
             ->value($this->config->get(Configs::EMAIL_SMTP_PASSWORD));
 
@@ -141,7 +139,7 @@ class SettingController extends Controller
 
                         if($forge->has_error())
                         {
-                            throw new Exception();
+                            throw new MmdbException();
                         }
                     }
 
@@ -162,7 +160,7 @@ class SettingController extends Controller
                         if(trim($this->form->param->test_email_address) === '' || !Email::check_email_validity($this->form->param->test_email_address))
                         {
                             $forge->error('test_email_address', 'Invalid email form.');
-                            throw new Exception();
+                            throw new MmdbException();
                         }
 
                         $email = new Email();
@@ -177,26 +175,27 @@ class SettingController extends Controller
                     }
                 }
 
-                $this->addMessageSuccess('Settings was successfully updated.');
+                $this->alert->success('Settings was successfully updated.');
                 $this->redirect('setting/system');
             }
-            catch (Exception $e)
+            catch (MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->alert->error($e);
             }
         }
 
-        $this->data['email_forge'] = $forge->form();
-        $this->data['rdkit'] = isset($_POST[Configs::RDKIT_URI]) ? $_POST[Configs::RDKIT_URI] : $this->config->get(Configs::RDKIT_URI);
-        $this->data['europePMC'] = isset($_POST[Configs::EUROPEPMC_URI]) ? $_POST[Configs::EUROPEPMC_URI] : $this->config->get(Configs::EUROPEPMC_URI);
-        $this->data['drugbank_pattern'] = isset($_POST[Configs::DB_DRUGBANK_PATTERN]) ? $_POST[Configs::DB_DRUGBANK_PATTERN] : $this->config->get(Configs::DB_DRUGBANK_PATTERN);
-        $this->data['pdb_pattern'] = isset($_POST[Configs::DB_PDB_PATTERN]) ? $_POST[Configs::DB_PDB_PATTERN] : $this->config->get(Configs::DB_PDB_PATTERN);
-        $this->data['pubchem_pattern'] = isset($_POST[Configs::DB_PUBCHEM_PATTERN]) ? $_POST[Configs::DB_PUBCHEM_PATTERN] : $this->config->get(Configs::DB_PUBCHEM_PATTERN);
-        $this->data['chembl_pattern'] = isset($_POST[Configs::DB_CHEMBL_PATTERN]) ? $_POST[Configs::DB_CHEMBL_PATTERN] : $this->config->get(Configs::DB_CHEMBL_PATTERN);
-        $this->data['chebi_pattern'] = isset($_POST[Configs::DB_CHEBI_PATTERN]) ? $_POST[Configs::DB_CHEBI_PATTERN] : $this->config->get(Configs::DB_CHEBI_PATTERN);
-        $this->data['navigator'] = self::createNavigator(self::MENU_SYSTEM);
-        $this->header['title'] = 'Settings';
-        $this->view = 'settings/system';
+        $this->title = 'Settings';
+
+        $this->view = new View('settings/system');
+        $this->view->email_forge = $forge->form();
+        $this->view->rdkit = isset($_POST[Configs::RDKIT_URI]) ? $_POST[Configs::RDKIT_URI] : $this->config->get(Configs::RDKIT_URI);
+        $this->view->europePMC = isset($_POST[Configs::EUROPEPMC_URI]) ? $_POST[Configs::EUROPEPMC_URI] : $this->config->get(Configs::EUROPEPMC_URI);
+        $this->view->drugbank_pattern = isset($_POST[Configs::DB_DRUGBANK_PATTERN]) ? $_POST[Configs::DB_DRUGBANK_PATTERN] : $this->config->get(Configs::DB_DRUGBANK_PATTERN);
+        $this->view->pdb_pattern = isset($_POST[Configs::DB_PDB_PATTERN]) ? $_POST[Configs::DB_PDB_PATTERN] : $this->config->get(Configs::DB_PDB_PATTERN);
+        $this->view->pubchem_pattern = isset($_POST[Configs::DB_PUBCHEM_PATTERN]) ? $_POST[Configs::DB_PUBCHEM_PATTERN] : $this->config->get(Configs::DB_PUBCHEM_PATTERN);
+        $this->view->chembl_pattern = isset($_POST[Configs::DB_CHEMBL_PATTERN]) ? $_POST[Configs::DB_CHEMBL_PATTERN] : $this->config->get(Configs::DB_CHEMBL_PATTERN);
+        $this->view->chebi_pattern = isset($_POST[Configs::DB_CHEBI_PATTERN]) ? $_POST[Configs::DB_CHEBI_PATTERN] : $this->config->get(Configs::DB_CHEBI_PATTERN);
+        $this->view->navigator = self::createNavigator(self::MENU_SYSTEM);
     }
 
     /**
@@ -216,7 +215,6 @@ class SettingController extends Controller
             Configs::S_UPDATE_STATS,
             Configs::S_CHECK_PUBLICATIONS,
             Configs::S_CHECK_MEMBRANES_METHODS,
-            Configs::S_CHECK_REVALIDATE_3D_STRUCTURES
         );
 
         $forge = new Forge('Settings');
@@ -234,7 +232,7 @@ class SettingController extends Controller
             ->checked($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES));
 
         $forge->add(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME));
 
         $forge->add(Configs::S_VALIDATE_PASSIVE_INT)
@@ -244,17 +242,18 @@ class SettingController extends Controller
             ->checked($this->config->get(Configs::S_VALIDATE_PASSIVE_INT));
 
         $forge->add(Configs::S_VALIDATE_PASSIVE_INT_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME));
 
         $forge->add(Configs::S_VALIDATE_ACTIVE_INT)
             ->title('Autovalidate active interactions')
             ->type('checkbox')
+            ->disabled()
             ->value(1)
             ->checked($this->config->get(Configs::S_VALIDATE_ACTIVE_INT));
 
         $forge->add(Configs::S_VALIDATE_ACTIVE_INT_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME));
 
         $forge->add(Configs::S_VALIDATE_SUBSTANCES)
@@ -263,10 +262,6 @@ class SettingController extends Controller
             ->value(1)
             ->checked($this->config->get(Configs::S_VALIDATE_SUBSTANCES));
 
-        $forge->add(Configs::S_VALIDATE_SUBSTANCES_TIME)
-            ->title('Runtime')
-            ->value($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME));
-
         $forge->add(Configs::S_UPDATE_STATS)
             ->title('Update statistics')
             ->type('checkbox')
@@ -274,8 +269,9 @@ class SettingController extends Controller
             ->checked($this->config->get(Configs::S_UPDATE_STATS));
 
         $forge->add(Configs::S_UPDATE_STATS_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_UPDATE_STATS_TIME));
+
 
         $forge->add(Configs::S_CHECK_PUBLICATIONS)
             ->title('Validate publications')
@@ -284,28 +280,48 @@ class SettingController extends Controller
             ->checked($this->config->get(Configs::S_CHECK_PUBLICATIONS));
 
         $forge->add(Configs::S_CHECK_PUBLICATIONS_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME));
 
-        $forge->add(Configs::S_CHECK_MEMBRANES_METHODS)
-            ->title('Validate membranes/methods')
+
+        $forge->add(Configs::S_FRAGMENT_MOLECULES)
+            ->title('Molecule fragmentation')
             ->type('checkbox')
             ->value(1)
-            ->checked($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS));
+            ->checked($this->config->get(Configs::S_FRAGMENT_MOLECULES));
 
-        $forge->add(Configs::S_CHECK_MEMBRANES_METHODS_TIME)
-            ->title('Runtime')
-            ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME));
 
-        $forge->add(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES)
-            ->title('Revalidate 3D structures')
+        $forge->add(Configs::S_MATCH_FUNCT_PAIRS)
+            ->title('Match functional pairs')
             ->type('checkbox')
             ->value(1)
-            ->checked($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES));
+            ->checked($this->config->get(Configs::S_MATCH_FUNCT_PAIRS));
+            
 
-        $forge->add(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID)
-            ->title('Starting ID for the next validation')
-            ->value($this->config->get(Configs::S_CHECK_REVALIDATE_3D_STRUCTURES_LAST_ID));
+        $forge->add(Configs::S_UPDATE_PAIR_GROUPS)
+            ->title('Update functional pair groups')
+            ->type('checkbox')
+            ->value(1)
+            ->checked($this->config->get(Configs::S_UPDATE_PAIR_GROUPS));
+    
+        $forge->add(Configs::S_UPDATE_PAIR_GROUPS_TIME)
+            ->title('Update groups start time')
+            ->value($this->config->get(Configs::S_UPDATE_PAIR_GROUPS_TIME));
+    
+        $forge->add(Configs::S_UPDATE_PAIR_GROUPS_STATS_TIME)
+            ->title('Update stats start time')
+            ->value($this->config->get(Configs::S_UPDATE_PAIR_GROUPS_STATS_TIME));
+
+
+        // $forge->add(Configs::S_CHECK_MEMBRANES_METHODS)
+        //     ->title('Validate membranes/methods')
+        //     ->type('checkbox')
+        //     ->value(1)
+        //     ->checked($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS));
+
+        // $forge->add(Configs::S_CHECK_MEMBRANES_METHODS_TIME)
+        //     ->title('Runtime')
+        //     ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME));
 
         $forge->submit('Save');
 
@@ -326,18 +342,19 @@ class SettingController extends Controller
                 }
 
                 $this->alert->success('Saved.');
+                $this->redirect('setting/scheduler');
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                $this->alert->error($e->getMessage());
+                $this->alert->error($e);
             }
         }
+        
+        $this->title = 'Scheduler';
 
-        $this->data['forge'] = $forge->form();
-
-        $this->data['navigator'] = self::createNavigator(self::MENU_SCHEDULER);
-        $this->header['title'] = 'Scheduler';
-        $this->view = 'settings/scheduler';
+        $this->view = new View('settings/scheduler');
+        $this->view->forge = $forge->form();
+        $this->view->navigator = self::createNavigator(self::MENU_SCHEDULER);
     }
 
     /**
@@ -348,13 +365,13 @@ class SettingController extends Controller
     public function enum_types()
     {
         $enum_type_model = new Enum_types();
+        
+        $this->title = 'Settings';
 
-        $this->data['enum_types'] = self::generate_tree($enum_type_model->get_structure());
-        $this->data['items'] = self::get_free_items();
-
-        $this->data['navigator'] = self::createNavigator(self::MENU_ENUM_TYPES);
-        $this->header['title'] = 'Settings';
-        $this->view = 'settings/enum_types';
+        $this->view = new View('settings/enum_types');
+        $this->view->enum_types = self::generate_tree($enum_type_model->get_structure());
+        $this->view->items = self::get_free_items();
+        $this->view->navigator = self::createNavigator(self::MENU_ENUM_TYPES);
     }
 
     /**
@@ -520,7 +537,7 @@ class SettingController extends Controller
     {
         if(!Enum_types::is_type_valid($type))
         {
-            $this->alert->error('Invalid type.');
+            $this->alert->error('Invalid category type.');
             $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         } 
 
@@ -550,7 +567,7 @@ class SettingController extends Controller
 
             if(!count($unlinked))
             {
-                throw new Exception('Nothing to link.');
+                throw new MmdbException('', 'Nothing to link.');
             }
 
             $total_linked = 0;
@@ -602,7 +619,7 @@ class SettingController extends Controller
             $this->alert->success('Total ' . $total_linked . ' items were linked.');
             $etl->commitTransaction();
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $etl->rollbackTransaction();
@@ -717,7 +734,7 @@ class SettingController extends Controller
             $enum_type->commitTransaction();
             $this->alert->success('New enum type added.');
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $enum_type->rollbackTransaction();
@@ -779,7 +796,7 @@ class SettingController extends Controller
 
                 if(count($exists))
                 {
-                    throw new Exception('Category with given name already exists on this level.');
+                    throw new MmdbException('Category with given name already exists on this level.');
                 }
 
                 $link->id_enum_type = $type->id;
@@ -795,7 +812,7 @@ class SettingController extends Controller
             $enum_type->commitTransaction();
             $this->alert->success('Enum type edited.');
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $enum_type->rollbackTransaction();
@@ -845,7 +862,7 @@ class SettingController extends Controller
             $link->commitTransaction();
             $this->alert->success('Regexp edited.');
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $link->rollbackTransaction();
@@ -939,7 +956,7 @@ class SettingController extends Controller
             $enum_type->commitTransaction();
             $this->alert->success('Enum type removed.');
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
             $this->alert->error($e);
             $enum_type->rollbackTransaction();

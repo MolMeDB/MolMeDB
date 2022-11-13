@@ -1,0 +1,23 @@
+<head>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="theme-color" content="#000000"/>
+    <link rel="manifest" href="/application/view/ketcher/manifest.json"/>
+    <script defer="defer" src="/application/view/ketcher/static/js/main.0e2a9772.js">
+    </script><link href="/application/view/ketcher/static/css/main.cc00f2b4.css" rel="stylesheet">
+    <script src="/media/js/jquery-3.2.1.js"></script>
+</head>
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="ketcher-root">
+        <test></test>
+    </div>
+</body>
+</html>
+
+<script>
+    $('#ketcher-root').on('DOMNodeInserted', function(e){
+        $(e.currentTarget).find('button:not([type])').attr('type', 'button');
+    });
+</script>
+
+<!-- $('button:not([type])').attr('type', 'button'); -->

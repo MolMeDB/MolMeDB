@@ -1,7 +1,29 @@
+iframe.full, iframe.full > * {
+    overflow: hidden;
+    width: inherit;
+    height: inherit;
+}
+
 .sidenav {
     background-color: #d9edf7;
     height: 250px;
-    
+}
+
+.full{
+    width: inherit;
+    height: inherit;
+}
+
+a[target="_blank"]::after {
+    content: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAQElEQVR42qXKwQkAIAxDUUdxtO6/RBQkQZvSi8I/pL4BoGw/XPkh4XigPmsUgh0626AjRsgxHTkUThsG2T/sIlzdTsp52kSS1wAAAABJRU5ErkJggg==);
+    margin: 0 3px 0 5px;
+  }
+
+button.btn a, button.btn a:link, button.btn a:hover, button.btn a:visited, button.btn a:focus, button.btn a:active {
+    text-decoration: none !important;
+    color: inherit !important;
+    outline: 0 !important;
+    cursor: inherit !important;
 }
 
 #chart_detail{
@@ -71,10 +93,6 @@ a.home-button{
     position:  initial;
     display: inline-block;
     margin-left: -20px;
-}
-
-label.units{
-    font-size: 11px;
 }
 
 a.home-button:hover{
@@ -218,9 +236,9 @@ li.detail-section-active{color:black;}
     display: inherit;
 }
 
-.detail-content table{
+/* .detail-content table{
     font-size: 13px;
-}
+} */
 
 .browse-content{
     height: auto;
@@ -281,7 +299,7 @@ div.detail-content{
     border-left: 2px solid #4a82da;
     padding-left: 20px;
     padding-top: 15px;
-    overflow: auto;
+    overflow: none;
     width: 100%;
 }
 
@@ -299,9 +317,9 @@ table.browse-table{margin-bottom: 20px; margin-top: 10px; margin-left: 8px; disp
     padding: 0 20px;
 }
 
-div.table-detail tr>td {
+/* div.table-detail tr>td {
     border: 1px solid black;
-}
+} */
 
 .free-energy-container{
     width: 100%;
@@ -313,11 +331,11 @@ div.table-detail tr>td {
     width: 45%;
 }
 
-div.table-detail td {
+/* div.table-detail td {
     text-align: center;
     padding: 10px 5px 0px 5px;
     min-width: 50px;
-}
+} */
 
 .thead-detail{
     border: 1px solid darkblue;
@@ -454,6 +472,135 @@ div.heading{
     padding-bottom: 11px;
 }
 
+.similar-entry-record{
+    display: flex;
+    flex-direction: column;
+    padding: 5px 10px;
+    align-items: center;
+    border: 1px solid #aaa;
+    border-radius: 10px;
+    margin-right: 10px;
+}
+
+.similar-entry-record:hover
+{
+    border: 1px solid #4a82da;
+}
+
+.similar-entry-record:hover .similar-entry-name
+{
+    color: #4a82da;
+}
+
+.similar-entry-structure{
+    width: 160px;
+    height: 140px;
+    padding: 5px;
+    border-bottom: 0.5px solid black;
+}
+
+.similar-entry-structure:hover{
+    cursor: pointer;
+}
+
+.similar-entry-structure img{
+    height: 130px;
+    width: 150px;
+}
+
+.similar-entry-name{
+    margin: 6px 0;
+    font-weight: bold;
+    color: #666;
+    max-width: 160px;
+}
+
+.similar-entry-similarity{
+    font-size: 11px;
+}
+
+.similar-entry-data{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+}
+
+.similar-entry-data > table{
+    font-size: 11px;
+}
+
+.similar-entry-data > table span.glyphicon{
+    font-size: 10px;
+    color:green;
+}
+
+.similarity-popup-content{
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.similarity-popup-content .title{
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.similarity-popup-content table td{
+    color: chartreuse;
+}
+
+.similarity-popup-content table th{
+    padding-right: 5px;
+}
+
+.similarity-popup-content table div.ellipsis{
+    max-width: 150px;
+}
+
+.anchor-no-effect
+{
+    text-decoration: none !important;
+    color: inherit !important;
+}
+
+.ellipsis{
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.similar-entry-data > table th
+{
+    font-weight: bold;
+    padding: 1px 3px;
+}
+
+.similar-entry-data > table td
+{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    padding: 1px 0;
+    align-items: center;
+}
+
+.similar-entry-data > table *[title]
+{
+    cursor: help;
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+}
+
+
+.similar-entry-data > table td > div:nth-child(2)
+{
+    font-size: 10px;
+    margin-left: 2px;
+    color: red;
+}
+
 #lineChart{
     height: 550px; 
     width: 100%;
@@ -519,7 +666,7 @@ div.panelDetail {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.2s ease-out;
-    
+    padding-top: 40px;;
 }
 
 .btn-menu-dropwdown{
@@ -644,6 +791,52 @@ div.advance-section>div.title{
     margin-right: 5px;
 }
 
+.detail-method-category{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 5px 10px;
+    border: 1px solid;
+    border-bottom: none;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.detail-method-category:not(:last-child){
+    padding-bottom: 40px;
+}
+
+.detail-method-category:not(:first-child){
+    margin-top: -20px;
+}
+
+.detail-method-category > div:nth-child(1)
+{
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: white;
+}
+
+.detail-method-category .category-options{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.detail-method-category-inner{
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-method-category .category-items{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+
 .detail-methods{
     display: flex;
     flex-direction: row;
@@ -656,7 +849,6 @@ div.advance-section>div.title{
 }
 
 div.general-info{
-    margin-top: 43px;
     border-top: 2px solid #4a82da;
     position: relative;
     display: inline-block;
@@ -665,11 +857,18 @@ div.general-info{
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    min-height: 350px;
 }
 
 .structure{
-    height: 200px;
 }
+
+.structure-source{
+    display: flex;
+    flex-direction: row;
+}
+
+
 
 .uploadTableDiv{
     margin-top: 43px;
@@ -827,10 +1026,10 @@ div.info-text > div {
 }
 
 p.compoundTitle{
-    text-align: center; 
-    margin-top: 20px;
     font-size: 30px;
     font-weight: bold;
+    padding: 0 30px;
+    color: #1a427e;
 }
 
 .dropbtn {
@@ -1240,7 +1439,7 @@ table.table-cvik td{
     display: flex;
     flex-direction: column;
     justify-content: center;
-    height: 120px !important;
+    height: 200px !important;
 }
 
 .chemdiv img{
@@ -1616,7 +1815,7 @@ header.tabs {
 }
 
 .membraneTab {
-    display: none;
+    /* display: none; */
 }
 
 
@@ -2062,6 +2261,11 @@ div.validator-compare-table table td:first-child{
     box-shadow: 0px 0px 5px 1px rgba(0,0,0,0.45); */
 }
 
+.popup-hover table td:nth-child(2)
+{
+    margin-left: 10px;
+}
+
 .popup {
     position: relative;
     display: inline-block;
@@ -2250,7 +2454,7 @@ p.attribute {
     background-color: inherit;
     font-size: 12px;
     font-weight: bold;
-    padding: 5px 10px;
+    padding: 6px 10px;
     margin-top: 5px;
     margin-right: 5px;
 }
@@ -2267,7 +2471,7 @@ p.attribute {
     background-color: inherit;
     font-size: 12px;
     font-weight: bold;
-    padding: 5px 10px;
+    padding: 6px 10px;
     margin-top: 5px;
     margin-right: 5px;
     text-decoration: none;
@@ -2550,3 +2754,63 @@ table.setting-form-table > tbody tr {
 {
     align-items: center;
 }
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 23px;
+  }
+  
+  .switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+  
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 19px;
+    width: 19px;
+    left: 3px;
+    bottom: 2px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+  
+  input.slider-i:checked + .slider {
+    background-color: #2196F3;
+  }
+  
+  input.slider-i:focus + .slider {
+    box-shadow: 0 0 1px #2196F3;
+  }
+  
+  input.slider-i:checked + .slider:before {
+    -webkit-transform: translateX(16px);
+    -ms-transform: translateX(16px);
+    transform: translateX(16px);
+  }
+  
+  /* Rounded sliders */
+  .slider.round {
+    border-radius: 23px;
+  }
+  
+  .slider.round:before {
+    border-radius: 50%;
+  }

@@ -13,31 +13,46 @@ class LoginController extends Controller
         parent::__construct();
     }
 
-    public function parse()
+    public function index()
     {
-        if($_POST)
+        $forge = new Forge('Login');
+
+        $forge->add('molmedb_username')
+            ->title('Username');
+
+        $forge->add('molmedb_password')
+            ->type('password')
+            ->title('Password');
+
+        $forge->submit('Login');
+
+        if($this->form->is_post())
         {
             $userManager = new Users();
             try
             {
-                $userManager->login($_POST['name'], $_POST['password']);
+                $userManager->login($this->form->param->molmedb_username, $this->form->param->molmedb_password);
                 $this->addMessageSuccess('Success!');
+
+                if(session::is_admin())
+                {
+                    $this->redirect('administration');
+                }
+
                 $this->redirect('detail/intro');
             } 
             catch (ErrorUser $ex) 
             {
                 $this->addMessageError($ex->getMessage());
-                $this->redirect('login');
             }
-            catch (Exception $e)
+            catch (MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
-                $this->redirect('login');
+                $this->addMessageError($e);
             }
-            
         }
 
-        $this->header['title'] = 'LogIn';
-        $this->view = 'login';
+        $this->title = 'Login';
+        $this->view = new View('forge');
+        $this->view->forge = $forge;
     }
 }

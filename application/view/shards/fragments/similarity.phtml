@@ -1,0 +1,76 @@
+<div style="display:flex; flex-direction: column;">
+    <h3>Query:</h3>
+    <div style="display:flex; flex-direction: row; border-bottom: 1px solid black;">
+        <div>
+            <?= Html::image_structure($substance->SMILES) ?>
+        </div>
+        <div style="margin-left: 50px;">
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <td><?= $substance->id ?></td>
+                </tr>
+                <tr>
+                    <th>Identifier</th>
+                    <td><?= $substance->identifier ?></td>
+                </tr>
+                <tr>
+                    <th>Name</th>
+                    <td><?= $substance->name ?></td>
+                </tr>
+                <tr>
+                    <th>Smiles</th>
+                    <td><?= $substance->SMILES ?></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <?php foreach($options as $o) : ?>
+        <h4>Fragment of <?= $o->substance->name ?></h4>
+        <div style="display:flex; flex-direction: row; border-bottom: 1px solid black;">
+            <div style="display:flex; flex-direction:column;">
+                <b>Molecule</b>
+                <?= Html::image_structure($o->substance->SMILES) ?>
+            </div>
+            <div style="margin-left: 50px; margin-right: 50px;">
+                <table>
+                    <tr>
+                        <th>ID</th>
+                        <td><?= $o->substance->id ?></td>
+                    </tr>
+                    <tr>
+                        <th>Identifier</th>
+                        <td><?= $o->substance->identifier ?></td>
+                    </tr>
+                    <tr>
+                        <th>Name</th>
+                        <td><?= $o->substance->name ?></td>
+                    </tr>
+                    <tr>
+                        <th>Smiles</th>
+                        <td><?= $o->substance->SMILES ?></td>
+                    </tr>
+                    <tr>
+                        <th>Similarity</th>
+                        <td><?= $o->similarity ?></td>
+                    </tr>
+                </table>
+            </div>
+            <div style="display:flex; flex-direction:column; padding: 0px 20px;">
+                <b>Common fragment</b>
+                <?= Html::image_structure($o->fragment->add_hydrogens()) ?>
+            </div>
+            <div style="display:flex; flex-direction:column; padding: 0px 20px;border-left: 1px solid black;">
+                <b>Fragmentation</b>
+                <div style="display:flex; flex-direction: row;">
+                    <?php foreach($o->subfragments as $s) : ?>
+                        <div style="display:flex; flex-direction: column; justify-content: center; padding: 5px 10px;">
+
+                            <?= Html::image_structure(Smiles::pretty_string($s->smiles)) ?>
+                        </div>
+                    <?php endforeach ?>
+                </div>
+            </div>
+        </div>
+    <?php endforeach ?>
+</div>

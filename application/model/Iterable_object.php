@@ -70,7 +70,36 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
         $r = new ReflectionClass($this);
         $props = $r->getProperties();
 
+        // Prevent looping
+        $bt = debug_backtrace();
+
         $data = array();
+        $abandoned_classes = [];
+
+        if(get_class($this) == 'Files' && ($this instanceof Db))
+        {
+            $skip_first = TRUE;
+            foreach($bt as $it)
+            {
+                if(!isset($it['object']) || 
+                    (isset($it['class']) && $it['class'] !== 'Db') || 
+                    (isset($it['function']) && $it['function'] !== '__construct'))
+                {
+                    continue;
+                }
+
+                if($skip_first)
+                {
+                    $skip_first = !$skip_first;
+                    continue;
+                }
+
+                $ob = $it['object'];
+                $abandoned_classes[] = get_class($ob);
+            }
+            
+            $abandoned_classes = array_unique($abandoned_classes);
+        }
 
         foreach($props as $p)
         {
@@ -91,39 +120,40 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS ONE parsing
             if($type == $this->valid_link_types[self::T_HAS_ONE])
             {
-                foreach($values as $key => $values)
+                foreach($values as $key => $vals)
                 {
-                    if(is_array($values))
+                    if(is_array($vals))
                     {
                         // IS STRUCTURE VALID ?
-                        if(!isset($values['var']) || !isset($values['class']))
+                        if(!isset($vals['var']) || !isset($vals['class']))
                         {
                             $this->$key = NULL;
                             continue;
                         }
 
-                        $class_name = $values['class'];
-                        $new_key = $values['var'];
+                        $class_name = $vals['class'];
+                        $new_key = $vals['var'];
+                        $k = $key;
                     }
                     else // Is set only value
                     {
-                        $val = $values;
-
+                        $val = $vals;
                         $key = $val;
 
-                        $new_key = ltrim($val, 'id_');
+                        $new_key = preg_replace('/^\s*id_/', '', $val);
+                        $k = 'id_' . $new_key;
 
                         $class_name = ucwords($new_key . 's');
                     }
-
+                    
                     // Not valid input, set value to NULL
-                    if (!class_exists($class_name) || !$this->$key) 
+                    if (!class_exists($class_name) || !$this->$k || in_array($class_name, $abandoned_classes)) 
                     {
                         $this->$new_key = NULL;
                     } 
                     else 
                     {
-                        $this->$new_key = new $class_name($this->$key);
+                        $this->$new_key = new $class_name($this->$k);
                     }
                 
                 }
@@ -131,22 +161,22 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS MANY AND BELONGS TO parsing
             else if($type == $this->valid_link_types[self::T_HAS_MANY_AND_BELONGS_TO])
             {
-                foreach($values as $table => $values)
+                foreach($values as $table => $vals)
                 {
                     // IS STRUCTURE VALID ?
-                    if(!is_array($values) || !isset($values['var']) || !isset($values['class']) || 
-                        !isset($values['own']) || !isset($values['remote']))
+                    if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
+                        !isset($vals['own']) || !isset($vals['remote']))
                     {
                         continue;
                     }
 
-                    $class_name = $values['class'];
-                    $new_key = $values['var'];
-                    $remote_key = $values['remote'];
-                    $own_key = $values['own'];
+                    $class_name = $vals['class'];
+                    $new_key = $vals['var'];
+                    $remote_key = $vals['remote'];
+                    $own_key = $vals['own'];
 
                     // Not valid input, set value to NULL
-                    if (!class_exists($class_name) || !$this->id) 
+                    if (!class_exists($class_name) || !$this->id || in_array($class_name, $abandoned_classes)) 
                     {
                         $this->$new_key = NULL;
                         continue;
@@ -173,27 +203,26 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             // HAS MANY parsing
             else if($type == $this->valid_link_types[self::T_HAS_MANY])
             {
-                foreach($values as $table => $values)
+                foreach($values as $table => $vals)
                 {
                     // IS STRUCTURE VALID ?
-                    if(!is_array($values) || !isset($values['var']) || !isset($values['class']) || 
-                        !isset($values['own']))
+                    if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
+                        !isset($vals['own']))
                     {
                         continue;
                     }
 
-                    $class_name = $values['class'];
-                    $new_key = $values['var'];
-                    $own_key = $values['own'];
-
+                    $class_name = $vals['class'];
+                    $new_key = $vals['var'];
+                    $own_key = $vals['own'];
 
                     // Not valid input, set value to NULL
-                    if (!class_exists($class_name) || !$this->id) 
+                    if (!class_exists($class_name) || !$this->id || in_array($class_name, $abandoned_classes)) 
                     {
                         $this->$new_key = NULL;
                         continue;
                     } 
-                    
+
                     $new_class = new $class_name();
                     $this->$new_key = $new_class->where($own_key, $this->id)->get_all();
                 }
@@ -497,8 +526,6 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
         $curr_data = new Iterable_object($this->data);
         $diff = array();
         $mss = "x@#sd#";
-
-        // print_r($curr_data);
 
         foreach($prev_data as $p_key => $p_val)
         {

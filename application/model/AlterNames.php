@@ -11,6 +11,8 @@
  * 
  * @property Substances $substance
  * 
+ * @deprecated
+ * 
  */
 class AlterNames extends Db
 {

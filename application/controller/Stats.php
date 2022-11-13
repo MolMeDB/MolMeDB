@@ -18,7 +18,7 @@
     }
 
     /** DEFAULT ROUTE */
-    public function parse()
+    public function index()
     {
         $this->show_all();
     }
@@ -29,43 +29,45 @@
     public function show_all()
     {
         $stats = new Statistics();
-        $et = new Enum_types();
 
-        $this->data['last_update'] = date('d-m-Y', strtotime($stats->get_last_update_date()));
+        $this->title = 'Statistics';
 
-        $this->data['interactions'] = (object)array
+        $this->view = new View('stats');
+        $this->view->last_update = date('d-m-Y', strtotime($stats->get_last_update_date()));
+
+        $this->view->files = $stats->get_stat_files();
+
+        // print_r($stats->get(Statistics::TYPE_IDENTIFIERS));
+        // die;
+
+        $this->view->interactions = (object)array
         (
-            'adding' => (object)$stats->get(Statistics::TYPE_INTER_ADD),
+            'adding' => $stats->get(Statistics::TYPE_INTER_ADD),
             'total' => $stats->get(Statistics::TYPE_INTER_TOTAL),
             'active' => $stats->get(Statistics::TYPE_INTER_ACTIVE)
         );
 
-        $this->data['substances'] = (object)array
+        $this->view->substances = (object)array
         (
             'total' => $stats->get(Statistics::TYPE_SUBST_TOTAL)
         );
 
-        $this->data['membranes'] = (object)array
+        $this->view->membranes = (object)array
         (
             'stats' => (object)$stats->get(Statistics::TYPE_MEMBRANES_DATA),
             'total' => $stats->get(Statistics::TYPE_MEMBRANES_TOTAL)
         );
 
-        $this->data['methods'] = (object)array
+        $this->view->methods = (object)array
         (
             'stats' => (object)$stats->get(Statistics::TYPE_METHODS_DATA),
             'total' => $stats->get(Statistics::TYPE_METHODS_TOTAL)
         );
 
-        $this->data['identifiers'] = (object)$stats->get(Statistics::TYPE_IDENTIFIERS);
-
-        $this->data['interactions_pa'] = (object)$stats->get(Statistics::TYPE_INTER_PASSIVE_ACITVE);
-
-        $this->data['update_available'] = $this->session->user ? $this->session->user->admin : FALSE;
-
-        $this->data["detail"] = "";
-        $this->header['title'] = 'Statistics';
-        $this->view = 'stats';
+        $this->view->identifiers = (object)$stats->get(Statistics::TYPE_IDENTIFIERS);
+        $this->view->interactions_pa = (object)$stats->get(Statistics::TYPE_INTER_PASSIVE_ACITVE);
+        $this->view->update_available = session::is_admin();
+        $this->view->detail = "";
     }
 
     /**
@@ -102,25 +104,27 @@
         $membraneModel = new Membranes();
         $methodModel = new Methods();
 
+        $this->title = 'Statistics';
+        $this->view = new View('stats');
+
         try
         {
             $list = $membraneModel->get_interactions_count();
 
-            $this->data["total_membranes"] = $membraneModel->get_all_count();
-            $this->data["total_methods"] = $methodModel->get_all_count();
-            $this->data["total_substances"] = $substanceModel->get_all_count();
-            $this->data["total_interactions"] = $interactionModel->get_all_count();
+            $this->view->total_membranes = $membraneModel->get_all_count();
+            $this->view->total_methods = $methodModel->get_all_count();
+            $this->view->total_substances = $substanceModel->get_all_count();
+            $this->view->total_interactions = $interactionModel->get_all_count();
         }
-        catch(Exception $ex)
+        catch(MmdbException $ex)
         {
             $this->addMessageError('Error ocurred during getting stats detail.');
             $this->redirect('error');
         }
 
-        $this->data['active_membrane'] = True;
-        $this->data['detail'] = $this->make_list($list);
-        $this->header['title'] = 'Statistics';
-        $this->view = 'stats';
+        $this->view->active_membrane = True;
+        $this->view->detail = $this->make_list($list);
+        
     }
 
     /**
@@ -134,25 +138,26 @@
         $membraneModel = new Membranes();
         $methodModel = new Methods();
 
+        $this->title = 'Statistics';
+        $this->view = new View('stats');
+
         try
         {
             $list = $methodModel->get_interactions_count();
 
-            $this->data["total_membranes"] = $membraneModel->get_all_count();
-            $this->data["total_methods"] = $methodModel->get_all_count();
-            $this->data["total_substances"] = $substanceModel->get_all_count();
-            $this->data["total_interactions"] = $interactionModel->get_all_count();
+            $this->view->total_membranes = $membraneModel->get_all_count();
+            $this->view->total_methods = $methodModel->get_all_count();
+            $this->view->total_substances = $substanceModel->get_all_count();
+            $this->view->total_interactions = $interactionModel->get_all_count();
         }
-        catch(Exception $ex)
+        catch(MmdbException $ex)
         {
             $this->addMessageError('Error ocurred during getting stats detail.');
             $this->redirect('error');
         }
 
-        $this->data['active_method'] = True;
-        $this->data['detail'] = $this->make_list($list, self::T_METHOD);
-        $this->header['title'] = 'Statistics';
-        $this->view = 'stats';
+        $this->view->active_method = True;
+        $this->view->detail = $this->make_list($list, self::T_METHOD);
     }
 
     /**

@@ -1,0 +1,121 @@
+<style>
+table, th, td {
+  border:1px solid black;
+}
+</style>
+
+<h2><?php echo $this->uri; ?></h2>
+
+<h3>outgoing triples</h3>
+<?php 
+/** size warning check */
+if ($this->out[0])
+{
+	$query_url = "https://idsm.elixir-czech.cz/sparql/endpoint/molmedb?query=DESCRIBE%20%3C".preg_replace(["/:/","/\//"],["%3A","%2F"],$this->uri)."%3E";
+	print "<b>WARNING:</b> There are more objects, than can be shown here.<br>
+	To see complete resource description refer to SPARQL service <a href='".$query_url."'>HERE</a>.";
+}
+?>
+<table style='width:100%'>
+<tr>
+    <th>predicate</th>
+    <th>object</th>
+</tr>
+<?php
+$out = $this->out[1];
+
+/**priority predicates should be topmost */
+$pred_priority = ["rdfs:label","dcterms:bibliographicCitation","rdf:type","bibo:doi","bibo:pmid","rdfs:seeAlso"];
+$pred_array = array_keys($out);
+/** remove priority predricates from predicate array */
+foreach($pred_priority as $p)
+{
+	$key = array_search($p,$pred_array);
+	if(is_int($key))
+	{
+		unset($pred_array[$key]);
+	}
+
+}
+
+/** print only first occurence of predicate */
+$print_pred = True;
+foreach(array_merge($pred_priority,$pred_array) as $pred)
+{
+	//print $pred." ";
+	if (array_key_exists($pred,$out))
+	{
+		foreach($out[$pred]["nodes"] as $nodes)
+		{
+			print "<tr>";
+			print "<td>";
+			if ($print_pred)
+			{
+				$print_pred = False;
+				print "<a href='".$out[$pred]["url_predicate"]."'>".$pred."</a>";
+				if (array_key_exists("label",$out[$pred])) {print " (".$out[$pred]["label"].")";}
+			}
+			print "</td><td>";
+			if (substr( $nodes["url_node"], 0, 4 ) === "http")
+			{
+				print "<a href='".$nodes["url_node"]."'>".$nodes["node"]."</a>";
+				if (array_key_exists("label",$nodes)) {print " (".$nodes["label"].")";}
+			}
+			else
+			{
+				print '"'.strip_tags($nodes["node"]).'"';
+				if (array_key_exists("type",$nodes)) {print "^^".$nodes["type"];}
+			}
+			print "</td>";
+			print "</tr>";
+		}
+		$print_pred = True;
+	}
+}
+?>
+
+
+</table>
+
+<h3>incoming triples</h3>
+<?php
+/** size warning check */ 
+if ($this->in[0])
+{
+	$query_url = "https://idsm.elixir-czech.cz/sparql/endpoint/molmedb?query=DESCRIBE%20%3C".preg_replace(["/:/","/\//"],["%3A","%2F"],$this->uri)."%3E";
+	print "<b>WARNING:</b> There are more subjects, than can be shown here.<br>
+	To see complete resource description refer to SPARQL service <a href='".$query_url."'>HERE</a>.";
+}
+?>
+<table style='width:100%'>
+<tr>
+    <th>predicate</th>
+    <th>subject</th>
+</tr>
+
+<?php
+$in = $this->in[1];
+$pred_array = array_keys($in);
+foreach($pred_array as $pred)
+{
+	foreach($in[$pred]["nodes"] as $nodes)
+	{
+		print "<tr>";
+		print "<td>";
+		if ($print_pred)
+		{
+			$print_pred = False;
+			print "<a href='".$in[$pred]["url_predicate"]."'>".$pred."</a>";
+			if (array_key_exists("label",$in[$pred])) {print " (".$in[$pred]["label"].")";}
+		}
+		print "</td><td>";
+		print "<a href='".$nodes["url_node"]."'>".$nodes["node"]."</a>";
+		if (array_key_exists("label",$nodes)) {print " (".$nodes["label"].")";}
+		print "</td>";
+		print "</tr>";
+	}
+	$print_pred = True;
+}
+?>
+
+</table>

@@ -5,9 +5,7 @@ if(FALSE): ?> <script> <?php endif?>
 var detail;
 var membranes;
 var methods;
-var protocol = "<?=$_SERVER['SERVER_PROTOCOL'] ?>";
-protocol = protocol.startsWith('HTTPS') ? 'https://' : 'http://';
-var url_prefix = protocol + "<?= $_SERVER['HTTP_HOST'] ?>";
+var url_prefix = window.location.protocol + "//" + window.location.host;
 
 /**
  * Creates new message span
@@ -43,10 +41,20 @@ function add_message(message, type="success")
  * @param {object} params
  * @param {string} method - GET/POST only
  */
-function ajax_request(uri, params, method = "GET")
+function ajax_request(uri, params, method = "GET", required_content_type = "json")
 {
     method = method.toUpperCase();
     var valid_methods = ['GET', 'POST'];
+
+    switch(required_content_type.toLowerCase())
+    {
+        case 'html':
+            accept = 'text/html';
+            break;
+
+        default:
+            accept = 'application/json';
+    }
 
     if(!valid_methods.includes(method))
     {
@@ -55,16 +63,7 @@ function ajax_request(uri, params, method = "GET")
     }
 
     // Make uri
-    uri = url_prefix + "/api/" + uri + "?";
-    
-    if(method == "GET")
-    {
-        $.each(params, function(key, value)
-        {                   
-            uri += key + "=" + value + "&";
-        });
-    }
-
+    uri = url_prefix + "/api/" + uri;
     uri = uri.replace(/\&+$/, '');
     
     var result;
@@ -72,12 +71,24 @@ function ajax_request(uri, params, method = "GET")
     // Send request
     $.ajax({
         url: uri,
+        contentType: 'application/json',
         type: method,
+        headers:{
+            "Authorization": "Basic " + $('#api_internal_token').val(),
+            Accept: accept
+        },
         async: false,
         data: params,
         success: function(data)
         {
-            result = data;
+            if(data)
+            {
+                result = data;
+            }
+            else
+            {
+                result = null;
+            }
         },
         error: function(data)
         {
@@ -140,8 +151,27 @@ $(document).ready(function()
     }
 })
 
+/**
+ * Appends html content to the given parent
+ * + init all <script> contents
+ * + executes functions given in js_callbacks
+ */
+function append_html_js(content, parent, js_callbacks = ['init'])
+{
+    if(!parent)
+    {
+        return;
+    }
 
-
+    $(parent).append(content);
+    $(parent).find('script').each(function(i,e)
+    {
+        eval($(e).html());
+        js_callbacks.forEach((fun, i) => {
+            eval(fun+"()");
+        });
+    });
+}
 
 // /**
 //  * 
@@ -182,15 +212,15 @@ $(document).ready(function()
  */
 function addSetToComparator(type, id)
 {
-    var ligands = ajax_request('comparator/getSubstancesToComparator', {type: type, id: id});
+    var ligands = ajax_request('compounds/ids/byPassiveInteractionType', {type: type, id: id});
 
-    if(!ligands)
+    if(ligands === false)
     {
         add_message('Compounds were not added to the comparator list.', 'danger');
         return;
     }
 
-    var count = ligands.length;
+    var count = ligands ? ligands.length : 0;
 
     for(var i = 0; i<count; i++)
     {
@@ -200,7 +230,7 @@ function addSetToComparator(type, id)
         add_to_comparator(ID, name);
     }
 
-    if(count <= 1)
+    if(!count)
     {
         alert("No compounds available.");
     }
@@ -226,7 +256,7 @@ function canonize_smiles(smiles, target_input_id)
 
     var target_element = document.getElementById(target_input_id);
 
-    var result = ajax_request('smiles/canonize', {smi: smiles}, 'GET');
+    var result = ajax_request('smiles/canonize', {smiles: smiles}, 'GET');
 
     if(!target_element || result === false || !result.canonized)
     {
@@ -239,7 +269,7 @@ function canonize_smiles(smiles, target_input_id)
     return;
 }
 
-/** w
+/** 
 * Sends request to MolMeDB server and 
 * returns publication info from remote servers
 *
@@ -256,7 +286,7 @@ function get_reference_by_doi(input_id)
         return;
     }
 
-    var result = ajax_request('publications/get_by_doi', {doi: doi});
+    var result = ajax_request('publications/find/remote', {doi: doi});
 
     if(result === false)
     {
@@ -352,7 +382,7 @@ function download_dataset_byRef(idRef)
     var data = [];
      
     // Get data
-    data = ajax_request("interactions/get_by_reference", {id: idRef});
+    data = ajax_request("interactions/all/passive", {id_reference: idRef});
 
     if(!data)
     {
@@ -576,7 +606,7 @@ function redirect(path, params = {}, method = 'GET')
  */
 function get_all_membranes()
 {
-    var result = ajax_request("membranes/getAll", {}, 'POST');
+    var result = ajax_request("membranes/all");
 
     if(result === false)
         return [];
@@ -591,7 +621,7 @@ function get_all_membranes()
  */
 function get_all_methods()
 {
-    var result = ajax_request("methods/getAll", {}, 'POST');
+    var result = ajax_request("methods/all");
 
     if(result === false)
         return [];
@@ -606,7 +636,7 @@ function get_all_methods()
  */
 function get_all_publications()
 {
-    var result = ajax_request("publications/getAll");
+    var result = ajax_request("publications/all");
 
     if(result === false)
         return [];
@@ -676,310 +706,41 @@ function get_substance_id(attr)
     return null;
 }
 
-/**
- * Returns search list item ID
- * 
- * @param {integer} id
- */
-function get_search_list_id(id)
+window.addEventListener("load", function()
 {
-    return 'search_' + get_attr(id);
-}
-
-/**
- * Returns id of compound item
- * in comparator detail 
- * 
- * @param {integer} id 
- */
-function get_comparator_detail_id(id)
-{
-    return 'detail_' + get_attr(id);
-}
-
-/**
- * Makes comparator list to menu 
- */
-function make_comparator_list()
-{
-    // Get all 
-    var keys = Object.keys(localStorage), i = keys.length;
-
-    while (i--) 
+    /**
+     * Init all small whispers
+     */
+    $('.onHover_parent').each((i, el) =>
     {
-        var id = get_substance_id(keys[i]);
+        var wind = $(el).find('.onHover')[0];
 
-        if(!id)
+        if(!wind)
         {
-            continue;
+            return;
         }
 
-        var attr = keys[i];
+        let endpoint = $(wind).data('endpoint');
+        let GET_params = $(wind).data('get');
+        let POST_params = $(wind).data('post');
 
-        var name = localStorage.getItem(keys[i]);
-
-        // Add to comparator list
-        var ul = document.getElementById("comparator-ul");
-        var div = document.createElement("div");
-        var text = document.createElement("span");
-        var func = "remove_from_comparator('" + attr + "')";
-        var span = document.createElement("span");
-
-        text.innerHTML = name;
-        span.classList.add("glyphicon");
-        span.classList.add("glyphicon-remove");
-        span.classList.add("comp-list-remove");
-        div.appendChild(span);
-        div.appendChild(text);
-        div.setAttribute("id", attr);
-        div.setAttribute("onclick", func)
-        div.classList.add('dropdown-text');
-        ul.appendChild(div);
-
-        // Toggle search list items
-        var search_list_item = document.getElementById(get_search_list_id(id));
-
-        if(search_list_item)
+        if(GET_params)
         {
-            var span = search_list_item.children[0];
-
-            // Change icon and color
-            search_list_item.classList.toggle("btn-primary");
-            search_list_item.classList.toggle("btn-danger");
-            span.classList.toggle("glyphicon-plus");
-            span.classList.toggle("glyphicon-minus");
+            $(wind).html(ajax_request(endpoint, GET_params, "GET", 'html'));
         }
-    }
-}
+    })
 
-/**
- * Adds new record to comparator list 
- * 
- * @param {integer} id  - Compound ID
- * @param {string} name - Compound name
- */
-function add_to_comparator(id, name)
-{
-    var attr = get_attr(id);
-    var comparator_detail_id = get_comparator_detail_id(id);
-    var search_list_item = document.getElementById(get_search_list_id(id));
-
-    // Checks if object is already stored
-    if (is_in_comparator(id))
+    $('#feedback-title').click(async function()
     {
-        return true;
-    }
-
-    // Store new record
-    localStorage.setItem(attr, name);
-
-    // Add to comparator list
-    var ul = document.getElementById("comparator-ul");
-    var div = document.createElement("div");
-    var func = "remove_from_comparator('" + attr + "')";
-    var span = document.createElement("span");
-    span.classList.add("glyphicon");
-    span.classList.add("glyphicon-remove");
-    span.classList.add("comp-list-remove");
-    div.appendChild(span);
-    div.appendChild(document.createTextNode(name));
-    div.setAttribute("id", attr);
-    div.setAttribute("onclick", func)
-    div.classList.add('dropdown-text');
-    ul.appendChild(div);
-
-    // Toggle in search list if exists
-    if(search_list_item)
-    {
-        var span = search_list_item.children[0];
-
-        // Change icon and color
-        search_list_item.classList.toggle("btn-primary");
-        search_list_item.classList.toggle("btn-danger");
-        span.classList.toggle("glyphicon-plus");
-        span.classList.toggle("glyphicon-minus");
-    }
-}
-
-/**
- * Checks if item with given ID is already in comparator list
- * 
- * @param {integer} id - Compound ID
- * 
- * @return {boolean} 
- */
-function is_in_comparator(id)
-{
-    id = get_substance_id(id);
-
-    var attr = get_attr(id);
-
-    if (localStorage.getItem(attr))
-    {
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Removes compound from comparator list
- * 
- * @param {string} id - Compound ID 
- */
-function remove_from_comparator(id)
-{
-    var id = get_substance_id(id);
-
-    var attr = get_attr(id);
-    var btn_search_list_id = get_search_list_id(id);
-    var comparator_detail_id = get_comparator_detail_id(id);
-
-    // Remove from comparator list
-    var ul = document.getElementById("comparator-ul");
-    var li = document.getElementById(attr);
-
-    if(ul && li)
-    {
-        ul.removeChild(li);
-    }
-
-    // Toggle in search list
-    var btn = document.getElementById(btn_search_list_id);
-
-    // Remove from comparator detail list
-    var comparator_item = document.getElementById(comparator_detail_id);
-
-    if(comparator_item !== null)
-    {
-        comparator_item.remove();
-    }
-
-    if (btn && btn.classList.contains('btn-danger')) 
-    {
-        var span = btn.children[0];
-        btn.classList.toggle("btn-danger"); 
-        btn.classList.toggle("btn-primary");
-        span.classList.toggle("glyphicon-minus"); 
-        span.classList.toggle("glyphicon-plus");
-    }
-
-    // Remove from storage
-    localStorage.removeItem(attr);
-}
-
-/**
- * Removes all from local storage
- */
-function flush_comparator_list()
-{
-    var keys = Object.keys(localStorage), i = keys.length;
-
-    while (i--) 
-    {
-        var id = get_substance_id(keys[i]);
-
-        if(!id)
+        $(this).parent().toggleClass('fb-visible');
+        if($(this).parent().hasClass('fb-visible'))
         {
-            continue;
+            $('.feedback-form').show();
         }
-
-        remove_from_comparator(id);
-    }
-
-    var btn = document.getElementById("btn-addALL");
-
-    if(!btn)
-    {
-        return;
-    }
-    
-    if (btn.classList.contains("btn-danger")) 
-    {
-        btn.classList.toggle("btn-danger"); btn.classList.toggle("btn-primary");
-        btn.innerHTML = "Add all to comparator";
-    }
-}
-
-
-/**
- * Verify paginations under the search lists
- * 
- */
-function verifyPagination(id_paginator)
-{
-    if(!id_paginator)
-    {
-        id_paginator = 'paginator';
-    }
-
-    var paginator = document.getElementById(id_paginator);
-    var childs = paginator.children;
-    var count = childs.length;
-    var active;
-
-    if(count < 6) return;
-    
-    for(var i=0; i<count; i++)
-    {
-        if(childs[i].className == 'active')
-            active = i;
-    }
-    
-    if(active < 5)
-    {
-        for(var i = 6; i<count-1; i++){
-            childs[i].remove();
-            i--;
-            count--;
-        }
-        var element = document.createElement("li");
-        element.className = "disabled";
-        var a = document.createElement("a");
-        a.innerHTML = "...";
-        element.appendChild(a);
-        paginator.insertBefore(element, childs[childs.length-1]);
-    }
-    else if(active > count-5)
-    {
-        for(var i = 1; i<count-6; i++){
-            childs[i].remove();
-            i--;
-            count--;
-        }
-        var element = document.createElement("li");
-        element.className = "disabled";
-        var a = document.createElement("a");
-        a.innerHTML = "...";
-        element.appendChild(a);
-        childs[0].after(element);
-    }
-    else 
-    {
-        for(var i = 1; i<active-2; i++)
+        else
         {
-            childs[i].remove();
-            i--;
-            active--; count--;
+            await sleep(500);
+            $('.feedback-form').hide();
         }
-        for(var i = active+3; i<count-1; i++)
-        {
-            childs[i].remove();
-            i--;
-            active--; count--;
-        }
-        var element = document.createElement("li");
-        element.className = "disabled";
-        var a = document.createElement("a");
-        a.innerHTML = "...";
-        element.appendChild(a);
-        childs[0].after(element);
-        
-        var element = document.createElement("li");
-        element.className = "disabled";
-        var a = document.createElement("a");
-        a.innerHTML = "...";
-        element.appendChild(a);
-        childs[count-1].after(element);
-    }
-}
+    });
+});

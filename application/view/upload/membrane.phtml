@@ -7,35 +7,15 @@
             <table class="uploadTable" style="margin-top: 38px;">
                 <tr>
                     <td><b>Name</b></td>
-                    <td><input type="text" class="form-control" name="name" required/></td>
-                </tr>
-                <tr>
-                    <td><b>Tags</b></td>
-                    <td><input class="form-control" type="text" name="tags"/></td>
+                    <td><input type="text" class="form-control" name="membrane_name" value="<?= $form_data->membrane_name ?>" required/></td>
                 </tr>
                 <tr>
                     <td><b>Keywords</b></td>
-                    <td><input class="form-control" type="text" name="keywords"/></td>
+                    <td><input class="form-control" type="text" value="<?= $form_data->membrane_keywords ?>" name="membrane_keywords"/></td>
                 </tr>
                 <tr>
                     <td><b>CAM (ID)</b></td>
-                    <td><input class="form-control" type="text" name="CAM" required/></td>
-                </tr> 
-                <tr>
-                    <td><b>Category</b></td>
-                    <td><select name="idCat">
-                        <?php foreach($categories as $cat) : ?>
-                        <option value="<?=$cat['id'] ?>"><?=$cat['name']?></option>
-                        <?php endforeach ?>
-                    </select></td>
-                </tr> 
-                <tr>
-                    <td><b>Subcategory</b></td>
-                    <td><select name="idSubcat">
-                        <?php foreach($subcategories as $cat) : ?>
-                        <option value="<?=$cat['id'] ?>"><?=$cat['name']?></option>
-                        <?php endforeach ?>
-                    </select></td>
+                    <td><input class="form-control" type="text" name="membrane_CAM" value="<?= $form_data->membrane_CAM ?>" required/></td>
                 </tr> 
             </table>
         </div>
@@ -43,11 +23,11 @@
         <div class="col-md-8">
             <div class="textfield">
                 <h5><b>Description</b></h5>
-                <textarea name="descript"></textarea>
+                <textarea name="membrane_descript"><?= $form_data->membrane_descript ?></textarea>
             </div>
             <div>
                 <h5><b>References</b></h5>
-                <textarea name="references"></textarea>
+                <textarea name="membrane_references"><?= $form_data->membrane_references ?></textarea>
             </div>
         </div>
         <button style="margin:20px;" class="btn btn-success pull-right">Save</button>
@@ -55,6 +35,6 @@
 </div>
    
  <script>
-    CKEDITOR.replace( 'descript' );
-    CKEDITOR.replace( 'references' );
+    CKEDITOR.replace( 'membrane_descript' );
+    CKEDITOR.replace( 'membrane_references' );
 </script>

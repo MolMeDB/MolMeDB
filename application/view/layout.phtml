@@ -1,92 +1,84 @@
 <!DOCTYPE html>
 <html lang="cs-cz">
 	<head>
-		<base href="<?= PROTOCOL . URL ?>/<?=MEDIA_ROOT?>" />
+		<base href="<?= Url::base() . MEDIA_ROOT ?>" />
 		<meta charset="UTF-8" />
         <?= GOOGLE_ANALYTICS ?>
-		<title><?= $title ?></title>
-                <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-				<meta name="description" content="<?= $description ?>">
-                <meta name="URL" id="URL" content="<?= URL ?>"/>
-                <link rel="stylesheet" href="css/bootstrap.min.css"/>
-                <link rel="stylesheet" href="css/LiteMol-plugin.min.css">
-                <script src="js/jquery-3.2.1.js"></script>
-                <script src="js/LiteMol-plugin.min.js"></script>
-                <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
-                <script src="//cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
-                <script src="js/bootstrap.min.js"></script>
-                <script src="js/MolMeDb.php?ver=<?=JS_VERSION?>"></script>
-                <script src="js/Chart.js?ver=<?=JS_VERSION?>"></script>
-                <script src="js/materialize.js"></script>
-                <script src="js/Chart.bundle.js?ver=<?=JS_VERSION?>"></script>
-                <script src="js/depict.js" type="text/javascript"></script>
-                <script src="https://cdn.ckeditor.com/4.8.0/full/ckeditor.js"></script>
-                <script src="js/lineChart.js?ver=<?=JS_VERSION?>"></script>
-                <script src="js/interpolation.js"></script>
-                <script src="js/papaparse.js"></script>
-                <script src="js/amcharts64/core.js"></script>
-                <script src="js/amcharts64/charts.js"></script>
-                <script src="js/amcharts64/plugins/sunburst.js"></script>
-                <script src="js/amcharts64/themes/material.js"></script>
-                <script src="js/amcharts64/themes/animated.js"></script>
-                <script src="js/amcharts64/lang/cs_CZ.js"></script>
-                <script src="fonts/amchart/notosans-sc.js"></script>
-                <link rel="stylesheet" href="css/style.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-                <link rel="stylesheet" href="css/tree.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-                <link rel="stylesheet" href="css/layout.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-                <link rel="stylesheet" href="css/flexbox.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-                <link rel="stylesheet" href="css/depict.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-                <link rel="stylesheet" href="css/stats.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-                <link rel="stylesheet" href="css/searchEngine.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-                <link rel="stylesheet" href="css/browse.css?ver=<?=CSS_VERSION?>" type="text/css"/>
-                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<title><?= $title ?> | MolMeDB</title>
+        <!-- <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> -->
+        <meta name="description" content="<?= $description ?>">
+        <meta name="URL" id="URL" content="<?= Url::base() ?>"/>
+        <link rel="stylesheet" href="css/bootstrap.min.css"/>
+        <link rel="stylesheet" href="css/LiteMol-plugin.min.css">
+        <input hidden id="api_internal_token" value="<?= session::instance()->api_internal_token ?>">
+        <script src="js/jquery-3.2.1.js"></script>
+        <script src="js/LiteMol-plugin.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
+        <script src="js/bootstrap.min.js"></script>
+        <script src="js/MolMeDb.php?ver=<?=JS_VERSION?>"></script>
+        <script src="js/storage.js?ver=<?=JS_VERSION?>"></script>
+        <script src="js/Chart.js?ver=<?=JS_VERSION?>"></script>
+        <script src="js/materialize.js"></script>
+        <script src="js/Chart.bundle.js?ver=<?=JS_VERSION?>"></script>
+        <script src="js/depict.js" type="text/javascript"></script>
+        <script src="https://cdn.ckeditor.com/4.8.0/full/ckeditor.js"></script>
+        <script src="js/lineChart.js?ver=<?=JS_VERSION?>"></script>
+        <script src="js/interpolation.js"></script>
+        <script src="js/papaparse.js"></script>
+        <script src="js/amcharts64/core.js"></script>
+        <script src="js/amcharts64/charts.js"></script>
+        <script src="js/amcharts64/plugins/sunburst.js"></script>
+        <script src="js/amcharts64/themes/material.js"></script>
+        <script src="js/amcharts64/themes/animated.js"></script>
+        <script src="js/amcharts64/lang/cs_CZ.js"></script>
+        <script src="fonts/amchart/notosans-sc.js"></script>
+        <link rel="stylesheet" href="css/style.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/tree.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/tables.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/layout.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/flexbox.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/depict.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/stats.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/searchEngine.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="css/browse.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 	</head>
         
 	<body>
 		<header>
-                    <div class="menu-additional">
-                            <?php if(isset($_SESSION['user'])) : ?>
-                            <div onclick="redirect('administration/logout')"><img src="files/icons/user-circle.svg" class="svg-white"> Log out</div>
-                            <?php else : ?>
-                            <div onclick="redirect('login')"><img src="files/icons/user-circle.svg" class="svg-white"> Log in</div>
-                            <?php endif ?>
-                            <?php if(isset($_SESSION['user'])) : ?>
-                            <div onclick="redirect('administration')"><img src="files/icons/user-md.svg" class="svg-white"> Administration</div>
-                            <?php endif ?>
-                    </div>
-                    <div class="menu">
-                        <div class="logo">
-                            <img src="files/icons/logo_new.png" onclick="redirect('detail/intro')" style="background: transparent;" alt="MolMeDB">
-                        </div>
-                        <div class="menu-items">
-                            <div class="menu-dropdown">
-                                <div><img src="files/icons/list.svg" class="svg-white">Browse <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
-                                <div class="menu-dropdown-list">
-                                    <div class="menu-dropdown-item" onclick="redirect('browse/membranes')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Membranes</div>
-                                    <div class="menu-dropdown-item" onclick="redirect('browse/methods')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Methods</div>
-                                    <div class="menu-dropdown-item" onclick="redirect('browse/transporters')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Transporters</div>
-                                    <div class="menu-dropdown-item" onclick="redirect('browse/sets')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Sets</div>
-                                </div>
-                            </div>
-                            <div><div onclick="redirect('search')"><img src="files/icons/search.svg" class="svg-white">Search</div></div>
-                            <div><div onclick="redirect('stats/show_all')"><img src="files/icons/chart-bar.svg" class="svg-white">Statistics</div></div>
-                            <div><div onclick="redirect('detail/documentation')"><img src="files/icons/folder-open.svg" class="svg-white">Documentation</div></div>
-                            <div><div onclick="redirect('detail/contact')"><img src="files/icons/info-circle.svg" class="svg-white">About</div></div>
-                            <div class="menu-dropdown">
-                                <div><img src="files/icons/chart-line.svg" class="svg-white">Comparator <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
-                                <div class="menu-dropdown-list">
-                                    <div class="menu-dropdown-item" onclick="redirect('compare')">Open comparator</div>
-                                    <div class="menu-dropdown-item" onclick="flush_comparator_list()">Delete all</div>
-                                    <div class="dropdown-line"></div>
-                                    <div class="dropdown-title">Compounds:</div>
-                                    <div id="comparator-ul">
-                                    </div>
-                                </div>
-                            </div>
+            <div class="menu-additional">
+                <?php if(session::is_logged_in()) : ?>
+                <div onclick="redirect('administration/logout')"><img src="files/icons/user-circle.svg" class="svg-white"> Log out</div>
+                <?php else : ?>
+                <div onclick="redirect('login')"><img src="files/icons/user-circle.svg" class="svg-white"> Log in</div>
+                <?php endif ?>
+                <?php if(session::is_admin()) : ?>
+                <div onclick="redirect('administration')"><img src="files/icons/user-md.svg" class="svg-white"> Administration</div>
+                <?php endif ?>
+            </div>
+            <div class="menu">
+                <div class="logo">
+                    <img src="files/icons/logo_new.png" onclick="redirect('detail/intro')" style="background: transparent;" alt="MolMeDB">
+                </div>
+                <div class="menu-items">
+                    <div class="menu-dropdown">
+                        <div><img src="files/icons/list.svg" class="svg-white">Browse <img src="files/icons/chevron-down.svg" class="svg-white" style=" width: 15px"></div>
+                        <div class="menu-dropdown-list">
+                            <div class="menu-dropdown-item" onclick="redirect('browse/membranes')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Membranes</div>
+                            <div class="menu-dropdown-item" onclick="redirect('browse/methods')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Methods</div>
+                            <div class="menu-dropdown-item" onclick="redirect('browse/transporters')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Transporters</div>
+                            <div class="menu-dropdown-item" onclick="redirect('browse/sets')"><img src="files/icons/chevron-right.svg" style="width: 8px;">Sets</div>
                         </div>
                     </div>
+                    <div><div onclick="redirect('search')"><img src="files/icons/search.svg" class="svg-white">Search</div></div>
+                    <div><div onclick="redirect('stats/show_all')"><img src="files/icons/chart-bar.svg" class="svg-white">Statistics</div></div>
+                    <div><div onclick="redirect('detail/documentation')"><img src="files/icons/folder-open.svg" class="svg-white">Documentation</div></div>
+                    <div><div onclick="redirect('detail/contact')"><img src="files/icons/info-circle.svg" class="svg-white">About</div></div>
+                </div>
+            </div>
 		</header>
-                
+        <div class="body-wrapper">
                 <div class="body">
                     <notif id="alert-column">
                         <?= $nonsec_messages?>
@@ -96,14 +88,58 @@
                         <div id="fs-loader"></div>
                         <p><b id="fs-overlay-text"></b></p>
                     </div>
-                    <div class="main-page">
-                        <?php $this->controller->showView(); ?>
+                    <div class="main-page" id="main-page">
+                        <div class="breadcrumbs">
+                            <?= $breadcrumbs ?>
+                        </div>
+                        <?php $controller->view->render(TRUE); ?>
+                        <div class="feedback" id="feedback">
+                            <div class="feedback-title" id="feedback-title">
+                                <div>Data downloader (<label id="downloader-fb-total">...</label>)</div>
+                                <img class="feedback-pic" src="files/icons/download.png">
+                            </div>
+                            <div class="feedback-form">
+                                <div class="feedback-list">
+                                    <div class="feedback-list-category">
+                                        <div style="display: flex; flex-direction: row; justify-content: space-between;">
+                                            <div>Chosen membranes <label id="dwn-sel-mems">(0)</label></div>
+                                            <div><span class="glyphicon glyphicon-resize-full" style="color: grey; cursor: pointer;"></span></div>
+                                        </div>
+                                        <div id="download-membrane-list" class="feedback-list-items">
+                                        </div>
+                                    </div>
+                                    <plussign></plussign>
+                                    <div class="feedback-list-category">
+                                    <div style="display: flex; flex-direction: row; justify-content: space-between;">
+                                            <div>Chosen methods <label id="dwn-sel-mets">(0)</label></div>
+                                            <div><span class="glyphicon glyphicon-resize-full" style="color: grey; cursor: pointer;"></span></div>
+                                        </div>
+                                        <div id="download-method-list" class="feedback-list-items">
+                                            
+                                        </div>
+                                    </div>
+                                    <plussign></plussign>
+                                    <div class="feedback-list-category extended-c">
+                                    <div style="display: flex; flex-direction: row; justify-content: space-between;">
+                                            <div>Chosen molecules <label id="dwn-sel-mols">(0)</label></div>
+                                            <div><span class="glyphicon glyphicon-resize-full" style="color: grey; cursor: pointer;"></span></div>
+                                        </div>
+                                        <div id="download-molecule-list" class="feedback-basic-list-items scrollable-c">
+                                            
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="feedback-buttons">
+                                    <button id="dwn-fast-download" class="btn btn-sm btn-success pull-right">Fast download</button>
+                                    <a href="/download"><button class="btn btn-sm btn-info pull-right">Open downloader</button></a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <script>make_comparator_list();</script>
-                	
-		<footer id="footer">
+        </div>        	
+		<footer>
+            <div id="footer">
                     <div>
                         <div class="footer-logo">
                             <img src="files/icons/UP2.png" class="upol_logo">
@@ -130,8 +166,8 @@
                         </div>
                         <div class="flex-row follow-us" style="margin-top:20px;">
                             <div>Follow us:</div>
-                            <a href="https://www.facebook.com/molmedb/" target="_blank"> <img src="/<?= MEDIA_ROOT ?>files/icons/facebook.png"></a>
-                            <a href="https://github.com/MolMeDB/MolMeDB" target="_blank"> <img src="/<?= MEDIA_ROOT ?>files/icons/github.png"></a>
+                            <a href="https://www.facebook.com/molmedb/"> <img src="/<?= MEDIA_ROOT ?>files/icons/facebook.png"></a>
+                            <a href="https://github.com/MolMeDB/MolMeDB"> <img src="/<?= MEDIA_ROOT ?>files/icons/github.png"></a>
                         </div>
                     </div>
                     <div>
@@ -158,6 +194,7 @@
                             </div>
                         </div>
                     </div>
+            </div>
 		</footer>
 	</body>
 </html>

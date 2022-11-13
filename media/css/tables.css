@@ -1,0 +1,395 @@
+label.units
+{
+    white-space: nowrap;
+}
+
+.basic-table{
+    -webkit-box-shadow: 4px 5px 16px 2px rgba(0,0,0,0.17); 
+box-shadow: 4px 5px 16px 2px rgba(0,0,0,0.17);
+    font-family: Roboto, sans-serif;
+    text-indent: initial;
+    border-spacing: 2px;
+    border: 1px solid rgba(0,0,0,.12);
+    width: auto;
+    min-width: 500px;
+}
+
+.basic-table .header-row
+{
+    height: 56px;
+    font-weight: bold;
+}
+
+.basic-table tr.header-row th {
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-font-smoothing: antialiased;
+    font-weight: 800;
+    font-size: 12px;
+    padding-left: 16px;
+    padding-right: 16px;
+    line-height: 1.375rem;
+    letter-spacing: .0071428571em;
+    text-decoration: inherit;
+    text-transform: inherit;
+}
+
+.basic-table .header-row th *
+{
+    cursor: inherit !important;
+}
+
+.basic-table .header-row th > div
+{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    text-align: center;
+}
+
+.basic-table > tbody > tr {
+    height: 52px;
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: rgba(0,0,0,.12);
+    font-size: 12px;
+}
+
+.basic-table > tbody >tr:not(.table-pagination, .header-row, .table-filters):hover{
+    background-color: rgba(0,0,0,.04);
+}
+
+.basic-table td 
+{
+    padding-left: 16px;
+    padding-right: 16px;
+    line-height: 1.375rem;
+    letter-spacing: .0071428571em;
+    text-decoration: inherit;
+    text-transform: inherit;
+    box-sizing: border-box;
+    overflow: hidden;
+    -ms-text-overflow: ellipsis;
+    -o-text-overflow: ellipsis;
+    text-overflow: ellipsis;
+    width: 0;
+}
+
+.basic-table tbody td p {
+    display: -webkit-box;
+    max-width: 300px;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin: 0;
+}
+
+.basic-table .sortable-column
+{
+    min-width: min-content;
+}
+
+.basic-table .sortable-column > div, 
+.sort-arrows,
+.basic-table .filter-row, 
+.basic-table .filter-item
+{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+.basic-table .filter-row,
+.basic-table .filter-item
+{
+    align-items: center;
+}
+
+.basic-table .filter-item
+{
+    padding: 5 10 5 10;
+}
+
+.basic-table .filter-item .glyphicon
+{
+    font-size: 20px;
+    color: #555; 
+}
+
+.sort-arrows span{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-content: center;
+    justify-items: center;
+    align-items: center;
+}
+
+.basic-table .sort-arrows
+{
+    color: #fff;
+    font-size: 12px;
+    margin-left: 10px;
+    display: none;
+}
+
+.basic-table .sortable-column:hover .sort-arrows {
+    color: #999;
+}
+
+.basic-table .sort-arrows > span:hover
+{
+    color: #555;
+    cursor: pointer;
+}
+
+.basic-table select
+{
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #bbb;
+}
+
+tr.table-pagination td > div
+{
+    box-sizing:border-box; 
+    clear:both;
+    display: flex;
+    justify-content: flex-end;
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+tr.table-pagination td > div > div:not(:last-child)
+{
+    margin-right: 30px;
+}
+
+tr.table-pagination .table-pagination-picker, 
+tr.table-pagination .table-pagination-total{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+tr.table-pagination .table-pagination-picker > div:first-child
+{
+    margin-right: 10px;
+}
+
+tr.table-pagination .table-pagination-arrows{
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+tr.table-pagination .table-pagination-arrows div{
+    padding: 10px;
+    text-decoration: none;
+    user-select: none;
+}
+
+tr.table-pagination .table-pagination-arrows span{
+    cursor: pointer;
+    color: #555;
+    font-size: 18px;
+}
+
+.table-filters .switch{
+    position: relative;
+    display: inline-block;
+    width: 45px;
+    height: 22px;
+    margin: 0;
+    margin-left: 7px;
+}
+
+.table-filters .switch input{
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.table-filters .switch input:checked + .slider{
+    background-color: #2196F3;
+}
+
+.table-filters .switch input:focus + .slider{
+    box-shadow: 0 0 1px #2196F3;
+}
+
+.table-filters .switch input:checked + .slider:before{
+    -webkit-transform: translateX(22px);
+    -ms-transform: translateX(22px);
+    transform: translateX(22px);
+}
+
+.table-filters .switch .slider{
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+.table-filters .switch .slider:before{
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+/* Rounded sliders */
+.table-filters .switch .slider.round {
+    border-radius: 34px;
+}
+  
+.table-filters .switch .slider.round:before {
+    border-radius: 50%;
+}
+
+.tooltip-helper {
+    position:relative;
+    cursor: help;
+    /* border-bottom: 1px dotted black; If you want dots under the hoverable text */
+}
+
+/* tooltip-helper text */
+.tooltip-helper .tooltip-content {
+    display:none;
+  z-index:100;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip-helper:hover .tooltip-content {
+    display:block;
+}
+
+.tooltip-helper:hover p {
+    display: none;
+}
+
+.long-text{
+    min-width: 150px;
+}
+
+.accuracy{
+    margin: 0;
+    font-size: 9px;
+    text-align: right;
+    position: inherit;
+    color: red;
+}
+
+.alert-panel
+{
+    -webkit-box-shadow: 4px 5px 16px 2px rgba(0,0,0,0.17); 
+    box-shadow: 4px 5px 16px 2px rgba(0,0,0,0.17);
+    font-family: Roboto, sans-serif;
+    text-indent: initial;
+    border-spacing: 2px;
+    border: 1px solid rgba(0,0,0,.12);
+    width: auto;
+    min-width: 500px;
+    max-width: 100%;
+    font-weight: bold;
+    font-size: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 150px;
+}
+
+.mpls-template{
+    
+}
+
+.mpls-title
+{
+    border-bottom: 2px solid #4a82da;
+    font-weight: bold;
+    margin-bottom: 10px;
+    font-size: 20px !important;
+    padding-bottom: 5px !important;
+}
+
+.mpls-window > div{
+    margin: 5px 10px;
+}
+
+.mpls-window{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+.mpls-win-category span.glyphicon{
+    font-size: 12px;
+}
+
+.mpls-win-category{
+    font-size: 12px;
+    padding: 2px 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    color: black;
+    background-color: #ccc;
+    height: 34px;
+    /* border-bottom: 1px solid black; */
+}
+
+.mpls-win{
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 300px;
+    width: 300px;
+    border: 1px solid black;
+}
+
+.mpls-win-item
+{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 10px;
+    /* border-bottom: 1px solid #337ab7; */
+    background-color: #fdfdfd;
+    line-height: 1.42857143;
+    color: #337ab7;
+    font-weight: bold;
+}
+
+.mpls-win-item sublabel{
+    color: #666;
+    font-size: 10px;
+    
+}
+
+.mpls-win-item:hover
+{
+    cursor: pointer;
+    background-color: #f0f0f0;
+}
+
+.mpls-win-middle{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}

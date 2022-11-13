@@ -41,6 +41,16 @@ class Methods extends Db
     }
 
     /**
+     * Instance
+     * 
+     * @return Methods
+     */
+    public static function instance()
+    {
+        return parent::instance();
+    }
+
+    /**
      * Returns method by type
      * 
      * @param int $type
@@ -94,6 +104,16 @@ class Methods extends Db
 
                     UNION
 
+                    SELECT m.id, m.name, CONCAT("category: ",et2.name, " > ", et1.name) as pattern
+                    FROM methods m
+                    JOIN method_enum_type_links as mtl ON mtl.id_method = m.id
+                    JOIN enum_type_links as etl ON etl.id = mtl.id_enum_type_link
+                    JOIN enum_types et1 ON et1.id = etl.id_enum_type
+                    JOIN enum_types et2 ON et2.id = etl.id_enum_type_parent
+                    WHERE et1.name LIKE ? OR et2.name LIKE ?
+
+                    UNION
+
                     SELECT id, name, description as pattern
                     FROM methods
                     WHERE description LIKE ?
@@ -103,7 +123,7 @@ class Methods extends Db
                     SELECT id, name, keywords as pattern
                     FROM methods
                     WHERE keywords LIKE ?) as tab
-                ', array($q, $q, $q));
+                ', array($q, $q, $q, $q, $q));
 
         $res = array();
         $used = array();
@@ -179,24 +199,115 @@ class Methods extends Db
             ');
         }
     }
+
+    /**
+     * Returns all methods structured by categories
+     * 
+     * @return array
+     */
+    public function get_all_structured() : array
+    {
+        return Enum_types::instance()->get_categories(Enum_types::TYPE_METHOD_CATS);
+    }
+
+    /**
+     * Returns all methods structured by categories
+     * 
+     * @return array
+     */
+    public function get_structured_for_substance(int $id_substance, bool $only_visible = true) : array
+    {
+        // Get all methods
+        $all = Enum_types::instance()->get_categories(Enum_types::TYPE_METHOD_CATS);
+
+        // Filter for just available
+        $required = $this->check_avail_by_substance($id_substance, $only_visible)->as_array();
+        $required = array_column($required, 'id_method');
+
+        function check_category(array $cat, array $required)
+        {
+            if(isset($cat['children']) && 
+                is_array($cat['children']) && 
+                count($cat['children']))
+            {
+                $res = $cat;
+
+                foreach($cat['children'] as $k => $c)
+                {
+                    if(($protected_cat = check_category($c, $required)) === false)
+                    {
+                        unset($res['children'][$k]);
+                    }
+                    else
+                    {
+                        $res['children'][$k] = $protected_cat;
+                    }
+                }
+
+                if(!count($res['children']))
+                {
+                    return false;
+                }
+                else
+                {
+                    // Reload indices
+                    $res['children'] = array_values($res['children']);
+                    return $res;
+                }
+            }
+            else if(isset($cat['last']) && $cat['last'])
+            {
+                // Check
+                if(!in_array($cat['id_element'], $required))
+                {
+                    return false;
+                }
+                
+                return $cat;
+            }
+
+            // invalid structure
+            return false;
+        }
+
+        $result = $all;
+
+        // Filtering
+        foreach($all as $key => $category)
+        {
+            if(($protected_cat = check_category($category, $required)) === false)
+            {
+                unset($result[$key]);
+            }
+            else
+            {
+                $result[$key] = $protected_cat;
+            }
+        }
+
+        return array_values($result);
+    }
     
     /**
      * Checks method availability of interaction
      * for given substance - used in API
      * 
      * @param integer $substance_id
+     * @param bool $only_visible
      * 
-     * @return Iterable
+     * @return Iterable_object
      */
-    public function check_avail_by_substance($substance_id)
+    public function check_avail_by_substance(int $substance_id, bool $only_visible = true) : Iterable_object
     {
+        $only_visible = $only_visible ? Interactions::VISIBLE : Interactions::INVISIBLE;
+
         $sql = "
             SELECT COUNT(*) as count, id_method 
             FROM interaction
-            WHERE id_substance = ? AND visibility = 1 
+            WHERE id_substance = ? AND visibility = ?
             GROUP BY id_method";
 
-        return $this->queryAll($sql, array($substance_id));
+        return $this->queryAll($sql, array($substance_id, $only_visible));
     }
 
 
@@ -290,6 +401,45 @@ class Methods extends Db
             DELETE FROM `method_enum_type_links`
             WHERE `id_method` = ?
         ', array($id));
+    }
+
+    /**
+     * Returns data to selector
+     * 
+     * @return array
+     */
+    public function get_all_selector_data()
+    {
+        $data = $this->queryAll(
+            'SELECT m.*, et_cat.name as category, et_subcat.name as subcategory
+            FROM methods m
+            LEFT JOIN method_enum_type_links metl ON metl.id_method = m.id
+            LEFT JOIN enum_type_links etl ON etl.id = metl.id_enum_type_link
+            LEFT JOIN enum_types et_cat ON et_cat.id = etl.id_enum_type_parent
+            LEFT JOIN enum_types et_subcat ON et_subcat.id = etl.id_enum_type
+            ORDER BY category ASC, subcategory ASC'
+        );
+
+        $result = [];
+
+        foreach($data as $row)
+        {   
+            $total = Interactions::instance()->where(array
+            (   
+                'visibility' => Interactions::VISIBLE,
+                'id_method'  => $row->id
+            ))->count_all();
+
+            $result[] = array
+            (
+                'id' => $row->id,
+                'name' => $row->name,
+                'category' => $row->category ? $row->category . ' --- ' . $row->subcategory : 0,
+                'total' => 'Total interactions: ' . $total
+            );
+        }
+
+        return $result;
     }
 
     /**

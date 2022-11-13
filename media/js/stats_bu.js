@@ -168,7 +168,7 @@ $('.stats-list-item').click(function()
             while(actual_index < interaction_ids.length)
             {
                 var ids = interaction_ids.slice(actual_index, per_request + actual_index);
-                var ajax_data = ajax_request('comparator/getInteraction', { id: ids.join() });
+                var ajax_data = ajax_request('interactions/detail/passive', { ids: ids });
                 
                 actual_index = k*per_request;
                 var percents = parseInt((actual_index * 100) / interaction_ids.length);

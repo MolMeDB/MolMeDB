@@ -7,7 +7,8 @@
  * @param int $id
  * @param int $type
  * @param string $content
- * @param string $data_path
+ * @param int $id_file
+ * @param Files $file
  * @param string $update_date
  * 
  * @author Jakub Juracka
@@ -16,7 +17,7 @@ class Statistics extends Db
 {
     /** STATS TYPE - INTERACTION ADDING STATS */
     const TYPE_INTER_ADD = 1;
-    const TYPE_INTER_ADD_FILE = File::FOLDER_STATS_DOWNLOAD . 'interactions_all.zip';
+    const TYPE_INTER_ADD_FILE = Files::T_STATS_INTERACTIONS_ALL;
 
     /** STATS TYPE - TOTAL INTERACTION */
     const TYPE_INTER_TOTAL = 2;
@@ -38,11 +39,11 @@ class Statistics extends Db
 
     /** STATS TYPE - IDENTIFIERS DATA */
     const TYPE_IDENTIFIERS = 8;
-    const TYPE_IDENTIFIERS_FILE = File::FOLDER_STATS_DOWNLOAD . 'identifiers.zip';
+    const TYPE_IDENTIFIERS_FILE = Files::T_STATS_IDENTIFIERS;
 
     /** STATS TYPE - INTERACTIONS ACTIVE/PASSIVE */
     const TYPE_INTER_PASSIVE_ACITVE = 9;
-    const TYPE_INTER_PASSIVE_ACITVE_FILE = File::FOLDER_STATS_DOWNLOAD . 'active_passive_interactions.zip';
+    const TYPE_INTER_PASSIVE_ACITVE_FILE = Files::T_STATS_ACTIVE_PASSIVE;
 
     /** STATS TYPE - ACTIVE INTERACTIONS STATS */
     const TYPE_INTER_ACTIVE = 10;
@@ -50,27 +51,11 @@ class Statistics extends Db
     /** STATS TYPE - REFERENCES STATS */
     const TYPE_REFERENCES = 11;
 
-
-    public static function exists_stat_file($type)
-    {
-        if(!in_array($type, self::$valid_file_types))
-        {
-            return False;
-        }
-
-        return file_exists($type);
-    }
-
-    /**
-     * Holds info about valid file types
-     */
-    private static $valid_file_types = array
+    protected $has_one = array
     (
-        self::TYPE_INTER_ADD_FILE,
-        self::TYPE_IDENTIFIERS_FILE,
-        self::TYPE_INTER_PASSIVE_ACITVE_FILE
+        'file'
     );
-    
+
     /**
      * Holds info about valid types
      */
@@ -116,6 +101,30 @@ class Statistics extends Db
         $this->table = 'stats';
         parent::__construct($id);
     }
+
+    // /**
+    //  * Checks, if stat file is available for given type
+    //  * 
+    //  * @param int $type
+    //  * 
+    //  * @return boolean
+    //  */
+    // public static function exists_stat_file($type)
+    // {
+    //     if(!self::is_valid($type))
+    //     {
+    //         return false;
+    //     }
+
+    //     $record = self::instance()->where('type' , $type)->get_one();
+
+    //     if(!$record->id)
+    //     {
+    //         return false;
+    //     }
+
+    //     return $record->file && $record->file->id ? True : False;
+    // }
 
     /**
      * Checks, if type is valid
@@ -202,6 +211,38 @@ class Statistics extends Db
     }
 
     /**
+     * Returns all files related to statistics
+     * 
+     * @return Files[]
+     */
+    public function get_stat_files()
+    {
+        function gbt($t)
+        {
+            return Files::instance()
+                ->join('JOIN stats s ON s.id_file = files.id')
+                ->where('s.type', $t)
+                ->select_list('files.*')
+                ->get_one();
+        }
+
+        return array
+        (
+            self::TYPE_INTER_ACTIVE => gbt(self::TYPE_INTER_ACTIVE),
+            self::TYPE_INTER_ADD => gbt(self::TYPE_INTER_ADD),
+            self::TYPE_MEMBRANES_DATA => gbt(self::TYPE_MEMBRANES_DATA),
+            self::TYPE_METHODS_DATA => gbt(self::TYPE_METHODS_DATA),
+            self::TYPE_IDENTIFIERS => gbt(self::TYPE_IDENTIFIERS),
+            self::TYPE_INTER_PASSIVE_ACITVE => gbt(self::TYPE_INTER_PASSIVE_ACITVE),
+            self::TYPE_INTER_TOTAL => gbt(self::TYPE_INTER_TOTAL),
+            self::TYPE_SUBST_TOTAL => gbt(self::TYPE_SUBST_TOTAL),
+            self::TYPE_METHODS_TOTAL => gbt(self::TYPE_METHODS_TOTAL),
+            self::TYPE_MEMBRANES_TOTAL => gbt(self::TYPE_MEMBRANES_TOTAL),
+            self::TYPE_REFERENCES => gbt(self::TYPE_REFERENCES)
+        );
+    }
+
+    /**
      * Updates stats by type
      * 
      * @param int $type
@@ -231,7 +272,7 @@ class Statistics extends Db
         $meth_model = new Methods();
         $subs_model = new Substances();
 
-        $path = NULL;
+        $file_id = NULL;
 
         switch($type)
         {
@@ -252,30 +293,34 @@ class Statistics extends Db
                 break;
 
             case self::TYPE_IDENTIFIERS:
-                $obj->content =self::get_identifiers_stats();
-                $path = self::get_identifiers_data();
+                $obj->content = self::get_identifiers_stats();
+                $file_id = self::get_identifiers_data();
                 break;
 
             case self::TYPE_INTER_ADD:
-                $obj->content =self::get_interaction_substances_adding_stats();
-                $path = self::get_interaction_substances_adding_data();
+                $obj->content = self::get_interaction_substances_adding_stats();
+                $file_id = self::get_interaction_substances_adding_data();
                 break;
 
             case self::TYPE_INTER_PASSIVE_ACITVE:
-                $obj->content =$this->get_passive_active_int_substance_stats();
-                $path = $this->get_passive_active_int_substance_data();
+                $obj->content = $this->get_passive_active_int_substance_stats();
+                $file_id = $this->get_passive_active_int_substance_data();
                 break;
 
             case self:: TYPE_MEMBRANES_DATA:
-                $obj->content =self::get_membranes_stats(TRUE);
+                $obj->content = self::get_membranes_stats(TRUE);
                 break;
 
             case self:: TYPE_METHODS_DATA:
-                $obj->content =self::get_methods_stats(TRUE);
+                $obj->content = self::get_methods_stats(TRUE);
                 break;
 
             case self::TYPE_INTER_ACTIVE:
                 $obj->content = self::get_active_interactions_stats();
+                break;
+
+            case self::TYPE_REFERENCES:
+                $obj->content = NULL;
                 break;
 
             default:
@@ -292,7 +337,7 @@ class Statistics extends Db
         }
 
         $obj->update_date = date('Y-m-d H:i:s');
-        $obj->data_path = $path;
+        $obj->id_file = $file_id;
 
         $obj->save();
 
@@ -754,9 +799,20 @@ class Statistics extends Db
             $file->transform_to_CSV($substances, 'substances.csv')
         );
         
-        $file->zip($paths, self::TYPE_INTER_ADD_FILE, TRUE);
+        $final_path = Files::get_type_path(Files::T_STATS_SUBST_INTERACTIONS) . ".zip";
+        $final_path = $file->zip($paths, $final_path, TRUE);
 
-        return self::TYPE_INTER_ADD_FILE;
+        $f = Files::instance()::get_by_type(Files::T_STATS_SUBST_INTERACTIONS);
+
+        if(!$f->id)
+        {
+            $f->type = Files::T_STATS_SUBST_INTERACTIONS;
+            $f->name = basename($final_path);
+            $f->path = $final_path;
+            $f->save();
+        }
+
+        return $f->id;
     }
 
     /**
@@ -810,9 +866,21 @@ class Statistics extends Db
             $file->transform_to_CSV($pass_interactions, 'passive.csv')
         );
 
-        $file->zip($paths, self::TYPE_INTER_PASSIVE_ACITVE_FILE, TRUE);
+        $final_path = Files::get_type_path(Files::T_STATS_ACTIVE_PASSIVE);
+        $final_path = $file->zip($paths, $final_path, TRUE);
 
-        return self::TYPE_INTER_PASSIVE_ACITVE_FILE;
+        $f = Files::instance()->get_by_type(Files::T_STATS_ACTIVE_PASSIVE);
+
+        if(!$f->id)
+        {
+            $f->path = $final_path;
+            $f->name = basename($final_path);
+            $f->type = Files::T_STATS_ACTIVE_PASSIVE;
+
+            $f->save();
+        }
+
+        return $f->id;
     }
 
     /**
@@ -830,14 +898,14 @@ class Statistics extends Db
     /**
      * Returns idenfiers data
      * 
-     * @return array
+     * @return int
      */
     private static function get_identifiers_data()
     {
-        $substanceModel = new Substances();
+        $f = Files::get_by_type(Files::T_STATS_IDENTIFIERS);
         $file = new File();
 
-        $data = $substanceModel->where(array
+        $data = Substances::instance()->where(array
             (
                 'pubchem IS NOT NULL',
                 'OR',
@@ -850,11 +918,23 @@ class Statistics extends Db
             ->select_list('identifier, name, SMILES, inchikey, MW, LogP, pubchem, drugbank, chEBI as chebi, pdb')
             ->get_all()->as_array();
 
-        $path = $file->transform_to_CSV($data, 'identifiers.csv');
+        $path = Files::get_type_path(Files::T_STATS_IDENTIFIERS) . ".csv";
+        $path = $file->transform_to_CSV($data, $path, NULL);
 
-        $file->zip($path, self::TYPE_IDENTIFIERS_FILE, TRUE);
+        $path = $file->zip($path, Files::get_type_path(Files::T_STATS_IDENTIFIERS) . '.zip', TRUE);
 
-        return self::TYPE_IDENTIFIERS_FILE;
+        if(!$path)
+        {
+            throw new Exception('Cannot save identifiers data.');
+        }
+
+        // Save DB record
+        $f->type = Files::T_STATS_IDENTIFIERS;
+        $f->name = basename($path);
+        $f->path = $path;
+        $f->save();
+
+        return $f->id;
     }
 
     

@@ -21,89 +21,89 @@ class ValidatorController extends Controller
     /**
      * Default redirection
      */
-    function parse($params = NULL)
+    function index($params = NULL)
     {
         $this->redirect('validator/show');
     }
 
-    /**
-     * Shows detail of scheduler compound errors
-     * 
-     * @param int $id
-     */
-    public function show($state = Validator::POSSIBLE_DUPLICITY, $pagination = 1, $id = null)
-    {
-        $validator = new Validator();
-        $scheduler_reports = new Log_scheduler();
-        $substance = new Substances($id);
+    // /**
+    //  * Shows detail of scheduler compound errors
+    //  * 
+    //  * @param int $id
+    //  */
+    // public function show($state = Validator::POSSIBLE_DUPLICITY, $pagination = 1, $id = null)
+    // {
+    //     $validator = new Validator();
+    //     $scheduler_reports = new Log_scheduler();
+    //     $substance = new Substances($id);
 
-        if(!Validator::is_state_valid($state) && $state && !$id)
-        {
-            $this->redirect('validator/show/' . Validator::POSSIBLE_DUPLICITY . '/' . $pagination . "/" . $state);
-        }
+    //     if(!Validator::is_state_valid($state) && $state && !$id)
+    //     {
+    //         $this->redirect('validator/show/' . Validator::POSSIBLE_DUPLICITY . '/' . $pagination . "/" . $state);
+    //     }
 
-        if($id && !$substance->id)
-        {
-            $this->addMessageError('Invalid substance id.');
-            $this->redirect('validator/show/' . $state . "/" . $pagination);
-        }
+    //     if($id && !$substance->id)
+    //     {
+    //         $this->addMessageError('Invalid substance id.');
+    //         $this->redirect('validator/show/' . $state . "/" . $pagination);
+    //     }
 
-        if($substance->id)
-        {
-            $records = $validator->get_substance_detail($id);
-            $this->data['detail'] = $records;
-        }
-        else
-        {
-            $this->data['detail'] = FALSE;
-        }
+    //     if($substance->id)
+    //     {
+    //         $records = $validator->get_substance_detail($id);
+    //         $this->data['detail'] = $records;
+    //     }
+    //     else
+    //     {
+    //         $this->data['detail'] = FALSE;
+    //     }
         
-        $this->header['title'] = 'Validator' . ($substance->name ? " | $substance->name" : '');
-        $this->data['state'] = $state;
-        $this->data['pagination'] = $pagination;
-        $this->data['compounds'] = $validator->get_substances($state, 100*($pagination - 1), 100);
-        $this->data['total_compounds'] = count($validator->get_substances($state));
-        $this->data['reports'] = $scheduler_reports->order_by('id', 'desc')->limit(50)->get_all();
-        $this->view = 'validator/validator';
-    }
+    //     $this->title = 'Validator' . ($substance->name ? " | $substance->name" : '');
+    //     $this->data['state'] = $state;
+    //     $this->data['pagination'] = $pagination;
+    //     $this->data['compounds'] = $validator->get_substances($state, 100*($pagination - 1), 100);
+    //     $this->data['total_compounds'] = count($validator->get_substances($state));
+    //     $this->data['reports'] = $scheduler_reports->order_by('id', 'desc')->limit(50)->get_all();
+    //     $this->view = 'validator/validator';
+    // }
 
-    /**
-     * Validates current substance state
-     * 
-     * @param int $substance_id
-     */
-    public function validate_state($substance_id)
-    {
-        $substance = new Substances($substance_id);
+    // /**
+    //  * Validates current substance state
+    //  * 
+    //  * @param int $substance_id
+    //  */
+    // public function validate_state($substance_id)
+    // {
+    //     $substance = new Substances($substance_id);
 
-        if(!$substance->id)
-        {
-            $this->alert->error('Substance not found.');
-            $this->redirect('validator/show');
-        }
+    //     if(!$substance->id)
+    //     {
+    //         $this->alert->error('Substance not found.');
+    //         $this->redirect('validator/show');
+    //     }
 
-        try
-        {
-            $substance->waiting = NULL;
-            $substance->save();
+    //     try
+    //     {
+    //         $substance->waiting = NULL;
+    //         $substance->save();
 
-            $log = new Scheduler_errors();
-            $log->id_substance = $substance->id;
-            $log->error_text = 'State = ' . $substance->validated . ' was validated.';
-            $log->id_user = $this->session->user->id;
-            $log->count = 1;
+    //         $log = new Scheduler_errors();
+    //         $log->id_substance = $substance->id;
+    //         $log->error_text = 'State = ' . $substance->validated . ' was validated.';
+    //         $log->id_user = $this->session->user->id;
+    //         $log->count = 1;
 
-            $log->save();
+    //         $log->save();
 
-            $this->alert->success('Current state of substance [' . $substance->name . '] was labeled as validated.');
-        }
-        catch(Exception $e)
-        {
-            $this->alert->error($e->getMessage());
-        }
+    //         $this->alert->success('Current state of substance [' . $substance->name . '] was labeled as validated.');
+    //     }
+    //     catch(Exception $e)
+    //     {
+    //         $this->alert->error($e->getMessage());
+    //     }
 
-        $this->redirect('validator/show/' . $substance->validated . "/1/" . $substance->id);
-    }
+    //     $this->redirect('validator/show/' . $substance->validated . "/1/" . $substance->id);
+    // }
 
     /**
      * Joins 2 given molecules to one record

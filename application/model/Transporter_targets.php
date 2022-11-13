@@ -45,9 +45,7 @@ class Transporter_targets extends Db
             )
         );
         
-        $t = new Transporter_targets($t->id);
-        
-        return $t;
+        return new Transporter_targets($t->id);
     }
 
     /**
@@ -58,7 +56,7 @@ class Transporter_targets extends Db
     public function loadSearchWhisper($query)
     {
         return $this->queryAll('
-            SELECT CONCAT(tt.name, " [", tt.uniprot_id, "]") as name
+            SELECT DISTINCT tt.name, tt.uniprot_id
             FROM transporter_targets tt
             JOIN transporters t ON t.id_target = tt.id
             JOIN transporter_datasets td ON td.id = t.id_dataset
@@ -158,13 +156,13 @@ class Transporter_targets extends Db
      * 
      * @return Iterable_object
      */
-    public function get_substances($pagination = NULL)
+    public function get_substances($pagination = NULL, $per_page = 10)
     {
         $limit = '';
 
         if($pagination)
         {
-            $limit = 'LIMIT ' . ($pagination-1)*10 . ',' . 10;
+            $limit = 'LIMIT ' . ($pagination-1)*$per_page . ',' . $per_page;
         }
 
         return $this->queryAll('

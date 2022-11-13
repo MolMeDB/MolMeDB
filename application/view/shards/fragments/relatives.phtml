@@ -1,0 +1,53 @@
+<header>
+    <style>
+        .relatives-row{
+            width: 100%; 
+            display: flex; 
+            flex-direction: row; 
+            justify-content: center;
+            padding: 30px 10px;
+        }
+    </style>
+</header>
+
+<div style="display:flex; flex-direction:column; justify-content: flex-start; align-items:center;">
+    <div class="relatives-title">
+        Requested molecule
+    </div>
+    <div class="relatives-structure">
+        <?= Html::image_structure($substance->SMILES) ?>
+    </div>
+    <?php foreach($data as $row):?>
+    <div class="relatives-row">
+        <div>
+            <label>Requested</label> 
+            <div style="display: flex; flex-direction: row;">
+                <?php if($row->id_substance_1 == $substance->id){$main = $row->fragmentation_1; $side = $row->fragmentation_2;}
+                    else{$main = $row->fragmentation_2; $side = $row->fragmentation_1;}?>
+                <?php foreach($main->raw_fragments as $sf) : ?>
+                    <?= Html::image_structure($sf->fragment->fill_link_numbers($sf->fragment->smiles, explode(',', $sf->links))) ?>
+                <?php endforeach ?>
+            </div>
+        </div>
+        <div style="margin: 0 100px 0 100px;">
+            <label>Core</label> 
+            <div class="relatives-structure">
+                <?php $rl = $row->core->remove_links() ?>
+                <?= Html::image_structure($rl->fill_link_numbers($rl->smiles)) ?>
+            </div>
+        </div>
+        <div>
+            <label>Sibling [ID: <?= $side->id_substance ?>]</label> 
+            <div style="display: flex; flex-direction: row;">
+                <?php foreach($side->raw_fragments as $sf) : ?>
+                    <div style="display: flex; flex-direction: column; padding: 0 10px;">
+                        <?= Html::image_structure($sf->fragment->fill_link_numbers($sf->fragment->smiles, explode(',', $sf->links))) ?>
+                        <?php $fg = $sf->fragment->get_functional_group() ?>
+                        <?= $fg ? $fg->name : '' ?>
+                    </div>
+                <?php endforeach ?>
+            </div>
+        </div>
+    </div>
+    <?php endforeach ?>
+</div>

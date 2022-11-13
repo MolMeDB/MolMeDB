@@ -1,0 +1,94 @@
+<?php if(isset($show_next_total)) : ?>
+    <div class="similar-entry-record similar-entry-get-next">
+        <div class="flex-column ctnt" style="align-items: center; justify-content: center; height: 100%; width: 150px; cursor: pointer; user-select: none; font-weight: bold;">
+            +<?= $show_next_total ?> more  
+        </div>
+    </div>
+<?php else :?>
+<a class="anchor-no-effect" href="<?= Url::base() . "mol/" . $substance->identifier?>">
+    <div class="similar-entry-record">
+        <div class="similar-entry-structure">
+            <img src="<?= Url::get_2d_structure_source($substance->SMILES) ?>">
+        </div>
+        <div class="similar-entry-name ellipsis" title="<?= $substance->name ?>">
+            <?= $substance->name ?>
+        </div>
+        <div class="similar-entry-similarity">
+            <b>Similarity:</b> <?= $similarity ?>
+            <span class="glyphicon glyphicon-question-sign popup-hover">
+                <div class="similarity-popup-content">
+                    <div class="title">Similarity to <span class="ellipsis"><?= $substance->name ?></span></div>
+                    <div>
+                        <table>
+                            <?php foreach($all_similarities as $t => $v): ?>
+                                <tr>
+                                    <th><?= Mol_similarity::enum($t) ?></th>
+                                    <td><?= $v ?></td>
+                                </tr>
+                            <?php endforeach ?>
+                        </table>
+                    </div>
+                </div>
+            </span>
+        </div>
+        <div class="similar-entry-data">
+            <table>
+                <tr>
+                    <th>MW:</th>
+                    <td><div><?= $substance->MW ?></div></td>
+                </tr>
+                <tr>
+                    <th title="Total passive interaction records">PI:</th>
+                    <td><div><?= $interactions->total_passive ?></div> 
+                        <span class="glyphicon glyphicon-question-sign popup-hover">
+                            <div class="similarity-popup-content">
+                                <div class="title">Total passive interactions</div>
+                                <div>
+                                    <table>
+                                        <tr>
+                                            <th><div class="ellipsis"><?= $stats_interactions->substance_name ?></div></th>
+                                            <td><?= $stats_interactions->total_passive ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><div class="ellipsis"><?= $substance->name ?></div></th>
+                                            <td><?= $interactions->total_passive ?></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </span>
+                    </td>
+                </tr>
+            </table>
+            <table>
+                <tr>
+                    <th>LogP:</th>
+                    <td><div><?= $substance->LogP ?></div></td>
+                </tr>
+                <tr>
+                    <th title="Total active interaction (transporter) records">AI:</th>
+                    <td><div><?= $interactions->total_active ?></div> 
+                        <span class="glyphicon glyphicon-question-sign popup-hover">
+                            <div class="similarity-popup-content">
+                                <div class="title">Total active interactions</div>
+                                <div>
+                                    <table>
+                                        <tr>
+                                            <th><div class="ellipsis"><?= $stats_interactions->substance_name ?></div></th>
+                                            <td><?= $stats_interactions->total_active ?></td>
+                                        </tr>
+                                        <tr>
+                                            <th><div class="ellipsis"><?= $substance->name ?></div></th>
+                                            <td><?= $interactions->total_active ?></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</a>
+<?php endif ?>

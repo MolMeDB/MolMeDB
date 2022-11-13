@@ -77,21 +77,6 @@ class EditController extends Controller
                     'title' => 'Documentation'
                 )
             ),
-            self::M_MEMBRANE => array
-            (
-                self::T_DETAIL => array
-                (
-                    'ref' => $this->menu_endpoints[self::M_MEMBRANE] . '/' . self::T_DETAIL,
-                    'title' => 'Detail',
-                    'glyphicon' => "align-left"
-                ),
-                self::T_CATEGORY => array
-                (
-                    'ref' => $this->menu_endpoints[self::M_MEMBRANE] . '/' . self::T_CATEGORY,
-                    'title' => 'Category',
-                    'glyphicon' => "folder-open"
-                )
-            )
         );
     }
 
@@ -126,7 +111,7 @@ class EditController extends Controller
         // Is type valid?
         if(!$articles_model->is_valid_enum_type($type))
         {
-            $this->addMessageError('Parameter');
+            $this->alert->error('Parameter');
             $this->redirect('error');
         }
 
@@ -136,7 +121,7 @@ class EditController extends Controller
 
         if(!$detail->id)
         {
-            $this->addMessageError('Article was not found.');
+            $this->alert->error('Article was not found.');
             $this->redirect('error');
         }
 
@@ -153,19 +138,21 @@ class EditController extends Controller
                 
                 Db::commitTransaction();
                 
-                $this->addMessageSuccess("Saved");
+                $this->alert->success("Saved");
             }
             catch(ErrorUser $ex)
             {
                 Db::rollbackTransaction();
-                $this->addMessageError($ex);
+                $this->alert->error($ex);
             }
         }
 
-        $this->data["detail"] = $detail;
-        $this->header['title'] = 'Editor';
-        $this->data['navigator'] = $this->createNavigator(self::M_ARTICLE, $type);
-        $this->view = 'edit/' . $type;
+        $this->view = new View('edit/' . $type);
+        $this->view->detail = $detail;
+        $this->view->navigator = $this->createNavigator(self::M_ARTICLE, $type);
+        $this->title = 'Editor';
+
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Administration', 'administration')->add('Edit article');
     }
     
     /**
@@ -186,7 +173,7 @@ class EditController extends Controller
         // Checks if compound exists
         if(!$detail->id)
         {
-            $this->addMessageError('Param');
+            $this->alert->error('Param');
             $this->redirect('error');
         }
 
@@ -195,6 +182,8 @@ class EditController extends Controller
         {
             try 
             {
+                throw new MmdbException('Sorry, service is currently unavailable.', 'Sorry, service is currently unavailable.');
+
                 $file = $_FILES["structure"];
 
                 if ($file['name'] != '')
@@ -213,12 +202,12 @@ class EditController extends Controller
                             
                             if(!$drugbank->is_connected())
                             {
-                                throw new Exception('Cannot connect to drugbank server.');
+                                throw new MmdbException('Cannot connect to drugbank server.');
                             }
 
                             if(!$detail->drugbank)
                             {
-                                throw new Exception('Missing drugbank identifier.');
+                                throw new MmdbException('Missing drugbank identifier.');
                             }
 
                             $content = $drugbank->get_3d_structure($detail);
@@ -229,12 +218,12 @@ class EditController extends Controller
                             
                             if(!$driver->is_connected())
                             {
-                                throw new Exception('Cannot connect to the PDB server.');
+                                throw new MmdbException('Cannot connect to the PDB server.');
                             }
 
                             if(!$detail->pdb)
                             {
-                                throw new Exception('Missing pdb identifier.');
+                                throw new MmdbException('Missing pdb identifier.');
                             }
 
                             $content = $driver->get_3d_structure($detail);
@@ -245,12 +234,12 @@ class EditController extends Controller
                             
                             if(!$driver->is_connected())
                             {
-                                throw new Exception('Cannot connect to the pubchem server.');
+                                throw new MmdbException('Cannot connect to the pubchem server.');
                             }
 
                             if(!$detail->pubchem)
                             {
-                                throw new Exception('Missing pubchem identifier.');
+                                throw new MmdbException('Missing pubchem identifier.');
                             }
 
                             $content = $driver->get_3d_structure($detail);
@@ -261,24 +250,24 @@ class EditController extends Controller
                             
                             if(!$driver->is_connected())
                             {
-                                throw new Exception('Cannot connect to Rdkit server.');
+                                throw new MmdbException('Cannot connect to Rdkit server.');
                             }
 
                             if(!$detail->SMILES)
                             {
-                                throw new Exception('Missing SMILES.');
+                                throw new MmdbException('Missing SMILES.');
                             }
 
                             $content = $driver->get_3d_structure($detail);
                             break;
 
                         default:
-                            throw new Exception('Invalid parameter.');
+                            throw new MmdbException('Invalid parameter.');
                     }
 
                     if(!$content)
                     {
-                        throw new Exception('Cannot find 3D structure file.');
+                        throw new MmdbException('Cannot find 3D structure file.');
                     }
 
                     // Fill identifier, if missing
@@ -295,11 +284,11 @@ class EditController extends Controller
                     $detail->save();
                 }
 
-                $this->addMessageSuccess('3D Structure was saved.');
+                $this->alert->success('3D Structure was saved.');
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
-                $this->addMessageError($ex->getMessage());
+                $this->alert->error($ex);
             }
 
             $this->redirect('edit/compound/' . $id);
@@ -311,67 +300,19 @@ class EditController extends Controller
             {
                 $rdkit = new Rdkit();
 
-                $same = [];
-                $keys_check = array
-                (
-                    'pubchem',
-                    'drugbank',
-                    'pdb',
-                    'chEBI',
-                    'chEMBL',
-                    'SMILES',
-                    'inchikey',
-                    'name'
-                );
+                $detail->name = $this->form->param->name;
+                $detail->MW = $this->form->param->MW;
+                $detail->SMILES = $this->form->param->SMILES;
+                $detail->inchikey = $this->form->param->inchikey;
+                // $detail->LogP = $this->form->param->LogP;
+                // $detail->Area = $this->form->param->Area;
+                // $detail->Volume = $this->form->param->Volume;
+                $detail->pdb = $this->form->param->pdb;
+                $detail->pubchem = $this->form->param->pubchem;
+                $detail->drugbank = $this->form->param->drugbank;
+                $detail->chEBI = $this->form->param->chEBI;
+                $detail->chEMBL = $this->form->param->chEMBL;
 
-                // Check, if new DB_ids are not in DB yet
-                foreach($keys_check as $k)
-                {
-                    if(!empty($_POST[$k]))
-                    {
-                        $exists = $detail->where(array
-                        (
-                            $k => $_POST[$k],
-                            'id !='   => $detail->id
-                        ))
-                        ->get_one();
-
-                        if($exists->id)
-                        {
-                            $same[$k] = $exists->id;
-                        }
-                    }
-                }
-
-                if(count($same))
-                {
-                    $this->alert->warning('Found some possible duplicites for '. implode(', ', array_keys($same))
-                        . ' values. Check validator ' . Html::anchor('validator/show/3/1/' . $detail->id, 'detail') . ' for more info.');
-
-                    foreach($same as $key => $subst_id)
-                    {
-                        $detail->add_duplicity($subst_id, "Same $key found.");
-                    }
-                }
-
-                $detail->name = $_POST['name'];
-                $detail->MW = $_POST['MW'];
-                $detail->SMILES = $_POST['SMILES'];
-                $detail->inchikey = $_POST['inchikey'];
-                $detail->LogP = $_POST['LogP'];
-                // $detail->Area = $_POST['Area'];
-                // $detail->Volume = $_POST['Volume'];
-                $detail->pdb = $_POST['pdb'];
-                $detail->pubchem = $_POST['pubchem'];
-                $detail->drugbank = $_POST['drugbank'];
-                $detail->chEBI = $_POST['chEBI'];
-                $detail->chEMBL = $_POST['chEMBL'];
-                $detail->validated = Validator::NOT_VALIDATED;
-
-                $diff = $detail->get_changes(True);
-
-                // Log changes
-                $scheduler_error->add_diff($detail->id, $diff);
 
                 // Autofill inchikey if missing
                 if(empty($_POST['inchikey']) && !empty($_POST['SMILES']) && $rdkit->is_connected())
@@ -395,14 +336,15 @@ class EditController extends Controller
                     }
                 }
 
-                $detail->save();
+                $detail->save_checking_identifiers();
+                $detail->check_identifiers();
 
-                $this->addMessageSuccess('Saved. Will be re-validated in next scheduler run.');
+                $this->alert->success('Changes successfully saved.');
                 $this->redirect('edit/compound/' . $detail->id);
             } 
             catch (Exception $ex) 
             {
-                $this->addMessageError('Error: ' . $ex->getMessage());
+                $this->alert->error('Error: ' . $ex->getMessage());
             }
         }
 
@@ -419,13 +361,13 @@ class EditController extends Controller
             ->order_by("id", "DESC")
             ->get_all();
 
-        $this->data['detail'] = $detail;
-        $this->data['interactions_all'] = $assigned_interactions;
-        $this->data['transporters_all'] = $assigned_transporters;
-        $this->data['logs'] = $logs;
-        $this->header['title'] = 'Edit compound';
-
-        $this->view = 'edit/compound';
+        $this->view = new View('edit/compound');
+        $this->view->detail = $detail;
+        $this->view->interactions_all = $assigned_interactions;
+        $this->view->transporters_all = $assigned_transporters;
+        $this->view->logs = $logs;
+        $this->title = 'Edit compound';
+        $this->breadcrumbs = Breadcrumbs::instance()->add($detail->name, 'mol/' . $detail->identifier)->add('Edit');
     }
 
 
@@ -444,7 +386,7 @@ class EditController extends Controller
 
         if(!$interaction->id)
         {
-            $this->addMessageError('Interaction was not found.');
+            $this->alert->error('Interaction was not found.');
             $this->redirect($redir_path ? $redir_path : 'error');
         }
 
@@ -454,39 +396,39 @@ class EditController extends Controller
             {
                 if($this->form->param->Position_acc && !$this->form->param->Position)
                 {
-                    throw new Exception('Invalid position value.');
+                    throw new MmdbException('Invalid position value.');
                 }
                 if($this->form->param->Penetration_acc && !$this->form->param->Penetration)
                 {
-                    throw new Exception('Invalid Penetration value.');
+                    throw new MmdbException('Invalid Penetration value.');
                 }
                 if($this->form->param->Water_acc && !$this->form->param->Water)
                 {
-                    throw new Exception('Invalid Water value.');
+                    throw new MmdbException('Invalid Water value.');
                 }
                 if($this->form->param->LogPerm_acc && !$this->form->param->LogPerm)
                 {
-                    throw new Exception('Invalid LogPerm value.');
+                    throw new MmdbException('Invalid LogPerm value.');
                 }
                 if($this->form->param->theta_acc && !$this->form->param->theta)
                 {
-                    throw new Exception('Invalid theta value.');
+                    throw new MmdbException('Invalid theta value.');
                 }
                 if($this->form->param->abs_wl_acc && !$this->form->param->abs_wl)
                 {
-                    throw new Exception('Invalid abs_wl value.');
+                    throw new MmdbException('Invalid abs_wl value.');
                 }
                 if($this->form->param->fluo_wl_acc && !$this->form->param->fluo_wl)
                 {
-                    throw new Exception('Invalid fluo_wl value.');
+                    throw new MmdbException('Invalid fluo_wl value.');
                 }
                 if($this->form->param->QY_acc && !$this->form->param->QY)
                 {
-                    throw new Exception('Invalid QY value.');
+                    throw new MmdbException('Invalid QY value.');
                 }
                 if($this->form->param->lt_acc && !$this->form->param->lt)
                 {
-                    throw new Exception('Invalid lt value.');
+                    throw new MmdbException('Invalid lt value.');
                 }
 
                 // Edit interaction
@@ -515,20 +457,24 @@ class EditController extends Controller
 
                 $interaction->save();
 
-                $this->addMessageSuccess('Saved');
+                $this->alert->success('Saved');
 
                 $this->redirect($redir_path ? $redir_path : 'edit/compound/' . $interaction->substance->id);
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
-                $this->addMessageError('Error: ' . $ex->getMessage());
+                $this->alert->error($ex);
                 $this->redirect('edit/interaction/' . $interaction->id);
             }
         }
 
-        $this->data['detail'] = $interaction;
-        $this->header['title'] = "Interaction [$interaction->id] editor";
-        $this->view = 'edit/interaction';
+        $this->view = new View('edit/interaction');
+        $this->view->detail = $interaction;
+        $this->title = "Interaction [$interaction->id] editor";
+        $this->breadcrumbs = Breadcrumbs::instance()
+                                ->add($interaction->substance->toStr(), 'mol/' . $interaction->substance->identifier)
+                                ->add("Edit: " . $interaction->substance->name, 'edit/compound/' . $interaction->substance->id)
+                                ->add('Edit interaction [ID:' . $interaction->id . ']');
     }
 
     /**
@@ -545,7 +491,7 @@ class EditController extends Controller
 
         if(!$interaction->id)
         {
-            $this->addMessageError('Interaction was not found.');
+            $this->alert->error('Interaction was not found.');
             $this->redirect($redir_path ? $redir_path : 'error');
         }
 
@@ -557,27 +503,27 @@ class EditController extends Controller
 
                 if($this->form->param->Km_acc && !$this->form->param->Km)
                 {
-                    throw new Exception('Invalid Km value.');
+                    throw new MmdbException('Invalid Km value.');
                 }
                 if($this->form->param->Ki_acc && !$this->form->param->Ki)
                 {
-                    throw new Exception('Invalid Ki value.');
+                    throw new MmdbException('Invalid Ki value.');
                 }
                 if($this->form->param->IC50_acc && !$this->form->param->IC50)
                 {
-                    throw new Exception('Invalid IC50 value.');
+                    throw new MmdbException('Invalid IC50 value.');
                 }
                 if($this->form->param->EC50_acc && !$this->form->param->EC50)
                 {
-                    throw new Exception('Invalid EC50 value.');
+                    throw new MmdbException('Invalid EC50 value.');
                 }
                 if(!Transporters::is_valid_type($this->form->param->type))
                 {
-                    throw new Exception('Invalid type value.');
+                    throw new MmdbException('Invalid type value.');
                 }
                 if(!$target->id)
                 {
-                    throw new Exception('Invalid target value.');
+                    throw new MmdbException('Invalid target value.');
                 }
 
                 // Edit interaction
@@ -594,21 +540,25 @@ class EditController extends Controller
 
                 $interaction->save();
 
-                $this->addMessageSuccess('Saved');
+                $this->alert->success('Saved');
 
                 $this->redirect($redir_path ? $redir_path : 'edit/compound/' . $interaction->substance->id);
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
-                $this->addMessageError('Error: ' . $ex->getMessage());
+                $this->alert->error($ex);
                 $this->redirect('edit/active_interaction/' . $interaction->id);
             }
         }
 
-        $this->data['detail'] = $interaction;
-        $this->data['targets'] = Transporter_targets::instance()->order_by('name')->get_all();
-        $this->header['title'] = "Interaction [$interaction->id] editor";
-        $this->view = 'edit/active_interaction';
+        $this->view = new View('edit/active_interaction');
+        $this->view->detail = $interaction;
+        $this->view->targets = Transporter_targets::instance()->order_by('name')->get_all();
+        $this->title = "Interaction [$interaction->id] editor";
+        $this->breadcrumbs = Breadcrumbs::instance()
+                                ->add($interaction->substance->toStr(), 'mol/' . $interaction->substance->identifier)
+                                ->add("Edit: " . $interaction->substance->name, 'edit/compound/' . $interaction->substance->id)
+                                ->add('Edit interaction [ID:' . $interaction->id . ']');
     }
 
     /**
@@ -633,7 +583,7 @@ class EditController extends Controller
         {
             if($file["size"] > 100000)
             {
-                throw new Exception('Sorry, your file is too large.');
+                throw new MmdbException('Sorry, your file is too large.');
             }
             if(move_uploaded_file($file['tmp_name'], $target_file))
             {
@@ -641,7 +591,7 @@ class EditController extends Controller
             }
             else 
             {
-                throw new Exception('Problem with saving file to target folder.');
+                throw new MmdbException('Problem with saving file to target folder.');
             }
         }
     }
@@ -661,7 +611,7 @@ class EditController extends Controller
 
         if($id && !$dataset->id)
         {
-            $this->addMessageError('Dataset not found');
+            $this->alert->error('Dataset not found');
             $this->redirect('edit/dataset');
         }
 
@@ -688,12 +638,12 @@ class EditController extends Controller
                             $dataset->change_rights($id_entity, $group);
                             
                             Db::commitTransaction();
-                            $this->addMessageSuccess("Access rights was successfully changed!");
+                            $this->alert->success("Access rights was successfully changed!");
                         } 
-                        catch (Exception $ex) 
+                        catch (MmdbException $ex) 
                         {
                             Db::rollbackTransaction();
-                            $this->addMessageError($ex->getMessage());
+                            $this->alert->error($ex);
                         }
                         break;
 
@@ -707,7 +657,7 @@ class EditController extends Controller
 
                             if(intval($this->form->param->id_dataset) !== intval($dataset->id))
                             {
-                                throw new Exception('Wrong dataset instance.');
+                                throw new MmdbException('Wrong dataset instance.');
                             }
 
                             // Update data
@@ -721,12 +671,12 @@ class EditController extends Controller
                             
                             Db::commitTransaction();
 
-                            $this->addMessageSuccess("Successfully updated!");
+                            $this->alert->success("Successfully updated!");
                         } 
-                        catch (Exception $ex) 
+                        catch (MmdbException $ex) 
                         {
                             Db::rollbackTransaction();
-                            $this->addMessageError($ex->getMessage());
+                            $this->alert->error($ex);
                         }
                         break;
 
@@ -751,6 +701,11 @@ class EditController extends Controller
 
                             Db::beginTransaction();
 
+                            if(trim($this->form->param->substance_name) == '')
+                            {
+                                throw new MmdbException('Invalid parameter value.', 'Value `substance_name` cannot be empty.');
+                            }
+
                             // Edit substance
                             $substance->name = $this->form->param->substance_name;
                             $substance->SMILES = $this->form->param->SMILES;
@@ -761,7 +716,8 @@ class EditController extends Controller
                             $substance->chEMBL = $this->form->param->chEMBL;
                             $substance->drugbank = $this->form->param->drugbank;
 
-                            $substance->save();
+                            $substance->save_checking_identifiers();
+                            $substance->check_identifiers();
 
                             // Edit interaction
                             $interaction->Position = $this->form->param->Position;
@@ -790,11 +746,11 @@ class EditController extends Controller
                             $interaction->save();
 
                             Db::commitTransaction();
-                            $this->addMessageSuccess($substance->name . " was successfully updated!");
-                        } catch (Exception $ex) 
+                            $this->alert->success($substance->name . " was successfully updated!");
+                        } catch (MmdbException $ex) 
                         {
                             Db::rollbackTransaction();
-                            $this->addMessageError($ex->getMessage());
+                            $this->alert->error($ex);
                         }
                         break;
 
@@ -805,18 +761,19 @@ class EditController extends Controller
 
                 $this->redirect('edit/dsInteractions/' . intval($id) . '/' . $pagination);
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->alert->error($e);
                 $this->redirect('edit/dsInteractions/' . intval($id) . '/' . $pagination);
             }
         }
+
+        $this->view = new View('edit/interaction_dataset');
 
         // If dataset exists, show detail
         if($dataset->id)
         {
             $interaction_model = new Interactions();
-            $validation = new Validator();
 
             $items = 100;
 
@@ -829,25 +786,32 @@ class EditController extends Controller
                 ->where('id_dataset', $dataset->id)
                 ->count_all();
 
-            $this->data['total_duplicity'] = $validation->get_inter_dataset_duplicity_count($dataset->id);
-            $this->data['info'] = $dataset;
-            $this->data['interaction_table'] = self::createInteractionTable($dataset_interactions, $dataset->id);
-            $this->data['total'] = $total;
-            $this->data['pagination'] = $pagination;
-            $this->data['rights_users'] = $dataset->get_rights();
-            $this->data['rights_groups'] = $dataset->get_rights(true);
+            $this->view->pagination_setting = array
+            (
+                'total_items' => $total,
+                'items_per_page' => $items,
+                'active_page'   => $pagination,
+                'callback' => 'edit/dsInteractions/' . $dataset->id . '/{pagination}'
+            );
+            $this->view->dataset = $dataset;
+            $this->view->interaction_table = self::createInteractionTable($dataset_interactions, $dataset->id);
+            $this->view->total = $total;
+            $this->view->pagination = $pagination;
+            $this->view->rights_users = $dataset->get_rights();
+            $this->view->rights_groups = $dataset->get_rights(true);
         }
 
-        $this->data['show_detail'] = $show_detail;
+        $this->view->show_detail = $show_detail;
         // Get all datasets
-        $this->data['datasets'] = $dataset
+        $this->view->datasets = $dataset
             ->order_by('createDateTime', 'DESC')
             ->get_all();
 
-        $this->header['title'] = 'Dataset editor';
-        $this->data['navigator'] = $this->createNavigator(self::M_DATASET_INTER);
-        $this->view = 'edit/interaction_dataset';
+        $this->title = 'Dataset editor';
+        $this->view->navigator = $this->createNavigator(self::M_DATASET_INTER);
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Administration', 'administration')->add('Edit passive interaction datasets');
     }
+    
     /**
      * Edits transporters datasets
      * 
@@ -861,7 +825,7 @@ class EditController extends Controller
 
         if($id && !$dataset->id)
         {
-            $this->addMessageError('Dataset not found');
+            $this->alert->error('Dataset not found');
             $this->redirect('edit/dataset');
         }
 
@@ -888,14 +852,14 @@ class EditController extends Controller
                         //     $dataset->change_rights($id_entity, $group);
                             
                         //     Db::commitTransaction();
-                        //     $this->addMessageSuccess("Access rights was successfully changed!");
+                        //     $this->alert->success("Access rights was successfully changed!");
                         // } 
                         // catch (Exception $ex) 
                         // {
                         //     Db::rollbackTransaction();
-                        //     $this->addMessageError($ex->getMessage());
+                        //     $this->alert->error($ex->getMessage());
                         // }
-                        $this->addMessageWarning('Sorry, service is temporary unavailable.');
+                        $this->alert->warning('Sorry, service is temporary unavailable.');
                         break;
 
                     case 'edit_basic':
@@ -908,7 +872,7 @@ class EditController extends Controller
 
                             if(intval($this->form->param->id_dataset) !== intval($dataset->id))
                             {
-                                throw new Exception('Wrong dataset instance.');
+                                throw new MmdbException('Wrong dataset instance.');
                             }
 
                             // Update data
@@ -920,12 +884,12 @@ class EditController extends Controller
                             
                             Db::commitTransaction();
 
-                            $this->addMessageSuccess("Successfully updated!");
+                            $this->alert->success("Successfully updated!");
                         } 
-                        catch (Exception $ex) 
+                        catch (MmdbException $ex) 
                         {
                             Db::rollbackTransaction();
-                            $this->addMessageError($ex->getMessage());
+                            $this->alert->error($ex);
                         }
                         break;
 
@@ -940,12 +904,12 @@ class EditController extends Controller
 
                             if(!$interaction->id)
                             {
-                                throw new Exception('Interaction was not found.');
+                                throw new MmdbException('Interaction was not found.');
                             }
 
                             if(!$substance->id)
                             {
-                                throw new Exception('Substance was not found.');
+                                throw new MmdbException('Substance was not found.');
                             }
 
                             Db::beginTransaction();
@@ -960,7 +924,8 @@ class EditController extends Controller
                             $substance->chEMBL = $this->form->param->chEMBL;
                             $substance->drugbank = $this->form->param->drugbank;
 
-                            $substance->save();
+                            $substance->save_checking_identifiers();
+                            $substance->check_identifiers();
 
                             // Edit interaction
                             $interaction->type = $this->form->param->type;
@@ -978,27 +943,29 @@ class EditController extends Controller
                             $interaction->save();
 
                             Db::commitTransaction();
-                            $this->addMessageSuccess($substance->name . " was successfully updated!");
-                        } catch (Exception $ex) 
+                            $this->alert->success($substance->name . " was successfully updated!");
+                        } catch (MmdbException $ex) 
                         {
                             Db::rollbackTransaction();
-                            $this->addMessageError($ex->getMessage());
+                            $this->alert->error($ex);
                         }
                         break;
 
                     default:
-                        throw new Exception('Wrong request type.');
+                        throw new MmdbException('Wrong request type.');
                         break;
                 }
 
                 $this->redirect('edit/dsTransporters/' . intval($id));
             }
-            catch(Exception $e)
+            catch(MmdbException $e)
             {
-                $this->addMessageError($e->getMessage());
+                $this->alert->error($e);
                 $this->redirect('edit/dsTransporters/' . intval($id));
             }
         }
+
+        $this->view = new View('edit/transporter_dataset');
 
         // If dataset exists, show detail
         if($dataset->id)
@@ -1010,22 +977,22 @@ class EditController extends Controller
                 ->where('id_dataset', $dataset->id)
                 ->get_all();
 
-            $this->data['info'] = $dataset;
-            $this->data['transporters_table'] = self::createTransportersTable($dataset_transporters, $dataset->id);
-            $this->data['targets'] = $target_model->order_by('name', 'ASC')->get_all();
-            // $this->data['rights_users'] = $dataset->get_rights();
-            // $this->data['rights_groups'] = $dataset->get_rights(true);
+            $this->view->info = $dataset;
+            $this->view->transporters_table = self::createTransportersTable($dataset_transporters, $dataset->id);
+            $this->view->targets = $target_model->order_by('name', 'ASC')->get_all();
+            // $this->view->rights_users = $dataset->get_rights();
+            // $this->view->rights_groups = $dataset->get_rights(true);
         }
 
-        $this->data['show_detail'] = $show_detail;
+        $this->view->show_detail = $show_detail;
         // Get all datasets
-        $this->data['datasets'] = $dataset
+        $this->view->datasets = $dataset
             ->order_by('create_datetime', 'DESC')
             ->get_all();
 
-        $this->header['title'] = 'Dataset editor';
-        $this->data['navigator'] = $this->createNavigator(self::M_DATASET_TRANS);
-        $this->view = 'edit/transporter_dataset';
+        $this->title = 'Dataset editor';
+        $this->view->navigator = $this->createNavigator(self::M_DATASET_TRANS);
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Administration', 'administration')->add('Edit transporter datasets');
     }
 
 
@@ -1041,7 +1008,8 @@ class EditController extends Controller
         $userModel = new Users($user_id);
         $groups = $userModel->get_all_groups();
 
-        $this->data['users_table'] = '';
+        $this->view = new View('edit/users');
+        $this->view->users_table = '';
 
         // Toggle group affiliation
         if($group_id && $user_id)
@@ -1059,13 +1027,13 @@ class EditController extends Controller
                 
                 Db::commitTransaction();
 
-                $this->addMessageSuccess('Successfully edited.');
+                $this->alert->success('Successfully edited.');
                 $this->redirect('edit/user/' . $group_id);
             } 
-            catch (Exception $ex) 
+            catch (MmdbException $ex) 
             {
                 Db::rollbackTransaction();
-                $this->addMessageError('Error, please contact administrator.');
+                $this->alert->error('Error, please contact administrator.');
             }
         }
         // Load group detail
@@ -1076,20 +1044,20 @@ class EditController extends Controller
                 Db::beginTransaction();
 
                 $users = $userModel->get_users_by_group($group_id);
-                $this->data['users_table'] = $this->createTable_users("Group [#$group_id] users", array("#", "Name", "Affiliation", "Edit"), array("id", "name", "gp"), $users, $group_id);
+                $this->view->users_table = $this->createTable_users("Group [#$group_id] users", array("#", "Name", "Affiliation", "Edit"), array("id", "name", "gp"), $users, $group_id);
                 
                 Db::commitTransaction();
-            } catch (Exception $ex) {
+            } catch (MmdbException $ex) {
                 Db::rollbackTransaction();
-                $this->addMessageError('Error, please contact administrator.');
+                $this->alert->error('Error, please contact administrator.');
             }
         }
 
 
-        $this->data['groups_table'] = $this->createTable_groups('Edit group', array('#', "Name"), array('id', 'gp_name'), $groups);
-        $this->data['navigator'] = $this->createNavigator(self::M_USERS);
-        $this->header['title'] = 'Edit users';
-        $this->view = 'edit/users';
+        $this->view->groups_table = $this->createTable_groups('Edit group', array('#', "Name"), array('id', 'gp_name'), $groups);
+        $this->view->navigator = $this->createNavigator(self::M_USERS);
+        $this->title = 'Edit users';
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Administration', 'administration')->add('Edit access rights');
     }
 
     /**
@@ -1106,7 +1074,7 @@ class EditController extends Controller
         {
             if(!$publication->id)
             {
-                $this->addMessageWarning('Publication not found.');
+                $this->alert->warning('Publication not found.');
                 $this->redirect('edit/publication');
             }
             
@@ -1123,7 +1091,7 @@ class EditController extends Controller
 
                 if($check_doi->id)
                 {
-                    throw new Exception('Publication with given DOI already exists.');
+                    throw new MmdbException('Publication with given DOI already exists.');
                 }
 
                 $check_pmid = $publication->where(
@@ -1136,7 +1104,7 @@ class EditController extends Controller
 
                 if($check_pmid->id)
                 {
-                    throw new Exception('Publication with given PmID already exists.');
+                    throw new MmdbException('Publication with given PmID already exists.');
                 }
 
                 // Save new one
@@ -1157,24 +1125,26 @@ class EditController extends Controller
 
                 $publication->save();
                 
-                $this->addMessageSuccess("Saved");
+                $this->alert->success("Saved");
             } 
             catch (Exception $ex) 
             {
-                $this->addMessageError($ex->getMessage());
+                $this->alert->error($ex->getMessage());
             }
         }
+
+        $this->view = new View('edit/publication');
 
         if($publication->id)
         {
             $publication->publicated_date = $publication->publicated_date ? date('d-m-Y', strtotime($publication->publicated_date)) : NULL;
-            $this->data['detail'] = $publication;
+            $this->view->detail = $publication;
         }
 
-        $this->data['publications'] = $publication->get_all();
-        $this->data['navigator'] = $this->createNavigator(self::M_PUBLICATION);
-        $this->header['title'] = 'Edit publication';
-        $this->view = 'edit/publication';
+        $this->view->publications = $publication->get_all();
+        $this->view->navigator = $this->createNavigator(self::M_PUBLICATION);
+        $this->title = 'Edit publication';
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Administration', 'administration')->add('Edit publications');
     }
 
 
@@ -1193,112 +1163,50 @@ class EditController extends Controller
         if ($type == self::T_DETAIL) 
         {
             // Is submitted post?
-            if ($_POST) 
+            if ($this->form->is_post()) 
             {
                 // exists membrane?
                 if (!$method->id) 
                 {
-                    $this->addMessageError('Method was not found.');
+                    $this->alert->error('Method was not found.');
                     $this->redirect('edit/method');
                 }
 
                 try 
                 {
                     // Save changes
-                    $method->name = $_POST['name'];
-                    $method->keywords = $_POST['keywords'];
-                    $method->CAM = $_POST['CAM'];
-                    $method->description = $_POST['description'];
-                    $method->references = $_POST['reference'];
+                    $method->name = $this->form->param->name;
+                    $method->keywords = $this->form->param->keywords;
+                    $method->CAM = $this->form->param->CAM;
+                    $method->description = $this->form->param->description;
+                    $method->references = $this->form->param->reference;
 
                     $method->save();
 
-                    $this->addMessageSuccess("Saved");
+                    $this->alert->success("Saved");
                     $this->redirect('edit/method');
                 } 
-                catch (Exception $e) 
+                catch (MmdbException $e) 
                 {
-                    $this->addMessageError('Error during saving method detail.');
+                    $this->alert->error('Error during saving method detail.');
                     $this->redirect('edit/method');
                 }
             }
 
-            $this->data['pictures'] = $this->loadPictures();
-            $this->view = 'edit/method/detail';
+            $this->view = new View('edit/method/detail');
+            $this->view->pictures = $this->loadPictures();
         }
-        // Change method category
-        // else if ($type == self::T_CATEGORY) {
-        //     // Is submitted post?
-        //     if ($_POST) {
-        //         // exists membrane?
-        //         if (!$method->id) {
-        //             $this->addMessageError('Membrane was not found.');
-        //             $this->redirect('edit/membrane');
-        //         }
-
-        //         try {
-        //             // Save changes
-        //             $method->editCategory($_POST['idCat'], $_POST['idSubcat']);
-
-        //             $this->addMessageSuccess("Saved");
-        //             $this->redirect('edit/membrane');
-        //         } catch (Exception $e) {
-        //             $this->addMessageError('Error during saving membrane detail.');
-        //             $this->redirect('edit/membrane');
-        //         }
-        //     }
-
-        //     $this->data['categories'] = $method->get_all_categories();
-        //     $this->data['subcategories'] = $method->get_all_subcategories();
-        //     $this->view = 'edit/membrane/category';
-        // } 
         else 
         {
-            $this->addMessageWarning('Wrong parameter');
+            $this->alert->warning('Wrong parameter');
             $this->redirect('edit/method');
         }
 
         // Get all method
-        $this->data["methods"] = $method->get_all();
-        $this->data['navigator'] = $this->createNavigator(self::M_METHOD);
-        $this->header['title'] = 'Edit method';
-    }
-
-    /**
-     * Checks name of 3d structure files and generates new ones if missing
-     * 
-     */
-    public function check_3d_structures()
-    {
-        // Check if exists and rename if wrong
-        $substance_model = new Substances();
-
-        $substances = $substance_model
-            ->select_list(array
-            (
-                'uploadName',
-                'identifier'
-            ))
-            ->get_all();
-
-        $target_folder = MEDIA_ROOT . 'files/3Dstructures/';
-
-        foreach($substances as $row)
-        {
-            try
-            {
-                $file = new File($target_folder . $row->uploadName . '.mol');
-
-                $file->rename($row->identifier);
-            }
-            catch(Exception $e)
-            {
-                echo($e  . ' <br/>');
-                continue;
-            }
-        }
-
-        die;
+        $this->view->methods = $method->get_all();
+        $this->view->navigator = $this->createNavigator(self::M_METHOD);
+        $this->title = 'Edit method';
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Administration', 'administration')->add('Edit methods');
     }
 
     /**
@@ -1315,86 +1223,50 @@ class EditController extends Controller
         if($type == self::T_DETAIL)
         {
             // Is submitted post?
-            if($_POST)
+            if($this->form->is_post())
             {
                 // exists membrane?
                 if (!$membrane->id) 
                 {
-                    $this->addMessageError('Membrane was not found.');
+                    $this->alert->error('Membrane was not found.');
                     $this->redirect('edit/membrane');
                 }
 
                 try
                 {
                     // Save changes
-                    $membrane->name = $_POST['name'];
-                    $membrane->keywords = $_POST['keywords'];
-                    $membrane->CAM = $_POST['CAM'];
-                    $membrane->description = $_POST['description'];
-                    $membrane->references = $_POST['reference'];
+                    $membrane->name = $this->form->param->name;
+                    $membrane->keywords = $this->form->param->keywords;
+                    $membrane->CAM = $this->form->param->CAM;
+                    $membrane->description = $this->form->param->description;
+                    $membrane->references = $this->form->param->reference;
 
                     $membrane->save();
 
-                    $this->addMessageSuccess("Saved");
+                    $this->alert->success("Saved");
                     $this->redirect('edit/membrane');
                 }
-                catch(Exception $e)
+                catch(MmdbException $e)
                 {
-                    $this->addMessageError('Error during saving membrane detail.');
+                    $this->alert->error('Error during saving membrane detail.');
                     $this->redirect('edit/membrane');
                 }
             }
 
-            $this->data['pictures'] = $this->loadPictures();
-            $this->view = 'edit/membrane/detail';
-        }
-        // Change membrane category
-        else if($type == self::T_CATEGORY)
-        {
-            // Is submitted post?
-            if ($_POST) 
-            {
-                if(!$membrane->id && isset($_POST['id']))
-                {
-                    $membrane = new Membranes($_POST['id']);
-                }
-
-                // exists membrane?
-                if (!$membrane->id) 
-                {
-                    $this->addMessageError('Membrane was not found.');
-                    $this->redirect('edit/membrane');
-                }
-
-                try 
-                {
-                    // Save changes
-                    $membrane->editCategory($_POST['category_id'], $_POST['subcategory_id']);
-
-                    $this->addMessageSuccess("Saved");
-                    $this->redirect('edit/membrane/' . self::T_CATEGORY);
-                } 
-                catch (Exception $e) 
-                {
-                    $this->addMessageError('Error during saving membrane detail.');
-                    $this->redirect('edit/membrane/' . self::T_CATEGORY);
-                }
-            }
-
-            $this->data['categories'] = $membrane->get_all_categories();
-            $this->data['subcategories'] = $membrane->get_all_subcategories();
-            $this->view = 'edit/membrane/category';
+            $this->view = new View('edit/membrane/detail');
+            $this->view->pictures = $this->loadPictures();
         }
         else
         {
-            $this->addMessageWarning('Wrong parameter');
+            $this->alert->warning('Wrong parameter');
             $this->redirect('edit/membrane');
         }
 
         // Get all membranes
-        $this->data["membranes"] = $membrane->order_by('name')->get_all();
-        $this->data['navigator'] = $this->createNavigator(self::M_MEMBRANE, $type);
-        $this->header['title'] = 'Edit membranes';
+        $this->view->membranes = $membrane->order_by('name')->get_all();
+        $this->view->navigator = $this->createNavigator(self::M_MEMBRANE, $type);
+        $this->title = 'Edit membranes';
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Administration', 'administration')->add('Edit membranes');
     }
 
     /**

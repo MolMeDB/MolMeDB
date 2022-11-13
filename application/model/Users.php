@@ -6,6 +6,7 @@
  * @property integer $id
  * @property string $name
  * @property string $password
+ * @property string $token
  * @property bool $guest
  * @property bool $superadmin
  * @property datetime $createDateTime
@@ -31,10 +32,28 @@ class Users extends Db
      * 
      * @return string
      */
-    public function return_fingerprint($password)
+    public static function return_fingerprint($password)
     {
         $salt = 'fd16sdfd2ew#$%';
         return hash('sha256', $password . $salt);
+    }
+
+    /**
+     * Generates access token for user
+     */
+    public function save_new_token()
+    {
+        if(!$this->id)
+        {
+            return;
+        }
+
+        $ms_username = Text::generateRandomString(8,false);
+        $ms_pass = Text::generateRandomString(16,true);
+        $token = base64_encode("$ms_username:$ms_pass");
+
+        $this->token = $token;
+        $this->save();
     }
 
     /**
@@ -57,7 +76,7 @@ class Users extends Db
 
         if(!$user->id)
         {
-            throw new ErrorUser('Try again');
+            throw new ErrorUser('Invalid username or password!');
         }
 
         $admin = $this->queryOne('
@@ -87,7 +106,7 @@ class Users extends Db
      */
     public function saveLog($user_id, $log_in = True)
     {
-        $this->insert('log_login', array('user_id' => $user_id, 'login' => $log_in));
+        // $this->insert('log_login', array('user_id' => $user_id, 'login' => $log_in));
     }
     
     /**

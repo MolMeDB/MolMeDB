@@ -77,24 +77,21 @@ class Uploader extends Db
     {
         $substanceModel = new Substances();
         $interactionModel = new Interactions();
-        $smilesModel = new Smiles();
-		$user_id = $_SESSION['user']['id'];
+		$user_id = session::user_id();
+		$rdkit = new Rdkit();
 
-		$comment = trim($comment);
-		
 		try
 		{
-			if($SMILES == '' || !$SMILES)
-			{
-				// try to find SMILES in DB
-				$SMILES = $smilesModel->where('name', $ligand)
-					->select_list('SMILES')
-					->get_one()
-					->SMILES;
-			}
-
 			// Checks if substance already exists
 			$substance = $substanceModel->exists($ligand, $SMILES, $PDB, $DrugBank, $PubChem, $CHEBI, $CHEMBL);
+
+			// Canonize smiles
+			$canonized_smiles = $rdkit->canonize_smiles($SMILES, false);
+
+			if($canonized_smiles)
+			{
+				$SMILES = $canonized_smiles;
+			}
 
 			// Protected insert 
 			if(!$substance->id)
@@ -104,72 +101,65 @@ class Uploader extends Db
 				$substance->uploadName = $ligand;
 				$substance->SMILES = $SMILES;
 				$substance->MW = $MW;
-				$substance->Area = $Area;
-				$substance->Volume = $Volume;
-				$substance->LogP = $LogP;
 				$substance->pdb = $PDB;
 				$substance->pubchem = $PubChem;
 				$substance->drugbank = $DrugBank;
 				$substance->chEMBL = $CHEMBL;
 				$substance->chEBI = $CHEBI;
 				$substance->user_id = $user_id;
-				$substance->validated = Validator::NOT_VALIDATED;
 				
-				$substance->save();
-
-				// Save identifier and check names
-				$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
-				$substance->name = !$substance->name || trim($substance->name) == '' ? $substance->identifier : $substance->name;
-				$substance->uploadName = !$substance->uploadName || trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
-
-				$substance->save();
+				$substance->save($dataset_id);
 			}
 			else
 			{
-				// Update record
-				$substance->MW = $MW ? $MW : $substance->MW;
-				$substance->SMILES = $SMILES ? $SMILES : $substance->SMILES;
-				$substance->LogP = $LogP ? $LogP : $substance->LogP;
-				$substance->Area = $Area ? $Area : $substance->Area;
-				$substance->Volume = $Volume ? $Volume : $substance->Volume;
-				$substance->pdb = $PDB ? $PDB : $substance->pdb;
-				$substance->pubchem = $PubChem ? $PubChem : $substance->pubchem;
-				$substance->drugbank = $DrugBank ? $DrugBank : $substance->drugbank;
-				$substance->chEMBL = $CHEMBL ? $CHEMBL : $substance->chEMBL;
-				$substance->chEBI = $CHEBI ? $CHEBI : $substance->chEBI;
-				$substance->validated = Validator::NOT_VALIDATED;
+				// Add new values as valid identifiers
+				$valid_attributes = array
+				(
+					Validator_identifiers::ID_NAME => $ligand,
+					Validator_identifiers::ID_SMILES => $SMILES,
+					Validator_identifiers::ID_CHEBI => $CHEBI,
+					Validator_identifiers::ID_CHEMBL => $CHEMBL,
+					Validator_identifiers::ID_PDB => $PDB,
+					Validator_identifiers::ID_PUBCHEM => $PubChem,
+					Validator_identifiers::ID_DRUGBANK => $DrugBank,
+				);
+
+				foreach($valid_attributes as $type => $value)
+				{
+					if(empty($value) || trim($value) === '')
+					{
+						continue;
+					}
+
+					$record = new Validator_identifiers();
+					$record->identifier = $type;
+					$record->id_substance = $substance->id;
+					$record->value = $value;
+					$record->id_source = NULL;
+					$record->server = NULL;
+					$record->id_user = session::user_id();
+					$record->state = Validator_identifiers::STATE_VALIDATED;
+					$record->active = Validator_identifiers::INACTIVE;
+					$record->id_dataset_passive = $dataset_id;
+					$record->flag = NULL;
+
+					if($type === Validator_identifiers::ID_SMILES && $canonized_smiles)
+					{
+						$record->flag = Validator_identifiers::SMILES_FLAG_CANONIZED;
+					}
+
+					$record->save();
+				}
+
+				$substance->check_identifiers();
 
 				// If missing identifier, then update
 				if(!Identifiers::is_valid($substance->identifier))
 				{
 					$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
-
-					$name = trim($substance->name) == '' ? 
-						($ligand && $ligand != '' ? $ligand : $substance->identifier) :
-						$substance->name;
-					
-					$substance->name = $name;
-					$substance->uploadName = $name;
 				}
 
 				$substance->save();
-			}
-
-			// Add altername record if not exists
-			if($ligand)
-			{
-				$alterName = new AlterNames();
-
-				$exists = $alterName->where('name LIKE', $ligand)
-					->get_one();
-			
-				if(!$exists->id)
-				{
-					$alterName->name = $ligand;
-					$alterName->id_substance = $substance->id;
-
-					$alterName->save();
-				}
 			}
 
 			// try to find interaction
@@ -181,7 +171,7 @@ class Uploader extends Db
 					'temperature'	=> $temperature,
 					'charge'		=> $Q,
 					'id_reference'	=> $reference_id,
-					'comment LIKE' 	=> $comment
+					'comment' 		=> $comment
 				))
 				->select_list('id')
 				->get_one()
@@ -222,8 +212,6 @@ class Uploader extends Db
 				$interaction->lt = $lt;
 				$interaction->lt_acc = $lt_acc;
 
-				$interaction->validated = Interactions::NOT_VALIDATED;
-
 				$interaction->save();
 			}
 			else // Exists and has the same comment, so try to fill missing data
@@ -249,12 +237,8 @@ class Uploader extends Db
 				$interaction->lt = self::check_int_val($interaction->lt, $lt, 'lt', $interaction->id_dataset);
 				$interaction->lt_acc = $interaction->lt === $lt ? $lt_acc : $interaction->lt_acc;
 
-				$interaction->validated = Interactions::NOT_VALIDATED;
-
 				$interaction->save();
 			}
-
-			return $interaction->id;
 		} 
 		catch(UploadLineException $e)
 		{
@@ -321,11 +305,13 @@ class Uploader extends Db
 
 	{
 		$substanceModel = new Substances();
-		$smilesModel = new Smiles();
-		$user_id = $_SESSION['user']['id'];
+		$user_id = session::user_id();
+		$rdkit = new Rdkit();
 
 		try
 		{
+			// TODO
+			// Move to file check !!!!!!!!!!!!!!!!!
 			if(!$uniprot)
 			{
 				throw new Exception('Missing Uniprot_id value.');
@@ -335,23 +321,22 @@ class Uploader extends Db
 			{
 				throw new Exception('Missing target value.');
 			}
+			// !!!!!!!!!!!!!!!!!!!
 
 			if(!$IC50 && !$EC50 && !$KI && !$KM)
 			{
 				throw new Exception('Invalid interaction values.');
 			}
 
-			if($SMILES === '' || !$SMILES)
-			{        
-				// try to find SMILES in DB
-				$SMILES = $smilesModel->where('name', $ligand)
-					->select_list('SMILES')
-					->get_one()
-					->SMILES;
-			}
-
-			// Checks if substance already exists
 			$substance = $substanceModel->exists($ligand, $SMILES, $pdb, $drugbank, $pubchem);
+
+			// Canonize smiles
+			$canonized_smiles = $rdkit->canonize_smiles($SMILES, false);
+
+			if($canonized_smiles)
+			{
+				$SMILES = $canonized_smiles;
+			}
 
 			// Protected insert 
 			if(!$substance->id)
@@ -361,64 +346,61 @@ class Uploader extends Db
 				$substance->uploadName = $ligand;
 				$substance->SMILES = $SMILES;
 				$substance->MW = $MW;
-				$substance->LogP = $log_p;
 				$substance->pdb = $pdb;
 				$substance->pubchem = $pubchem;
 				$substance->drugbank = $drugbank;
 				$substance->user_id = $user_id;
-				$substance->validated = Validator::NOT_VALIDATED;
 				
-				$substance->save();
-
-				// Save identifier and check names
-				$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
-				$substance->name = trim($substance->name) == '' ? $substance->identifier : $substance->name;
-				$substance->uploadName = trim($substance->uploadName) == '' ? $substance->identifier : $substance->uploadName;
-
-				$substance->save();
+				$substance->save(NULL, $dataset->id);
 			}
 			else
 			{
-				// Update record
-				$substance->MW = $MW ? $MW : $substance->MW;
-				$substance->SMILES = $SMILES ? $SMILES : $substance->SMILES;
-				$substance->LogP = $log_p ? $log_p : $substance->LogP;
-				$substance->Area = $substance->Area;
-				$substance->Volume = $substance->Volume;
-				$substance->pdb = $pdb ? $pdb : $substance->pdb;
-				$substance->pubchem = $pubchem ? $pubchem : $substance->pubchem;
-				$substance->drugbank = $drugbank ? $drugbank : $substance->drugbank;
-				$substance->validated = Validator::NOT_VALIDATED;
+				// Add new values as valid identifiers
+				$valid_attributes = array
+				(
+					Validator_identifiers::ID_NAME => $ligand,
+					Validator_identifiers::ID_SMILES => $SMILES,
+					Validator_identifiers::ID_PDB => $pdb,
+					Validator_identifiers::ID_PUBCHEM => $pubchem,
+					Validator_identifiers::ID_DRUGBANK => $drugbank,
+				);
+
+				foreach($valid_attributes as $type => $value)
+				{
+					if(empty($value) || trim($value) === '')
+					{
+						continue;
+					}
+
+					$record = new Validator_identifiers();
+					$record->identifier = $type;
+					$record->id_substance = $substance->id;
+					$record->value = $value;
+					$record->id_source = NULL;
+					$record->server = NULL;
+					$record->id_user = session::user_id();
+					$record->state = Validator_identifiers::STATE_VALIDATED;
+					$record->active = Validator_identifiers::INACTIVE;
+					$record->id_dataset_active = $dataset->id;
+					$record->flag = NULL;
+
+					if($type === Validator_identifiers::ID_SMILES && $canonized_smiles)
+					{
+						$record->flag = Validator_identifiers::SMILES_FLAG_CANONIZED;
+					}
+
+					$record->save();
+				}
+
+				$substance->check_identifiers();
 
 				// If missing identifier, then update
 				if(!Identifiers::is_valid($substance->identifier))
 				{
 					$substance->identifier = Identifiers::generate_substance_identifier($substance->id);
-
-					$name = trim($substance->name) == '' ?
-						($ligand && $ligand != '' ? $ligand : $substance->identifier) :
-						$substance->name;
-
-					$substance->name = $name;
-					$substance->uploadName = $name;
 				}
 
 				$substance->save();
-			}
-
-			// Add altername record if not exists
-			if($ligand && strlen($ligand) > 0)
-			{
-				$alterName = new AlterNames();
-				$exists = $alterName->where('name LIKE', $ligand)
-					->get_one();
-
-				if(!$exists)
-				{
-					$alterName->name = $ligand;
-					$alterName->id_substance = $substance->id;
-					$alterName->save();
-				}
 			}
 
 			// Check if target already exists
@@ -476,7 +458,7 @@ class Uploader extends Db
 			}
 
 			// Create/fill record
-			$transporter->id_dataset = $transporter->id_dataset ? $transporter->id_dataset : $dataset->id;
+			$transporter->id_dataset = $dataset->id;
 			$transporter->id_substance = $substance->id;
 			$transporter->id_target = $target_obj->id;
 			$transporter->type = $type;

@@ -41,3 +41,48 @@
     <div class="col-md-2"></div> 
     
 </div>
+
+<!-- LIST OF UPLOAD QUEUE -->
+<div class="col-md-12 content">
+    <div class="tab-contents">
+        <div id="tab_interactions" class="tab_detail">
+            <h3 style="text-align: center;"><b>Upload queue</b></h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <td align="center"><b>Actions</b></td>
+                        <td><b>ID</b></td>
+                        <td><b>State</b></td>
+                        <td><b>File</b></td>
+                        <td><b>Membrane</b></td>
+                        <td><b>Method</b></td>
+                        <td><b>Datetime</b></td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $i = 0;
+                    foreach ($queue as $q) : ?>
+                        <?php $membrane = new Membranes($q->params ? $q->params->membrane : null) ?> 
+                        <?php $method = new Methods($q->params ? $q->params->method : null) ?> 
+
+                        <tr>
+                            <td align="center">
+                                <?php if($q->state === $q::STATE_PENDING) : ?>
+                                    <span title="Cancel" onclick="alert_window('Are you sure you want to cancel the process (ID = <?= $q->id ?>)?', 'upload/cancel/<?= $q->id ?>?redirection=upload/energy', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span>
+                                <?php elseif($q->state === $q::STATE_CANCELED) : ?>
+                                    <span title="Queue up" onclick="alert_window('Are you sure you want to requeue the process? (ID = <?= $q->id ?>)?', 'upload/requeue/<?= $q->id ?>?redirection=upload/energy', false)" style="text-align: center; color: orange; cursor:pointer;" class="glyphicon glyphicon-inbox"></span>
+                                <?php endif ?>
+                            </td>
+                            <td><?= $q->id ?></td>
+                            <td><?= $q->get_enum_state() ?></td>
+                            <td><?= $q->file ? '<a href="/export/uploadFile/' . $q->file->id . '">'. $q->file->name . '</a>' : null ?></td>
+                            <td><?= $membrane->name ?></td>
+                            <td><?= $method->name ?></td>
+                            <td><?= $q->create_date ?></td>
+                        </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

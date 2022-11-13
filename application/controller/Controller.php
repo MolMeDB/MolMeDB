@@ -8,30 +8,51 @@ abstract class Controller
     CONST MESSAGE_TYPE_WARNING = 'warning';
     
     /** Shared controller data */
-    protected $data = array();
-    protected $view = "";
-    protected $header = array
-    (
-        'title'         => '', 
-        'description'   => '',
-        'token'         => ''
-    );
+    /**
+     * @var View
+     */
+    public $view;
+
+    /**
+     * @var string 
+     */
+    public $title = '';
+
+    /**
+     * @var string
+     */
+    public $token = '';
+
+    /**
+     * @var Breadcrumbs
+     */
+    public $breadcrumbs = NULL;
 
     /** 
-     * Class attributes 
+     * Config handler
+     * 
+     * @var Config
      */
     protected $config;
 
-    /** Alerts handler */
+    /** 
+     * Alerts handler 
+     * 
+     * @var Alert
+     */
     protected $alert;
 
-    /** Form submit handler */
+    /** 
+     * Form submit handler 
+     * 
+     * @var Form
+     */
     protected $form;
 
     /**
-     * Session info holder
+     * @var HeaderParser
      */
-    protected $session;
+    static protected $requested_header;
 
     /**
      * Constructor
@@ -41,20 +62,7 @@ abstract class Controller
         $this->config = new Config();
         $this->alert = new Alert();
         $this->form = new Form();
-        $this->session = new Iterable_object($_SESSION, true);
-    }
-
-    /**
-     * Shows current view
-     */
-    public function showView()
-    {
-        if($this->view)
-        {
-            extract($this->protect($this->data));
-            extract($this->data, EXTR_PREFIX_ALL, "nonsec"); 
-            require(APP_ROOT . "view/" . $this->view . ".phtml");
-        }
+        self::$requested_header = self::$requested_header ?? new HeaderParser();
     }
     
     /**
@@ -62,17 +70,23 @@ abstract class Controller
      * 
      * @param string $url
      */
-    public function redirect($url)
+    public function redirect($url, $prefer_setting = true)
     {
-       header("Location: /$url"); 
-       header("Connection: close");
-       exit;
+        if($prefer_setting && isset($_GET['redirection']))
+        {
+            $url = $_GET['redirection'] ? $_GET['redirection'] : $url;
+        }
+
+        header("Location: /$url"); 
+        header("Connection: close");
+        exit;
     }
     
     /**
      * Adds warning message
      * 
      * @param string $message
+     * @deprecated - Use alert->warning instead
      */
     public function addMessageWarning($message)
     {
@@ -83,6 +97,7 @@ abstract class Controller
      * Adds success message
      * 
      * @param string $message
+     * @deprecated - Use alert->success instead
      */
     public function addMessageSuccess($message)
     {
@@ -93,6 +108,7 @@ abstract class Controller
      * Adds error message
      * 
      * @param string $message
+     * @deprecated - Use alert->error instead
      */
     public function addMessageError($message)
     {
@@ -136,43 +152,6 @@ abstract class Controller
         } 
     }
         
-    /**
-     * Protects given param against XSS
-     * 
-     * @param string|array $output
-     * 
-     * @return string|array
-     */
-    private function protect($output = null)
-    { 
-        if($output === FALSE)
-        {
-            return 0;
-        }
-
-        if($output === TRUE)
-        {
-            return 1;
-        }
-
-        if (is_string($output))
-        {
-            return htmlspecialchars($output, ENT_QUOTES);
-        }
-        else if(is_array($output))
-        {
-            foreach($output as $k => $txt)
-            {
-                $output[$k] = $this->protect($txt);
-            }
-            return $output;
-        }
-        else
-        {
-            return $output;
-        }
-    }
-
     /**
      * Transforms exception to short text string
      * 

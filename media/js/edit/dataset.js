@@ -26,7 +26,7 @@ function toggle_rights(id_dataset, id_user, group = false){
         spec_type: 'edit_rights'
     };
     
-    return redirect('edit/dataset/' + id_dataset, params, 'POST');
+    return redirect('edit/dsInteractions/' + id_dataset, params, 'POST');
 }
 
 
@@ -103,7 +103,7 @@ function edit_basic_info(edit_btn)
                         if(k === -1)
                         { //First option with actual value
                             var id = document.getElementById("id_membrane").value;
-                            var current = ajax_request('membranes/get', {id: id});
+                            var current = ajax_request('membranes/detail', {id: id});
 
                             if(!current)
                             {
@@ -153,7 +153,7 @@ function edit_basic_info(edit_btn)
                         
                         if(k === -1){ //First option with actual value
                             var id = document.getElementById("id_method").value;
-                            var current = ajax_request('methods/get', {id: id});
+                            var current = ajax_request('methods/detail', {id: id});
 
                             if(!current)
                             {
@@ -202,7 +202,7 @@ function edit_basic_info(edit_btn)
                         if(k === -1)
                         { //First option with actual value
                             var id = document.getElementById("idPublication").value;
-                            var current = ajax_request('publications/get', {id: id});
+                            var current = ajax_request('publications/detail', {id: id});
 
                             if(!current)
                             {
@@ -436,7 +436,7 @@ function modal_editor(id_row, active_interactions = false)
     {
         var values = [];
         
-        values = ajax_request("comparator/getActiveInteraction", {id: id_row});
+        values = ajax_request("interactions/detail/active", {id: id_row});
 
         if(!values)
         {
@@ -476,7 +476,7 @@ function modal_editor(id_row, active_interactions = false)
     {
         var values = [];
         
-        values = ajax_request("comparator/getInteraction", {id: id_row});
+        values = ajax_request("interactions/detail/passive", {id: id_row});
 
         if(!values)
         {

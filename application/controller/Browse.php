@@ -31,18 +31,18 @@ class BrowseController extends Controller
             $active_categories = $membraneModel->get_active_categories();
             $membranes = $membraneModel->order_by('name')->get_all();
         }
-        catch(Exception $e)
+        catch(MmdbException $e)
         {
-            $this->addMessageError($e->getMessage());
+            $this->alert->error($e);
             $this->redirect('error');
         }
 
-        $this->data['membranes'] = $membranes;
-        $this->data['active_categories'] = $active_categories;
-        $this->data['side_list'] = self::get_side_list($categories);
-        $this->data['categories'] = json_encode($categories);
-        $this->header['title'] = 'Membranes';
-        $this->view = 'browse/membranes';
+        $this->title = 'Membranes';
+        $this->view = new View('browse/membranes');
+        $this->view->membranes = $membranes;
+        $this->view->active_categories = $active_categories;
+        $this->view->side_list = self::get_side_list($categories);
+        $this->view->categories = json_encode($categories);
     }
 
     /**
@@ -68,12 +68,12 @@ class BrowseController extends Controller
             $this->redirect('error');
         }
 
-        $this->data['methods'] = $methods;
-        $this->data['active_categories'] = $active_categories;
-        $this->data['side_list'] = self::get_side_list($categories);
-        $this->data['categories'] = json_encode($categories);
-        $this->header['title'] = 'Methods';
-        $this->view = 'browse/methods';
+        $this->title = 'Methods';
+        $this->view = new View('browse/methods');
+        $this->view->methods = $methods;
+        $this->view->active_categories = $active_categories;
+        $this->view->side_list = self::get_side_list($categories);
+        $this->view->categories = json_encode($categories);
     }
 
 
@@ -87,7 +87,7 @@ class BrowseController extends Controller
      * 
      * @author Jakub Juracka
      */
-    public function transporters($element_id = NULL, $is_last = FALSE, $pagination = 1)
+    public function transporters($element_id = NULL, $is_last = FALSE, $pagination = 1, $per_page = 10)
     {
         $stats = new Statistics();
 
@@ -95,6 +95,8 @@ class BrowseController extends Controller
         {
             $pagination = 1;
         }
+
+        $this->view = new View('browse/transporters');
 
         if($element_id)
         {
@@ -109,41 +111,46 @@ class BrowseController extends Controller
                         throw new Exception('Transporter target not found.');
                     }
 
-                    $substances = $target->get_substances($pagination);
+                    $substances = $target->get_substances($pagination, $per_page);
                     $total = $target->count_substances();
                 }
                 else
                 {
                     $enum_type_link = new Enum_type_links($element_id);
                     $enum_type = $enum_type_link->enum_type;
-                    $transporter_target_model = new Transporter_targets();
 
                     if($enum_type->type != Enum_types::TYPE_TRANSPORTER_CATS || !$enum_type->id)
                     {
                         throw new Exception('Invalid transporter group.');
                     }
 
-                    $data = $enum_type->get_link_elements($enum_type_link->id, ($pagination-1)*10, 10);
+                    $data = $enum_type->get_link_elements($enum_type_link->id, ($pagination-1)*$per_page, $per_page);
 
                     $substances = $data->data;
                     $total = $data->total;
                 }
 
-                $this->data['element'] = $is_last ? $target : $enum_type_link;
-                $this->data['is_last'] = $is_last;
-                $this->data['pagination'] = $pagination;
-                $this->data['list'] = $substances;
-                $this->data['total'] = $total;
+                $paginator = new View_paginator();
+                $paginator->path("$element_id/$is_last")
+                    ->active($pagination)
+                    ->records_per_page($per_page);
+
+                $paginator->total_records($total);
+                $this->view->paginator($paginator);
+
+                $this->view->element = $is_last ? $target : $enum_type_link;
+                $this->view->total = $total;
+                $this->view->is_last = $is_last;
+                $this->view->list = $substances;
             }
             catch(Exception $e)
             {
                 $this->alert->error($e->getMessage());
             }
         }
-
-        $this->data['chart_data'] = $stats->get(Statistics::TYPE_INTER_ACTIVE);
-        $this->header['title'] = 'Transporters';
-        $this->view = 'browse/transporters';
+        
+        $this->view->chart_data = $stats->get(Statistics::TYPE_INTER_ACTIVE);
+        $this->title = 'Transporters';
     }
 
 
@@ -155,7 +162,7 @@ class BrowseController extends Controller
      * 
      * @author Jakub Juračka
      */
-    public function sets($reference_id = NULL, $pagination = 1)
+    public function sets($reference_id = NULL, $pagination = 1, $per_page = 10)
     {
         $publicationModel = new Publications();
 
@@ -163,6 +170,8 @@ class BrowseController extends Controller
         {
             $pagination = 1;
         }
+
+        $this->view = new View('browse/sets');
 
         try
         {
@@ -176,15 +185,23 @@ class BrowseController extends Controller
                     $this->redirect('browse/sets');
                 }
 
-                $this->data['publication'] = $publication;
-                $this->data['pagination'] = $pagination;
+                $this->view->publication = $publication;
+                $this->view->pagination = $pagination;
 
-                $this->data['list'] = $publication->get_assigned_substances($pagination);
-                $this->data['list_total'] = $publication->count_assigned_substances();
+                $this->view->list = $publication->get_assigned_substances($pagination);
+                $this->view->list_total = $publication->count_assigned_substances();
+
+                $paginator = new View_paginator();
+                $paginator->path("$reference_id")
+                    ->active($pagination)
+                    ->records_per_page($per_page);
+
+                $paginator->total_records($this->view->list_total);
+                $this->view->paginator($paginator);
             }
 
-            $this->data['publications'] = $publicationModel->get_nonempty_refs();
-            $this->data['publications'] = self::transform_publications($this->data['publications']);
+            $this->view->publications = $publicationModel->get_nonempty_refs();
+            $this->view->publications = self::transform_publications($this->view->publications);
         }
         catch(Exception $e)
         {
@@ -192,8 +209,7 @@ class BrowseController extends Controller
             $this->redirect('browse/sets');
         }
 
-        $this->header['title'] = 'Datasets';
-        $this->view = 'browse/sets';
+        $this->title = 'Datasets';
     }
 
 

@@ -48,12 +48,21 @@ class Html
      * 
      * @param string $url
      * @param string $title
+     * @param boolean $new_tab
      * 
      * @return string
      */
     public static function anchor($url, $title, $new_tab = FALSE)
     {
-        $url = PROTOCOL . URL . '/' . $url;
+        if(!preg_match('/^http/', $url))
+        {
+            $url = Url::base() . rtrim($url, '/');
+        }
+
+        if(!strlen(trim($title)))
+        {
+            $title = '[_LINK]';
+        }
 
         return "<a href='$url'" . ($new_tab ? 'target="_blank"' : '') . ">$title</a>";
     }
@@ -107,9 +116,22 @@ class Html
      * 
      * @return string
      */
-    public static function checkbox_input($name, $value, $checked = 'false')
+    public static function checkbox_input($name, $value, $checked = 'false', $disabled = 'false')
     {
-        return "<input type='checkbox' name='$name' value='$value' " . ($checked === 'true' ? 'checked' : '') . ">";
+        return "<input type='checkbox' name='$name' value='$value' " . ($checked === 'true' ? 'checked' : ' ') . ($disabled === 'true' ? 'disabled' : '') . ">";
+    }
+
+    /**
+     * Generates password input
+     * 
+     * @param string $name
+     * @param string $value
+     * 
+     * @return string
+     */
+    public static function password_input($name, $value)
+    {
+        return "<input class='form-control' type='password' name='$name' value='$value'>";
     }
 
     /**
@@ -119,20 +141,71 @@ class Html
      * @param string $title
      * @param string $class
      */
-    public static function button($type, $title, $class = "")
+    public static function button($type, $title, $class = "", $style = null)
     {
-        return "<button style='margin-top: 10px;' type='$type' class='$class btn btn-sm'>$title</button>";
+        return "<button style='" . ($style !== null ? $style : 'margin-top:10px;') . "' type='$type' class='" . (preg_match("/btn-lg/", $class) ? '' : 'btn-sm' ) . " $class btn'>$title</button>";
     }
 
     /**
-     * Makes button html
+     * Makes image html
      * 
      * @param string $src - prefix: 'files/'
      * @param string $class
      */
     public static function image($src, $class = "")
     {
-        return "<img class='$class' src='" . self::$IMG . $src . "'>";
+        if(!preg_match('/^http/', $src, $m))
+        {
+            $src = self::$IMG . $src;
+        }
+
+        return "<img class='$class' src='" . $src . "'>";
+    }
+
+    /**
+     * Makes molecule 2D structure image from smiles
+     * 
+     * @param string $smiles
+     * 
+     * @return string
+     */
+    public static function image_structure($smiles)
+    {
+        return self::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($smiles));
+    }
+
+    /**
+     * Returns slider
+     */
+    public static function slider($label, $input_name, $checked = false, $input_id = null)
+    {
+        return '<label style="margin-right: 10px;">
+            ' . $label . '
+            </label>
+            <label class="switch">
+                <input id="' . $input_id . '" name="' . $input_name . '" class="slider-i" ' . ($checked ? 'checked' : '') . ' type="checkbox">
+                <span class="slider round"></span>
+            </label>';
+    }
+
+    /**
+     * Returns slider
+     */
+    public static function slider_2($label, $option_1, $option_2, $input_name, $checked = false, $input_id = null)
+    {
+        return '<label style="margin-right: 10px;">
+            ' . $label . '
+            </label>
+            <label style="margin-right: 10px;">
+            ' . $option_1 . '
+            </label>
+            <label class="switch">
+                <input id="' . $input_id . '" name="' . $input_name . '" class="slider-i" ' . ($checked ? 'checked' : '') . ' type="checkbox">
+                <span class="slider round"></span>
+            </label>
+            <label style="margin-left: 10px;">
+            ' . $option_2 . '
+            </label>';
     }
 
 

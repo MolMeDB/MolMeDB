@@ -16,15 +16,18 @@ try
 {
     // Make default settings
     new System_config();
-    
+
     // Parse URL
     $router = new RouterController();
     $router->parse($_SERVER['REQUEST_URI']);
 } 
 catch (Exception $e) 
 {
-    echo($e->getMessage());
+    if(DEBUG)
+    {
+        Server::print_global_exception($e);
+        die;
+    }
+    echo SERVER_GLOBAL_ERROR;
     die;
 }
-
-$router->showView();

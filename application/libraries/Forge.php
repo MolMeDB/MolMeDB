@@ -106,9 +106,20 @@ class Forge
      */
     function init_post()
     {
+        if(!$_POST)
+        {
+            return;
+        }
+
         foreach($this->items as $item)
         {
             $param = $this->prefix && $this->prefix !== '' ? $this->prefix . '_' . $item->name : $item->name;
+
+            // Dont fill passwords
+            if($item->type === 'password')
+            {
+                continue;
+            }
 
             if(isset($_POST[$param]))
             {
@@ -142,6 +153,8 @@ class Forge
      */
     public function form()
     {
+        $this->init_post();
+
         $result = '<div class="setting-form"><form method="' . $this->method . '" action="' . $this->target . '">';
         $result .= "<table class='setting-form-table'>";
         $result .= "<thead><tr><td> $this->title </td></tr></thead>";
@@ -154,7 +167,11 @@ class Forge
             switch($item->type)
             {
                 case 'checkbox':
-                    $result .= '' . Html::checkbox_input($item->name, $item->value, $item->checked);
+                    $result .= '' . Html::checkbox_input($item->name, $item->value, $item->checked, $item->disabled);
+                    break;
+
+                case 'password':
+                    $result .= Html::password_input($item->name, $item->value, $item->checked);
                     break;
 
                 default:
@@ -175,6 +192,15 @@ class Forge
         return $result;
     }
 
+    /**
+     * Prints forge
+     * 
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->form();
+    }
 }
 
 
@@ -214,13 +240,19 @@ class ForgeItem
     public $checked;
 
     /**
+     * 
+     */
+    public $disabled;
+
+    /**
      * Valid types
      */
     private static $valid_types = array
     (
         'text',
         'number',
-        'checkbox'
+        'checkbox',
+        'password'
     );
 
     /**
@@ -273,6 +305,24 @@ class ForgeItem
         else
         {
             $this->checked = 'true';
+        }
+        return $this;
+    }
+
+    /**
+     * Is checked?
+     * 
+     * @param bool $ch
+     */
+    public function disabled($ch = true)
+    {
+        if($ch === NULL || $ch === FALSE || strtolower($ch) === 'false' || $ch === '' || strval($ch) === '0')
+        {
+            $this->disabled = 'false';
+        }
+        else
+        {
+            $this->disabled = 'true';
         }
         return $this;
     }

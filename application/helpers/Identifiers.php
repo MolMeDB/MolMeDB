@@ -4,7 +4,7 @@ class Identifiers
 {
 	CONST PREFIX = 'MM';
 	CONST min_len = 7;
-	CONST PATTERN = '/^MM{1}[0-9]+$/';
+	CONST PATTERN = '/^[M]{2}[0-9]{5,}$/i';
 	
 	/**
 	 * Generates new identifier
@@ -27,7 +27,7 @@ class Identifiers
 
 		if(!$id || $exists->id || $exists_2->id)
 		{
-			$id = Db::getLastIdSubstance() + 1;
+			$id = Db::instance()->getLastIdSubstance() + 1;
 			return self::get_identifier($id);
 		}
 		else
@@ -43,7 +43,7 @@ class Identifiers
 	 * 
 	 * @return string
 	 */
-	private static function get_identifier($id)
+	public static function get_identifier($id)
 	{
 		// Get string value
 		$id = strval($id);
@@ -92,5 +92,41 @@ class Identifiers
 			Upload_validator::check_identifier_format($string, Upload_validator::PUBCHEM, True) ||
 			Upload_validator::check_identifier_format($string, Upload_validator::CHEMBL_ID, True) || 
 			Upload_validator::check_identifier_format($string, Upload_validator::CHEBI_ID, True);
+	}
+
+	/**
+     * Checks, if some identifier is in name 
+     * If yes, then fill missing column
+     * 
+     * @param string $name
+	 * 
+	 * @return array|false - False, if not found
+     */
+    public static function check_name_for_identifiers($name)
+    {
+        $name = trim($name);
+
+		if(self::is_valid($name))
+		{
+			return FALSE;
 		}
+
+		$result = array();
+
+		// Is valid drugbank name?
+		if(Upload_validator::check_identifier_format($name, Upload_validator::DRUGBANK, True) && 
+			Url::is_valid(Config::get('drugbank_url')) && 
+			Url::is_reachable(Config::get('drugbank_url') . $name))
+        {
+			$result['drugbank'] = $name;
+        }
+        elseif(Upload_validator::check_identifier_format($name, Upload_validator::CHEMBL_ID, True) && 
+			Url::is_valid(Config::get('chembl_url')) && 
+			Url::is_reachable(Config::get('chembl_url') . $name))
+        {
+            $result['chembl'] = $name;
+        }
+
+		return count($result) ? $result : FALSE;
+    }
 }

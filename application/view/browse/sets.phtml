@@ -101,17 +101,16 @@
                 <h3><?= $publication->title ? $publication->title : $publication->citation ?></h3>
             </div>
         <div class="comp-addAll">
-            <button type="button" onclick="download_dataset_byRef('<?=$publication->id?>')" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
-            <button type="button" onclick="addSetToComparator('set', '<?=$publication->id?>')" class="btn btn-warning btn-sm pull-right" style="margin-bottom: 5px;">Add all compounds to the comparator </button>
-            <button class="btn btn-sm btn-primary pull-right btn-add" id="btn-addALL">Add list to the comparator </button>
+            <button type="button" onclick="redirect('export/publication/<?=$publication->id?>')" class="btn btn-success btn-sm pull-right" style="margin-bottom: 5px;">Download dataset [.csv]</button>
+            <button class="btn btn-sm btn-primary pull-right" id="btn-addALL">Add list to the comparator </button>
         </div>
             <ul class="search-ul" id="search-list">
                     <?php foreach ($list as $substance) : ?>
                     <li>
                             <div class="title">
                                 <a href="/mol/<?= $substance->identifier?>"><?= $substance->name ?></a>
-                                <button title="Add to comparator" id="<?= $substance->id ?>" type="button" class="btn btn-sm btn-primary btn-add">
-                                    <span id="<?= $substance->name ?>" class="glyphicon glyphicon-plus"></span>
+                                <button title="Add to downloader" onclick='add_molecule_to_downloader("<?= $substance->id ?>","<?= $substance->name ?>")' type="button" class=" dwn-mol-<?= $substance->id ?> btn btn-sm btn-warning btn-add">
+                                    <span class="glyphicon glyphicon-plus"></span>
                                 </button>
                             </div>
                             <div class="info">
@@ -152,24 +151,6 @@
                     </li>
                     <?php endforeach ?>
                 </ul>
-        <div class="text-center">   
-            <ul class="pagination pagination-lg" id="paginator_comp" >
-            <?php $count = $list_total ?>
-              <?php for ($i=1; $i<($count/10)+1; $i++) : ?>
-                <?php if($i == $pagination): ?>
-                    <li class="active"id="activePag"><a href="/browse/sets/<?=$publication->id?>/<?=$i?>"><?=$i?></a></li>
-                <?php else : ?>
-                    <li><a href="/browse/sets/<?=$publication->id?>/<?=$i?>"><?=$i?></a></li>
-                <?php endif ?>
-              <?php endfor ?>
-            </ul>
-            <script>
-            $(document).ready(function()
-            {
-                verifyPagination('paginator_comp');
-            });
-            </script>
-        </div>
         <?php endif ?>
     </div>
 

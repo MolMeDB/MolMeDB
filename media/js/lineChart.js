@@ -35,43 +35,13 @@ var fun = function (){};
 var myChart = fun;
 
 
-function loadLineChart(id){
+function loadLineChart(data){
     var labelsSet = [];
     var color = ['rgba(50,230,21,1)', 'rgba(255,99,132,1)', 'rgba(80,99,210,1)', 'rgba(255,220,100,1)', 'rgba(0,50,255,1)' , 'rgba(229,146,0,1)', 'rgba(150,0,255,1)', 'rgba(110,200,132,1)', 
                  'rgba(215,99,255,1)', 'rgba(25,99,160,1)', 'rgba(255,150,0,1)', 'rgba(0,255,132,1)', 'rgba(100,150,0,1)', 'rgba(20,130,250,1)'];
-    var data = document.querySelectorAll("div.tabBlock");
-    var size = data.length;
-    var mem = [];
-    var met = [];
-    var count = 0;
     export_data = [];
     export_data[0] = [];
     export_data[0][0] = 'Distance [nm]';
-    
-    for (var i = 0; i<size; i++){
-        for(var j = 0; j<data[i].children.length; j++){
-            if(data[i].children[j].className === "active"){
-                var t = data[i].children[j].childNodes[1].value;
-                t = t.split(";");
-                met[count] = t[0];
-                mem[count] = t[1];
-                count++;
-            }
-        }
-    }
-
-    for(var i=0; i<count; i++){
-        var ajax_data = ajax_request('detail/getEnergyValues', { id: id, idMem: mem[i], idMet: met[i], limit: 0});
-        res[i] = ajax_data;
-
-        if(!ajax_data)
-        {
-            res[i] = [{
-                energy: 0,
-                distance: 0
-            }]
-        }
-    }
     
     for(var i=0; i<36; i++)
     {
@@ -80,21 +50,19 @@ function loadLineChart(id){
         export_data[i+1][0] = i/10;
     }
     
+    var keys = Object.keys(data);
+    var count = keys.length;
+
     dataset = [];
     
     for(var i=0; i<count; i++)
     {
-        var ajax_data = ajax_request('detail/getEnergyLabel', {idMem: mem[i], idMet: met[i]});
-        var label = ajax_data;
+        var key = keys[i];
+        var label = {
+            membrane: data[key].membrane_cam ? data[key].membrane_cam : data[key].membrane,
+            method: data[key].method_cam ? data[key].method_cam : data[key].method,
+        };
         
-        if(!ajax_data)
-        {
-            label = {
-                membrane: mem[i],
-                method: met[i]
-            }
-        }
-
         dataset[i] = {};
         dataset[i].label = label.method + "(" + label.membrane + ")";
         dataset[i].borderWidth = 1;
@@ -105,10 +73,10 @@ function loadLineChart(id){
         
         var index; var x_main = []; var y_main = []; var X = []; var Y = []; var values = [];
         
-        var size = res[i].length;
+        var size = data[key].data.length;
         for(var j=0; j<size; j++){ //Copying values of free energy profile to the arrays
-            x_main[j] = res[i][j].distance;
-            y_main[j] = res[i][j].energy;
+            x_main[j] = data[key].data[j].distance;
+            y_main[j] = data[key].data[j].energy;
         }
         
         if(x_main.length === 1){
@@ -134,6 +102,8 @@ function loadLineChart(id){
                 export_data[j+1][i+1] = values[j];
             }
         }
+
+        console.log(values);
 
         dataset[i].data = values;
         dataset[i].spanGaps = true;
@@ -208,58 +178,59 @@ function renderChart(){
     myChart = new Chart(ctx, config);
 }
 
+// Předělat do PHP a načítat zrovna
 
-function loadChartTable(id)
-{
-    var data = document.querySelectorAll("div.membraneTab");
-    var size = data.length;
-    var list = [];
-    var res;
+// function loadChartTable(id)
+// {
+//     var data = document.querySelectorAll("div.membraneTab");
+//     var size = data.length;
+//     var list = [];
+//     var res;
     
-    for (i = 0; i < size; i++) {
-        data[i].onclick = function() {
-            if(this.className == "active"){
-                this.className = "not-active";
-                loadLineChart(id);
-            }
-            else if (this.className == "not-active"){
-                this.className = "active";
-                loadLineChart(id);
-            }
-        }
-    }
+//     for (i = 0; i < size; i++) {
+//         data[i].onclick = function() {
+//             if(this.className == "active"){
+//                 this.className = "not-active";
+//                 loadLineChart(id);
+//             }
+//             else if (this.className == "not-active"){
+//                 this.className = "active";
+//                 loadLineChart(id);
+//             }
+//         }
+//     }
 
 
-    for (var i = 0; i<size; i++)
-    {
-        var temp = data[i].childNodes[1].value;
-        temp = temp.split(';');
-        list.push({
-            idMembrane: temp[1],
-            idMethod: temp[0]
-        })
-    }
+//     for (var i = 0; i<size; i++)
+//     {
+//         var temp = data[i].childNodes[1].value;
+//         temp = temp.split(';');
+//         list.push({
+//             idMembrane: temp[1],
+//             idMethod: temp[0]
+//         })
+//     }
 
-    list = JSON.stringify(list);
+//     list = JSON.stringify(list);
 
-    var ajax_data = ajax_request('detail/getEnergyData', {list: list, id: id}, "POST");
+//     var ajax_data = ajax_request('detail/getEnergyData', {list: list, id: id}, "POST");
     
-   for(var i=0; i<size; i++)
-   {
-       if (ajax_data[i] != 0)
-       {
-            data[i].setAttribute("class", "not-active");
-            data[i].setAttribute('style', 'display: inline-block;');
-       }
-   }
+//    for(var i=0; i<size; i++)
+//    {
+//        if (ajax_data[i] != 0)
+//        {
+//             data[i].setAttribute("class", "not-active");
+//             data[i].setAttribute('style', 'display: inline-block;');
+//        }
+//    }
    
     
-    data = document.getElementsByClassName("membraneTab");
-    if(data.length == 0){
-        document.getElementById("chart-panel").style.display = "none";
-        document.getElementById("no-data-panel2").style.display = "block";
-    }
-}
+//     data = document.getElementsByClassName("membraneTab");
+//     if(data.length == 0){
+//         document.getElementById("chart-panel").style.display = "none";
+//         document.getElementById("no-data-panel2").style.display = "block";
+//     }
+// }
 
 $("#export_chart_data").click(function(){
     var name = $('#2dInput').val()

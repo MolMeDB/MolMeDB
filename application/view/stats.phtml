@@ -67,8 +67,8 @@
             <div class="stat-panel" style="width: 60%">
                 <div class="stat-panel-title">
                     Growth curve 
-                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
-                    <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php if($files[Statistics::TYPE_INTER_ADD]) : ?>
+                    <a href="/file/download/<?= $files[Statistics::TYPE_INTER_ADD]->id ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
                     <?php endif ?>
                 </div>
                 <div class="stat-panel-subtitle">Increase in the amount of data by date</div>
@@ -78,8 +78,8 @@
                 <div class="stat-panel">
                     <div class="stat-panel-title">
                         Proportion of substances interactions
-                        <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_PASSIVE_ACITVE_FILE)) : ?>
-                        <a href="/<?= Statistics::TYPE_INTER_PASSIVE_ACITVE_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download data"></span></a>
+                        <?php if($files[Statistics::TYPE_INTER_PASSIVE_ACITVE]) : ?>
+                        <a href="/file/download/<?= $files[Statistics::TYPE_INTER_PASSIVE_ACITVE]->id ?>"><span class="glyphicon glyphicon-cloud-download" title="Download data"></span></a>
                         <?php endif ?>
                     </div>
                     <div id="interactionAddDiv2" style="width: 100%; height: 210px;"></div>
@@ -87,8 +87,8 @@
                 <div class="stat-panel">
                     <div class="stat-panel-title">
                     Links to external databases
-                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_IDENTIFIERS_FILE)) : ?>
-                        <a href="/<?= Statistics::TYPE_IDENTIFIERS_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download data"></span></a>
+                    <?php if($files[Statistics::TYPE_IDENTIFIERS]) : ?>
+                        <a href="/file/download/<?= $files[Statistics::TYPE_IDENTIFIERS]->id ?>"><span class="glyphicon glyphicon-cloud-download" title="Download data"></span></a>
                     <?php endif ?>
                     </div>
                     <div id="interactionAddDiv3" class="stat-panel" style="width: 100%; height: 300px;"></div>
@@ -100,8 +100,8 @@
             <div class="stat-panel" style="width: 100%">
                 <div class="stat-panel-title">
                     Transporter interactions
-                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
-                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php if($files[Statistics::TYPE_INTER_ADD]) : ?>
+                        <a href="/file/download/<?= $files[Statistics::TYPE_INTER_ADD]->id ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
                     <?php endif ?>
                 </div>
                 <div class="stat-panel-subtitle">Amount of data</div>
@@ -113,8 +113,8 @@
             <div class="stat-panel" style="width: 100%">
                 <div class="stat-panel-title">
                     Methods
-                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
-                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php if($files[Statistics::TYPE_INTER_ADD]) : ?>
+                        <a href="/file/download/<?= $files[Statistics::TYPE_INTER_ADD]->id ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
                     <?php endif ?>
                 </div>
                 <div class="stat-panel-subtitle">Amount of data</div>
@@ -126,8 +126,8 @@
             <div class="stat-panel" style="width: 100%">
                 <div class="stat-panel-title">
                     Membranes
-                    <?php if(Statistics::exists_stat_file(Statistics::TYPE_INTER_ADD_FILE)) : ?>
-                        <a href="/<?= Statistics::TYPE_INTER_ADD_FILE ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
+                    <?php if($files[Statistics::TYPE_INTER_ADD]) : ?>
+                        <a href="/file/download/<?= $files[Statistics::TYPE_INTER_ADD]->id ?>"><span class="glyphicon glyphicon-cloud-download" title="Download whole dataset"></span></a>
                     <?php endif ?>
                 </div>
                 <div class="stat-panel-subtitle">Amount of data</div>
@@ -162,7 +162,7 @@
     makeAddingLineChart(inter_adding_data, "interactionAddDiv", inter_adding_params, "<?= $interactions->adding->max_value ?>")
 
     var data = JSON.parse('<?= json_encode($identifiers->data) ?>');
-    var axisBreak = JSON.parse('<?= json_encode($identifiers->axisBreaks[0])?>');
+    var axisBreak = JSON.parse('<?= count($identifiers->axisBreaks) ? json_encode($identifiers->axisBreaks) : '0'?>');
     var max_value = parseInt('<?= $identifiers->maxValue ?>');
     make_identifiers_chart("interactionAddDiv3", data, axisBreak, max_value);
 

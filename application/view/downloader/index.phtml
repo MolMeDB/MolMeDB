@@ -138,7 +138,7 @@
             method: "POST",
             dataType: "json",
             data: {'id_membranes': mem_ids, "id_methods": met_ids, "id_molecules": mol_ids, only_total: 1, logic: logic},
-            async: true,
+            async: false,
             success: function(data){
                 var met_details = data.methods;
                 $('#total-count').html(data.total);

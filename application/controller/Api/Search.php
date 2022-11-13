@@ -6,10 +6,10 @@
 class ApiSearch extends ApiController
 {    
     /** SEARCH TYPES */
-    const T_COMPOUND = 'compounds';
+    const T_COMPOUND = 'compound';
     const T_SMILES = 'smiles';
-    const T_MEMBRANES = 'membranes';
-    const T_METHOD = 'methods';
+    const T_MEMBRANES = 'membrane';
+    const T_METHOD = 'method';
     const T_TRANSPORTER = 'transporter';
     // const T_UNIPROT = 'uniprot';
 
@@ -54,20 +54,20 @@ class ApiSearch extends ApiController
                 $data = $comp_model->loadSearchWhisper($query);
                 break;
             
-            case self::T_SMILES:
-                $smiles_model = new Smiles();
-                $data = $smiles_model->loadWhisperCompounds($query);
-                break;
+            // case self::T_SMILES:
+            //     $smiles_model = new Smiles();
+            //     $data = $smiles_model->loadWhisperCompounds($query);
+            //     break;
             
-            case self::T_MEMBRANES:
-                $membrane_model = new Membranes();
-                $data = $membrane_model->loadSearchWhisper($query);
-                break;
+            // case self::T_MEMBRANES:
+            //     $membrane_model = new Membranes();
+            //     $data = $membrane_model->loadSearchWhisper($query);
+            //     break;
             
-            case self::T_METHOD:
-                $method_model = new Methods();
-                $data = $method_model->loadSearchWhisper($query);
-                break;
+            // case self::T_METHOD:
+            //     $method_model = new Methods();
+            //     $data = $method_model->loadSearchWhisper($query);
+            //     break;
             
             case self::T_TRANSPORTER:
                 $transporter_model = new Transporter_targets();

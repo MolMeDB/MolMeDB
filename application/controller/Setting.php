@@ -24,9 +24,6 @@ class SettingController extends Controller
      */
     public function system()
     {
-        // Email setting forge
-        $email_templ_model = new Email_template();
-
         $forge = new Forge('Email');
 
         $forge->add('email_enabled')
@@ -56,6 +53,7 @@ class SettingController extends Controller
             ->value($this->config->get(Configs::EMAIL_SMTP_USERNAME));
 
         $forge->add('smpt_password')
+            ->type("password")
             ->title('SMTP password')
             ->value($this->config->get(Configs::EMAIL_SMTP_PASSWORD));
 
@@ -177,12 +175,12 @@ class SettingController extends Controller
                     }
                 }
 
-                $this->addMessageSuccess('Settings was successfully updated.');
+                $this->alert->success('Settings was successfully updated.');
                 $this->redirect('setting/system');
             }
             catch (MmdbException $e)
             {
-                $this->addMessageError($e);
+                $this->alert->error($e);
             }
         }
 
@@ -234,7 +232,7 @@ class SettingController extends Controller
             ->checked($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES));
 
         $forge->add(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME));
 
         $forge->add(Configs::S_VALIDATE_PASSIVE_INT)
@@ -244,17 +242,18 @@ class SettingController extends Controller
             ->checked($this->config->get(Configs::S_VALIDATE_PASSIVE_INT));
 
         $forge->add(Configs::S_VALIDATE_PASSIVE_INT_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME));
 
         $forge->add(Configs::S_VALIDATE_ACTIVE_INT)
             ->title('Autovalidate active interactions')
             ->type('checkbox')
+            ->disabled()
             ->value(1)
             ->checked($this->config->get(Configs::S_VALIDATE_ACTIVE_INT));
 
         $forge->add(Configs::S_VALIDATE_ACTIVE_INT_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_VALIDATE_ACTIVE_INT_TIME));
 
         $forge->add(Configs::S_VALIDATE_SUBSTANCES)
@@ -263,10 +262,6 @@ class SettingController extends Controller
             ->value(1)
             ->checked($this->config->get(Configs::S_VALIDATE_SUBSTANCES));
 
-        $forge->add(Configs::S_VALIDATE_SUBSTANCES_TIME)
-            ->title('Runtime')
-            ->value($this->config->get(Configs::S_VALIDATE_SUBSTANCES_TIME));
-
         $forge->add(Configs::S_UPDATE_STATS)
             ->title('Update statistics')
             ->type('checkbox')
@@ -274,8 +269,9 @@ class SettingController extends Controller
             ->checked($this->config->get(Configs::S_UPDATE_STATS));
 
         $forge->add(Configs::S_UPDATE_STATS_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_UPDATE_STATS_TIME));
+
 
         $forge->add(Configs::S_CHECK_PUBLICATIONS)
             ->title('Validate publications')
@@ -284,18 +280,48 @@ class SettingController extends Controller
             ->checked($this->config->get(Configs::S_CHECK_PUBLICATIONS));
 
         $forge->add(Configs::S_CHECK_PUBLICATIONS_TIME)
-            ->title('Runtime')
+            ->title('Start time')
             ->value($this->config->get(Configs::S_CHECK_PUBLICATIONS_TIME));
 
-        $forge->add(Configs::S_CHECK_MEMBRANES_METHODS)
-            ->title('Validate membranes/methods')
+
+        $forge->add(Configs::S_FRAGMENT_MOLECULES)
+            ->title('Molecule fragmentation')
             ->type('checkbox')
             ->value(1)
-            ->checked($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS));
+            ->checked($this->config->get(Configs::S_FRAGMENT_MOLECULES));
 
-        $forge->add(Configs::S_CHECK_MEMBRANES_METHODS_TIME)
-            ->title('Runtime')
-            ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME));
+
+        $forge->add(Configs::S_MATCH_FUNCT_PAIRS)
+            ->title('Match functional pairs')
+            ->type('checkbox')
+            ->value(1)
+            ->checked($this->config->get(Configs::S_MATCH_FUNCT_PAIRS));
+            
+
+        $forge->add(Configs::S_UPDATE_PAIR_GROUPS)
+            ->title('Update functional pair groups')
+            ->type('checkbox')
+            ->value(1)
+            ->checked($this->config->get(Configs::S_UPDATE_PAIR_GROUPS));
+    
+        $forge->add(Configs::S_UPDATE_PAIR_GROUPS_TIME)
+            ->title('Update groups start time')
+            ->value($this->config->get(Configs::S_UPDATE_PAIR_GROUPS_TIME));
+    
+        $forge->add(Configs::S_UPDATE_PAIR_GROUPS_STATS_TIME)
+            ->title('Update stats start time')
+            ->value($this->config->get(Configs::S_UPDATE_PAIR_GROUPS_STATS_TIME));
+
+
+        // $forge->add(Configs::S_CHECK_MEMBRANES_METHODS)
+        //     ->title('Validate membranes/methods')
+        //     ->type('checkbox')
+        //     ->value(1)
+        //     ->checked($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS));
+
+        // $forge->add(Configs::S_CHECK_MEMBRANES_METHODS_TIME)
+        //     ->title('Runtime')
+        //     ->value($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME));
 
         $forge->submit('Save');
 
@@ -316,6 +342,7 @@ class SettingController extends Controller
                 }
 
                 $this->alert->success('Saved.');
+                $this->redirect('setting/scheduler');
             }
             catch(MmdbException $e)
             {
@@ -510,7 +537,7 @@ class SettingController extends Controller
     {
         if(!Enum_types::is_type_valid($type))
         {
-            $this->alert->error('Invalid type.');
+            $this->alert->error('Invalid category type.');
             $this->redirect('setting/' . self::MENU_ENUM_TYPES);
         } 
 
@@ -540,7 +567,7 @@ class SettingController extends Controller
 
             if(!count($unlinked))
             {
-                throw new MmdbException('Nothing to link.');
+                throw new MmdbException('', 'Nothing to link.');
             }
 
             $total_linked = 0;

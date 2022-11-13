@@ -6,6 +6,10 @@
  * @property int $id
  * @property int $id_substance
  * @property Substances $substance
+ * @property int $id_dataset_passive
+ * @property Datasets $dataset_passive
+ * @property int $id_dataset_active
+ * @property Transporter_datasets $dataset_active
  * @property int $id_source
  * @property Validator_identifiers $source
  * @property int $server
@@ -54,6 +58,16 @@ class Validator_identifiers extends Db
         (
             'var' => 'source',
             'class' => 'Validator_identifiers'
+        ),
+        'id_dataset_active' => array
+        (
+            'var' => 'dataset_active',
+            'class' => 'Transporter_datasets'
+        ),
+        'id_dataset_passive' => array
+        (
+            'var' => 'dataset_passive',
+            'class' => 'Datasets'
         ),
     );
 
@@ -514,7 +528,35 @@ class Validator_identifiers extends Db
 
         $r->state = self::STATE_VALIDATED;
         $r->active = self::ACTIVE;
-        $r->save();
+        $r->save(); // Disabling old in save
+    }
+
+    /**
+     * Inactivates record
+     * 
+     * @param int $id
+     */
+    public function inactivate($id = NULL)
+    {
+        if(!$id && $this)
+        {
+            $id = $this->id;
+        }
+
+        $r = new Validator_identifiers($id);
+
+        if(!$r->id)
+        {
+            throw new Exception('Invalid ID. Cannot validate record.');
+        }
+
+        if($r->active == self::INACTIVE)
+        {
+            return;
+        }
+
+        $r->active = self::INACTIVE;
+        $r->save(); 
     }
 
     /**
@@ -624,6 +666,8 @@ class Validator_identifiers extends Db
                 $exists->active = $this->active;
                 $exists->state_msg = $this->state_msg;
                 $exists->active_msg = $this->active_msg;
+                $exists->id_dataset_passive = $this->id_dataset_passive;
+                $exists->id_dataset_active = $this->id_dataset_active;
                 
                 $exists->save();
                 return;
@@ -736,79 +780,5 @@ class Validator_identifiers extends Db
                 $n->save();
             }
         }
-    }
-
-    /**
-     * Inits molecule identifiers
-     * 
-     * @param Substances $s
-     * 
-     * @return true|false - False if error
-     */
-    public function init_substance_identifiers($s)
-    {
-        if(!$s || !$s->id)
-        {
-            return false;
-        }
-
-        $attributes = array
-        (
-            self::ID_SMILES => 'SMILES',
-            self::ID_PUBCHEM => 'pubchem',
-            self::ID_PDB => 'pdb',
-            self::ID_DRUGBANK => 'drugbank',
-            self::ID_CHEMBL => 'chEMBL',
-            self::ID_CHEBI => 'chEBI',
-            self::ID_INCHIKEY => 'inchikey',
-            self::ID_NAME => 'name'
-        );
-
-        try
-        {
-            Db::beginTransaction();
-
-            foreach($attributes as $id => $attr)
-            {
-                if($s->$attr === NULL)
-                {
-                    continue;
-                }
-
-                $new = new Validator_identifiers();
-
-                $exists = $new->where(array
-                (
-                    'id_substance' => $s->id,
-                    'identifier' => $id
-                ))->get_one();
-
-                if($exists->id)
-                {
-                    continue;
-                }
-
-                $new->id_substance = $s->id;
-                $new->id_source = NULL;
-                $new->server = NULL;
-                $new->identifier = $id;
-                $new->value = $s->$attr;
-                $new->id_user = $s->user_id;
-                $new->state = self::STATE_VALIDATED;
-                $new->active = self::ACTIVE;
-                $new->create_date = $s->createDateTime;
-
-                $new->save();
-            }
-
-            Db::commitTransaction();
-        }
-        catch (Exception $e)
-        {
-            Db::rollbackTransaction();
-            return false;
-        }
-
-        return true;
     }
 }

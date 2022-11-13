@@ -317,7 +317,7 @@ class Rdkit extends Identifier_loader
         {
             if($throwable)
             {
-                throw $e;
+                throw new MmdbException('Cannot canonize smiles.', 'Cannot canonize smiles.', 0, $e);
             }
             return $this->canonize_smiles($smiles, true);
         }

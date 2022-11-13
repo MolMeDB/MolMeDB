@@ -25,6 +25,11 @@ class Render_pagination extends Render
             $items_per_page = $total_items;
         }
 
+        if(!$items_per_page)
+        {
+            $items_per_page = 10;
+        }
+
         if($active_page > intval($total_items / $items_per_page))
         {
             $active_page = intval($total_items / $items_per_page);

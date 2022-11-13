@@ -20,6 +20,7 @@ class File
     const FOLDER_MEMBRANE_DOWNLOAD = MEDIA_ROOT . 'files/download/membrane/';
     const FOLDER_METHOD_DOWNLOAD = MEDIA_ROOT . 'files/download/method/';
     const FOLDER_TRANSPORTER_DOWNLOAD = MEDIA_ROOT . 'files/download/transporter/';
+    const FOLDER_DATASETS = MEDIA_ROOT . 'files/datasets/';
 
     /**
      * Constructor
@@ -198,9 +199,11 @@ class File
 
         $target = $dir_path . '/' . $this->name . '.' . $this->extension;
 
-        if(file_exists($target))
+        $i = 0;
+        while(file_exists($target))
         {
-            throw new Exception('Sorry, file "' . $target . '" already exists.');
+            $i++;
+            $target = $dir_path . '/' . $this->name . '_' . $i . '.' . $this->extension;
         }
 
         if(!rename($this->origin_path, $target))
@@ -264,6 +267,36 @@ class File
         }
 
         return $this->FILE;
+    }
+
+    /**
+     * Parses file content
+     * 
+     * @param string $delimiter
+     * 
+     * @return array
+     */
+    public function parse_csv_content($delimiter)
+    {
+        $data = [];
+
+        if(!$this->path || !file_exists($this->path))
+        {
+            return [];
+        }
+
+        if(!($file = fopen($this->path, 'r')))
+        {
+            return [];
+        }
+
+        while($row = fgets($file))
+		{
+			$row = str_replace(array("\n","\r\n","\r"), '', $row);
+			$data[] = explode($delimiter, $row);
+		}
+
+        return $data;
     }
 
     /**

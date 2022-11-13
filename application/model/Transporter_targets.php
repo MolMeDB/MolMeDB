@@ -45,9 +45,7 @@ class Transporter_targets extends Db
             )
         );
         
-        $t = new Transporter_targets($t->id);
-        
-        return $t;
+        return new Transporter_targets($t->id);
     }
 
     /**
@@ -58,7 +56,7 @@ class Transporter_targets extends Db
     public function loadSearchWhisper($query)
     {
         return $this->queryAll('
-            SELECT DISTINCT CONCAT(tt.name, " [", tt.uniprot_id, "]") as name
+            SELECT DISTINCT tt.name, tt.uniprot_id
             FROM transporter_targets tt
             JOIN transporters t ON t.id_target = tt.id
             JOIN transporter_datasets td ON td.id = t.id_dataset

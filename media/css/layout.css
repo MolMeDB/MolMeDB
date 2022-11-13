@@ -60,6 +60,18 @@ body{
     /* background-image: linear-gradient(to right bottom, #eeeeee, #e8e7e8, #e1e1e1, #dbdadb, #d5d4d4); */
 }
 
+.breadcrumbs{
+    margin-bottom: 20px;
+    font-weight: bold;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 11px;
+}
+
+.breadcrumbs a, .breadcrumbs a:link{
+    color: #464646 !important;
+    text-decoration: underline;
+}
+
 .noah{
     font-family: "noah_headbold";
 }
@@ -366,7 +378,7 @@ footer{
     height: 50px;
     border-top-left-radius: 15px;
     border-top-right-radius: 15px;
-    z-index: 1;
+    z-index: 100;
     transition: height .5s ease;
 }
 

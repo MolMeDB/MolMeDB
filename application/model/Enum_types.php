@@ -120,9 +120,9 @@ class Enum_types extends Db
         $top_sections = $this->queryAll('
             SELECT DISTINCT et.*, etl.id as link_id, etl.reg_exp
             FROM enum_type_links etl
-            JOIN enum_types et ON et.id = etl.id_enum_type AND etl.id_parent_link IS NULL
+            JOIN enum_types et ON et.id = etl.id_enum_type AND etl.id_parent_link IS NULL AND et.type IN (?,?,?)
             ORDER BY et.name ASC
-        ');
+        ', array(Enum_types::TYPE_MEMBRANE_CATS, Enum_types::TYPE_METHOD_CATS, Enum_types::TYPE_TRANSPORTER_CATS));
 
         $result = array();
 

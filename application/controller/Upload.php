@@ -15,9 +15,7 @@ class UploadController extends Controller
     const M_ENERGY = 2;
     const M_MEMBRANE = 3;
     const M_METHOD = 4;
-    const M_PICTURE = 5;
     const M_PUBLICATION = 6;
-    const M_SMILES = 7;
 
     /** MENU ENDPOINTS */
     private $menu_endpoints = array
@@ -26,15 +24,8 @@ class UploadController extends Controller
         self::M_ENERGY  => 'energy',
         self::M_MEMBRANE => 'membrane',
         self::M_METHOD => 'method',
-        self::M_PICTURE => 'picture',
         self::M_PUBLICATION => 'publication',
-        self::M_SMILES => 'smiles'
     );
-
-    /** FILE TYPES */
-    const FILE_SMILES = 1;
-    const FILE_ENERGY = 2;
-    const FILE_REFS = 3;
 
     /**
      * Constructor
@@ -61,108 +52,145 @@ class UploadController extends Controller
      */
     public function energy()
     {
-        $data = array();
         $membraneModel = new Membranes();
         $methodModel = new Methods();
 
         // Save new file
-        if ($_POST && isset($_FILES['file'])) 
+        if ($this->form->is_post() && $this->form->has_file('file')) 
         {
-            $file = $_FILES["file"];
-            $format = 'csv';
+            $form_fields = $this->form->param;
+            $file = $this->form->file->file->as_array();
 
             try 
             {
-                $data = $this->uploadFile($file, $format, self::FILE_ENERGY);
-                // Save energy file
-                $energyModel = new Energy();
-                $substanceModel = new Substances();
-                $membrane = new Membranes($_POST['id_membrane']);
-                $method = new Methods($_POST['id_method']);
-
-                // Check validity
-                if(!$membrane->id)
-                {
-                    throw new Exception('Membrane was not found.');
-                }
+                $method = new Methods($form_fields->id_method);
+                $membrane = new Membranes($form_fields->id_membrane);
 
                 if(!$method->id)
                 {
-                    throw new Exception('Method was not found.');
+                    throw new MmdbException('Method not found.', 'Method not found');
                 }
 
-                // Remove header
-                $header = array_shift($data);
-
-                // Find substances
-                $idSubstances = array();
-
-                unset($header[0]);
-
-                foreach($header as $key => $name)
+                if(!$membrane->id)
                 {
-                    $s = $substanceModel->select_list('id')
-                        ->where("name = '$name' OR uploadName = '$name'")
-                        ->get_one();
-
-                    if($s->id)
-                    {
-                        $idSubstances[$key] = $s->id;
-                    }
+                    throw new MmdbException('Membrane not found.', 'Membrane not found');
                 }
 
-                foreach($data as $row)
-                {
-                    $distance = $row[0];
+                $file_object = $this->uploadFile($file, Files::T_UPLOAD_ENERGY);
 
-                    foreach($idSubstances as $key => $id)
-                    {
-                        $value = isset($row[$key]) ? $row[$key] : NULL;
+                // Add to the queue
+                $queue = new Upload_queue();
 
-                        if(!$value)
-                        {
-                            continue;
-                        }
+                $queue->state = $queue::STATE_PENDING;
+                $queue->id_user = session::user_id();
+                $queue->id_file = $file_object->id;
+                $queue->type = $queue::TYPE_ENERGY;
+                $queue->settings = json_encode(array
+                (
+                    // 'delimiter' => $delimiter,
+                    'method' => $method->id,
+                    'membrane' => $membrane->id
+                ));
 
-                        // Check if exists
-                        $exists = $energyModel->where(array
-                            (
-                                'id_substance'   => $id,
-                                'id_membrane'    => $membrane->id,
-                                'id_method'      => $method->id,
-                                'distance LIKE '       => $distance
-                            ))
-                            ->select_list('id')
-                            ->get_one();
+                $queue->save();
 
-                        if($exists->id)
-                        {
-                            continue;
-                        }
+                $this->alert->success('Energy data upload was added to the queue [ID: ' . $queue->id . '].');
 
-                        // save new energy value
-                        $energy = new Energy();
-                        $energy->id_substance = $id;
-                        $energy->id_membrane = $membrane->id;
-                        $energy->id_method = $method->id;
-                        $energy->distance = $distance;
-                        $energy->energy = $value;
-                        $energy->user_id = $_SESSION['user']['id'];
+                // Save energy file
+                // $energyModel = new Energy();
+                // $substanceModel = new Substances();
+                // $membrane = new Membranes($_POST['id_membrane']);
+                // $method = new Methods($_POST['id_method']);
 
-                        $energy->save();
-                    }
-                }
+                // // Check validity
+                // if(!$membrane->id)
+                // {
+                //     throw new Exception('Membrane was not found.');
+                // }
+
+                // if(!$method->id)
+                // {
+                //     throw new Exception('Method was not found.');
+                // }
+
+                // // Remove header
+                // $header = array_shift($data);
+
+                // // Find substances
+                // $idSubstances = array();
+
+                // unset($header[0]);
+
+                // foreach($header as $key => $name)
+                // {
+                //     $s = $substanceModel->select_list('id')
+                //         ->where("name = '$name' OR uploadName = '$name'")
+                //         ->get_one();
+
+                //     if($s->id)
+                //     {
+                //         $idSubstances[$key] = $s->id;
+                //     }
+                // }
+
+                // foreach($data as $row)
+                // {
+                //     $distance = $row[0];
+
+                //     foreach($idSubstances as $key => $id)
+                //     {
+                //         $value = isset($row[$key]) ? $row[$key] : NULL;
+
+                //         if(!$value)
+                //         {
+                //             continue;
+                //         }
+
+                //         // Check if exists
+                //         $exists = $energyModel->where(array
+                //             (
+                //                 'id_substance'   => $id,
+                //                 'id_membrane'    => $membrane->id,
+                //                 'id_method'      => $method->id,
+                //                 'distance LIKE '       => $distance
+                //             ))
+                //             ->select_list('id')
+                //             ->get_one();
+
+                //         if($exists->id)
+                //         {
+                //             continue;
+                //         }
+
+                //         // save new energy value
+                //         $energy = new Energy();
+                //         $energy->id_substance = $id;
+                //         $energy->id_membrane = $membrane->id;
+                //         $energy->id_method = $method->id;
+                //         $energy->distance = $distance;
+                //         $energy->energy = $value;
+                //         $energy->user_id = $_SESSION['user']['id'];
+
+                //         $energy->save();
+                //     }
+                // }
             }
             catch (MmdbException $ex) 
             {
-                $this->addMessageError('Problem ocurred during uploading energy file.');
-                $this->addMessageError($ex);
+                $this->alert->error('Problem ocurred during uploading energy file.');
+                $this->alert->error($ex);
             }
         }
         
-        $this->title = 'Uploader';
+        $this->title = 'Upload energy file';
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', 'administration')
+            ->add('Upload energy file');
 
         $this->view = new View('upload/energyfile');
+        $this->view->queue = Upload_queue::instance()->where('type', Upload_queue::TYPE_ENERGY)->order_by('id', 'DESC')->limit(20)->get_all();
         $this->view->methods = $methodModel->get_all();
         $this->view->membranes = $membraneModel->get_all();
         $this->view->navigator = $this->createNavigator(self::M_ENERGY);
@@ -183,25 +211,38 @@ class UploadController extends Controller
             {
                 Db::beginTransaction();
 
+                // Check for duplicities
+                $exists = $membrane->queryOne('
+                    SELECT *
+                    FROM membranes
+                    WHERE name LIKE ? OR CAM LIKE ?
+                    LIMIT 1
+                ', array($this->form->param->membrane_name, $this->form->param->membrane_CAM));
+
+                if($exists->id)
+                {
+                    throw new MmdbException('', 'Membrane already exists. Please, check following membrane `' . Html::anchor('browse/membranes?target=' . $exists->id, $exists->name, true) . '`.');
+                }
+
                 // Insert new Membrane
-                $membrane->name = $this->form->param->name;
-                $membrane->description = $this->form->param->descript;
-                $membrane->keywords = $this->form->param->keywords;
-                $membrane->CAM = $this->form->param->CAM;
-                $membrane->references = $this->form->param->references;
-                $membrane->idTag = $this->form->param->tags; 
+                $membrane->name = $this->form->param->membrane_name;
+                $membrane->description = $this->form->param->membrane_descript;
+                $membrane->keywords = $this->form->param->membrane_keywords;
+                $membrane->CAM = $this->form->param->membrane_CAM;
+                $membrane->references = $this->form->param->membrane_references;
+                $membrane->idTag = $this->form->param->membrane_CAM; 
 
                 $membrane->save();
 
                 Db::commitTransaction();
 
-                $this->addMessageSuccess('Membrane "' . $membrane->name . '" was saved.');
-                $this->redirect("upload/membrane");
+                $this->alert->success('Membrane "' . $membrane->name . '" was saved.');
+                $this->redirect("browse/membranes?target=" . $membrane->id);
             } 
             catch (MmdbException $ex) 
             {
                 Db::rollbackTransaction();
-                $this->addMessageError($ex);
+                $this->alert->error($ex);
             }
         }
 
@@ -209,8 +250,14 @@ class UploadController extends Controller
 
         $this->view = new View('upload/membrane');
         $this->view->categories = $et_model->get_categories($et_model::TYPE_MEMBRANE_CATS);
+        $this->view->form_data = $this->form->param;
 
         $this->view->navigator = $this->createNavigator(self::M_MEMBRANE);
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', 'administration')
+            ->add('Add membrane');
     }
 
     /**
@@ -237,13 +284,13 @@ class UploadController extends Controller
                 $method->save();
 
                 Db::commitTransaction();
-                $this->addMessageSuccess('Method "' . $method->name  . '" was inserted.');
+                $this->alert->success('Method "' . $method->name  . '" was inserted.');
                 $this->redirect("upload/method");
             } 
             catch (MmdbException $ex) 
             {
                 Db::rollbackTransaction();
-                $this->addMessageError($ex);
+                $this->alert->error($ex);
             }
         }
 
@@ -251,75 +298,11 @@ class UploadController extends Controller
 
         $this->view = new View('upload/method');
         $this->view->navigator = $this->createNavigator(self::M_METHOD);
-    }
 
-    /**
-     * Picture uploader
-     */
-    public function picture()
-    {
-        if ($_FILES) 
-        {
-            try 
-            {
-                $files = $_FILES['file'];
-
-                $count = count($files["name"]);
-
-                for ($i = 0; $i < $count; $i++) 
-                {
-                    $tmpFilePath = $files['tmp_name'][$i];
-                    $name = $files['name'][$i];
-
-                    if ($tmpFilePath != "") 
-                    {
-                        //Setup our new file path
-                        $newFilePath = MEDIA_ROOT . "files/pictures/" . $name;
-
-                        //Upload the file into the temp dir
-                        if (!move_uploaded_file($tmpFilePath, $newFilePath)) 
-                        {
-                            $this->addMessageError("Error. Problem with saving picture '$name'");
-                            $this->redirect("upload/picture");
-                        }
-                    }
-                }
-
-                $this->addMessageSuccess("Pictures were successfully uploaded.");
-                $this->redirect("upload/picture");
-
-            } 
-            catch (MmdbException $ex) 
-            {
-                $this->addMessageError($ex);
-            }
-        }
-
-        $this->title = 'Uploader';
-
-        $this->view = new View('upload/picture');
-        $this->view->pictures = $this->loadPictures();
-        $this->view->navigator = $this->createNavigator(self::M_PICTURE);
-    }
-
-    /**
-     * Gets all pictures
-     */
-    private function loadPictures()
-    {
-        $pics = scandir(MEDIA_ROOT . "files/pictures/");
-        $res = [];
-
-        foreach($pics as $p)
-        {
-            if($p == '.' || $p == '..')
-            {
-                continue;
-            }
-
-            $res[] = $p;
-        }
-        return $res;
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', 'administration')
+            ->add('Add method');
     }
 
     /**
@@ -327,19 +310,19 @@ class UploadController extends Controller
      */
     public function publication()
     {
-        if ($_POST) 
+        if ($this->form->is_post()) 
         {
             try 
             {
                 $publication = new Publications();
 
                 // Check if exists
-                if(trim($_POST['doi']) != '')
+                if(trim($this->form->param->doi) != '')
                 {
                     $check_doi = $publication->where(
                         array
                         (
-                            'doi' => $_POST['doi']
+                            'doi' => $this->form->param->doi
                         ))
                         ->get_one();
 
@@ -350,220 +333,59 @@ class UploadController extends Controller
                 }
 
                 // Check if exists
-                if(trim($_POST['pmid']) != '')
+                if(trim($this->form->param->pmid) != '')
                 {
                     $check_pmid = $publication->where(
                         array
                         (
-                            'pmid' => $_POST['pmid']
+                            'pmid' => $this->form->param->pmid
                         ))
                         ->get_one();
     
                     if($check_pmid->id)
                     {
-                        throw new MmdbException('Publication with given PmID already exists.');
+                        throw new MmdbException('Publication with given PubMed ID already exists.');
                     }
                 }
                 
                 // Save new one
-                $publication->doi = $_POST['doi'];
-                $publication->citation = $_POST['citation'];
-                $publication->authors = $_POST['authors'];
-                $publication->pmid = $_POST['pmid'];
-                $publication->title = $_POST['title'];
-                $publication->journal = $_POST['journal'];
-                $publication->volume = $_POST['volume'];
-                $publication->issue = $_POST['issue'];
-                $publication->page = $_POST['page'];
-                $publication->year = $_POST['year'];
-                $publication->publicated_date = $_POST['publicated_date'];
-                $publication->user_id = $_SESSION['user']['id'];
+                $publication->doi = $this->form->param->doi;
+                $publication->citation = $this->form->param->citation;
+                $publication->authors = $this->form->param->authors;
+                $publication->pmid = $this->form->param->pmid;
+                $publication->title = $this->form->param->title;
+                $publication->journal = $this->form->param->journal;
+                $publication->volume = $this->form->param->volume;
+                $publication->issue = $this->form->param->issue;
+                $publication->page = $this->form->param->page;
+                $publication->year = $this->form->param->year;
+                $publication->publicated_date = $this->form->param->publicated_date ? date('Y-m-d H:i:s', strtotime($this->form->param->publicated_date)) : NULL;
+                $publication->user_id = session::user_id();
 
                 $publication->set_empty_vals_to_null();
 
                 $publication->save();
 
-                $this->addMessageSuccess("Saved!");
+                $this->alert->success("Saved!");
+                $this->redirect('upload/publication');
             } 
             catch (MmdbException $ex) 
             {
-                $this->addMessageError('Error ocurred during saving record.');
-                $this->addMessageError($ex);
+                $this->alert->error('Error ocurred during saving record.');
+                $this->alert->error($ex);
             }
         }
 
         $this->title = 'Uploader';
 
         $this->view = new View('upload/publication');
+        $this->view->form_data = $this->form->param;
         $this->view->navigator = $this->createNavigator(self::M_PUBLICATION);
-    }
 
-    /**
-     * Update smiles
-     */
-    public function update_smiles()
-    {
-        $smiles_model = new Smiles();
-        try 
-        {
-            $smiles_model->checkSmiles();
-            $this->addMessageSuccess("Smiles table was successfully updated");
-        } 
-        catch (MmdbException $ex) 
-        {
-            $this->addMessageError($ex);
-        }
-
-        $this->redirect("upload/smiles");
-    }
-
-    /**
-     * Smiles uploader
-     * 
-     * @param bool $canonize
-     */
-    public function smiles($canonize = false)
-    {
-        $data = array();
-
-        $smilesModel = new Smiles();
-
-        $redirection = isset($_GET['redirection']) ? $_GET['redirection'] : "upload/smiles";
-
-        if($canonize)
-        {
-            // Canonizes all SMILES in DB
-            try
-            {
-                $smilesModel->beginTransaction();
-
-                $rdkit = new Rdkit();
-
-                // First check, if RDKIT is working
-                if(!$rdkit->is_connected())
-                {
-                    throw new Exception('RDKIT service is not working');
-                }
-
-                $last_update = strtotime($this->config->get(Configs::LAST_SMILES_UPDATE));
-
-                // Process SMILES table
-                $smiles = $smilesModel->where(array
-                    (
-                        'editDateTime >= ' => date('Y-m-d H:i:s', $last_update)
-                    ))
-                    ->get_all();
-
-                foreach($smiles as $row)
-                {
-                    $old_smiles = $row->SMILES;
-
-                    $canonized = $rdkit->canonize_smiles($old_smiles);
-
-                    // Exists yet?
-                    $check = $smilesModel->where(array
-                        (
-                            'id != ' => $row->id,
-                            'SMILES' => $canonized,
-                        ))
-                        ->get_one();
-
-                    if($check->id)
-                    {
-                        $row->delete();
-                    }
-                    else
-                    {
-                        $row->SMILES = $canonized;
-                        $row->save();
-                    }
-                }
-
-                // Proccess substance table
-                $substanceModel = new Substances();
-
-                $smiles = $substanceModel->select_list(array
-                    (
-                        'id',
-                        'SMILES'
-                    ))
-                    ->where(array
-                    (
-                        'editDateTime >= ' => date('Y-m-d H:i:s', $last_update)
-                    ))
-                    ->get_all();
-
-                foreach($smiles as $row)
-                {
-                    $old_smiles = $row->SMILES;
-
-                    $canonized = $rdkit->canonize_smiles($old_smiles);
-
-                    if($canonized == $old_smiles)
-                    {
-                        continue;
-                    }
-
-                    $row->SMILES = $canonized;
-                    $row->save();
-                }
-
-                $this->config->set(Configs::LAST_SMILES_UPDATE, date('Y-m-d H:i:s'));
-
-                $this->addMessageSuccess('Successfully updated.');
-
-                $smilesModel->commitTransaction();
-            }
-            catch(MmdbException $e)
-            {   
-                $smilesModel->rollbackTransaction();
-                $this->addMessageError('Cannot update smiles table.');
-                $this->addMessageError($e);
-            }
-            
-            $this->redirect($redirection);
-        }
-        else if (isset($_FILES['file'])) 
-        {
-            $file = $_FILES['file'];
-            $format = 'csv';
-
-            try 
-            {
-                $data = $this->uploadFile($file, $format, self::FILE_SMILES);
-
-                foreach($data as $row)
-                {
-                    $smiles = trim($row[0]);
-                    $name = trim($row[1]);
-
-                    if($smiles == '' || $name == '')
-                    {
-                        continue;
-                    }
-
-                    $s = new Smiles();
-
-                    $s->name = $name;
-                    $s->SMILES = $smiles;
-                    $s->user_id = $_SESSION['user']['id'];
-
-                    $s->save();
-                }
-
-                $this->addMessageSuccess('Saved');
-                $this->redirect($redirection);
-            } 
-            catch (MmdbException $ex) 
-            {
-                $this->addMessageError($ex);
-            }
-        }
-
-        $this->title = 'Uploader';
-
-        $this->view = new View('upload/smiles');
-        $this->view->navigator = $this->createNavigator(self::M_SMILES);
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', 'administration')
+            ->add('Add publication');
     }
 
     /**
@@ -573,6 +395,8 @@ class UploadController extends Controller
     {
         $data = array();
         $fileType = NULL;
+
+        $this->view = new View('upload/dataset');
 
         if ($this->form->is_post()) 
         {
@@ -586,54 +410,117 @@ class UploadController extends Controller
                 {
                     if($post_type === self::P_SAVE_DATASET)
                     {
-                        $message = $this->save_dataset();
+                        $this->save_dataset();
                     }
                     else if($post_type === self::P_SAVE_TRANSPORTERS)
                     {
-                        $message = $this->save_transporters();
+                        $this->save_transporters();
                     }
                     else
                     {
                         throw new MmdbException('Invalid form type.');
                     }
-
-                    $this->addMessageSuccess($message);
                 }
                 catch (MmdbException $ex)
                 {
-                    $this->addMessageError($ex);
+                    $this->alert->error($ex);
                 }
             } 
-            // Upload new file and return path
-            else if ($post_type === self::P_UPLOAD_FILE && isset($_FILES["file"])) 
+            // Upload new file and return databse instance with file
+            else if ($post_type === self::P_UPLOAD_FILE && 
+                isset($_FILES["file"]) && 
+                Files::valid_type($fileType))
             {
                 $file = $_FILES["file"];
-                $valid_format = 'csv';
             
                 try 
                 {
-                    $data = $this->uploadFile($file, $valid_format);
+                    $this->view->uploaded_file = $this->uploadFile($file, $fileType);
                 } 
                 catch (MmdbException $ex) 
                 {
-                    $this->addMessageError($ex);
-                    $data = False;
+                    $this->alert->error($ex);
                 }
-
-                $this->data['fileName'] = $data;
             }
             else
             {
-                $this->addMessageWarning('Invalid POST parameter');
+                $this->alert->warning('Invalid POST parameter');
             }
         }
 
         $this->title = 'Uploader';
 
-        $this->view = new View('upload/dataset');
         $this->view->detail = $data;
+        $this->view->queue = Upload_queue::instance()->where("type IS", "NULL")->order_by('id', 'DESC')->limit(15)->get_all();
         $this->view->fileType = $fileType;
         $this->view->navigator = $this->createNavigator(self::M_DATASET);
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', 'administration')
+            ->add('Upload dataset');
+    }
+
+    /**
+     * Cancels upload process in queue
+     * 
+     * @param int $id
+     * 
+     */
+    public function cancel($id)
+    {
+        $q = new Upload_queue($id);
+
+        // Todo access rights
+        
+        if(!$q->id)
+        {
+            $this->alert->error('Record not found.');
+            $this->redirect('upload/dataset');
+        }
+
+        if($q->state !== $q::STATE_PENDING)
+        {
+            $this->alert->error('Cannot cancel upload process. Process is not pending.');
+            $this->redirect('upload/dataset');
+        }
+
+        $q->state = $q::STATE_CANCELED;
+        $q->save();
+
+        $this->alert->success('Job [ID: ' . $q->id . '] was canceled.');
+        $this->redirect('upload/dataset');
+    }
+
+    /**
+     * Requeue canceled upload process
+     * 
+     * @param int $id
+     * 
+     */
+    public function requeue($id)
+    {
+        $q = new Upload_queue($id);
+
+        // Todo access rights
+
+        if(!$q->id)
+        {
+            $this->alert->error('Record not found.');
+            $this->redirect('upload/dataset');
+        }
+
+        if($q->state !== $q::STATE_CANCELED)
+        {
+            $this->alert->error('Cannot requeue non-canceled process.');
+            $this->redirect('upload/dataset');
+        }
+
+        $q->state = $q::STATE_PENDING;
+        $q->save();
+
+        $this->alert->success('Job [ID: ' . $q->id . '] was requeued.');
+        $this->redirect('upload/dataset');
     }
 
     /**
@@ -645,59 +532,66 @@ class UploadController extends Controller
      */
     private function save_transporters()
     {
-        $line = 1;
+        if(!$this->form->is_post())
+        {
+            throw new MmdbException('Invalid post form.');
+        }
+
         try
         {
             // Transaction for whole dataset 
             Db::beginTransaction();
 
-            $uploader = new Uploader();
+            $file_object = new Files($this->form->param->file_id);
+
+            if(!$file_object->id)
+            {
+                throw new MmdbException('Invalid file id.');
+            }
+
+            if(!file_exists($file_object->path))
+            {
+                throw new MmdbException('File not found on server. Please, reupload the file.');
+            }
+
+            $queue = new Upload_queue();
             $dataset = new Transporter_datasets();
 
             // Get data
-            $rowCount = intval($this->form->param->rowCount);
-            $colCount = intval($this->form->param->colCount);
             $secondary_ref_id = $this->form->param->reference;
+            $delimiter = $this->form->param->delimiter;
 
             // Checks if data are valid
             $publication = new Publications($secondary_ref_id);
 
+            if($delimiter == null)
+            {
+                throw new MmdbException('Invalid delimiter.');
+            }
+
+            // Try to parse file with current settings
+            $file = new File($file_object->path);
+
+            $content = $file->parse_csv_content($delimiter);
+            
+            if(empty($content) || count($content) < 2)
+            {
+                throw new MmdbException('', 'Invalid file content. Content is empty.');
+            }
+
+            // Remove header
+            array_shift($content);
+
             // Get valid attribute types
-            $types = Upload_validator::get_transporter_attributes();
+            $valid_attrs = Upload_validator::get_transporter_attributes();
+            $attrs = array();
 
-            $values = $rows = $attrs = array();
-
-            // Get rows
-            for($i = 1; $i < $rowCount; $i++)
+            if(count($content[0]) < count($this->form->param->attr))
             {
-                $line = $i;
-                $a = "row_" . strval($i);
-
-                // Check if exists
-                if(!$this->form->param->$a)
-                {
-                    throw new MmdbException(PHP_POST_LIMIT);
-                }
-                
-                $r = $this->form->param->$a;
-
-                //Check number of columns
-                if(count($r) != $colCount)
-                {
-                    throw new MmdbException(PHP_POST_LIMIT);
-                }
-
-                $rows[] = $r;
+                throw new MmdbException('', 'Invalid number of columns.');
             }
 
-            $line = 1;
-
-            // Get used attributes
-            if(!$this->form->param->attr || !is_array($this->form->param->attr) || 
-                count($this->form->param->attr) != $colCount)
-            {
-                throw new MmdbException('Attributes are not defined.');
-            }
+            $attrs = array();
 
             // Checks, if attributes are valid
             foreach($this->form->param->attr as $order => $a)
@@ -707,7 +601,7 @@ class UploadController extends Controller
                     continue;
                 }
 
-                if(!in_array($a, $types))
+                if(!in_array($a, $valid_attrs))
                 {
                     throw new MmdbException("Invalid attribute '$a'. Please, contact your administrator.");
                 }
@@ -715,81 +609,51 @@ class UploadController extends Controller
                 $attrs[$order] = $a;
             }
 
-            // process data
-            foreach($rows as $row)
-            {
-                $new = array();
-
-                foreach($attrs as $key => $attr)
-                {
-                    $new[$attr] = Upload_validator::get_attr_val($attr, $row[$key]);
-                }
-
-                $values[] = $new;
-            }
+            $dataset = new Transporter_datasets($file_object->id_dataset_active);
 
             // Add new dataset
-            $dataset->id_reference = $publication->id;
-            $dataset->id_user_edit = $this->session->user->id;
-            $dataset->id_user_upload = $this->session->user->id;
-            $dataset->visibility = Datasets::INVISIBLE;
-            $dataset->name = date('d-m-y H:i');
-
-            $dataset->save();
-
-            $line = 1;
-
-            // Make upload report
-            $report = new Upload_report();
-
-            // Add dataset rows
-            foreach($values as $detail) 
+            if($dataset->id)
             {
-                try
+                if($dataset->id_reference !== $publication->id)
                 {
-                    $uploader->insert_transporter(
-                        $dataset,
-                        self::get_value($detail, Upload_validator::NAME),
-                        self::get_value($detail, Upload_validator::SMILES),
-                        self::get_value($detail, Upload_validator::MW),
-                        self::get_value($detail, Upload_validator::LOG_P),
-                        self::get_value($detail, Upload_validator::PDB),
-                        self::get_value($detail, Upload_validator::PUBCHEM),
-                        self::get_value($detail, Upload_validator::DRUGBANK),
-                        self::get_value($detail, Upload_validator::UNIPROT_ID),
-                        self::get_value($detail, Upload_validator::PRIMARY_REFERENCE),
-                        self::get_value($detail, Upload_validator::TYPE),
-                        self::get_value($detail, Upload_validator::TARGET),
-                        self::get_value($detail, Upload_validator::IC50),
-                        self::get_value($detail, Upload_validator::EC50),
-                        self::get_value($detail, Upload_validator::KI),
-                        self::get_value($detail, Upload_validator::KM),
-                        self::get_value($detail, Upload_validator::IC50_ACC),
-                        self::get_value($detail, Upload_validator::EC50_ACC),
-                        self::get_value($detail, Upload_validator::KI_ACC),
-                        self::get_value($detail, Upload_validator::KM_ACC),
-                        self::get_value($detail, Upload_validator::COMMENT)
-                    );
-                }
-                catch(UploadLineException $e)
-                {   
-                    $report->add($line, $e->getMessage());
+                    throw new MmdbException("",'Invalid dataset setting. 
+                        Current file was previously uploaded with different publication selection. 
+                        First, delete old dataset [id: ' . $dataset->id . '] and try again.');
                 }
 
-                $line++;
+                $this->alert->warning('Found dataset for given file from a previous upload [ID: ' . $dataset->id . '].');  
+            }
+            else
+            {
+                $dataset->id_reference = $publication->id;
+                $dataset->id_user_edit = session::user_id();
+                $dataset->id_user_upload = session::user_id();
+                $dataset->visibility = Datasets::INVISIBLE;
+                $dataset->name = date('d-m-y H:i');
+
+                $dataset->save();
+
+                $file_object->id_dataset_active = $dataset->id;
+                $file_object->save();
             }
 
+            // Create new queue 
+            $queue->id_dataset_active = $dataset->id;
+            $queue->state = $queue::STATE_PENDING;
+            $queue->type = $queue::TYPE_ACTIVE_DATASET;
+            $queue->id_user = session::user_id();
+            $queue->id_file = $file_object->id;
+            $queue->settings = json_encode(array
+            (
+                'delimiter' => $delimiter,
+                'attributes' => $attrs
+            ));
+
+            $queue->save();
             Db::commitTransaction();
 
-            // Show report message if not empty
-            if(!$report->is_empty())
-            {
-                $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
-            }
-
-            $total_saved = $line - $report->count();
-
-            return "$total_saved lines successfully saved!";
+            $this->alert->success('Upload request successfully queued up.');
+            $this->redirect('upload/dataset');
         }
         catch (MmdbException $ex)
         {
@@ -812,76 +676,75 @@ class UploadController extends Controller
             throw new MmdbException('Invalid post form.');
         }
 
-        $line = 0;
         try
         {
             // Transaction for whole dataset 
             Db::beginTransaction();
 
-            $uploader = new Uploader();
+            $file_object = new Files($this->form->param->file_id);
+
+            if(!$file_object->id)
+            {
+                throw new MmdbException('Invalid file id.');
+            }
+
+            if(!file_exists($file_object->path))
+            {
+                throw new MmdbException('File not found on server. Please, reupload the file.');
+            }
+            
             $dataset = new Datasets();
+            $queue = new Upload_queue();
 
             // Get data
-            $rowCount = $this->form->param->rowCount;
-            $colCount = $this->form->param->colCount;
             $membrane_id = $this->form->param->membrane;
             $method_id = $this->form->param->method;
             $temperature = floatval($this->form->param->temp);
             $secondary_ref_id = $this->form->param->reference;
+            $delimiter = $this->form->param->delimiter;
 
             // Checks if data are valid
             $membrane = new Membranes($membrane_id);
             $method = new Methods($method_id);
             $publication = new Publications($secondary_ref_id);
-            $interaction_model = new Interactions();
+
+            if($delimiter == null)
+            {
+                throw new MmdbException('Invalid delimiter.');
+            }
 
             if(!$membrane->id)
             {
-                $this->addMessageError('Membrane was not found.');
+                $this->alert->error('Membrane was not found.');
                 $this->redirect('upload/dataset');
             }
 
             if(!$method->id)
             {
-                $this->addMessageError('Method was not found.');
+                $this->alert->error('Method was not found.');
                 $this->redirect('upload/dataset');
             }
 
-            // Get valid attribute types
-            $types = Upload_validator::get_dataset_attributes();
+            // Try to parse file with current settings
+            $file = new File($file_object->path);
 
-            $values = $rows = $attrs = array();
-
-            // Get rows
-            for($i = 1; $i < $rowCount; $i++)
+            $content = $file->parse_csv_content($delimiter);
+            
+            if(empty($content) || count($content) < 2)
             {
-                $line = $i;
-                $a = "row_" . strval($i);
-
-                // Check if exists
-                if(!$this->form->param->$a)
-                {
-                    throw new MmdbException(PHP_POST_LIMIT);
-                }
-                
-                $r = $this->form->param->$a;
-
-                //Check number of columns
-                if(count($r) != $colCount)
-                {
-                    throw new MmdbException(PHP_POST_LIMIT);
-                }
-
-                $rows[] = $r;
+                throw new MmdbException('', 'Invalid file content. Content is empty.');
             }
 
-            $line = 0;
+            // Remove header
+            array_shift($content);
 
-            // Get used attributes
-            if(!isset($this->form->param->attr) || !is_array($this->form->param->attr) || 
-                count($this->form->param->attr) != $colCount)
+            // Get valid attribute types
+            $valid_attrs = Upload_validator::get_dataset_attributes();
+            $attrs = array();
+
+            if(count($content[0]) < count($this->form->param->attr))
             {
-                throw new MmdbException('Attributes are not defined.');
+                throw new MmdbException('', 'Invalid number of columns.');
             }
 
             // Checks, if attributes are valid
@@ -892,7 +755,7 @@ class UploadController extends Controller
                     continue;
                 }
 
-                if(!in_array($a, $types))
+                if(!in_array($a, $valid_attrs))
                 {
                     throw new MmdbException("Invalid attribute '$a'. Please, contact your administrator.");
                 }
@@ -900,157 +763,75 @@ class UploadController extends Controller
                 $attrs[$order] = $a;
             }
 
-            // process data
-            foreach($rows as $row)
-            {
-                $line++;
-                $new = array();
-
-                foreach($attrs as $key => $attr)
-                {
-                    $new[$attr] = Upload_validator::get_attr_val($attr, $row[$key]);
-                }
-
-                $values[] = $new;
-            }
+            $dataset = new Datasets($file_object->id_dataset_passive);
 
             // Add new dataset
-            $dataset->id_membrane = $membrane->id;
-            $dataset->id_method = $method->id;
-            $dataset->id_publication = $publication->id;
-            $dataset->id_user_edit = $this->session->user->id;
-            $dataset->id_user_upload = $this->session->user->id;
-            $dataset->visibility = Datasets::INVISIBLE;
-            $dataset->name = $method->CAM . '_' . $membrane->CAM;
-
-            $dataset->save();
-
-            $line = 1;
-
-            // Make upload report
-            $report = new Upload_report();
-
-            // Add dataset rows
-            foreach($values as $detail) 
+            if($dataset->id)
             {
-                try 
+                if($dataset->id_membrane !== $membrane->id || 
+                    $dataset->id_method !== $method->id || 
+                    $dataset->id_publication !== $publication->id)
                 {
-                    $uploader->insert_interaction(
-                        $dataset->id,
-                        self::get_value($detail, Upload_validator::PRIMARY_REFERENCE),
-                        self::get_value($detail, Upload_validator::NAME),
-                        self::get_value($detail, Upload_validator::NAME),
-                        self::get_value($detail, Upload_validator::MW),
-                        self::get_value($detail, Upload_validator::X_MIN),
-                        self::get_value($detail, Upload_validator::X_MIN_ACC),
-                        self::get_value($detail, Upload_validator::G_PEN),
-                        self::get_value($detail, Upload_validator::G_PEN_ACC),
-                        self::get_value($detail, Upload_validator::G_WAT),
-                        self::get_value($detail, Upload_validator::G_WAT_ACC),
-                        self::get_value($detail, Upload_validator::LOG_K),
-                        self::get_value($detail, Upload_validator::LOG_K_ACC),
-                        self::get_value($detail, Upload_validator::AREA),
-                        self::get_value($detail, Upload_validator::VOLUME),
-                        self::get_value($detail, Upload_validator::LOG_P),
-                        self::get_value($detail, Upload_validator::LOG_PERM),
-                        self::get_value($detail, Upload_validator::LOG_PERM_ACC), 
-                        self::get_value($detail, Upload_validator::THETA),
-                        self::get_value($detail, Upload_validator::THETA_ACC),
-                        self::get_value($detail, Upload_validator::ABS_WL),
-                        self::get_value($detail, Upload_validator::ABS_WL_ACC),
-                        self::get_value($detail, Upload_validator::FLUO_WL),
-                        self::get_value($detail, Upload_validator::FLUO_WL_ACC),
-                        self::get_value($detail, Upload_validator::QY),
-                        self::get_value($detail, Upload_validator::QY_ACC),
-                        self::get_value($detail, Upload_validator::LT),
-                        self::get_value($detail, Upload_validator::LT_ACC),
-                        self::get_value($detail, Upload_validator::Q),
-                        self::get_value($detail, Upload_validator::COMMENT),
-                        self::get_value($detail, Upload_validator::SMILES),
-                        self::get_value($detail, Upload_validator::DRUGBANK),
-                        self::get_value($detail, Upload_validator::PUBCHEM),
-                        self::get_value($detail, Upload_validator::PDB),
-                        self::get_value($detail, Upload_validator::CHEMBL_ID),
-                        self::get_value($detail, Upload_validator::CHEBI_ID),
-                        $membrane,
-                        $method,
-                        $temperature
-                    );
-                }
-                catch(UploadLineException $e)
-                {   
-                    $report->add($line, $e->getMessage());
+                    throw new MmdbException("",'Invalid dataset setting. 
+                        Current file was previously uploaded with different membrane/method/publication setting. 
+                        First, delete old dataset [id: ' . $dataset->id . '] and try again.');
                 }
 
-                $line++;
+                $this->alert->warning('Found dataset for given file from a previous upload [ID: ' . $dataset->id . '].');  
+            }
+            else
+            {
+                $dataset->id_membrane = $membrane->id;
+                $dataset->id_method = $method->id;
+                $dataset->id_publication = $publication->id;
+                $dataset->id_user_edit = session::user_id();
+                $dataset->id_user_upload = session::user_id();
+                $dataset->visibility = Datasets::INVISIBLE;
+                $dataset->name = $method->CAM . '_' . $membrane->CAM;
+
+                $dataset->save();
+
+                $file_object->id_dataset_passive = $dataset->id;
+                $file_object->save();
             }
 
-            $line--;
+            // Create new queue 
+            $queue->id_dataset_passive = $dataset->id;
+            $queue->state = $queue::STATE_PENDING;
+            $queue->type = $queue::TYPE_PASSIVE_DATASET;
+            $queue->id_user = session::user_id();
+            $queue->id_file = $file_object->id;
+            $queue->settings = json_encode(array
+            (
+                'delimiter' => $delimiter,
+                'attributes' => $attrs,
+                'temperature' => $temperature
+            ));
+
+            $queue->save();
+
+            $this->alert->success('Dataset upload was added to the queue [ID: ' . $queue->id . '].');
 
             Db::commitTransaction();
 
-            // Show report message if not empty
-            if (!$report->is_empty()) 
-            {
-                $this->addMessageError('Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
-            }
-
-            // Get number of newly uploaded interactions
-            $new_uploaded = $interaction_model->where('id_dataset', $dataset->id)
-                ->get_all_count();
-
-            if($new_uploaded < 1)
-            {
-                $dataset->delete();
-                $this->addMessageWarning('No newly added interactions. Maybe, some errors occured or only old records was filled in. New dataset was not created.');
-            }
-
-            if($new_uploaded != $line)
-            {
-                $this->addMessageWarning(($line - $new_uploaded) . " values were assigned to the another datasets.");
-            }
-
-            $total_saved = $line - $report->count();
-            if($total_saved > 0)
-            {
-                return "$total_saved lines successfully saved!";
-            }
-            
-            return NULL;
+            $this->redirect('upload/dataset');
         }
         catch (MmdbException $ex)
         {
             Db::rollbackTransaction();
-            $this->addMessageError('Error occured while uploading dataset.');
+            $this->alert->error('Error occured during dataset upload.');
             throw $ex;
         }
     }
 
-    /**
-     * Returns value for array if exists
-     * 
-     * @param array $arr
-     * @param string $attr - Attribute
-     * 
-     */
-    private static function get_value($arr, $attr)
-    {
-        if(!is_array($arr) || !array_key_exists($attr, $arr))
-        {
-            return NULL;
-        }
-
-        return $arr[$attr];
-    }
-
-    /**
-     * Automatically fill missing 3D structures using RDKIT
-     */
-    public function fill3dStructures()
-    {
-        $this->addMessageWarning('Sorry, service is temporarily unavailable.');
-        $this->redirect('upload/dataset');
-    }
+    // /**
+    //  * Automatically fill missing 3D structures using RDKIT
+    //  */
+    // public function fill3dStructures()
+    // {
+    //     $this->alert->warning('Sorry, service is temporarily unavailable.');
+    //     $this->redirect('upload/dataset');
+    // }
 
     /**
      * Makes upload navigator
@@ -1069,9 +850,7 @@ class UploadController extends Controller
             self::M_ENERGY => "signal",
             self::M_MEMBRANE => "option-vertical",
             self::M_METHOD => "asterisk",
-            self::M_PICTURE => "picture",
             self::M_PUBLICATION => "link",
-            self::M_SMILES => "align-left"
         );
 
         $texts = array
@@ -1080,9 +859,7 @@ class UploadController extends Controller
             self::M_ENERGY => "Energy file",
             self::M_MEMBRANE => "Membrane",
             self::M_METHOD => "Method",
-            self::M_PICTURE => "Picture",
             self::M_PUBLICATION => "Publication",
-            self::M_SMILES => "SMILES"
         );
 
         $res = '<div class="btn-group btn-group-justified">';
@@ -1110,61 +887,50 @@ class UploadController extends Controller
      * @param string $format - Valid file format
      * @param string $type
      * 
-     * @return string File path
+     * @return Files File path
      */
-    public function uploadFile($file, $format, $file_type = NULL)
+    public function uploadFile($file, $file_type = NULL)
     {
-        $target_dir = MEDIA_ROOT . "files/upload/";
+        $target_dir = Files::get_type_path($file_type);
         $newFile = new File($file);
+        $f_model = new Files();
 
-        $target_file = $target_dir . $newFile->name;
-        $temp = $target_file;
-       
-        $i = 0;
-        while(file_exists($temp . '.' . $newFile->extension))
+        // Exists?
+        $exists = $f_model->get_by_hash($newFile);
+
+        if($exists->id)
         {
-            $i++;
-            $temp = $target_file . '_' . $i;
+            $this->alert->warning('The file has been restored from previous upload. \n [Name: ' . $exists->name . '; Date: ' . $exists->datetime . ']');
+            return $exists;
         }
 
-        $newFile->name = str_replace($target_dir, "", $temp);
-        $target_file = $target_dir . $newFile->name . '.' . $newFile->extension;
-
-        $uploader  = new Uploader();
-        $smilesModel = new Smiles();
-        $publicationModel = new Publications();
-
-        if(intval($newFile->size) > 5000000) // 5mb max size
+        if(intval($newFile->size) > 50000000) // 50mb max size
         {
-            $this->addMessageError('Sorry, your file is too large.');
-            $this->redirect('upload/dataset');
+            throw new MmdbException('Sorry, your file is too large.', 'Sorry, your file is too large.');
         }
 
         if($newFile->extension !== 'csv') // Only CSV files allowed
         {
-            $this->addMessageWarning('Wrong file format. Upload only ".csv" files.');
-            $this->redirect('upload/dataset');
+            throw new MmdbException('Wrong file format. Upload only ".csv" files.', 'Wrong file format. Upload only ".csv" files.');
         }
         if($newFile->save_to_dir($target_dir)) // Finally, move file to target directory
         {
-            $this->addMessageSuccess ('The file "' . $newFile->name . '" has been uploaded!');
-        }
-
-        if($file_type === self::FILE_SMILES)
-        {
-            return $smilesModel->loadData($target_file);
-        }
-        else if ($file_type === self::FILE_ENERGY)
-        {
-            return $uploader->loadData($target_file);
-        }
-        else if($file_type === self::FILE_REFS)
-        {
-            return $publicationModel->loadData($target_file);
+            $this->alert->success('The file "' . $newFile->name . '" has been uploaded!');
         }
         else
-        { 
-            return $target_file;
+        {
+            throw new MmdbException('Cannot move file to the target folder.');
         }
+
+        // Make new DB record and return ID
+        $n_file = new Files();
+
+        $n_file->type = $file_type;
+        $n_file->name = $newFile->name;
+        $n_file->path = $newFile->path;
+        $n_file->id_user = session::user_id();
+        $n_file->save();
+
+        return $n_file;
    }
 }

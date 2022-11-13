@@ -46,5 +46,25 @@ class Validator_identifier_changes extends Db
         ),
     );
 
-   
+   /**
+    * 
+    */
+    function save()
+    {
+        if(!$this->id && $this->id_new && $this->id_old)
+        {
+            $last = $this->where('id_old', $this->id_old)->order_by('id', 'DESC')->get_one();
+
+            if($last->id && $last->id_new === NULL)
+            {
+                $last->id_new = $this->id_new;
+                $last->save();
+                
+                parent::__construct($last->id);
+                return;
+            }
+        }
+
+        parent::save();
+    }
 }

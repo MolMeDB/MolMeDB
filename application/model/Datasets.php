@@ -121,6 +121,18 @@ class Datasets extends Db
     }
 
     /**
+     * Checks, if dataset can be deleted
+     * 
+     * @return bool
+     */
+    public function is_deletable()
+    {
+        return Validator_identifiers::instance()->where('id_dataset_passive', $this->id)->count_all() || 
+            Upload_queue::instance()->where('id_dataset_passive', $this->id)->count_all()
+            ? FALSE : TRUE;
+    }
+
+    /**
      * Get duplicate datasets
      * 
      * @return array - Returns dataset IDS grouped by duplicities
@@ -251,10 +263,17 @@ class Datasets extends Db
     {
         $data = $this->queryAll('
             SELECT id
-            FROM datasets
-            WHERE id NOT IN
-                (SELECT DISTINCT id_dataset
-                FROM interaction)
+            FROM ( 
+                SELECT d.id, q.state
+                FROM datasets d
+                LEFT JOIN files f ON f.id_dataset_passive = d.id
+                LEFT JOIN upload_queue q ON q.id_file = f.id
+                WHERE d.id NOT IN
+                    (SELECT DISTINCT id_dataset
+                    FROM interaction)
+                GROUP BY (d.id)
+                HAVING state IS NULL
+                ) as t
         ');
 
         $res = [];

@@ -4,7 +4,7 @@
 		<base href="<?= PROTOCOL . URL ?>/<?=MEDIA_ROOT?>" />
 		<meta charset="UTF-8" />
         <?= GOOGLE_ANALYTICS ?>
-		<title><?= $title ?></title>
+		<title><?= $title ?> | MolMeDB</title>
         <!-- <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"> -->
         <meta name="description" content="<?= $description ?>">
         <meta name="URL" id="URL" content="<?= URL ?>"/>
@@ -49,7 +49,7 @@
 		<header>
             <div class="menu-additional">
                 <?php if(session::is_logged_in()) : ?>
-                <div onclick="redirect('administraation/logout')"><img src="files/icons/user-circle.svg" class="svg-white"> Log out</div>
+                <div onclick="redirect('administration/logout')"><img src="files/icons/user-circle.svg" class="svg-white"> Log out</div>
                 <?php else : ?>
                 <div onclick="redirect('login')"><img src="files/icons/user-circle.svg" class="svg-white"> Log in</div>
                 <?php endif ?>
@@ -100,6 +100,9 @@
                         <p><b id="fs-overlay-text"></b></p>
                     </div>
                     <div class="main-page" id="main-page">
+                        <div class="breadcrumbs">
+                            <?= $breadcrumbs ?>
+                        </div>
                         <?php $controller->view->render(TRUE); ?>
                         <div class="feedback" id="feedback">
                             <div class="feedback-title" id="feedback-title">

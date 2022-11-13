@@ -44,11 +44,6 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run',
-        // 'log_sub_changes',
-        // 'fragment_molecules'
-        'update_pair_group_interactions',
-        'match_functional_pairs',
-        "update_pair_groups"
     );
 
     /**
@@ -89,7 +84,7 @@ class SchedulerController extends Controller
             // Send all unsent emails
             if($this->config->get(Configs::EMAIL_ENABLED))
             {
-                // $this->protected_call('send_emails', []);
+                $this->protected_call('send_emails', []);
             }
 
             // Delete substances without interactions
@@ -127,37 +122,46 @@ class SchedulerController extends Controller
                 $this->config->get(Configs::S_CHECK_PUBLICATIONS)))
             {
                 $this->protected_call('update_publications', []);
-                $this->protected_call('delete_empty_publications', []);
+                // $this->protected_call('delete_empty_publications', []);
             }
 
             // Delete empty membranes and methods
-            if(($this->check_time($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME)) && 
-                $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
-            {
-                $this->protected_call('delete_empty_membranes_methods', []);
-            }
-
-            // Once per day, run pair group update
-            if($this->check_time('23:20'))
-            {
-                $this->protected_call('update_pair_groups', []);
-            }
-
-            $this->protected_call('update_pair_group_interactions', [], 1800);
-
-            // Run always
-            if(TRUE)
-            {
-                $this->protected_call('fragment_molecules', []);
-                // Link molecules by functional groups
-                $this->protected_call('match_functional_pairs', []);
-            }
+            // if(($this->check_time($this->config->get(Configs::S_CHECK_MEMBRANES_METHODS_TIME)) && 
+            //     $this->config->get(Configs::S_CHECK_MEMBRANES_METHODS)))
+            // {
+            //     $this->protected_call('delete_empty_membranes_methods', []);
+            // }
 
             // ---- Molecules data autofill ---- //
-            // RUN FOREVER
             if($this->config->get(Configs::S_VALIDATE_SUBSTANCES))
             {
                 $this->protected_call('validate_substance_identifiers', []);
+            }
+
+            // Fragmentation
+            if($this->config->get(Configs::S_FRAGMENT_MOLECULES))
+            {
+                $this->protected_call('fragment_molecules', []);
+            }
+
+            // Link molecules by functional groups
+            if($this->config->get(Configs::S_MATCH_FUNCT_PAIRS))
+            {
+                $this->protected_call('match_functional_pairs', []);
+            }
+
+            // Pair group update
+            if($this->config->get(Configs::S_UPDATE_PAIR_GROUPS))
+            {
+                if(($this->check_time($this->config->get(Configs::S_UPDATE_PAIR_GROUPS_TIME))))
+                {
+                    $this->protected_call('update_pair_groups', []);
+                }
+
+                if(($this->check_time($this->config->get(Configs::S_UPDATE_PAIR_GROUPS_STATS_TIME))))
+                {
+                    $this->protected_call('update_pair_group_interactions', [], 1800);
+                }
             }
 
             $this->print("Scheduler END.");
@@ -172,9 +176,16 @@ class SchedulerController extends Controller
             try
             {
                 $report = new File();
-                $filePath = MEDIA_ROOT . 'files/schedulerReports/general_' . $report->generateName() . '.log';
+                $name = $report->generateName();
+                $filePath = MEDIA_ROOT . 'files/schedulerReports/general_' . $name . '.log';
                 $report->create($filePath);
                 $report->writeLine($e->getMessage());
+
+                $file = new Files();
+                $file->name = $name;
+                $file->path = $filePath;
+                $file->type = Files::T_SCHEDULER_REPORT;
+                $file->save();
             }
             catch(Exception $e)
             {
@@ -1017,7 +1028,7 @@ class SchedulerController extends Controller
     {
         $logs = new Validator_identifier_logs();
         
-        $limit = 2000;
+        $limit = 10000;
 
         try
         {
@@ -1729,6 +1740,8 @@ class SchedulerController extends Controller
 
     /**
      * Deletes empty publications
+     * 
+     * @deprecated
      */
     public function delete_empty_publications()
     {
@@ -1743,6 +1756,8 @@ class SchedulerController extends Controller
 
     /**
      * Deletes old membranes and methods
+     * 
+     * @deprecated
      * 
      * @author Jakub Juracka
      */
@@ -1797,7 +1812,11 @@ class SchedulerController extends Controller
 
 
     /**
-     * Delets substances without interactions
+     * Finds molecules without passive or active interactions
+     * and removes them from the DB 
+     *  - Pubchem LogP doesnt count as interaction
+     *  - Molecule must have missing identifiers
+     * 
      */
     public function delete_empty_substances()
     {
@@ -1808,13 +1827,14 @@ class SchedulerController extends Controller
 
         foreach($empty as $s_id)
         {
-            $total++;
             $substance = new Substances($s_id);
 
             if(!$substance->id)
             {
                 continue;
             }
+
+            $total++;
 
             $molecules[] = [$substance->name];
             $substance->delete();
@@ -1826,22 +1846,20 @@ class SchedulerController extends Controller
             try
             {
                 $report = new File();
-                $file_path = MEDIA_ROOT . 'files/schedulerReports/subs_delete_' . $report->generateName() . '.csv';
+                $name = $report->generateName();
+                $file_path = MEDIA_ROOT . 'files/schedulerReports/subs_delete_' . $name . '.csv';
                 $report->create($file_path);
                 $report->writeCSV($molecules);
 
+                $f = new Files();
+                $f->path = $file_path;
+                $f->name = $name;
+                $f->type = $f::T_SCHEDULER_DEL_EMPTY_SUBSTANCES;
+
+                $f->save();
+
                 // Send emails
                 $this->send_email_to_admins('A total of ' . $total . ' molecules were deleted.', 'Scheduler autoremove report', $file_path);
-
-                // // Add info about log file
-                // $scheduler_log = new Log_scheduler();
-
-                // $scheduler_log->error_count = 0;
-                // $scheduler_log->success_count = $total;
-                // $scheduler_log->report_path = $file_path;
-                // $scheduler_log->type = Log_scheduler::T_SUBSTANCE_AUTOREMOVE;
-
-                // $scheduler_log->save();
             }
             catch(MmdbException $e)
             {
@@ -1849,12 +1867,15 @@ class SchedulerController extends Controller
                 $this->run->id_exception = $e->getExceptionId();
             }
 
-            echo('Total ' . $total . ' substances were deleted.' . "\n");
+            $this->print('Total ' . $total . ' substances were deleted.');
         }
     }
 
     /**
      * Checks interactions datasets
+     *  1) Joins same datasets - If two datasets has the same membrane/method/secondary_reference/author
+     *      and where uploaded in the same day => JOIN THEM
+     *  2) Removes datasets without data
      * 
      * @author Jakub Juracka      
      */
@@ -1878,6 +1899,13 @@ class SchedulerController extends Controller
             foreach($ids as $dataset_id)
             {
                 $interaction_model->change_dataset_id($dataset_id, $final_id);
+
+                // Change file links
+                $interaction_model->query('
+                    UPDATE `files`
+                    SET `id_dataset_passive` = ?
+                    WHERE `id_dataset_passive` = ?
+                ', array($final_id, $dataset_id));
             }
         }
 
@@ -1919,7 +1947,8 @@ class SchedulerController extends Controller
                 );
 
                 $report = new File();
-                $file_path = MEDIA_ROOT . 'files/schedulerReports/inter_ds_check_' . $report->generateName() . '.csv';
+                $name = $report->generateName();
+                $file_path = MEDIA_ROOT . 'files/schedulerReports/inter_ds_check_' . $name . '.csv';
                 $report->create($file_path);
                 $report->writeCSV($csv);
 
@@ -1930,15 +1959,11 @@ class SchedulerController extends Controller
                 // Send emails
                 $this->send_email_to_admins($text, 'Scheduler dataset checker report');
 
-                // // Add info about log file
-                // $scheduler_log = new Log_scheduler();
-
-                // $scheduler_log->error_count = 0;
-                // $scheduler_log->success_count = $joioned + $removed;
-                // $scheduler_log->report_path = $file_path;
-                // $scheduler_log->type = Log_scheduler::T_INT_CHECK_DATASET;
-
-                // $scheduler_log->save();
+                $file = new Files();
+                $file->name = $report->generateName();
+                $file->path = $file_path;
+                $file->type = Files::T_SCHEDULER_CHECK_PASSIVE_DATASETS;
+                $file->save();
             }
             catch(MmdbException $e)
             {

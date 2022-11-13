@@ -4,7 +4,6 @@
  * @property integer $id
  * @property integer $id_dataset
  * @property integer $visibility
- * @property string $CAM
  * @property integer $id_membrane
  * @property integer $id_method
  * @property integer $id_substance
@@ -33,7 +32,6 @@
  * @property float $lt
  * @property float $lt_acc
  * @property integer $user_id
- * @property integer $validated
  * @property datetime $createDateTime
  * @property datetime $editDateTime
  * 
@@ -50,19 +48,6 @@ class Interactions extends Db
 	const VISIBLE = 1;
 	const INVISIBLE = 2;
 
-	/**
-	 * Validator constants
-	 */
-	const NOT_VALIDATED = 0;
-	/** MISSING DATA AUTO-FILLED */
-	const STAGE_1 = 1;
-	/** CHECKED DUPLICITIES */
-	const STAGE_2 = 2;
-	/** LABELED AS POSSIBLE DUPLICITY */
-	const STAGE_3 = 3;
-	/** VALIDATED */
-	const VALIDATED = 4;
-	
 
 	private $enum_visibilities = array
 	(
@@ -144,7 +129,8 @@ class Interactions extends Db
 	 */
 	public function change_dataset_id($from_id, $to_id)
 	{
-		return $this->query('
+		// Change interactions ids
+		$this->query('
 			UPDATE `interaction`
 			SET `id_dataset` = ?
 			WHERE `id_dataset` = ?
@@ -190,66 +176,66 @@ class Interactions extends Db
     }
     
     
-	/**
-	 * Inserts new interaction
-	 * protected against ON DUPLICATE KEY 
-	 * 
-	 * @param integer $id_dataset
-	 * @param integer $reference
-	 * @param float $temperature
-	 * @param float $Q
-	 * @param integer $idMembrane
-	 * @param integer $idSubstance
-	 * @param integer $idMethod
-	 * @param float $Position
-	 * @param float $position_acc
-	 * @param float $penetration
-	 * @param float $penetration_acc
-	 * @param float $Water
-	 * @param float $water_acc
-	 * @param float $LogK
-	 * @param float $LogK_acc
-	 * @param integer $user_id
-	 * @param string $cam
-	 * @param float $LogPerm
-	 * @param float $LogPerm_acc
-	 * @param float $Theta
-	 * @param float $Theta_acc
-	 * @param float $abs_wl
-	 * @param float $abs_wl_acc
-	 * @param float $fluo_wl
-	 * @param float $fluo_wl_acc
-	 * @param float $QY
-	 * @param float $QY_acc
-	 * @param float $lt
-	 * @param float $lt_acc
-	 * 
-	 * @return integer|null
-	 */
-    public function insert_interaction($id_dataset, $reference, $temperature, $Q, $idMembrane, $idSubstance, $idMethod, $Position,$position_acc, $penetration, $penetration_acc, $Water, $water_acc, 
-                            $LogK, $LogK_acc, $user_id, $cam, $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc,
-									$fluo_wl, $fluo_wl_acc, $QY, $QY_acc, $lt, $lt_acc)
-	{
-        $this->query("INSERT INTO `interaction`
-                          VALUES(NULL, ?, ?, ?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,DEFAULT, DEFAULT)
-                          ON DUPLICATE KEY
-                          UPDATE `Position` = IF(? = '', `Position`, ?), `Penetration` = IF(? = '', `Penetration`, ?),
-                                 `Water` = IF(? = '', `Water`, ?), `LogK` = IF(? = '', `LogK`, ?), `LogPerm` = IF(? = '', `LogPerm`, ?),
-                                 `theta` = IF(? = '', `theta`, ?), `abs_wl` = IF(? = '', `abs_wl`, ?),
-                                 `fluo_wl` = IF(? = '', `fluo_wl`, ?), `QY` = IF(? = '', `QY`, ?), `lt` = IF(? = '', `lt`, ?),
-                                 `theta_acc` = IF(? = 0, `theta_acc`, ?), `abs_wl_acc` = IF(? = 0, `abs_wl_acc`, ?), `fluo_wl_acc` = IF(? = 0, `fluo_wl_acc`, ?),
-                                 `QY_acc` = IF(? = 0, `QY_acc`, ?), `lt_acc` = IF(? = 0, `lt_acc`, ?),
-                                 `Position_acc` = IF(? = 0, `Position_acc`, ?), `Penetration_acc` = IF(? = 0, `Penetration_acc`, ?),
-                                 `Water_acc` = IF(? = 0, `Water_acc`, ?), `LogK_acc` = IF(? = 0, `LogK_acc`, ?), `LogPerm_acc` = IF(? = 0, `LogPerm_acc`, ?)",
+	// /**
+	//  * Inserts new interaction
+	//  * protected against ON DUPLICATE KEY 
+	//  * 
+	//  * @param integer $id_dataset
+	//  * @param integer $reference
+	//  * @param float $temperature
+	//  * @param float $Q
+	//  * @param integer $idMembrane
+	//  * @param integer $idSubstance
+	//  * @param integer $idMethod
+	//  * @param float $Position
+	//  * @param float $position_acc
+	//  * @param float $penetration
+	//  * @param float $penetration_acc
+	//  * @param float $Water
+	//  * @param float $water_acc
+	//  * @param float $LogK
+	//  * @param float $LogK_acc
+	//  * @param integer $user_id
+	//  * @param string $cam
+	//  * @param float $LogPerm
+	//  * @param float $LogPerm_acc
+	//  * @param float $Theta
+	//  * @param float $Theta_acc
+	//  * @param float $abs_wl
+	//  * @param float $abs_wl_acc
+	//  * @param float $fluo_wl
+	//  * @param float $fluo_wl_acc
+	//  * @param float $QY
+	//  * @param float $QY_acc
+	//  * @param float $lt
+	//  * @param float $lt_acc
+	//  * 
+	//  * @return integer|null
+	//  */
+    // public function insert_interaction($id_dataset, $reference, $temperature, $Q, $idMembrane, $idSubstance, $idMethod, $Position,$position_acc, $penetration, $penetration_acc, $Water, $water_acc, 
+    //                         $LogK, $LogK_acc, $user_id, $cam, $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc,
+	// 								$fluo_wl, $fluo_wl_acc, $QY, $QY_acc, $lt, $lt_acc)
+	// {
+    //     $this->query("INSERT INTO `interaction`
+    //                       VALUES(NULL, ?, ?, ?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,DEFAULT, DEFAULT)
+    //                       ON DUPLICATE KEY
+    //                       UPDATE `Position` = IF(? = '', `Position`, ?), `Penetration` = IF(? = '', `Penetration`, ?),
+    //                              `Water` = IF(? = '', `Water`, ?), `LogK` = IF(? = '', `LogK`, ?), `LogPerm` = IF(? = '', `LogPerm`, ?),
+    //                              `theta` = IF(? = '', `theta`, ?), `abs_wl` = IF(? = '', `abs_wl`, ?),
+    //                              `fluo_wl` = IF(? = '', `fluo_wl`, ?), `QY` = IF(? = '', `QY`, ?), `lt` = IF(? = '', `lt`, ?),
+    //                              `theta_acc` = IF(? = 0, `theta_acc`, ?), `abs_wl_acc` = IF(? = 0, `abs_wl_acc`, ?), `fluo_wl_acc` = IF(? = 0, `fluo_wl_acc`, ?),
+    //                              `QY_acc` = IF(? = 0, `QY_acc`, ?), `lt_acc` = IF(? = 0, `lt_acc`, ?),
+    //                              `Position_acc` = IF(? = 0, `Position_acc`, ?), `Penetration_acc` = IF(? = 0, `Penetration_acc`, ?),
+    //                              `Water_acc` = IF(? = 0, `Water_acc`, ?), `LogK_acc` = IF(? = 0, `LogK_acc`, ?), `LogPerm_acc` = IF(? = 0, `LogPerm_acc`, ?)",
                 
-                array($id_dataset,self::INVISIBLE,$cam, $idMembrane,$idSubstance,$idMethod,$temperature, $Q, $reference, $Position, $position_acc,$penetration,$penetration_acc,$Water, $water_acc,$LogK, $LogK_acc,
-                            $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc, $fluo_wl, $fluo_wl_acc, $QY, $QY_acc, $lt, $lt_acc, $user_id,
-                      $Position,$Position, $penetration,$penetration, $Water,$Water, $LogK,$LogK, $LogPerm,$LogPerm,
-                      $Theta,$Theta,$abs_wl,$abs_wl,$fluo_wl,$fluo_wl,$QY,$QY,$lt,$lt,$Theta_acc,$Theta_acc,$abs_wl_acc,$abs_wl_acc,$fluo_wl_acc,$fluo_wl_acc,$QY_acc,$QY_acc,$lt_acc,$lt_acc,
-					  $position_acc,$position_acc, $penetration_acc,$penetration_acc, $water_acc,$water_acc, $LogK_acc,$LogK_acc, $LogPerm_acc,$LogPerm_acc));
+    //             array($id_dataset,self::INVISIBLE,$cam, $idMembrane,$idSubstance,$idMethod,$temperature, $Q, $reference, $Position, $position_acc,$penetration,$penetration_acc,$Water, $water_acc,$LogK, $LogK_acc,
+    //                         $LogPerm, $LogPerm_acc, $Theta, $Theta_acc, $abs_wl, $abs_wl_acc, $fluo_wl, $fluo_wl_acc, $QY, $QY_acc, $lt, $lt_acc, $user_id,
+    //                   $Position,$Position, $penetration,$penetration, $Water,$Water, $LogK,$LogK, $LogPerm,$LogPerm,
+    //                   $Theta,$Theta,$abs_wl,$abs_wl,$fluo_wl,$fluo_wl,$QY,$QY,$lt,$lt,$Theta_acc,$Theta_acc,$abs_wl_acc,$abs_wl_acc,$fluo_wl_acc,$fluo_wl_acc,$QY_acc,$QY_acc,$lt_acc,$lt_acc,
+	// 				  $position_acc,$position_acc, $penetration_acc,$penetration_acc, $water_acc,$water_acc, $LogK_acc,$LogK_acc, $LogPerm_acc,$LogPerm_acc));
 
-		return $this->getLastIdInteraction();
-    }
+	// 	return $this->getLastIdInteraction();
+    // }
     
     
     /**

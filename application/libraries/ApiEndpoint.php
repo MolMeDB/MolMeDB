@@ -71,26 +71,34 @@ class ApiEndpoint
         }
         else if(in_array(ApiEndpoint::ENDPOINT_PRIVATE, $this->access_types))
         {
-            $token = $this->request->auth_token;
-
-            if(!$token)
+            // Check, if user is logged in
+            if(session::is_admin())
             {
-                header("WWW-Authenticate: " . "Basic realm=\"MolMeDB Internal request\"");
-                header("HTTP/1.0 401 Unauthorized");
-                echo 'Invalid username or password.';
+                $access = true;
             }
-
-            $user = Users::instance()->where(array
-                (
-                    'token' => $token
-                ))->get_one();
-
-            if(!$user->id)
+            else
             {
-                ResponseBuilder::unauthorized();
-            }
+                $token = $this->request->auth_token;
 
-            $access = true;
+                if(!$token)
+                {
+                    header("WWW-Authenticate: " . "Basic realm=\"MolMeDB Internal request\"");
+                    header("HTTP/1.0 401 Unauthorized");
+                    echo 'Invalid username or password.';
+                }
+
+                $user = Users::instance()->where(array
+                    (
+                        'token' => $token
+                    ))->get_one();
+
+                if(!$user->id)
+                {
+                    ResponseBuilder::unauthorized();
+                }
+
+                $access = true;
+            }
         }
 
         if(!$access && in_array(ApiEndpoint::ENDPOINT_INTERNAL, $this->access_types))

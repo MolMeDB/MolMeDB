@@ -5,6 +5,7 @@
  */
 class RouterController extends Controller
 {
+    /** @var Controller */
     public $controller;
 
     public $messages = [];
@@ -91,11 +92,11 @@ class RouterController extends Controller
         if($classController === 'SchedulerController')
         {
             // Can be access only from local machine
-            if (server::remote_addr() != server::server_addr() &&
+            if (!DEBUG && server::remote_addr() != server::server_addr() &&
                 server::remote_addr() != "127.0.0.1")
             {
-                // echo 'access denied';
-                // die();
+                echo 'access denied';
+                die();
             }
 
             if(!in_array($targetFunction, SchedulerController::$accessible))
@@ -140,7 +141,7 @@ class RouterController extends Controller
 
         if (!method_exists($this->controller, $targetFunction)) 
         {
-            $this->addMessageError('Endpoint was not found.');
+            $this->alert->error('Endpoint was not found.');
             $this->redirect('error');
         }
 
@@ -158,6 +159,7 @@ class RouterController extends Controller
 
         $this->view = new View('layout');
         $this->view->title = $this->controller->title;
+        $this->view->breadcrumbs = $this->controller->breadcrumbs;
         $this->view->controller = $this->controller;
         $this->view->messages = $this->alert->get_all();
         $this->view->render(TRUE);

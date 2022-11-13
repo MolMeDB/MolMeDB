@@ -23,6 +23,11 @@ abstract class Controller
      */
     public $token = '';
 
+    /**
+     * @var Breadcrumbs
+     */
+    public $breadcrumbs = NULL;
+
     /** 
      * Config handler
      * 
@@ -65,17 +70,23 @@ abstract class Controller
      * 
      * @param string $url
      */
-    public function redirect($url)
+    public function redirect($url, $prefer_setting = true)
     {
-       header("Location: /$url"); 
-       header("Connection: close");
-       exit;
+        if($prefer_setting && isset($_GET['redirection']))
+        {
+            $url = $_GET['redirection'] ? $_GET['redirection'] : $url;
+        }
+
+        header("Location: /$url"); 
+        header("Connection: close");
+        exit;
     }
     
     /**
      * Adds warning message
      * 
      * @param string $message
+     * @deprecated - Use alert->warning instead
      */
     public function addMessageWarning($message)
     {
@@ -86,6 +97,7 @@ abstract class Controller
      * Adds success message
      * 
      * @param string $message
+     * @deprecated - Use alert->success instead
      */
     public function addMessageSuccess($message)
     {
@@ -96,6 +108,7 @@ abstract class Controller
      * Adds error message
      * 
      * @param string $message
+     * @deprecated - Use alert->error instead
      */
     public function addMessageError($message)
     {

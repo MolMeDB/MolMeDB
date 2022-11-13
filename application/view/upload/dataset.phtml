@@ -6,72 +6,125 @@
     <p><b style="margin-left: -15px;" id="overlay_text"></b></p>
 </div>
 <!--Modal for parsing data and user revision-->
-    <div id="dataupload_modal" class="modal">
+<div id="dataupload_modal" class="modal">
 
-      <div class="modal-content">
-        <span class="close" id="dataupload_close">&times;</span>
-        <div id="table" class="uploadedTable"></div> 
-      </div>
+    <div class="modal-content">
+    <span class="close" id="dataupload_close">&times;</span>
+    <div id="table" class="uploadedTable"></div> 
     </div>
+</div>
 
 
-    <div class="col-md-12 col-sm-12 uploadTableDiv">
-        <div class="col-md-6">
-            <form method="post" enctype="multipart/form-data">
-                <input type="hidden" name="postType" value="<?= UploadController::P_UPLOAD_FILE ?>">
-                <table class="uploadTable">
+<div class="col-md-12 col-sm-12 uploadTableDiv">
+    <div class="col-md-6">
+        <form method="post" enctype="multipart/form-data">
+            <input type="hidden" name="postType" value="<?= UploadController::P_UPLOAD_FILE ?>">
+            <table class="uploadTable">
+                <tr>
+                    <td><b>Select file to upload: [.csv]</b> </td>
+                    <td><input type="file" name="file" required id="fileToUpload"></td>
+                </tr>
+                <tr><td><b>File type</b></td>
+                    <td style="text-align: left;">
+                        <input type="radio" id="type_1" name="fileType" value="<?= Files::T_UPLOAD_PASSIVE?>" <?= $fileType == Files::T_UPLOAD_PASSIVE || !$fileType ? 'checked' : ''?> <?= $fileType ? 'disabled' : ''?>>
+                        <label for="type_1">Interaction dataset</label><br/>
+                        <input type="radio" id="type_2" name="fileType" value="<?= Files::T_UPLOAD_ACTIVE?>" <?= $fileType == Files::T_UPLOAD_ACTIVE ? 'checked' : ''?> <?= $fileType ? 'disabled' : ''?>>
+                        <label for="type_2">Transporter dataset</label>
+                    </td>
+                </tr>
+                <tr><td><b>Example</b></td>
+                    <td><a href="files/examples/dataFile_example.csv">Download</a></td>
+                </tr>
+                <?php if(isset($uploaded_file) && $uploaded_file->id) : ?>
+                <tr><td class="td-fileUpload"><b><?= 'Show uploaded file' ?></b></td>
+                    <td><button onclick="parseFile('<?=$uploaded_file->id?>', '<?= $fileType ?>')" type="button" class="btn btn-sm btn-danger">Show</button></td>
+                </tr>
+                <?php endif ?>
+            </table>
+            <button style="margin-top:20px;" type="submit" class="btn btn-primary btn-sm pull-right">Upload</button>
+        </form>
+    </div>
+    <div class="col-md-6">
+        <h3 class="titleH3" style="color:red">Warning:</h3>
+        <ul class="comparator-tips">
+            <li>
+                Uploading files can take up to <b>2 minutes</b>. Approximately <b>1 second  per 1 line</b>. We recommend you to upload maximum <b style="color:red;">100 lines</b> for one dataset.
+            </li>
+            <li>
+                Please use the first column for the <b>name</b> of the molecule (see <b style="color: #00b0ff">Example</b>).
+            </li>
+            <li>
+                <b style="color:red;">Datafile format:</b><br/>
+                - The first row (header) is ignored.<br/>
+                - Please see an <b style="color: #00b0ff">example</b> and make sure your datafile is in the correct format!<br/>
+                - Only some values (Name, whatever_ID, Q and SMILES) can be in text form. Other must be in <b>numeric form</b>!<br/>
+                - Lines with blank <b>name</b> field will be ignored.
+            </li>
+        </ul>
+        <h4 class="titleH3" style="color:red">Valid transporters types:</h4>
+        <ul class="comparator-tips">
+            <?php $t = new Transporters(); $arr = $t->get_all_shortcuts(); foreach($arr as $type => $shortcut): ?>
+            <li><b><?= $shortcut ?></b>: <?= $t->get_enum_type($type) ?></li>
+            <?php endforeach ?>
+        </ul>
+    </div>
+</div>
+
+<!-- LIST OF UPLOAD QUEUE -->
+<div class="col-md-12 content">
+    <div class="tab-contents">
+        <div id="tab_interactions" class="tab_detail">
+            <h3 style="text-align: center;"><b>Upload queue</b></h3>
+            <table class="table table-striped">
+                <thead>
                     <tr>
-                        <td><b>Select file to upload: [.csv]</b> </td>
-                        <td><input type="file" name="file" required id="fileToUpload"></td>
+                        <td align="center"><b>Actions</b></td>
+                        <td><b>ID</b></td>
+                        <td><b>State</b></td>
+                        <td><b>File</b></td>
+                        <td><b>Dataset ID</b></td>
+                        <td><b>Membrane</b></td>
+                        <td><b>Method</b></td>
+                        <td><b>T [°C]</b></td>
+                        <td><b>Reference</b></td>
+                        <td><b>Datetime</b></td>
                     </tr>
-                    <tr><td><b>File type</b></td>
-                        <td style="text-align: left;">
-                            <input type="radio" id="type_1" name="fileType" value="<?= UploadController::P_SAVE_DATASET?>" <?= $fileType == UploadController::P_SAVE_DATASET || !$fileType ? 'checked' : ''?> <?= $fileType ? 'disabled' : ''?>>
-                            <label for="type_1">Interaction dataset</label><br/>
-                            <input type="radio" id="type_2" name="fileType" value="<?= UploadController::P_SAVE_TRANSPORTERS?>" <?= $fileType == UploadController::P_SAVE_TRANSPORTERS ? 'checked' : ''?> <?= $fileType ? 'disabled' : ''?>>
-                            <label for="type_2">Transporter dataset</label>
-                        </td>
-                    </tr>
-                    <tr><td><b>Example</b></td>
-                        <td><a href="files/examples/dataFile_example.csv">Download</a></td>
-                    </tr>
-                    <!-- <tr><td><b>Fill missing 3D structures</b></td>
-                        <td><a href="/upload/fill3dStructures"><button type="button" class="btn btn-sm btn-success">Process</button></a></td>
-                    </tr> -->
-                    <?php if(isset($fileName) && $fileName) : ?>
-                    <tr><td class="td-fileUpload"><b>Show uploaded file</b></td>
-                        <td><button onclick="parseFile('<?=$fileName?>', '<?= $fileType ?>')" type="button" class="btn btn-sm btn-danger">Show</button></td>
-                    </tr>
-                    <?php endif ?>
-                </table>
-                <button style="margin-top:20px;" type="submit" class="btn btn-primary btn-sm pull-right">Upload</button>
-            </form>
-        </div>
-        <div class="col-md-6">
-            <h3 class="titleH3" style="color:red">Warning:</h3>
-            <ul class="comparator-tips">
-                <li>
-                    Uploading files can take up to <b>2 minutes</b>. Approximately <b>1 second  per 1 line</b>. We recommend you to upload maximum <b style="color:red;">100 lines</b> for one dataset.
-                </li>
-                <li>
-                    Please use the first column for the <b>name</b> of the molecule (see <b style="color: #00b0ff">Example</b>).
-                </li>
-                <li>
-                    <b style="color:red;">Datafile format:</b><br/>
-                    - The first row (header) is ignored.<br/>
-                    - Please see an <b style="color: #00b0ff">example</b> and make sure your datafile is in the correct format!<br/>
-                    - Only some values (Name, whatever_ID, Q and SMILES) can be in text form. Other must be in <b>numeric form</b>!<br/>
-                    - Lines with blank <b>name</b> field will be ignored.
-                </li>
-            </ul>
-            <h4 class="titleH3" style="color:red">Valid transporters types:</h4>
-            <ul class="comparator-tips">
-                <?php $t = new Transporters(); $arr = $t->get_all_shortcuts(); foreach($arr as $type => $shortcut): ?>
-                <li><b><?= $shortcut ?></b>: <?= $t->get_enum_type($type) ?></li>
-                <?php endforeach ?>
-            </ul>
+                </thead>
+                <tbody>
+                    <?php $i = 0;
+                    foreach ($queue as $q) : ?>
+                        <tr>
+                            <td align="center">
+                                <?php if($q->state === $q::STATE_PENDING) : ?>
+                                    <span title="Cancel" onclick="alert_window('Are you sure you want to cancel the process (ID = <?= $q->id ?>)?', 'upload/cancel/<?= $q->id ?>?redirection=upload/dataset', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span>
+                                <?php elseif($q->state === $q::STATE_CANCELED) : ?>
+                                    <span title="Queue up" onclick="alert_window('Are you sure you want to requeue the process? (ID = <?= $q->id ?>)?', 'upload/requeue/<?= $q->id ?>?redirection=upload/dataset', false)" style="text-align: center; color: orange; cursor:pointer;" class="glyphicon glyphicon-inbox"></span>
+                                <?php endif ?>
+                            </td>
+                            <td><?= $q->id ?></td>
+                            <td><?= $q->get_enum_state() ?></td>
+                            <td><?= $q->file ? '<a href="/export/uploadFile/' . $q->file->id . '">'. $q->file->name . '</a>' : null ?></td>
+                            <td><?= $q->dataset_passive ? 
+                                '<a href="/edit/dsInteractions/' . $q->dataset_passive->id . '">' . $q->dataset_passive->id . ' (P) </a>' : 
+                                '<a href="/edit/dsTransporters/' . $q->dataset_active->id . '">' . $q->dataset_active->id . ' (T)</a>' ?></td>
+                            <td><?= $q->dataset_passive ? $q->dataset_passive->membrane->name : null ?></td>
+                            <td><?= $q->dataset_passive ? $q->dataset_passive->method->name : null ?></td>
+                            <td><?= $q->params && property_exists($q->params, 'temperature') ? $q->params->temperature : null ?></td>
+                            <td style="text-align: center;">
+                                <?php if($q->dataset_passive) : ?>
+                                    <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $q->dataset_passive && $q->dataset_passive->publication ? $q->dataset_passive->publication->id : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $q->dataset_passive->publication->citation ?></span></div>
+                                    <?php else : ?>
+                                        <div class="popup" onclick="show_popup('<?= $i ?>')"><?= $q->dataset_active && $q->dataset_active->reference ? $q->dataset_active->reference->id : '' ?><span class="popuptext" id="ref_popup_<?= $i++ ?>"><?= $q->dataset_active->reference->citation ?></span></div>
+                                <?php endif ?>
+                            </td>
+                            <td><?= $q->create_date ?></td>
+                        </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
         </div>
     </div>
+</div>
 
 <script src="js/parseFile.js?ver=<?=JS_VERSION?>">
 </script>

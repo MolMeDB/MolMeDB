@@ -1028,7 +1028,7 @@ class SchedulerController extends Controller
     {
         $logs = new Validator_identifier_logs();
         
-        $limit = 10000;
+        $limit = 1000q;
 
         try
         {
@@ -1088,9 +1088,9 @@ class SchedulerController extends Controller
                     $logs_arr[$type] = $logs->get_current_by_type($s->id, $type);
                     $logs_arr[$type]->type = $type;
                 }
-
+                
                 $log = $logs_arr[$logs::TYPE_LOCAL_IDENTIFIERS];
-
+                
                 if(!$log->is_done())
                 {
                     try
@@ -1133,7 +1133,14 @@ class SchedulerController extends Controller
                             // Try canonize 
                             if($smiles_o->flag !== Validator_identifiers::SMILES_FLAG_CANONIZED && $rdkit->is_reachable())
                             {
-                                $canonized = $rdkit->canonize_smiles($smiles_o->value);
+                                try
+                                {
+                                    $canonized = $rdkit->canonize_smiles($smiles_o->value);
+                                }
+                                catch(MmdbException $e)
+                                {
+                                    $canonized = false;
+                                }
 
                                 if($canonized === false) // If cannot be cannonized, set as non-active
                                 {
@@ -1223,7 +1230,15 @@ class SchedulerController extends Controller
                                     // Canonize SMILES if RDKIT is accessible
                                     if($rdkit->is_reachable())
                                     {
-                                        $r = $rdkit->canonize_smiles($smiles);
+                                        try
+                                        {
+                                            $r = $rdkit->canonize_smiles($smiles);
+                                        }
+                                        catch(MmdbException $e)
+                                        {
+                                            $r = false;
+                                        }
+
                                         if($r !== false)
                                         {
                                             $smiles = $r;
@@ -1704,7 +1719,6 @@ class SchedulerController extends Controller
                 ##########################
 
                 $s->check_identifiers();
-                return;
             }
             catch(Exception $e)
             {

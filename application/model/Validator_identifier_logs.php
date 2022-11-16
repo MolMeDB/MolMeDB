@@ -223,7 +223,7 @@ class Validator_identifier_logs extends Db
                 $joins
             ) as tab
             WHERE tab.score > 0
-            ORDER BY score DESC, dt ASC
+            ORDER BY score DESC, dt ASC, id ASC
             LIMIT $limit OFFSET $offset
         ");
 

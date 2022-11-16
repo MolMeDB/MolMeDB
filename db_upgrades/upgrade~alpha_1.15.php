@@ -294,8 +294,8 @@ $upgrade_sql = array
         `id_substance_1` int(11) NOT NULL,
         `id_substance_2` int(11) NOT NULL,
         `id_core` int(11) NOT NULL,
-        `substance_1_fragmentation_order` smallint(6) NOT NULL,
-        `substance_2_fragmentation_order` smallint(6) NOT NULL,
+        `substance_1_fragmentation_order` smallint(6) DEFAULT NULL,
+        `substance_2_fragmentation_order` smallint(6) DEFAULT NULL,
         `datetime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8;",
 

@@ -368,6 +368,37 @@ class Validator_identifiers extends Db
     }
 
     /**
+     * Returns active and validated values of identifiers for given substance and identifier type
+     * 
+     * @param int $id_substance
+     * @param int $id_type
+     * 
+     * @return array
+     */
+    public function get_all_substance_values_by_type($id_substance, $id_type)
+    {
+        if(!$id_substance)
+        {
+            throw new Exception('Invalid substance id.');
+        }
+
+        if(!self::is_valid_identifier($id_type))
+        {
+            return null;
+        }
+
+        $vals = $this->where(array
+            (
+                'id_substance' => $id_substance,
+                'identifier'    => $id_type
+            ))
+            ->get_all();
+
+        
+        return $vals->data;
+    }
+
+    /**
      * Returns all substance identifiers
      * 
      * @param int $id_substance

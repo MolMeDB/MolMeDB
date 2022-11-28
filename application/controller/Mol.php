@@ -156,6 +156,9 @@ class MolController extends Controller
         
         // Energy data
         $this->view->availableEnergy = $energyModel->get_available_by_substance($substance->id);
+
+        // Bioschema
+        $this->view->bioschema = self::create_bioschemas($substance, $identifiers);
     }
 
     /**
@@ -262,5 +265,82 @@ class MolController extends Controller
         // die;
 
         return $table->html();
+    }
+
+
+    /**
+     * Creates bioschemas array for molecule
+     * 
+     * @param Substances $substance
+     * @param array $identifiers
+     * 
+     * @return array
+     */
+    private function create_bioschemas($substance, $identifiers)
+    {
+        $names = $substance->get_valid_names();
+        
+        $bioschema = [
+            "@context" => "https://schema.org",
+            "@type" => "MolecularEntity",
+            "@id" => "https://identifiers.org/molmedb:".$substance->identifier,
+            "dct:conformsTo" => "https://bioschemas.org/profiles/MolecularEntity/0.5-RELEASE",
+            "identifier" => $substance->identifier,
+            "name" => $names[0],
+            "url" => [
+                'https://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI']
+            ]
+        ];
+        
+        // Crossreferences array
+        $crossrefs = [];
+        if($identifiers[Validator_identifiers::ID_PUBCHEM] && $identifiers[Validator_identifiers::ID_PUBCHEM]->value && $identifiers[Validator_identifiers::ID_PUBCHEM]->state === Validator_identifiers::STATE_VALIDATED)
+        {
+            array_push($crossrefs, "https://pubchem.ncbi.nlm.nih.gov/compound/".$identifiers[Validator_identifiers::ID_PUBCHEM]->value);
+        }
+        if($identifiers[Validator_identifiers::ID_DRUGBANK] && $identifiers[Validator_identifiers::ID_DRUGBANK]->value && $identifiers[Validator_identifiers::ID_DRUGBANK]->state === Validator_identifiers::STATE_VALIDATED)
+        {
+            array_push($crossrefs, "https://go.drugbank.com/drugs/".$identifiers[Validator_identifiers::ID_DRUGBANK]->value);
+        }
+        if($identifiers[Validator_identifiers::ID_CHEBI] && $identifiers[Validator_identifiers::ID_CHEBI]->value && $identifiers[Validator_identifiers::ID_CHEBI]->state === Validator_identifiers::STATE_VALIDATED)
+        {
+            array_push($crossrefs, "https://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI:".$identifiers[Validator_identifiers::ID_CHEBI]->value);
+        }
+        if($identifiers[Validator_identifiers::ID_PDB] && $identifiers[Validator_identifiers::ID_PDB]->value && $identifiers[Validator_identifiers::ID_PDB]->state === Validator_identifiers::STATE_VALIDATED)
+        {
+            array_push($crossrefs, "https://www.rcsb.org/ligand/".$identifiers[Validator_identifiers::ID_PDB]->value);
+        }
+        if($identifiers[Validator_identifiers::ID_CHEMBL] && $identifiers[Validator_identifiers::ID_CHEMBL]->value && $identifiers[Validator_identifiers::ID_CHEMBL]->state === Validator_identifiers::STATE_VALIDATED)
+        {
+            array_push($crossrefs, "https://www.ebi.ac.uk/chembl/compound/inspect/".$identifiers[Validator_identifiers::ID_CHEMBL]->value);
+        }
+        if($crossrefs){
+            $bioschema["sameAs"] = $crossrefs;
+        }
+
+        //optional items
+        if($identifiers[Validator_identifiers::ID_INCHIKEY] && $identifiers[Validator_identifiers::ID_INCHIKEY]->value && $identifiers[Validator_identifiers::ID_INCHIKEY]->state === Validator_identifiers::STATE_VALIDATED)
+        {
+            $bioschema["inChIKey"] = $identifiers[Validator_identifiers::ID_INCHIKEY]->value;
+        }
+        
+        if($substance->MW)
+        {
+            $bioschema["molecularWeight"] = strval($substance->MW);
+        }
+
+        if($identifiers[Validator_identifiers::ID_SMILES] && $identifiers[Validator_identifiers::ID_SMILES]->value && $identifiers[Validator_identifiers::ID_SMILES]->state === Validator_identifiers::STATE_VALIDATED)
+        {
+            $bioschema["smiles"] = [
+                $identifiers[Validator_identifiers::ID_SMILES]->value
+            ];
+        }
+
+        if(array_slice($names,1))
+        {
+            $bioschema["alternateName"] = array_slice($names,1);
+        }
+        
+        return $bioschema;
     }
 }

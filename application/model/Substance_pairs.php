@@ -15,7 +15,7 @@
  * @property int $id_group
  * @property Substance_pair_groups $group
  * @property int $substance_1_fragmentation_order
- * @property int $substnace_2_fragmentation_order
+ * @property int $substance_2_fragmentation_order
  * @property string $datetime
  * 
  * @author Jakub Juracka
@@ -64,12 +64,12 @@ class Substance_pairs extends Db
     (
         'id_substance_1' => array
         (
-            'var' => 'substnace_1',
+            'var' => 'substance_1',
             'class' => 'Substances'
         ),
         'id_substance_2' => array
         (
-            'var' => 'substnace_2',
+            'var' => 'substance_2',
             'class' => 'Substances'
         ),
         'id_core' => array
@@ -207,8 +207,8 @@ class Substance_pairs extends Db
             $t1 = $this->substance_1_fragmentation_order;
             $this->id_substance_1 = $this->id_substance_2;
             $this->id_substance_2 = $t;
-            $this->substance_1_fragmentation_order = $this->substnace_2_fragmentation_order;
-            $this->substnace_2_fragmentation_order = $t1;
+            $this->substance_1_fragmentation_order = $this->substance_2_fragmentation_order;
+            $this->substance_2_fragmentation_order = $t1;
 
             $this->save();
         }

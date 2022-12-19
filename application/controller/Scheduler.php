@@ -44,6 +44,7 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run',
+//        "match_functional_pairs"
     );
 
     /**
@@ -1028,7 +1029,7 @@ class SchedulerController extends Controller
     {
         $logs = new Validator_identifier_logs();
         
-        $limit = 1000q;
+        $limit = 1000;
 
         try
         {

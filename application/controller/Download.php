@@ -96,6 +96,6 @@ class DownloadController extends Controller
         $this->view->chart_data = isset($transporter_data) ? $transporter_data : null;
 
         $this->title = 'Downloader';
-        $this->breadcrumbs = Breadcrumbs::instance()->add('Downloader');
+        $this->breadcrumbs = Breadcrumbs::instance()->add('Downloader')->add($path == self::PATH_ACTIVE ? 'Active interactions' : 'Passive interactions');
     }
 }

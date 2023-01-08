@@ -57,7 +57,7 @@ class ApiEndpoint
 
         if(!$loaded_endpoint)
         {
-            ResponseBuilder::not_found();
+            ResponseBuilder::not_found("Requested endpoint was not found.");
         }
 
         $this->access_types = $loaded_endpoint['access_types'];

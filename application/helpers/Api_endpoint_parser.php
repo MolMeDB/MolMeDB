@@ -1,4 +1,6 @@
-<?php 
+<?php
+
+use EasyRdf\Http\Response;
 
 class Api_endpoint_parser
 {
@@ -183,15 +185,20 @@ class Api_endpoint_parser
 
         $rq_endpoint_params = self::get_endpoint_by_pattern($endpoint_path, array_keys($endpoints));
 
-        if(!$rq_endpoint_params || count($rq_endpoint_params['params']) !== count($endpoints[$rq_endpoint_params['key']]['path_params']))
+        if(!$rq_endpoint_params)
         {
+            if (!$fast_check)
+            {
+                $this->update_all();
+                return $this->find($endpoint, $method, TRUE);
+            }
             return NULL;
         }
-        else if(!$fast_check)
-		{
-			$this->update_all();
-            return $this->find($endpoint, $method, TRUE);
-		}
+
+        if(count($rq_endpoint_params['params']) !== count($endpoints[$rq_endpoint_params['key']]['path_params']))
+        {
+            ResponseBuilder::bad_request('Invalid number of parameters.');
+        }
 
         $requested_endpoint_key = $rq_endpoint_params['key'];
         $uri_params = $rq_endpoint_params['params'];

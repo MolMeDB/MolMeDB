@@ -1,0 +1,91 @@
+<?php
+/**
+ * @var int $index
+ * @var ValidatorTablePair $pair
+ */
+?>
+<div class="general-info" style="margin-top: 0; padding: 0; min-height: auto;">
+    <div class="row">
+        <div class="col-md-3">
+            <div id="<?= $index ?>left2dStructure<?= $pair->substance_1->id ?>" class="structure2D"></div>
+        </div>
+        <div class="col-md-8">
+            <table class="table table-hover">
+                <?php
+                $rowsExpand = '';
+                foreach ($this->ordered_rows as $row) :
+                ?>
+                    <tr
+                        id="<?= $row->key . $index ?>"
+                        style="
+                        <?php
+                        if (
+                            $pair->substance_1[$row->key] === $pair->substance_2[$row->key]
+                            && $pair->substance_1[$row->key] !== null
+                            && $pair->substance_2[$row->key] !== null
+                        ) {
+                            echo 'color: red; display: table-row';
+                        }
+                        if (!$row->visibility) {
+                            echo 'display: none;';
+                        }
+                        ?>
+                        "
+                    >
+                        <td <?= $row->key === 'pubchem' ? 'class="hover-pubchem"' : '' ?> style="position: relative; width: 50%; text-align: right;">
+                            <?= $pair->substance_1[$row->key] ?>
+
+                            <?php if ($row->key === 'pubchem'): ?>
+                                <div class="hover-iframe hover-iframe-left">
+                                    <?= $this->getWidget($row->key, $pair->substance_1[$row->key]) ?>
+                                </div>
+                            <?php endif ?>
+                        </td>
+                        <td style="text-align: center; font-weight: bold; user-select: none; cursor: pointer;" onClick="expandTable<?= $index ?>()" title="Show more">
+                            <?= $row->name ?>
+                        </td>
+                        <td <?= $row->key === 'pubchem' ? 'class="hover-pubchem"' : '' ?> style="position: relative; width: 50%;">
+                            <?= $pair->substance_2[$row->key] ?>
+
+                            <?php if ($row->key === 'pubchem'): ?>
+                                <div class="hover-iframe hover-iframe-right">
+                                    <?= $this->getWidget($row->key, $pair->substance_2[$row->key]) ?>
+                                </div>
+                            <?php endif ?>
+                        </td>
+                    </tr>
+                <?php
+                    $rowsExpand .= $row->key . $index . '.classList.toggle(`table-row-important`);';
+                endforeach
+                ?>
+                <tr>
+                    <td colspan="3" style="text-align:center;">
+                        <button type="button" class="btn btn-default">Merge left</button>
+                        <button type="button" class="btn btn-default">Not a duplicity</button>
+                        <button type="button" class="btn btn-default">Merge right</button>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div class="col-md-3">
+            <div id="<?= $index ?>right2dStructure<?= $pair->substance_2->id ?>" class="structure2D"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function expandTable<?= $index ?>() {
+        <?= $rowsExpand ?>
+    }
+
+    $(document).ready(function() {
+        update(
+            '<?= $pair->substance_1->SMILES ?>',
+            '<?= $index ?>left2dStructure<?= $pair->substance_1->id ?>'
+        )
+        update(
+            '<?= $pair->substance_2->SMILES ?>',
+            '<?= $index ?>right2dStructure<?= $pair->substance_2->id ?>'
+        )
+    })
+</script>

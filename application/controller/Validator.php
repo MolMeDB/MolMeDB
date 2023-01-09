@@ -26,6 +26,32 @@ class ValidatorController extends Controller
         $this->redirect('validator/show');
     }
 
+    public function show() {
+        $rows = Validator_identifier_duplicities::instance()
+            ->where('state', Validator_identifier_duplicities::STATE_NEW)
+            ->get_all();
+
+        $validatorTable = new ValidatorTable($rows);
+
+        $validatorTable->add()->name('Name')->key('name')->visibile();
+        $validatorTable->add()->name('Identifier')->key('identifier')->visibile();
+        $validatorTable->add()->name('SMILES')->key('SMILES')->visibile();
+        $validatorTable->add()->name('inchikey')->key('inchikey');
+        $validatorTable->add()->name('MW')->key('MW');
+        $validatorTable->add()->name('LogP')->key('LogP');
+        $validatorTable->add()->name('pubchem')->key('pubchem')->type(1);
+        $validatorTable->add()->name('drugbank')->key('drugbank')->type(2);
+        $validatorTable->add()->name('chEBI')->key('chEBI')->type(3);
+        $validatorTable->add()->name('pdb')->key('pdb')->type(4);
+        $validatorTable->add()->name('chEMBL')->key('chEMBL')->type(5);
+
+        $this->title = 'Validator';
+
+        $this->view = new View('validator/validator-substances');
+        $this->view->table = $validatorTable;
+    }
+
+
     // /**
     //  * Shows detail of scheduler compound errors
     //  * 

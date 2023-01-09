@@ -373,6 +373,10 @@ thead.thead-detail td.first-td, td.first-td{background-color: #e8e8e8}
 
 tr.last-row td {border: 0px solid #fff;}
 
+.table-row-important {
+    display: table-row !important;
+}
+
 footer{
     position: relative;
     left: 0; bottom: 0;
@@ -382,6 +386,11 @@ footer{
 .flex-row{
     display: flex;
     flex-direction: row;
+}
+
+.flex-row-reverse {
+    display: flex;
+    flex-direction: row-reverse;
 }
 
 .flex-end{
@@ -2753,6 +2762,32 @@ table.setting-form-table > tbody tr {
 .align-items-center
 {
     align-items: center;
+}
+
+.hover-iframe {
+    display: none;
+    position: absolute;
+    width: 600px;
+    top: 0%;
+    z-index: 10;
+}
+
+.hover-iframe iframe {
+    width: 100%;
+}
+
+.hover-iframe-left {
+    left: 0;
+    transform: translate(-50%, -50%);
+}
+
+.hover-iframe-right {
+    right: 0;
+    transform: translate(50%, -50%);
+}
+
+.hover-pubchem:hover .hover-iframe {
+    display: block;
 }
 
 .switch {

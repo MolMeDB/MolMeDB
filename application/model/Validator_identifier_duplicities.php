@@ -33,6 +33,15 @@ class Validator_identifier_duplicities extends Db
      */
     const STATE_NEW = 1;
     const STATE_NON_DUPLICITY = 2;
+    const STATE_DUPLICITY_LEFT = 3;
+    const STATE_DUPLICITY_RIGHT = 4;
+
+    /**
+     * Progress
+     */
+    const PROGRESS_PENDING = 1;
+    const PROGRESS_DONE = 2;
+    const PROGRESS_ERROR = 3;
 
     /**
      * Links to other tables

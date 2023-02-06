@@ -21,6 +21,7 @@ class File
     const FOLDER_METHOD_DOWNLOAD = MEDIA_ROOT . 'files/download/method/';
     const FOLDER_TRANSPORTER_DOWNLOAD = MEDIA_ROOT . 'files/download/transporter/';
     const FOLDER_DATASETS = MEDIA_ROOT . 'files/datasets/';
+    const FOLDER_CONFORMERS = MEDIA_ROOT . 'files/conformers';
 
     /**
      * Constructor
@@ -101,6 +102,66 @@ class File
         {
             fclose($this->FILE);
         }
+    }
+
+    /**
+     * Prepare conformers folder for upload
+     * 
+     * @param int $id_fragment
+     * 
+     * @return string - Path/to/folder/
+     */
+    public function prepare_conformer_folder($id_fragment, $id_ion)
+    {
+        $group = intval($id_fragment / 10000);
+        $group = $group*10000;
+        $group .= '-' . ($group+1000); 
+
+        $path = self::FOLDER_CONFORMERS . "/" . $group . '/' . $id_fragment . "/" . $id_ion . '/';
+
+        if(!file_exists($path))
+        {
+            if(!mkdir($path, 0777, TRUE))
+            {
+                throw new Exception('Cannot create folder structure.');
+            }
+        }
+
+        return $path;
+    }
+
+    /**
+     * Remove conformer folder
+     * 
+     * @param int $id_fragment
+     * 
+     * @return void
+     */
+    public function remove_conformer_folder($id_fragment)
+    {
+        $group = intval($id_fragment / 10000);
+        $group = $group*10000;
+        $group .= '-' . ($group+1000); 
+
+        $path = self::FOLDER_CONFORMERS . "/" . $group . '/' . $id_fragment . "/";
+
+        if(!file_exists($path))
+        {
+            return;
+        }
+
+        // Remove whole content recursively
+        $it = new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS);
+        $files = new RecursiveIteratorIterator($it,
+                    RecursiveIteratorIterator::CHILD_FIRST);
+        foreach($files as $file) {
+            if ($file->isDir()){
+                rmdir($file->getRealPath());
+            } else {
+                unlink($file->getRealPath());
+            }
+        }
+        rmdir($path);
     }
 
     /**
@@ -364,6 +425,10 @@ class File
 
         if(!count($path))
         {
+            if(DEBUG)
+            {
+                echo 'Nothing to zip';
+            }
             return null;
         }
 

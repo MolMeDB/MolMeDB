@@ -39,6 +39,7 @@ class ApiMembranes extends ApiController
         (
             'id'    => $membrane->id,
             'name'  => $membrane->name,
+            'id_cosmo_file' => $membrane->id_cosmo_file,
             'keywords' => $membrane->keywords,
             'description'   => $membrane->description,
             'reference' => $membrane->references,

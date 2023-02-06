@@ -22,6 +22,29 @@ class DeleteController extends Controller
         $this->verifyUser(True);
     }
 
+    /**
+     * Deletes COSMO scheduled job
+     * 
+     * @param int $id
+     */
+    public function cosmo_job($id)
+    {
+        $c = new Run_cosmo($id);
+        $redir = 'validator/cosmo';
+
+        if(!$c->id)
+        {
+            $this->alert->warning('Record not found.');
+            $this->redirect($redir);
+        }
+
+        $c->status = $c::STATUS_REMOVE;
+        $c->save();
+
+        $this->alert->success('Scheduled job will be removed.');
+        $this->redirect($redir);
+    }
+
 
     /**
      * Delete membrane detail

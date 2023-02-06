@@ -26,7 +26,13 @@
                 <li><a href="/edit/<?= $edit_endpoints[EditController::M_USERS] ?>"><span class="glyphicon glyphicon-user"></span>   Users</a></li>
             </ul>
         </div>
-        <a href="/validator/show" class="btn btn-primary"> <span class="glyphicon glyphicon-check"></span>  Data validator</a>
+        <div class="btn-group">
+            <button class="btn btn-primary dropdown-toggle" data-toggle="dropdown"><span class="glyphicon glyphicon-check"></span>  Validator <span class="caret"></span></button>
+            <ul class="dropdown-menu" role="menu">
+                <li><a href="/validator/<?= $validator_endpoints[ValidatorController::M_CHECK_DUPLICITY] ?>"><span class="glyphicon glyphicon-transfer"></span>   Check duplicity</a></li>
+                <li><a href="/validator/<?= $validator_endpoints[ValidatorController::M_COSMO] ?>"><span class="glyphicon glyphicon-education"></span>    COSMO</a></li>
+            </ul>
+        </div>
         <a href="/setting/system" class="btn btn-primary"> <span class="glyphicon glyphicon-wrench"></span>  System config</a>
         <a href="/administration/logout" class="btn btn-danger"> <span class="glyphicon glyphicon-log-out"></span>  Log out</a>
     </div>

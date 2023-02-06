@@ -307,6 +307,291 @@ class SchedulerController extends Controller
     }
 
     /**
+     * Runs COSMO computations
+     * 
+     * @author Jakub Juracka
+     */
+    public function run_cosmo()
+    {
+        // How many jobs hold ready (prepared) for metacentrum send?
+        $max_metacentrum_prepared = 30;
+        $max_ionization_states = 10;
+        $max_metacentrum_queue_items = 50;
+
+        $cosmo = new Run_cosmo();
+        $rdkit = new Rdkit();
+        
+        // At first, delete what should be deleted
+        $to_delete = $cosmo->where(array
+            (
+                'status' => $cosmo::STATUS_REMOVE,
+                'state !=' => $cosmo::STATE_RESULT_DB_STORED,
+                'last_update <' => date('Y-m-d H:i:s', strtotime('-12 hours')) 
+            ))
+            ->get_all();
+
+        foreach($to_delete as $record)
+        {
+            try
+            {
+                Db::beginTransaction();
+                // Remove all stored files
+                $f = new File();
+                $f->remove_conformer_folder($record->id_fragment);
+
+                // Remove all ionized states
+                $fo = Fragment_ionized::instance()->where('id_fragment', $record->id_fragment)->get_all();
+                
+                foreach($fo as $f)
+                {
+                    $f->delete();
+                }
+
+                // Remove ionization info
+                $r = Run_ionization::instance()->where('id_fragment', $record->id_fragment)->get_one();
+
+                if($r->id)
+                {
+                    $r->delete();
+                }
+
+                // Finaly remove cosmo job record
+                $record->delete();
+                
+                Db::commitTransaction();
+            }
+            catch(MmdbException $e)
+            {
+                Db::rollbackTransaction();
+            }
+        }
+
+        // Force run events
+        $force_all = $cosmo->where('forceRun', '1')->get_all();
+
+        foreach($force_all as $record)
+        {
+            try
+            {
+                Db::beginTransaction();
+                // Clear data and start again
+                $f = new File();
+                $f->remove_conformer_folder($record->id_fragment);
+                // Remove all ionized states
+                $fo = Fragment_ionized::instance()->where('id_fragment', $record->id_fragment)->get_all();
+                
+                foreach($fo as $f)
+                {
+                    $f->delete();
+                }
+
+                // Remove ionization info
+                $r = Run_ionization::instance()->where('id_fragment', $record->id_fragment)->get_one();
+
+                if($r->id)
+                {
+                    $r->delete();
+                }
+
+                $record->log = NULL;
+                $record->state = Run_cosmo::STATE_PENDING;
+                $record->forceRun = 2;
+                $record->save();
+
+                Db::commitTransaction();
+            }
+            catch(MmdbException $e)
+            {
+                Db::rollbackTransaction();
+            }
+        }
+
+
+        // Check, how many jobs is waiting to send to metacentrum
+        $total_ready_to_send = $cosmo->where(array
+            (
+                'state' => $cosmo::STATE_SDF_READY,
+                'status' => $cosmo::STATUS_OK 
+            ))
+            ->count_all();
+
+        $t = $max_metacentrum_prepared - $total_ready_to_send;
+
+        // Prepare missing n structures to send
+        $prepare_sdf = $cosmo->where(array
+            (
+                'state <' => $cosmo::STATE_SDF_READY,
+                'status'  => $cosmo::STATUS_OK
+            ))
+            ->order_by('priority DESC, status DESC, id', 'ASC')
+            ->limit($t > 0 ? $t : 0)
+            ->get_all();
+
+        foreach($prepare_sdf as $record)
+        {
+            // Get ionization states
+            if($record->state == $cosmo::STATE_PENDING)
+            {
+                $exists = Run_ionization::instance()->where('id_fragment', $record->id_fragment)->get_one();
+
+                if($exists->id)
+                {
+                    $record->state = $cosmo::STATE_IONIZED;
+                    $record->save();
+                    continue;
+                }
+                
+                $ion_states = $rdkit->get_ionization_states($record->fragment->smiles, $max_ionization_states);
+                
+                if($ion_states === false)
+                {
+                    throw new MmdbException('Cannot get fragment [id:' . $record->id_fragment . '] ionization states.');
+                }
+
+                try
+                {
+                    Db::beginTransaction();
+                    $run_i = new Run_ionization();
+
+                    $run_i->id_fragment = $record->fragment->id;
+                    $run_i->ph_end = $ion_states->pH_end;
+                    $run_i->ph_start = $ion_states->pH_start;
+
+                    $run_i->save();
+
+                    if(!in_array($record->fragment->smiles, $ion_states->molecules))
+                    {
+                        $ion_states->molecules[] = $record->fragment->smiles;
+                    }
+
+                    foreach($ion_states->molecules as $smiles)
+                    {
+                        $fi = new Fragment_ionized();
+
+                        $fi->id_fragment = $record->fragment->id;
+                        $fi->smiles = $smiles;
+                        $fi->save();
+                    }
+
+                    $record->state = $cosmo::STATE_IONIZED;
+                    $record->save();
+
+                    Db::commitTransaction();
+                }
+                catch(MmdbException $e)
+                {
+                    Db::rollbackTransaction();
+                    throw $e;
+                }
+            }
+            else if($record->state == $cosmo::STATE_IONIZED)
+            {
+                // Generate conformers and save SDF files
+                $ion_states = Fragment_ionized::instance()->where('id_fragment', $record->id_fragment)->get_all();
+
+                foreach($ion_states as $ion)
+                {
+                    $name = $record->id_fragment . '_' . $ion->id;
+
+                    $fileHelper = new File();
+                    $folder = $fileHelper->prepare_conformer_folder($record->id_fragment,$ion->id);
+                    $folder_files = scandir($folder);
+
+                    foreach($folder_files as $a)
+                    {
+                        // Exists some conformers with this name?
+                        if(strpos($a, $name) !== false)
+                        {
+                            // Conformer exists
+                            $record->state = $cosmo::STATE_SDF_READY;
+                            $record->save();
+                            continue 2;
+                        }
+                    }
+
+                    // Get conformer SDF contents for an $ion
+                    $confs = $rdkit->get_cosmo_conformers($ion->smiles, $name);
+
+                    if($confs === false)
+                    {
+                        throw new MmdbException('Cannot generate conformers.');
+                    }
+
+                    foreach($confs as $key => $cf)
+                    {
+                        $f = fopen($folder . $name ."_".$key.".sdf", 'w');
+                        if(!fwrite($f, $cf->sdf))
+                        {
+                            throw new MmdbException("Cannot store content of SDF file. [ION: " . $ion->id . "]");
+                        }
+                        fclose($f);
+                    }
+                }
+
+                $record->state = $cosmo::STATE_SDF_READY;
+                $record->save();
+            }
+        }
+
+        // RUN COSMO
+        // Check, how many metacentrum jobs is in the queue
+        $in_queue = 0; // TODO
+        $metacentrum_empty = $in_queue < $max_metacentrum_queue_items;
+
+        if($metacentrum_empty)
+        {
+            $candidates = Run_cosmo::instance()->where(array
+                (
+                    'state <' => Run_cosmo::STATE_RESULT_DOWNLOADED,
+                    'state >=' => Run_cosmo::STATE_SDF_READY,
+                    'status' => Run_cosmo::STATUS_OK
+                ))
+                ->limit($max_metacentrum_queue_items - $in_queue)
+                ->order_by('priority DESC, method DESC, id', 'ASC')
+                ->get_all();
+
+            $f = new File();
+            $metacentrum = new Metacentrum();
+            // TODO
+            $username = 'xjur2k';
+            $password = 'LW01i20!ABC';
+            $queue = Metacentrum::QUEUE_ELIXIR;
+            $host = 'zuphux.metacentrum.cz';
+
+            foreach($candidates as $record)
+            {
+                // $metacentrum->run_cosmo($record, $host, $username, $password, $queue);
+            }
+        }
+
+        // Process final data
+        $toFinal = $cosmo->where(array
+            (
+                'state' => $cosmo::STATE_RESULT_DOWNLOADED,
+                'status'  => $cosmo::STATUS_OK
+            ))
+            ->order_by('priority DESC, status DESC, id', 'ASC')
+            ->limit(50)
+            ->get_all();
+
+        foreach($toFinal as $job)
+        {
+            try
+            {
+                $job->process_results();
+                $job->state = Run_cosmo::STATE_RESULT_PARSED;
+                $job->save();
+            }
+            catch(MmdbException $e)
+            {
+                //TODO
+            }
+        }
+
+        // Save final data to the DB // TODO
+    }
+
+    /**
      * Links all functional groups to their corresponding molecular fragments
      * 
      * @author Jakub Juracka

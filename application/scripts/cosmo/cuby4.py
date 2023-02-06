@@ -2,7 +2,7 @@ import re
 
 QUEUE_ELIXIR = "elixircz@elixir-pbs.elixir-czech.cz"
 QUEUE_METACENTRUM = "default@meta-pbs.metacentrum.cz"
-QUEUE_CERIT = "cerit-pbs.cerit-sc.cz"
+QUEUE_CERIT = "@cerit-pbs.cerit-sc.cz"
 SCRIPTPATH_PS = "[SCRIPT_PATH]"
 SDFPATH_PS = "[SDFPATH_PS]"
 JOB_NAME_PREFIX = "MMDB_C_"
@@ -22,11 +22,11 @@ class CUBY4:
 
     def generate(self, file, ncpu = 8, ram=32, walltimeHs = 10, queue = "elixir", includeTurobmolePreComputation=False):
         self.filesContent = {
-            "yaml": self.generateYAML(file.fileName, ncpu=ncpu, ram=ram, includePreComp=includeTurobmolePreComputation),
+            "yaml": self.generateYAML(file.fileName, charge=file.charge, ncpu=ncpu, ram=ram, includePreComp=includeTurobmolePreComputation),
             "job": self.generateJob(fileName=file.fileName, ncpu=ncpu, ram=ram, walltimeHs=walltimeHs, queue=queue) 
         }
 
-    def generateYAML(self, fileName, ncpu = 8, ram=32, includePreComp = False):
+    def generateYAML(self, fileName, charge=0, ncpu = 8, ram=32, includePreComp = False):
         if includePreComp:
             content = f"""# Calculation
 job: multistep
@@ -39,7 +39,7 @@ calculation_common:
   functional: b-p
   optimizer: lbfgs
   basisset: def-TZVP
-  charge: 0
+  charge: {charge}
   geometry: {fileName}
   job_cleanup: no
   mem: {ram}000
@@ -84,7 +84,7 @@ calculation_common:
   functional: b-p
   optimizer: lbfgs
   basisset: def-TZVP
-  charge: 0
+  charge: {charge}
   geometry: {fileName}
   job_cleanup: no
   mem: {ram}000
@@ -149,7 +149,7 @@ cuby4 {name}.yaml &> LOG
 mkdir -p $OUTPUT_WORKDIR
 
 # Rm job id
-rm $SCRIPT_WORKDIR/*.run
+rm -f $SCRIPT_WORKDIR/*.run
 
 # Copy result to OUTPUT directory
 cp -r * $OUTPUT_WORKDIR/

@@ -222,6 +222,12 @@ class System_config
             $class = ucfirst(str_replace('Render_', '', $class));
             require(APP_ROOT . "helpers/Render/" . $class . ".php");
         }
+        else if (preg_match('/^Run_/', $class) 
+            && file_exists(APP_ROOT . "helpers/Run/" . ucfirst(str_replace('Run_', '', $class)) . ".php"))
+        {
+            $class = ucfirst(str_replace('Run_', '', $class));
+            require(APP_ROOT . "helpers/Run/" . $class . ".php");
+        }
         else
         {
             foreach($targets as $folder)

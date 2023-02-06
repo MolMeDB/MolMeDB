@@ -546,3 +546,11 @@ plussign{
     right: 5px;
     position: absolute;
 }
+
+.action-bar
+{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    width: 100%;
+}

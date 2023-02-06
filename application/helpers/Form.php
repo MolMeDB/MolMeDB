@@ -33,6 +33,10 @@ class Form
     /** Holds info about used method */
     public $method = NULL;
 
+    /** Files holder */
+    public $has_file = false;
+    public $file = NULL;
+
     /**
      * Constructor
      */

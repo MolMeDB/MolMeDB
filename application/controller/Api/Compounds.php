@@ -1,5 +1,7 @@
 <?php
 
+use EasyRdf\Http\Response;
+
 /**
  * Internal API class for processing request 
  * related with detail loading of substances
@@ -422,4 +424,6 @@ class ApiCompounds extends ApiController
     {
         return Render_similar_entry_item::print_next($total, $visible);
     }
+
+
 }

@@ -47,6 +47,9 @@ class Files extends Db
     const T_SCHEDULER_DEL_EMPTY_SUBSTANCES = 31;
     const T_SCHEDULER_CHECK_PASSIVE_DATASETS = 32;
 
+    /** MEMBRANE SPECIAL FILES */
+    Const T_MEMBRANE_COSMO = 41;
+
     private static $valid_types = array
     (
         self::T_STATS_INTERACTIONS_ALL,
@@ -55,7 +58,8 @@ class Files extends Db
         self::T_STATS_SUBST_INTERACTIONS,
         self::T_UPLOAD_ACTIVE,
         self::T_UPLOAD_PASSIVE,
-        self::T_UPLOAD_ENERGY
+        self::T_UPLOAD_ENERGY,
+        self::T_MEMBRANE_COSMO
     );
 
     private static $type_path = array

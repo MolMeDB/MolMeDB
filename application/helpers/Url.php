@@ -68,6 +68,16 @@ class Url
 	}
 
     /**
+     * Get redirect url
+     * 
+     * @return string
+     */
+    public static function redirect()
+    {
+        return $_SERVER['REDIRECT_URL'];
+    }
+
+    /**
 	 * Returns domain
 	 * @return string
 	 */

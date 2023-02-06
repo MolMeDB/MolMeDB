@@ -4,6 +4,8 @@
  * Membrane model
  * 
  * @property integer $id
+ * @property integer $id_cosmo_file
+ * @property Files $cosmo_file
  * @property integer $type
  * @property string $name
  * @property string $description
@@ -27,6 +29,15 @@ class Membranes extends Db
     private static $valid_types = array
     (
         self::LOGP_TYPE
+    );
+
+    protected $has_one = array
+    (
+        'id_cosmo_file' => array
+        (
+            'var' => 'cosmo_file',
+            'class' => 'Files'
+        )
     );
 
     /**

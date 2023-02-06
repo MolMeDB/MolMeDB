@@ -18,12 +18,15 @@ class AdministrationController extends Controller
         $this->verifyUser(true);
     }
 
-
+    /**
+     * Main endpoint
+     */
     public function index() 
     {
         $user_manager = new Users();
         $upload_controller = new UploadController();
         $edit_controller = new EditController();
+        $validator_controller = new ValidatorController();
 
         $user = $user_manager->returnUser();
    
@@ -33,6 +36,7 @@ class AdministrationController extends Controller
         $this->view->admin = $user['admin'];
         $this->view->upload_endpoints = $upload_controller->get_menu_endpoints();
         $this->view->edit_endpoints = $edit_controller->get_menu_endpoints();
+        $this->view->validator_endpoints = $validator_controller->get_menu_endpoints();
 
         $this->breadcrumbs = new Breadcrumbs();
         $this->breadcrumbs->add('Administration');

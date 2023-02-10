@@ -15,9 +15,16 @@ class HeaderParser
     const JSON = 'application/json';
     const CSV = 'text/csv';
     const HTML = 'text/html';
+    const PLAINTEXT = 'text/plain';
     const XML = 'application/xml';
+    const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     const MULTIPART = 'multipart/form-data';
     const APP_WWW_FORM = "application/x-www-form-urlencoded";
+    const SMI = 'chemical/x-daylight-smiles';
+    const SDF = 'chemical/x-mdl-sdfile';
+    const SVG = 'image/svg+xml';
+
+
     const GZIP = 'gzip';
     const COMPRESS = 'compress';
     const DEFLATE = 'deflate';
@@ -64,6 +71,11 @@ class HeaderParser
         self::Turtle,
         self::TSV,
         self::TriG,
+        self::PLAINTEXT,
+        self::SVG,
+        self::SDF,
+        self::XLSX,
+        self::SMI
     );
 
     /**
@@ -82,7 +94,12 @@ class HeaderParser
         self::NQuads => "NQUAD",
         self::Turtle => "TURTLE",
         self::TSV => "TSV",
-        self::TriG => "TRIG"
+        self::TriG => "TRIG",
+        self::PLAINTEXT => "PlainText",
+        self::SVG => "SVG",
+        self::SDF => "SDF",
+        self::XLSX => "XLSX_Spreadsheet",
+        self::SMI => "SMI"
     );
 
     /**
@@ -104,6 +121,11 @@ class HeaderParser
         self::Turtle => 'ResponseBuilder::RDF',
         self::TSV => 'ResponseBuilder::RDF',
         self::TriG => 'ResponseBuilder::RDF',
+        self::PLAINTEXT => "ResponseBuilder::html",
+        self::SVG => "ResponseBuilder::svg",
+        self::SDF => "ResponseBuilder::sdf",
+        self::XLSX => "ResponseBuilder::xlsx",
+        self::SMI => "ResponseBuilder::html"
     );
 
     /**

@@ -39,7 +39,7 @@
  * @property Membranes $membrane
  * @property Datasets $dataset
  * @property Methods $method
- * @property Publications $publication
+ * @property Publications $reference
  * 
  */
 class Interactions extends Db 
@@ -135,6 +135,96 @@ class Interactions extends Db
 			SET `id_dataset` = ?
 			WHERE `id_dataset` = ?
 		', array($to_id, $from_id));
+	}
+
+	/**
+	 * Returns interaction detail 
+	 * 
+	 * @return array
+	 */
+	public function get_public_detail()
+	{
+		if(!$this->id)
+		{
+			return [];
+		}
+
+		$i = $this;
+
+		return array
+		(
+			'Membrane' => array
+			(
+				'id' => $i->id_membrane,
+				'name' => $i->membrane->name
+			),
+			'Method' => array
+			(
+				'id' => $i->id_method,
+				'name' => $i->method->name
+			),
+			'Charge'    => $i->charge,
+			'Temperature' => array
+			(
+				'value' => $i->temperature,
+				'units' => "°C"
+			),
+			'Note'      => $i->comment,
+			'Xmin'     => array
+			(
+				'value' => $i->Position,
+				'units' => 'nm'
+			),
+			'Gpen'     => array
+			(
+				'value' => $i->Penetration,
+				'units' => 'kcal/mol'
+			),
+			'Gwat'     => array
+			(
+				'value' => $i->Water,
+				"units" => "kcal/mol"
+			),
+			'LogK'      => array
+			(
+				"value" => $i->LogK,
+				"units" => "mol_m/mol_w"
+			),
+			'LogPerm'   => [
+				"value" => $i->LogPerm,
+				"units" => "cm/s"
+			],
+			'Theta'     => array
+			(
+				"value" => $i->theta,
+				"units" => "°"
+			),
+			'Abs_wl'    => array
+			(
+				"value" => $i->abs_wl,
+				"units" => "nm"
+			),
+			'Fluo_wl'   => array
+			(
+				"value" => $i->fluo_wl,
+				"units" => "nm"
+			),
+			'QY'        => array
+			(
+				"value" => $i->QY,
+				"units" => "nm"
+			),
+			'lt'        => array
+			(
+				"value" => $i->lt,
+				"units" => "ns"
+			),
+			'References' => array
+			(
+				'primary' => $i->id_reference ? $i->reference->citation : "N/A",
+				'secondary' => $i->dataset->id_publication ? $i->dataset->publication->citation : "N/A"
+			)
+		);
 	}
 
 

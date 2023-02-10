@@ -145,6 +145,39 @@ class Transporters extends Db
     }
 
     /**
+     * Returns public detail of interaction
+     * 
+     * @return array
+     */
+    public function get_public_detail() 
+    {
+        if(!$this->id)
+        {
+            return [];
+        }
+
+        return array
+        (
+            'Target' => array
+            (
+                'Name' => $this->target->name,
+                'Uniprot_id' => $this->target->uniprot_id
+            ),
+            'Type' => $this->get_enum_type(),
+            'Note' => $this->note,
+            'pKm'   => $this->Km,
+            'pKi'    => $this->Ki,
+            'pEC50'   => $this->EC50,
+            'pIC50'  => $this->IC50,
+            'References' => array
+            (
+                'Primary' => $this->id_reference ? $this->reference->citation : "N/A",
+				'Secondary' => $this->dataset->id_reference ? $this->dataset->reference->citation : "N/A"
+            )
+        );
+    }
+
+    /**
      * Check, if transporter detail already exists 
      * 
      * @param integer $id_substance

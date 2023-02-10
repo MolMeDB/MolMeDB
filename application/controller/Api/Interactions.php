@@ -5,7 +5,241 @@
  */
 class ApiInteractions extends ApiController
 {
-   
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### PUBLIC #########################################
+    ################################################################################
+    ################################################################################
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+
+    ################################################################################
+    ########## interactions/passive/<id><?membrane><?method><?reference> ###########
+    ################################################################################
+
+    /**
+     * Returns passive interactions by ids
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * @param @optional $membrane
+     * @param @optional $method
+     * @param @optional $reference
+     * 
+     * @PATH(/passive/<id:.+>)
+     */
+    public function P_passive_interactions($id, $membrane, $method, $reference)
+    {
+        if(!is_array($id))
+		{
+			$id = [$id];
+		}
+
+		if(empty($id) || !$id[0])
+		{
+			ResponseBuilder::bad_request('Invalid id list.');
+		}
+
+        // Find membrane if set
+        $m_records = null;
+        if($membrane)
+        {
+            $by_identifier = new Membranes($membrane);
+            if(!$by_identifier->id)
+            {
+                $by_identifier = Membranes::instance()->where('name LIKE', $membrane)->get_one();
+            }
+
+            if($by_identifier->id)
+            {
+                $m_records = [$by_identifier];
+            }
+            else
+            {
+                // Try to find category by path
+                $cats = explode('.', $membrane);
+                $cats_objects = [];
+
+                foreach($cats as $c)
+                {
+                    $exists = Enum_types::instance()->where(array
+                    (
+                        'name LIKE' => $c,
+                        'type'      => Enum_types::TYPE_MEMBRANE_CATS
+                    ))->get_one();
+
+                    if(!$exists->id)
+                    {
+                        ResponseBuilder::not_found('Membrane/category `' . $c .'` not found.');
+                    }
+
+                    $cats_objects[] = $exists;
+                }
+
+                $current = array_shift($cats_objects);
+                $curr_link_id = null;
+
+                foreach($cats_objects as $c)
+                {
+                    $link = Enum_type_links::instance()->where(array
+                    (
+                        'id_enum_type' => $c->id,
+                        'id_enum_type_parent' => $current->id,
+                    ) + ($curr_link_id ? ['id_parent_link' => $curr_link_id] : ['id_parrent_link IS NULL' => NULL]))
+                    ->get_one();
+
+                    if(!$link->id)
+                    {
+                        ResponseBuilder::not_found('Category `' . $c->name . '` does not have parent `' . $current->name . '`');
+                    }
+
+                    $current = $c;
+                    $curr_link_id = $link->id;
+                }
+
+                $link_ids = [];
+
+                // Only one category provided
+                if(!$curr_link_id)
+                {
+                    $links = Enum_type_links::instance()->where('id_enum_type_parent', $current->id)->get_all();
+                    $link_ids = arr::get_values($links, 'id');
+                    $total = 0;
+
+                    while($total != count($link_ids))
+                    {
+                        $total = count($link_ids);
+                        $links = Enum_type_links::instance()->in('id_parent_link', $link_ids)->get_all();
+                        $link_ids = array_merge($link_ids, arr::get_values($links, 'id'));
+                    }
+                }
+                else
+                {
+                    $links = Enum_type_links::instance()
+                        ->where('id_parent_link', $curr_link_id)
+                        ->get_all();
+                }
+
+                if(count($links))
+                {
+                    $m_records = Membranes::instance()
+                        ->join('JOIN membrane_enum_type_links etl ON etl.id_membrane = membranes.id')
+                        ->in('etl.id_enum_type_link', arr::get_values($links, 'id'))
+                        ->get_all();
+                }
+
+
+                $m_records = Membranes::instance()
+                    ->join('JOIN membrane_enum_type_links etl ON etl.id_membrane = membranes.id AND etl.id_enum_type_link = ' . $curr_link_id)
+                    ->get_all();
+            }
+        }
+
+        echo count($m_records);
+        die;
+        
+		$result = array();
+
+		foreach($id as $q_id)
+		{
+            $substance = Substances::get_by_any_identifier($q_id);
+
+            if(!$substance->id)
+            {
+                continue;
+            }
+            
+			$int = new Interactions($interaction_id);
+			$energy = new Energy();
+
+			if(!$int->id)
+			{
+				continue;
+			}
+
+			// Check if energy value exists
+			$avail = $energy->where(array
+				(
+					'id_substance'	=> $int->id_substance,
+					'id_membrane'	=> $int->id_membrane,
+					'id_method'		=> $int->id_method
+				))
+				->get_one();
+
+			$result[] = array
+			(
+				'id'			=> $int->id,
+				'substance'		=> $int->substance ? $int->substance->as_array() : NULL,
+				'membrane'		=> $int->membrane ? $int->membrane->name : NULL,
+				'method'		=> $int->method ? $int->method->name : NULL,
+				'comment'		=> $int->comment ? $int->comment : NULL,
+				'charge'		=> $int->charge,
+				'temperature'	=> $int->temperature,
+				'Position'		=> $int->Position,
+				'Position_acc' 	=> $int->Position_acc,
+				'Penetration'	=> $int->Penetration,
+				'Penetration_acc' 	=> $int->Penetration_acc,
+				'Water'			=> $int->Water,
+				'Water_acc' 	=> $int->Water_acc,
+				'LogK'			=> $int->LogK,
+				'LogK_acc' 		=> $int->LogK_acc,
+				'LogPerm'		=> $int->LogPerm,
+				'LogPerm_acc' 	=> $int->LogPerm_acc,
+				'theta'			=> $int->theta,
+				'theta_acc' 	=> $int->theta_acc,
+				'abs_wl'		=> $int->abs_wl,
+				'abs_wl_acc' 	=> $int->abs_wl_acc,
+				'fluo_wl'		=> $int->fluo_wl,
+				'fluo_wl_acc' 	=> $int->fluo_wl_acc,
+				'lt'			=> $int->lt,
+				'lt_acc' 		=> $int->lt_acc,
+				'QY'			=> $int->QY,
+				'QY_acc' 		=> $int->QY_acc,
+				'id_reference'	=> $int->id_reference,
+				'reference'		=> $int->reference ? $int->reference->citation : NULL,
+                'secondary_reference' => $int->dataset && $int->dataset->publication ? $int->dataset->publication->citation : null,
+				'id_dataset'	=> $int->id_dataset,
+				'id_substance'	=> $int->id_substance,
+				'id_membrane'	=> $int->id_membrane,
+				'id_method'		=> $int->id_method,
+				'energy_profile_flag'	=> $avail->id,
+				'last_update'	=> $int->editDateTime,
+				'uploaded'		=> $int->createDateTime
+			);
+		}
+
+		if(count($result) === 1)
+		{
+			$result = $result[0];
+		}
+		
+		return $result;
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### END OF PUBLIC ##################################
+    ################################################################################
+    ################################################################################
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### INTERNAL #######################################
+    ################################################################################
+    ################################################################################
+
+    ///////////////////////////////////////////////////////////////////////////////
+
     /**
      * Returns passive interactions by ids
      * 

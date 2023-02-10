@@ -72,6 +72,70 @@ class Substances extends Db
     }
 
     /**
+     * Returns substance by identifier
+     * 
+     * @param string $identifier
+     * 
+     * @return Substances
+     */
+    public static function get_by_any_identifier($identifier)
+    {
+        // Is id?
+        $res = Substances::by_identifier($identifier);
+        if($res->id)
+        {
+            return $res;
+        }
+        
+        // Try to canonize is SMILES
+        try
+        {
+            $rdkit = new Rdkit();
+        }
+        catch(Exception $e)
+        {
+            $rdkit = false;
+        }
+
+        if($rdkit !== false)
+        {
+            try
+            {
+                $canonized = $rdkit->canonize_smiles($identifier);
+            }
+            catch(Exception $e)
+            {
+                $canonized = false;
+            }
+
+            if($canonized !== false)
+            {
+                $identifier = $canonized;
+            }
+        }
+
+        // Check other identifiers
+        $exists = Validator_identifiers::instance()->where(array
+        (
+            'value LIKE' => $identifier,
+            'state'      => Validator_identifiers::STATE_VALIDATED
+        ))
+        ->in('identifier', array
+        (
+            Validator_identifiers::ID_PUBCHEM,
+            Validator_identifiers::ID_PDB,
+            Validator_identifiers::ID_DRUGBANK,
+            Validator_identifiers::ID_CHEMBL,
+            Validator_identifiers::ID_NAME,
+            Validator_identifiers::ID_SMILES,
+            Validator_identifiers::ID_INCHIKEY
+        ))
+        ->get_one();
+
+        return new Substances($exists->id ? $exists->id_substance : null);
+    }
+
+    /**
      * Returns all molecule fragments
      * 
      * @return array
@@ -79,6 +143,64 @@ class Substances extends Db
     public function get_all_fragments()
     {
         return Substances_fragments::instance()->get_all_substance_fragments($this->id);
+    }
+
+    /**
+     * Returns public detail of molecule
+     * - used in REST API responses
+     * 
+     * @return array
+     */
+    public function get_public_detail()
+    {
+        if(!$this->id)
+        {
+            return [];
+        }
+
+        $result = array
+        (
+            'identifiers' => array
+            (
+                'name'    => [$this->name],
+                'molmedb' => $this->identifier,
+                'smiles'  => $this->SMILES,
+                'inchikey'=> $this->inchikey,
+                'pubchem' => [],
+                'pdb'     => [],
+                'drugbank'=> [],
+                'chembl'  => [],
+            ),
+            'molecular_weight' => $this->MW,
+            'logp' => $this->LogP
+        );
+
+        $links = array
+        (
+            Validator_identifiers::ID_PUBCHEM => "pubchem",
+            Validator_identifiers::ID_PDB => "pdb",
+            Validator_identifiers::ID_DRUGBANK => "drugbank",
+            Validator_identifiers::ID_CHEMBL => "chembl",
+            Validator_identifiers::ID_NAME => "name",
+        );
+
+        foreach($links as $ident => $key)
+        {
+            $values = Validator_identifiers::instance()->where(array
+            (
+                'identifier' => $ident,
+                'state' => Validator_identifiers::STATE_VALIDATED,
+                'id_substance' => $this->id
+            ))->select_list('value')->get_all()->as_array();
+
+            $values = array_map(function($a){return $a['value'];},$values);
+            $values = array_unique(array_merge(array_values($values), $result['identifiers'][$key]));
+            $values = array_filter($values, function($a) {return !preg_match(Identifiers::PATTERN, $a);});
+
+            $result['identifiers'][$key] = $values;
+        }
+
+        return $result;
     }
 
     /**
@@ -869,7 +991,7 @@ class Substances extends Db
     /**
      * Returns substance 3D structures
      * 
-     * @return Files
+     * @return Files[]
      */
     public function get_all_3D_structures()
     {

@@ -7,6 +7,503 @@
  */
 class ApiCompounds extends ApiController
 {
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### PUBLIC #########################################
+    ################################################################################
+    ################################################################################
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+
+    ##############################################################
+    ########## compounds/detail/<id>?ipassive&iactive ############
+    ##############################################################
+
+    /**
+     * Returns molecule data
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * @param @default[false] $ipassive - Include passive interactions?
+     * @param @default[false] $iactive - Include active interactions?
+     * 
+     * @PATH(/detail/<id:.+>)
+     */
+    public function P_detail($id, $ipassive, $iactive)
+    {
+        if(!is_array($id))
+        {
+            $id = [$id];
+        }
+
+        $substances = [];
+
+        foreach($id as $id_q)
+        {
+            $subs = Substances::get_by_any_identifier($id_q);
+
+            if(!$subs->id)
+            {
+                if(count($id) == 1)
+                {
+                    ResponseBuilder::not_found('Compound with id `' . $id_q . '` not found.');
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            $substances[$id_q] = $subs;
+        }
+
+        if(!count($substances))
+        {
+            ResponseBuilder::not_found('No compound from list found.');
+        }
+
+        $results = array();
+
+        foreach($substances as $query => $subs)
+        {
+            $result = [];
+            $result['query'] = $query;
+            $result['detail'] = $subs->get_public_detail();
+            
+            if($ipassive)
+            {
+                $result['passive_interactions'] = [];
+                $interaction_model = new Interactions();
+                $interactions = $interaction_model->where(array(
+                    'id_substance' => $subs->id,
+                    'visibility'   => Interactions::VISIBLE
+                ))->get_all();
+                
+                foreach($interactions as $i)
+                {
+                    $result['passive_interactions'][] = $i->get_public_detail();
+                }
+            }
+            
+            if($iactive)
+            {
+                $result['active_interactions'] = [];
+                $transporter_model = new Transporters();
+                $transporters = $transporter_model
+                    ->join('transporter_datasets as td ON td.id = transporters.id_dataset AND td.visibility = ' . Transporter_datasets::VISIBLE)
+                    ->where('id_substance', $subs->id)
+                    ->select_list('transporters.*')
+                    ->get_all();
+
+                foreach($transporters as $t)
+                {
+                    $result['active_interactions'][] = $t->get_public_detail();
+                }
+            }
+
+            $results[] = $result;
+        }
+
+        if(count($id) > 1)
+        {
+            $err = 'Invalid output format for multiquery. Set just one identifier or use JSON output format instead.';
+            $this->responses = array
+            (
+                HeaderParser::HTML => $err,
+                HeaderParser::XLSX => $err,
+                HeaderParser::JSON => $results
+            );
+        }
+        else
+        {
+            $result = $results[0];
+            // Prepare HTML content
+            $html = new View('api/compounds/detail');
+            $html->data = new Iterable_object($result);
+            $html->substance = $substances[$id[0]];
+
+            // Prepare XLSX
+            $sheets = array
+            (
+                'General',
+                'Passive interactions',
+                'Active interactions'
+            );
+
+            $headers = array
+            (   
+                // General info header
+                array
+                (
+                    'identifiers.name' => 'Names',
+                    'identifiers.molmedb' => "MolMeDB identifier",
+                    'identifiers.inchikey'=> "InchiKey",
+                    'identifiers.smiles'  => 'SMILES',
+                    'identifiers.pubchem' => 'Pubchem IDs',
+                    'identifiers.pdb'     => 'PDB IDs',
+                    'identifiers.drugbank'=> 'Drugbank IDs',
+                    'identifiers.chembl'  => 'ChEMBL IDs',
+                    'molecular_weight'    => 'Molecular weight',
+                    'logp'                => 'LogP'
+                ),
+                // Passive
+                array
+                (
+                    'Membrane.name'         => 'Membrane',
+                    'Method.name'           => 'Method',
+                    'Charge'                => 'Charge',
+                    'Temperature.value'     => "Temperature",
+                    'Xmin.value'            => "Xmin",
+                    'Gpen.value'            => "Gpen",
+                    'Gwat.value'            => "Gwat",
+                    'LogK.value'            => "LogK",
+                    'LogPerm.value'            => "LogPerm",
+                    'Theta.value'            => "Theta",
+                    'Abs_wl.value'            => "Abs_wl",
+                    'Fluo_wl.value'            => "Fluo_wl",
+                    'QY.value'            => "QY",
+                    'lt.value'            => "lt",
+                    'References.primary'  => "Primary reference",
+                    'References.secondary'=> "Secondary reference",
+                ),
+                // Active
+                array 
+                (
+                    'Target.Name'       => "Target",
+                    'Target.Uniprot_id' => "Uniprot ID",
+                    'Type'              => "Type",
+                    "Note"              => "Note",
+                    "pKm"               => "pKm",
+                    "pKi"               => "pKi",
+                    "pEC50"             => "pEC50",
+                    "pIC50"             => "pIC50",
+                    'References.Primary'  => "Primary reference",
+                    'References.Secondary'=> "Secondary reference",
+                )
+            );
+
+            $fields = array
+            (
+                [$result['detail']],
+                isset($result['passive_interactions']) ? $result['passive_interactions'] : [],
+                isset($result['active_interactions']) ? $result['active_interactions'] : []
+            );
+    
+            $this->responses = array
+            (
+                HeaderParser::HTML => $html,
+                HeaderParser::XLSX => array
+                (
+                    'filename'   => 'compounds_detail',
+                    "sheets" => $sheets,
+                    'headers'=> $headers,
+                    'data'   => $fields
+                ),
+                HeaderParser::JSON => $result
+            );
+        }
+    }
+
+    /**
+     * Returns molecule data
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * @param @default[false] $ipassive - Include passive interactions?
+     * @param @default[false] $iactive - Include active interactions?
+     * 
+     * @PATH(/detail)
+     */
+    public function __P_detail($id, $ipassive, $iactive)
+    {
+        return $this->P_detail($id, $ipassive, $iactive);
+    }
+
+    /**
+     * Returns molecule data
+     * 
+     * @POST
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * @param @default[false] $ipassive - Include passive interactions?
+     * @param @default[false] $iactive - Include active interactions?
+     * 
+     * @PATH(/detail)
+     */
+    public function __P_detail_POST($id, $ipassive, $iactive)
+    {
+        return $this->P_detail($id, $ipassive, $iactive);
+    }
+
+
+
+    //////////////////////////////////////////////////////////////
+
+    ##############################################################
+    ########## compounds/exists/<id> #############################
+    ##############################################################
+
+    /**
+     * Fast check of existence of queried molecule
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * 
+     * @PATH(/exists/<id:.+>)
+     * @author Jakub Juracka
+     */
+    public function P_check_existence($id)
+    {
+        if(!is_string($id) && !is_numeric($id))
+        {
+            ResponseBuilder::bad_request('Invalid `id` parameter.');
+        }
+
+        $record = Substances::get_by_any_identifier($id);
+
+        if($record->id)
+        {
+            return 'true';
+        }
+        else
+        {
+            return 'false';
+        }
+    }
+
+    /**
+     * Fast check of existence of queried molecule
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * 
+     * @PATH(/exists)
+     * @author Jakub Juracka
+     */
+    public function __P_check_existence($id)
+    {
+        return $this->P_check_existence($id);
+    }
+
+    //////////////////////////////////////////////////////////////
+
+    ##############################################################
+    ########## compounds/frealitves/<id> #########################
+    ##############################################################
+
+    /**
+     * Returns functional relatives of given molecule
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * @PATH(/frelatives/<id:.+>)
+     */
+    public function P_func_relatives($id)
+    {
+        if(is_array($id))
+        {
+            ResponseBuilder::bad_request('Invalid `id` parameter value.');
+        }
+
+        $substance = Substances::get_by_any_identifier($id);
+
+        if(!$substance->id)
+        {
+            ResponseBuilder::not_found('Compound with id=`' . $id . '` not found.');
+        }
+
+        $sp_model = new Substance_pairs();
+
+        $data = $sp_model->by_substance($substance->id);
+
+        // Prepare JSON
+        $json = [
+            'query' => $id,
+            'q_substance' => $substance->get_public_detail(),
+            'relatives' => []
+        ];
+
+        try
+        {
+            $rdkit = new Rdkit();
+        }
+        catch(Exception $e)
+        {
+            $rdkit = false;
+        }
+
+        foreach($data as $row)
+        {
+            if($row->id_substance_1 == $row->id_substance_2)
+            {
+                continue;
+            }
+
+            $rel = [];
+            $reverse = ($row->id_substance_1 == $substance->id);
+
+            $rel['f_substance'] = $reverse ? $row->substance_2->get_public_detail() : $row->substance_1->get_public_detail();
+            $rel['tanimoto_sim'] = $rdkit !== false ? $rdkit->compute_similarity($row->substance_1->SMILES, $row->substance_2->SMILES, Rdkit::METRIC_TANIMOTO) : false;
+            $rel['tanimoto_sim'] = $rel['tanimoto_sim'] === false ? "N/A" : $rel['tanimoto_sim'];
+            
+            $core = !$reverse ? $row->fragmentation_2->core : $row->fragmentation_1->core;
+
+            $rel['detail'] = array
+            (
+                'core' => $core->fragment->fill_link_numbers($core->fragment->smiles, explode(',', $core->links)),
+                'add' => array
+                (
+                    'query' => array(),
+                    'relative' => array()
+                )
+            );
+
+            foreach((!$reverse ? $row->fragmentation_2->side : $row->fragmentation_1->side) as $sf)
+            {
+                $keys = ['relative', 'query'];
+                $target = $reverse ? 0 : 1;
+
+                $rel['detail']['add'][$keys[$target]][] = $sf->fragment->fill_link_numbers($sf->fragment->smiles, explode(',', $sf->links));
+            }
+
+            $json['relatives'][] = $rel;
+        }
+
+        // Prepare HTML output
+        $view = new View('fragments/relatives');
+        $view->data = $data;
+        $view->substance = $substance;
+
+        $this->responses = array
+        (
+            HeaderParser::HTML => $view->__toString(),
+            HeaderParser::JSON => $json
+        );
+    }
+
+    /**
+     * ALIAS
+     *
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * @PATH(/frelatives)
+     */
+    public function __P_func_relatives($id)
+    {
+        return $this->P_func_relatives($id);
+    }
+
+
+    //////////////////////////////////////////////////////////////
+
+    ##############################################################
+    ########## compounds/structure/<id> #########################
+    ##############################################################
+
+    /**
+     * Returns structure of molecule
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * 
+     * @PATH(/structure/<id:.+>)
+     */
+    public function P_structure($id)
+    {
+        if(is_array($id))
+        {
+            ResponseBuilder::bad_request('Invalid `id` parameter value.');
+        }
+
+        $substance = Substances::get_by_any_identifier($id);
+
+        if(!$substance->id)
+        {
+            ResponseBuilder::not_found('Compound with id=`' . $id . '` not found.');
+        }
+
+        $structures_3d = array_values($substance->get_all_3D_structures());
+        $structure_file = count($structures_3d) ? $structures_3d[0] : null;
+
+        // Not check SSL certificate
+        $arrContextOptions=array(
+            "ssl"=>array(
+                "verify_peer"=>false,
+                "verify_peer_name"=>false,
+            ),
+        ); 
+
+        $html = new View('api/compounds/structure');
+        $html->substance = $substance;
+        $html->structure_3d = $structure_file;
+
+        $this->responses = array
+        (
+            HeaderParser::SVG => file_get_contents('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($substance->SMILES), false, stream_context_create($arrContextOptions)),
+            HeaderParser::HTML => $html,
+            HeaderParser::SDF => $structure_file !== null ? file_get_contents($structure_file['path']) : 'N/A',
+            HeaderParser::JSON => array
+            (
+                'query'  => $id,
+                'smiles' => $substance->SMILES,
+                'sdf'    => $structure_file !== null ? file_get_contents($structure_file['path']) : 'N/A'
+            ),
+            HeaderParser::SMI => $substance->SMILES
+        );
+    }
+
+    /**
+     * ALIAS
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * 
+     * @PATH(/structure)
+     */
+    public function __P_structure($id)
+    {
+        return $this->P_structure($id);
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### END OF PUBLIC ##################################
+    ################################################################################
+    ################################################################################
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### INTERNAL #######################################
+    ################################################################################
+    ################################################################################
+
+    ///////////////////////////////////////////////////////////////////////////////
+
     /**
      * Returns molecular fragments of molecule
      * 
@@ -192,20 +689,17 @@ class ApiCompounds extends ApiController
      * Returns molecule data
      * 
      * @GET
-     * @param @required $id
-     * @param @default[true] $pi - Include passive interactions?
-     * @param @default[true] $ai - Include active interactions?
+     * @INTERNAL
      * 
-     * @PATH(/detail)
+     * @param @required $id
+     * @param @default[false] $ipassive - Include passive interactions?
+     * @param @default[false] $iactive - Include active interactions?
+     * 
+     * @PATH(/internal/detail)
      */
-    public function detail($id, $pi, $ai)
+    public function detail_internal($id, $ipassive, $iactive)
     {
         $subs = new Substances($id);
-
-        if(!$subs->id)
-        {
-            $subs = $subs->where('identifier', $id)->get_one();
-        }
 
         if(!$subs->id)
         {
@@ -216,7 +710,7 @@ class ApiCompounds extends ApiController
 
         $result['detail'] = $subs->as_array();
         
-        if($pi)
+        if($ipassive)
         {
             $result['passive_interactions'] = [];
             $interaction_model = new Interactions();
@@ -233,7 +727,7 @@ class ApiCompounds extends ApiController
                 }
             }
          
-        if($ai)
+        if($iactive)
         {
             $result['active_interactions'] = [];
             $transporter_model = new Transporters();
@@ -252,6 +746,7 @@ class ApiCompounds extends ApiController
 
         return $result;
     }
+
     
     /**
      * Returns similar entries

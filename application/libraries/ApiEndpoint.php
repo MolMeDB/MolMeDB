@@ -325,6 +325,15 @@ class ApiEndpoint
                 ResponseBuilder::server_error("Invalid endpoint definition.");
             }
 
+            if($params[$name] == 'false')
+            {
+                $params[$name] = false;
+            }
+            else if($params[$name] == 'true')
+            {
+                $params[$name] = true;
+            }
+
             $final_params[$name] = $params[$name];
         }
         

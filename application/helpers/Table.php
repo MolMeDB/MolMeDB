@@ -298,7 +298,7 @@ class Table
         {
             return '';
         }
-        
+
         return $output->__toString();
     }
 
@@ -650,7 +650,11 @@ class Table_column
     {
         if(!is_object($object))
         {
-            throw new Exception('Invalid instance of object.');
+            if(!is_array($object))
+            {
+                throw new Exception('Invalid instance of object.');
+            }
+            $object = new Iterable_object($object);
         }
 
         $attribute = $this->key;
@@ -666,6 +670,10 @@ class Table_column
             }
 
             $value = $value->$k;
+            if(is_array($value))
+            {
+                $value = new Iterable_object($value);
+            }
         }
 
         $value = $invoke_callback ? $this->invoke_callback($value) : $value;
@@ -704,7 +712,11 @@ class Table_column
     {
         if(!($object instanceof Iterable_object))
         {
-            throw new Exception('Invalid instance of object.');
+            if(!is_array($object))
+            {
+                throw new Exception('Invalid instance of object.');
+            }
+            $object = new Iterable_object($object);
         }
 
         if(!$this->acc_key)
@@ -725,6 +737,10 @@ class Table_column
             }
 
             $value = $value->$k;
+            if(is_array($value))
+            {
+                $value = new Iterable_object($value);
+            }
         }
 
         if($value === null)

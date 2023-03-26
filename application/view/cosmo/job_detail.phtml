@@ -1,0 +1,208 @@
+
+<h3>Input</h3>
+<div style="display:flex; flex-direction: column; justify-content: center; align-items: center;">
+    <table class="table">
+        <tr>
+            <th>ID fragment</th>
+            <td><?= $cosmo->id_fragment ?></td>
+        </tr>
+        <tr>
+            <th>Molecule</th>
+            <td><?= $substance->id ? Html::anchor('mol/' . $substance->identifier, $substance->name, true) : 'NA' ?></td>
+        </tr>
+        <tr>
+            <th>SMILES</th>
+            <td><?= $cosmo->fragment->smiles ?></td>
+        </tr>
+        <tr>
+            <th>Structure</th>
+            <td><?= Html::image_structure($cosmo->fragment->smiles) ?></td>
+        </tr>
+        <tr>
+            <th>Create datetime</th>
+            <td><?= date('Y-m-d H:i',strtotime($cosmo->create_date)) ?></td>
+        </tr>
+    </table>
+</div>
+
+<div class="general-info">
+    <h3>Jobs</h3>
+    <table class="table">
+        <thead>
+            <th>ID</th>
+            <th>State</th>
+            <th>Status</th>
+            <th>Temperature</th>
+            <th>Membrane</th>
+            <th>Method</th>
+            <th>Priority</th>
+            <th>Create date</th>
+            <th>Last update date</th>
+        </thead>
+        <tbody>
+            <?php foreach($cosmo_records as $cosmo) : ?>
+                <tr>
+                    <td><?= $cosmo->id ?></td>
+                    <td><?= $cosmo->get_enum_state(NULL, TRUE) ?></td>
+                    <td>
+                        <?= $cosmo->get_enum_status() ?>
+                        <?php if($cosmo->status == Run_cosmo::STATUS_ERROR) : ?>
+                        <a href="/validator/force_cosmo_run/0/<?= $cosmo->id ?>?redirection=<?= Url::current() ?>" title="Recompute all"><span style="cursor:pointer;" class="glyphicon glyphicon-repeat"></span></a>
+                        <?php endif ?>
+                    </td>
+                    <td><?= $cosmo->temperature ?></td>
+                    <td><?= $cosmo->membrane->name ?></td>
+                    <td><?= $cosmo->get_enum_method() ?></td>
+                    <td><?= $cosmo->get_enum_priority() ?></td>
+                    <td><?= $cosmo->create_date ?></td>
+                    <td><?= $cosmo->last_update ?></td>
+                </tr>
+            <?php endforeach ?>
+        </tbody>
+    </table>
+</div>
+
+<div class="general-info">
+    <h3>Computation</h3>
+        <?php if(count($ion_states)): ?>
+            <h4>Ionization states for pH range: <?= $ion_job->ph_start ?>-<?= $ion_job->ph_end ?></h4>
+            <table class="table">
+                <thead>
+                    <th>ID</th>
+                    <th>SMILES</th>
+                    <th>Q</th>
+                    <th>Structure</th>
+                    <th>State</th>
+                    <th>Log</th>
+                    <th>Conformers [SDF]</th>
+                </thead>
+                <tbody>
+                    <?php foreach($ion_states as $ion) : ?>
+                        <tr>
+                            <td style="background-color: <?= 
+                                $ion->cosmo_flag == Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE ?
+                                '#d96055' : ($ion->cosmo_flag == Fragment_ionized::COSMO_F_OPTIMIZE_ERR_PARTIAL ? '#e39229' : '#3adb35');
+                            ?>;"><?= $ion->id ?></td>
+                            <td><?= $ion->smiles ?></td>
+                            <td><?= $cosmo->fragment->get_charge($ion->smiles) ?></td>
+                            <td><?= Html::image_structure($ion->smiles) ?></td>
+                            <td><?= 
+                                $ion->cosmo_flag == Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE ?
+                                'Invalid' : 'OK';
+                            ?></td>
+                            <td>
+                                <?php if(isset($python_logs[$ion->id])) : ?> 
+                                    <span class="glyphicon glyphicon-ok-circle popup-hover" style="color: green;">
+                                        <div style="width: 400px !important; max-width: 400px !important;">
+                                        <?= str_replace("\n", "<br/>", $python_logs[$ion->id]) ?>
+                                        </div>
+                                    </span>
+                                <?php endif ?>
+                            </td>
+                            <td style="text-align:center;">
+                                <?php if($cosmo->state >= Run_cosmo::STATE_SDF_READY) : ?>
+                                    <?= Html::anchor('download/conformers/' . $cosmo->id_fragment . '/' . $ion->id, '<span class="glyphicon glyphicon-download-alt"></span>', FALSE, TRUE) ?>
+                                <?php endif ?>
+                            </td>
+                        </tr>
+                    <?php endforeach ?>
+                </tbody>
+            </table>
+        <?php endif ?>
+</div>
+
+
+<div class="general-info">
+    <h3>COSMO results</h3>
+        <?php foreach($ion_states as $ion) : ?>
+            <?php if($ion->cosmo_flag != Fragment_ionized::COSMO_F_COSMO_PARSED) {continue;} ?>
+            <table class="table">
+                <thead>
+                    <th>ID</th>
+                    <th>SMILES</th>
+                    <th>Charge</th>
+                    <th>Structure</th>
+                    <th>Cosmo results</th>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><?= $ion->id ?></td>
+                        <td><?= $ion->smiles ?></td>
+                        <td><?= $cosmo->fragment->get_charge($ion->smiles) ?></td>
+                        <td><?= Html::image_structure($ion->smiles) ?></td>
+                        <td>
+                            <?php if($ion->cosmo_flag >= Fragment_ionized::COSMO_F_COSMO_DOWNLOADED) : ?>
+                                <?= Html::anchor('download/cosmo_results/' . $cosmo->id_fragment . '/' . $ion->id, 'Download', FALSE, TRUE) ?>
+                            <?php else : ?>
+                                In progress...
+                            <?php endif ?>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="display: flex; flex-direction: row; justify-content: space-around; margin-bottom: 50px;">
+                <div>
+                    <?php 
+                        $t = new Table([
+                            Table::S_SHOW_PAGINATION => FALSE,
+                            Table::S_PAGINATIOR_POSITION => 'left',
+                            Table::S_NODATA => "No data found..."
+                        ]);
+                        $t->column('membraneName')
+                            ->title('Membrane')
+                            ->css(array
+                            (
+                                'text-align' => 'center' // Centering - flex - justify-content: center;
+                            ));
+
+                        $t->column('methodName')
+                            ->title('Method')
+                            ->css(array
+                            (
+                                'text-align' => 'center' // Centering - flex - justify-content: center;
+                            ));
+
+                        $t->column('temperature')
+                        ->css(array
+                        (
+                            'text-align' => 'center' // Centering - flex - justify-content: center;
+                        ))
+                            ->title('Temeperature');
+                        $t->column('logK')
+                        ->css(array
+                        (
+                            'text-align' => 'center' // Centering - flex - justify-content: center;
+                        ))
+                            ->title('LogK');
+                        $t->column('logPerm')
+                        ->css(array
+                        (
+                            'text-align' => 'center' // Centering - flex - justify-content: center;
+                        ))
+                            ->title('LogPerm');
+
+                        $t->datasource(array_filter($cosmo_results[$ion->id], function($a){return is_object($a) && property_exists( $a, 'membraneName');}));
+                        echo $t->html();
+                    ?>
+                </div>
+                <div>
+                    <div style="width: 500px; height: 300px;" id="e_chart_<?= $ion->id ?>"></div>
+                </div>
+            </div>
+        <?php endforeach ?>
+</div>
+
+
+<script src="js/lineChart.js"></script>
+
+<script>
+window.onload = function ()
+{
+    <?php foreach($ion_states as $ion)
+    {
+        if($ion->cosmo_flag != Fragment_ionized::COSMO_F_COSMO_PARSED) {continue;} 
+        $json = json_encode($cosmo_results[$ion->id]);
+        echo 'createLineChart(\'' . $json . '\', "e_chart_' . $ion->id . '");';
+    } ?>
+};
+</script>

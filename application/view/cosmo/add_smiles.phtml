@@ -1,0 +1,30 @@
+<h3>Add new cosmo computation records</h3>
+
+<p>Please, upload file with SMILES records. These structures will be added (if not exists) to the DB and added to the COSMO queue.</p>
+<p>Remember, file must be in the following format: each row should contain one smiles record without any additional info.</p>
+
+<form action="/validator/add_cosmo_smi" method="POST" enctype='multipart/form-data'>
+    <label>SMILES file:</label>
+    <input type="file" name="smiles" required><br/>
+    <label>Membrane:</label><br/>
+    <select name="id_membrane" required>
+        <?php foreach($membranes as $mem): ?>
+            <option value="<?= $mem->id ?>"><?= $mem->name ?></option>
+        <?php endforeach ?>
+    </select><br/><br/>
+    <label>Method:</label><br/>
+    <select name="method" required>
+        <?php foreach($methods as $val => $name): ?>
+            <option value="<?= $val ?>"><?= $name ?></option>
+        <?php endforeach ?>
+    </select><br/><br/>
+    <label>Priority:</label><br/>
+    <select name="priority" required>
+        <?php foreach($priorities as $val => $name): ?>
+            <option value="<?= $val ?>"><?= $name ?></option>
+        <?php endforeach ?>
+    </select><br/><br/>
+    <label>Temperature: [°C]</label><br/>
+    <input type="number" name="temperature" required/><br/><br/>
+    <button type="submit" class="btn btn-sm btn-success">Upload</button>
+</form>

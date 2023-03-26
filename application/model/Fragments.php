@@ -50,6 +50,67 @@ class Fragments extends Db
     }
 
     /**
+     * Checks, if fragment has neutral charge
+     * 
+     * @return bool
+     */
+    public function is_neutral($smiles = NULL)
+    {
+        if(!$smiles && $this && $this->id)
+        {
+            $smiles = $this->smiles;
+        }
+
+        if(!$smiles)
+        {
+            return false;
+        }
+
+        return preg_match('/[+-]+/', $smiles) !== false;
+    }
+
+    /**
+     * Returns charge of molecule
+     * 
+     * @return bool
+     */
+    public function get_charge($smiles = NULL)
+    {
+        if(!$smiles && $this && $this->id)
+        {
+            $smiles = $this->smiles;
+        }
+
+        if(!$smiles)
+        {
+            return false;
+        }
+
+        preg_match_all('/\[.*([+-]+\d*)\]/U', $smiles, $output);
+
+        $total = 0;
+
+        if(count($output) > 1)
+        {
+            $d = $output[1];
+
+            foreach($d as $c)
+            {
+                if(preg_match('/[+-]\d+/', $c))
+                {
+                    $total += intval($c);
+                }
+                else
+                {
+                    $total += substr_count($c, '+') - substr_count($c, '-');
+                }
+            }
+        }
+
+        return $total;
+    }
+
+    /**
      * Returns all options for given fragment
      * 
      * @param int $id_fragment
@@ -150,6 +211,29 @@ class Fragments extends Db
         }
 
         return $fet->id ? $fet->enum_type : null;
+    }
+
+    
+    /**
+     * Returns substance which has validated current fragment
+     * 
+     * @return Substances
+     */
+    public function assigned_compound()
+    {
+        if(!$this || !$this->id)
+        {
+            return new Substances();
+        }
+
+        $r = Substances_fragments::instance()->where(array
+            (
+                'id_fragment' => $this->id,
+                'total_fragments' => 1
+            ))
+            ->get_one();
+
+        return new Substances($r && $r->id ? $r->id_substance : NULL);
     }
 
     /**

@@ -77,6 +77,23 @@ function editMembrane(id)
     textfield.value = data.description;
     ref_textfield.value = data.reference;
 
+    $('#cosmoFile').html("")
+
+    if(data.id_cosmo_file)
+    {
+        var cosmoContent = '<label style="color:green;"><a href="/file/download/' + data.id_cosmo_file + '">Exists.</a></label>';
+    }
+    else
+    {
+        var cosmoContent = '<label style="color:red;">Not found.</label>';
+    }
+
+    // Add file upload form
+    cosmoContent += "<br/><form method='POST' enctype='multipart/form-data' action='/file/add_cosmo'> <input hidden name='id_membrane' value='" + id + "'>";
+    cosmoContent += "<input type=\"file\" required name=\"cosmoFile\" accept='.mic'> <br/><button type='submit' class='btn btn-sm btn-info'>Upload new cosmo</button> </form>"; 
+
+    $('#cosmoFile').html(cosmoContent)
+
     // Append new structure
     desc_div.appendChild(textfield);
     parentDiv.appendChild(desc_div);

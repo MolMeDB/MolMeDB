@@ -706,6 +706,18 @@ function get_substance_id(attr)
     return null;
 }
 
+
+// Show new page as overlay
+function anchorInOverlay(path)
+{
+    path = path.trim('/')
+    path = url_prefix.trim('/') + "/" + path;
+    
+    overlay = $('#fs-overlay');
+    // overlay.show();
+
+}
+
 window.addEventListener("load", function()
 {
     /**
@@ -743,4 +755,12 @@ window.addEventListener("load", function()
             $('.feedback-form').hide();
         }
     });
+
+    $('a.onOverlay').on('click', function()
+    {
+        href = $(this).attr('href');
+        anchorInOverlay(href);
+        return false;
+    })
 });
+

@@ -234,6 +234,91 @@ class Rdkit extends Identifier_loader
     }
 
     /**
+     * Returns all ionization states of given molecule = list of smiles
+     * 
+     * @param string $smiles
+     * @param int $limit - Maximum number of output records
+     * 
+     * @return object
+     * @throws MmDbException
+     */
+    function get_ionization_states($smiles, $limit = 20)
+    {
+        if(!self::$STATUS || !$smiles)
+        {
+            return null;
+        }
+
+        $this->last_identifier = Validator_identifiers::ID_SMILES;
+
+        $uri = 'smiles/allCharges';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'smi' => $smiles,
+            'limit' => $limit
+        );
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params);
+
+            if(is_object($response) || is_array($response))
+            {
+                return $response;
+            }
+
+            return false;
+        }
+        catch(Exception $e)
+        {
+            return false;
+        } 
+    }
+
+    /**
+     * Returns conformers of molecule in SDF format - prepared for the COSMOperm calculations
+     * 
+     * @param string $smiles - Molecule SMILES
+     * @param string $name - Molecule name/identifier
+     * 
+     * @return object[]|false - List of SDF records
+     */
+    function get_cosmo_conformers($smiles, $name)
+    {
+        if(!self::$STATUS || !$smiles)
+        {
+            return null;
+        }
+
+        $this->last_identifier = Validator_identifiers::ID_SMILES;
+
+        $uri = 'cosmo/conformers';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'smi' => $smiles,
+            'name' => $name
+        );
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params, FALSE, 180);
+
+            if(is_object($response) || is_array($response))
+            {
+                return $response;
+            }
+
+            return false;
+        }
+        catch(Exception $e)
+        {
+            return false;
+        } 
+    }
+
+    /**
      * Returns fingerprint for given smiles
      * 
      * @param string $smiles

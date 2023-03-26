@@ -53,6 +53,13 @@ class Configs extends Db
     const EMAIL_SMTP_PASSWORD = "email_smtp_password";
     const EMAIL_ADMIN_EMAILS = 'email_admin_emails';
 
+    // COSMO attributes
+    const COSMO_ENABLED = "cosmo_enabled";
+    const COSMO_URL = "cosmo_url";
+    const COSMO_METACENTRUM_MAX_SDF = "cosmo_max_sdf";
+    const COSMO_METACENTRUM_MAX_ION = "cosmo_max_ion";
+    const COSMO_METACENTRUM_MAX_RUNNING = "cosmo_max_running";
+
 
     /** Defines valid config attributes */
     private $valid_attributes = array
@@ -86,6 +93,7 @@ class Configs extends Db
         self::S_UPDATE_PAIR_GROUPS_TIME,
         self::S_UPDATE_PAIR_GROUPS_STATS_TIME,
         self::S_MATCH_FUNCT_PAIRS,
+        // Email
         self::EMAIL_ENABLED,
         self::EMAIL,
         self::EMAIL_SERVER_USERNAME,
@@ -94,6 +102,12 @@ class Configs extends Db
         self::EMAIL_SMTP_USERNAME,
         self::EMAIL_SMTP_PASSWORD,
         self::EMAIL_ADMIN_EMAILS,
+        // COSMO
+        self::COSMO_ENABLED,
+        self::COSMO_URL,
+        self::COSMO_METACENTRUM_MAX_SDF,
+        self::COSMO_METACENTRUM_MAX_ION,
+        self::COSMO_METACENTRUM_MAX_RUNNING
     );
 
     /** Defines, which values must be regexp */

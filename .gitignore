@@ -3,11 +3,18 @@
 ### NetBeans ###
 **/nbproject/
 
+### Python cache ###
+**/__pycache**
+
+### Logs ####
+**/*.log
+
 ### Upload files ###
 **/files/upload/*
 **/files/uploadReports/*
 **/files/schedulerReports/*
 **/files/3DStructures/* 
+
 /vendor/**
 
 ### Config ###

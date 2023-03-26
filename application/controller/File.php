@@ -14,6 +14,97 @@ class FileController extends Controller
     }
 
     /**
+     * Adds cosmo file to the membrane
+     * 
+     * @author Jakub Juracka
+     */
+    public function add_cosmo()
+    {
+        // Target where to upload
+        $target = MEDIA_ROOT . 'files/membranes/';
+
+        $form = $this->form;
+        $redir = 'edit/membrane';
+
+        if(!$form->is_post() || !$this->form->has_file('cosmoFile'))
+        {
+            $this->alert->error('Endpoint is not accessible. Must be sent POST form data.');
+            $this->redirect($redir);
+        }
+
+        $membrane = new Membranes($form->param->id_membrane);
+
+        if(!$membrane->id)
+        {
+            $this->alert->error('Membrane not found..');
+            $this->redirect($redir);
+        }
+
+        try
+        {
+            Db::beginTransaction();
+
+            $file = $form->file->cosmoFile;
+            $target .= $membrane->id . '/cosmo/';
+
+            $file_o = new File($file->as_array());
+            $f_model = new Files();
+            
+            // Check if file already exists?
+            $exists = $f_model->get_by_hash($file_o);
+
+            if($exists->id)
+            {
+                $membrane->id_cosmo_file = $exists->id;
+                $membrane->save();            
+            }
+            else
+            {
+                if(intval($file_o->size) > 50000000) // 50mb max size
+                {
+                    throw new MmdbException('Sorry, your file is too large.', 'Sorry, your file is too large.');
+                }
+
+                if($file_o->extension !== 'mic') // Only CSV files allowed
+                {
+                    throw new MmdbException('Wrong file format. Upload only ".mic" files.', 'Wrong file format. Upload only ".mic" files.');
+                }
+
+                if($file_o->save_to_dir($target)) // Finally, move file to target directory
+                {
+                    $this->alert->warning('The file "' . $file_o->name . '" has been uploaded!');
+                }
+                else
+                {
+                    throw new MmdbException('Cannot move file to the target folder.');
+                }
+
+                // Make new DB record and return ID
+                $n_file = new Files();
+
+                $n_file->type = Files::T_MEMBRANE_COSMO;
+                $n_file->name = $file_o->name;
+                $n_file->path = $file_o->path;
+                $n_file->id_user = session::user_id();
+                $n_file->save();
+
+                $membrane->id_cosmo_file = $n_file->id;
+                $membrane->save();
+            }
+
+            Db::commitTransaction();
+            $this->alert->success('Membrane COSMO file saved.');
+        }   
+        catch(MmdbException $e)
+        {
+            Db::rollbackTransaction();
+            $this->alert->error($e);
+        }
+
+        $this->redirect($redir);
+    }
+
+    /**
      * Returns structure file of given molecule
      * 
      * @param int $id_substance

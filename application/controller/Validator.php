@@ -8,6 +8,16 @@
  */
 class ValidatorController extends Controller 
 {
+    /** MENU sections */
+    const M_CHECK_DUPLICITY = 1;
+    const M_COSMO = 2;
+
+    /** MENU ENDPOINTS */
+    private $menu_endpoints = array
+    (
+        self::M_CHECK_DUPLICITY => 'duplicity',
+        self::M_COSMO => 'cosmo',
+    );
 
     /**
      * Constructor
@@ -19,12 +29,425 @@ class ValidatorController extends Controller
     }
 
     /**
+     * Returns all menu items
+     * 
+     * @return array
+     */
+    public function get_menu_endpoints()
+    {
+        return $this->menu_endpoints;
+    }
+
+    /**
      * Default redirection
      */
     function index($params = NULL)
     {
         $this->redirect('validator/show');
     }
+
+    /**
+     * Cosmo computations handler
+     * 
+     * @param int $pagination
+     * 
+     */
+    public function cosmo($pagination = 1, $per_page = 50)
+    {
+        $cosmo_model = new Run_cosmo();
+        $params = $this->form->param;
+
+        $records = $cosmo_model->get_list($pagination, $per_page, $params->compound, $params->state, $params->status);
+        $total = $cosmo_model->get_list_count($params->compound, $params->state, $params->status);
+
+        $this->view = new View('cosmo/overview');
+        $this->view->jobs = $records;
+        $paginator = new View_paginator();
+        $paginator->path()
+            ->active($pagination)
+            ->records_per_page($per_page);
+
+        $paginator->total_records($total);
+        $this->view->paginator($paginator);
+        $this->view->total = $total;
+        $this->view->params = $params;
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', "administration", TRUE)
+            ->add('COSMO');
+
+        $this->title = 'COSMO';
+    }
+
+    /**
+     * Force cosmo run
+     * 
+     * @param int $id_fragment - If set, all runs for given fragment are forced
+     * @param int $id_job - Only one job to force
+     */
+    public function force_cosmo_run($id_fragment = NULL, $id_job = NULL)
+    {
+        $fragment = new Fragments($id_fragment);
+        $cosmo = new Run_cosmo($id_job);
+
+        if(!$fragment->id && !$cosmo->id)
+        {
+            $this->alert->error('Invalid parameters.');
+            $this->redirect('validator/cosmo');
+        }
+
+        if($cosmo->id)
+        {
+            $cosmo->forceRun = 1;
+            $cosmo->state = Run_cosmo::STATE_PENDING;
+            $cosmo->status = Run_cosmo::STATUS_OK;
+            $cosmo->save();
+        }
+        else
+        {
+            $jobs = Run_cosmo::instance()->where('id_fragment', $fragment->id)->get_all();
+
+            foreach($jobs as $j)
+            {
+                $j->forceRun = 1;
+                $j->state = Run_cosmo::STATE_PENDING;
+                $j->status = Run_cosmo::STATUS_OK;
+                $j->save();
+            }
+        }
+
+        $this->alert->success('Job will be recomputed in next run.');
+        $this->redirect('validator/cosmo');
+    }
+
+    /**
+     * Returns detailed description and state of COSMO computation
+     * 
+     * @param int $id
+     * 
+     */
+    public function cosmo_detail($id_fragment = NULL)
+    {
+        $cosmo_records = Run_cosmo::instance()->where('id_fragment', $id_fragment)->get_all();
+        $f = new File();
+
+        if(!count($cosmo_records))
+        {
+            $this->alert->error('Jobs not found.');
+            $this->redirect('validator/cosmo');
+        }
+
+        // Collect info to display
+        $cosmo_results = [];
+        $python_logs = [];
+        try
+        {
+            $ioniz_states = Fragment_ionized::instance()->where('id_fragment', $id_fragment)->get_all();
+            foreach($cosmo_records as $cosmo)
+            {
+                $substance = $cosmo->fragment->assigned_compound();
+
+                // Get results
+                if($cosmo->state >= Run_cosmo::STATE_RESULT_PARSED)
+                {
+                    foreach($ioniz_states as $ion)
+                    {
+                        if(!isset($cosmo_results[$ion->id]))
+                        {
+                            $cosmo_results[$ion->id] = [];
+                        }
+
+                        $cosmo_results[$ion->id][$cosmo->id] = new Iterable_object();
+
+                        $path = $f->prepare_conformer_folder($cosmo->fragment->id, $ion->id);
+
+                        $path = $path . 'COSMO/';
+
+                        if(!file_exists($path))
+                        {
+                            continue;
+                        }
+
+                        $files = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
+                        $prefix = strtolower($cosmo->get_script_method() . '_' . str_replace(' ', '-',$cosmo->membrane->name) . '_' . str_replace('.', ',', $cosmo->temperature));
+                        $prefix = trim($prefix);
+
+                        foreach($files as $pt)
+                        {
+                            if($prefix == strtolower(substr($pt, 0, strlen($prefix))))
+                            {
+                                $out_path = $path . $pt . '/' . 'cosmo_parsed.json';
+
+                                if(!file_exists($out_path))
+                                {
+                                    $cosmo->state = Run_cosmo::STATE_RESULT_DOWNLOADED;
+                                    $cosmo->save();
+                                    continue;
+                                }
+
+                                $data = json_decode(file_get_contents($out_path));
+                                
+                                foreach($data as $job)
+                                {
+                                    $energy_dist = $job->layer_positions;
+                                    $temp = $job->temperature;
+
+                                    foreach($job->solutes as $sol)
+                                    {
+                                        $e_values = [];
+                                        
+                                        foreach($sol->energy_values as $e)
+                                        {
+                                            $e_values[] = round($e, 2);
+                                        }
+
+                                        $cosmo_results[$ion->id][$cosmo->id] = (object)array
+                                        (
+                                            'logK' => $sol->logK,
+                                            'logPerm' => $sol->logPerm,
+                                            'energyValues' => $e_values,
+                                            'energyDistance' => $energy_dist,
+                                            'temperature' => $temp,
+                                            'membraneName' => $cosmo->membrane->name,
+                                            'methodName'   => $cosmo->get_enum_method()
+                                        );
+                                    }
+                                }
+                                continue 2;
+                            }
+                        }
+                    }
+                }
+            }
+
+            foreach($ioniz_states as $ion)
+            {
+                $path = $f->prepare_conformer_folder($id_fragment, $ion->id);
+                if(file_exists($path . 'cosmo.log'))
+                {
+                    $python_logs[$ion->id] = file_get_contents($path . 'cosmo.log');
+                }
+            }
+
+            // Prepare energy chart data
+            foreach($cosmo_results as $ion_id => $ion_data)
+            {
+                foreach($ion_data as $cosmo_id => $data)
+                {
+                    if(!$data->membraneName)
+                    {
+                        continue;
+                    }
+
+                    $distances = $data->energyDistance;
+                    $chart_data = [];
+
+                    sort($distances);
+                
+                    foreach($distances as $d)
+                    {
+                        $chart_data[] = (object)array
+                        (
+                            'x' => floatval($d)/10
+                        );
+                    }
+
+                    $yk = 'y';
+                    foreach($distances as $key => $d)
+                    {
+                        $index = array_search($d, $data->energyDistance);
+
+                        if($index === false)
+                        {
+                            $chart_data[$key]->$yk = null;
+                        }
+                        else
+                        {
+                            $chart_data[$key]->$yk = floatval($data->energyValues[$index]);
+                        }
+                    }
+
+                    $cosmo_results[$ion_id][$cosmo_id]->chart_data = $chart_data;
+                }
+            }
+        }
+        catch(MmdbException $e)
+        {
+            $this->alert->error($e);
+            $this->redirect('validator/cosmo');
+        }
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs->add('Administration', 'administration')
+            ->add('COSMO', 'validator/cosmo')
+            ->add('Fragment: ' . $id_fragment);
+
+        $this->title = 'Fragment ' . $id_fragment;
+        $this->view = new View('cosmo/job_detail');
+        $this->view->cosmo = $cosmo_records[0];
+        $this->view->cosmo_records = $cosmo_records;
+        $this->view->ion_states = $ioniz_states;
+        $this->view->substance = $substance;
+        $this->view->cosmo_results = $cosmo_results;
+        $this->view->python_logs = $python_logs;
+        $this->view->ion_job = Run_ionization::instance()->where('id_fragment', $id_fragment)->get_one();
+    }
+
+    /**
+     * Adds new smiles records to cosmo computations
+     */
+    public function add_cosmo_smi()
+    {
+        // Add new data
+        if($this->form->is_post())
+        {
+            try
+            {
+                Db::beginTransaction();
+                $membrane = new Membranes($this->form->param->id_membrane);
+                $method = $this->form->param->method;
+                $priority = $this->form->param->priority;
+                $temperature = $this->form->param->temperature;
+
+                if(!Run_cosmo::is_valid_method($method))
+                {
+                    throw new MmdbException('Invalid method.', "Invalid method.");
+                }
+
+                if(!Run_cosmo::is_valid_priority($priority))
+                {
+                    throw new MmdbException('Invalid priority value.', "Invalid priority value.");
+                }
+
+                if(!$membrane->id)
+                {
+                    throw new MmdbException('Invalid membrane id.', "Invalid membrane id.");
+                }
+
+                if($temperature == NULL || !is_numeric($temperature))
+                {
+                    throw new MmdbException('Invalid temperature value.', 'Invalid temperature value.');
+                }
+
+                if(!$this->form->has_file('smiles'))
+                {
+                    throw new MmdbException('No SMILES file uploaded.', 'No SMILES file uploaded.');
+                }
+
+                $f = fopen($this->form->file->smiles->tmp_name, 'r');
+
+                if(!$f)
+                {
+                    throw new MmdbException('Cannot read SMILES file content.', 'Cannot read SMILES file content.');
+                }
+
+                $lines = [];
+
+                while(($line = fgets($f)) !== false)
+                {
+                    if(strlen($line) > 2)
+                    {
+                        $lines[] = trim($line);
+                    }
+                }
+
+                fclose($f);
+
+                // Canonize each smiles
+                $canonized = [];
+                $rdkit = new Rdkit();
+                $f = new Fragments();
+
+                foreach($lines as $l)
+                {
+                    $can = $rdkit->canonize_smiles($l);
+
+                    if($can == false)
+                    {
+                        throw new MmdbException('Cannot canonize smiles ' . $l . '. Please, check the input.', 'Cannot canonize smiles ' . $l . '. Please, check the input.');
+                    }
+
+                    // Check if structure is neural
+                    if(!$f->is_neutral($can))
+                    {
+                        throw new MmdbException('Structure ' . $can . ' doesnt look to be neutral.', 'Structure ' . $can . ' doesnt look to be neutral.');
+                    }
+
+                    $canonized[] = $can;
+                }
+
+                $fragments = [];
+
+                foreach($canonized as $c)
+                {
+                    $record = new Fragments();
+                    $record->smiles = $c;
+                    $record->save();
+
+                    $fragments[] = $record;
+                }
+
+                // Add to the queue
+                foreach($fragments as $f)
+                {
+                    // Check if already exists
+                    $exists = Run_cosmo::instance()->where(array
+                    (
+                        'id_fragment' => $f->id,
+                        'temperature' => $temperature,
+                        'id_membrane' => $membrane->id,
+                        'method'      => $method,
+                    ))->get_one();
+
+                    if($exists->id)
+                    {
+                        $this->alert->warning('Current setting already exists for structure ' . $f->smiles);
+                        continue;
+                    }
+
+                    $q = new Run_cosmo();
+
+                    $q->id_fragment = $f->id;
+                    $q->temperature = $temperature;
+                    $q->id_membrane = $membrane->id;
+                    $q->method = $method;
+
+                    $q->save();
+                }
+
+                Db::commitTransaction();
+                $this->alert->success('New queue records were created.');
+                $this->redirect('validator/cosmo');
+            }
+            catch(MmdbException $e)
+            {
+                Db::rollbackTransaction();
+                $this->alert->error($e);
+                $this->redirect('validator/cosmo');
+            }
+        }
+
+        // Load all membrane options
+        $membranes = Membranes::instance()->where('id_cosmo_file IS NOT', "NULL")->get_all();
+
+        $this->title = 'Add smiles';
+        $this->view = new View('cosmo/add_smiles');
+        $this->view->membranes = $membranes;
+        $this->view->methods = Run_cosmo::get_all_methods();
+        $this->view->priorities = Run_cosmo::get_all_priorities();
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', 'administration', TRUE)
+            ->add('COSMO', 'validator/cosmo', true)
+            ->add('Add new records to queue');
+    }
+
+
+    /**
+     * 
+     */
 
     // /**
     //  * Shows detail of scheduler compound errors

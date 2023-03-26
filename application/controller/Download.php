@@ -28,6 +28,141 @@ class DownloadController extends Controller
     );
 
     /**
+     * Download conformers of molecule
+     * 
+     * @param int $id_fragment
+     * @param int $id_ion
+     * 
+     * @author Jakub Juracka
+     */
+    public function conformers($id_fragment, $id_ion)
+    {
+        $fragment = new Fragments($id_fragment);
+        $ion = new Fragment_ionized($id_ion);
+        $redirect = isset($_GET['redir']) ? $_GET['redir'] : 'validator/cosmo';
+
+        if(!$fragment->id || !$ion->id || $fragment->id != $ion->id_fragment)
+        {
+            $this->alert->warning('Invalid fragment/ion parameter.');
+            $this->redirect($redirect);
+        }
+
+        $f = new File();
+
+        $path = $f->prepare_conformer_folder($fragment->id, $ion->id);
+
+        if(!file_exists($path))
+        {
+            $this->alert->warning('No files found.');
+            $this->redirect($redirect);
+        }
+
+        $files = scandir($path);
+        $files = array_filter($files, function($a){return preg_match('/\.(sdf)$/', $a);});
+        
+        foreach(array_keys($files) as $k)
+        {
+            $files[$k] = $path . $files[$k];
+        }
+
+        $zip = $f->zip($files, $path . 'conformers.zip');
+
+        if(!$zip)
+        {
+            $this->alert->warning('Cannot make the zip file.');
+            $this->redirect($redirect); 
+        }
+
+        $filename = $fragment->id . '_' . $ion->id . '_ion';
+
+        header('Content-Tpe: application/zip');
+        // tell the browser we want to save it instead of displaying it
+        header('Content-Disposition: attachment; filename="'.$filename.'.zip";');
+        header("Content-length: " . filesize($zip));
+        header("Pragma: no-cache"); 
+        header("Expires: 0"); 
+        readfile("$zip");
+    }   
+
+    /**
+     * Download cosmo files of molecule
+     * 
+     * @param int $id_fragment
+     * @param int $id_ion
+     * 
+     * @author Jakub Juracka
+     */
+    public function cosmo_results($id_fragment, $id_ion)
+    {
+        $fragment = new Fragments($id_fragment);
+        $ion = new Fragment_ionized($id_ion);
+        $run = Run_cosmo::instance()->where('id_fragment', $fragment->id)->get_one();
+        $redirect = isset($_GET['redir']) ? $_GET['redir'] : 'validator/cosmo';
+
+        if(!$fragment->id || !$ion->id || $fragment->id != $ion->id_fragment || !$run->id)
+        {
+            $this->alert->warning('Invalid fragment/ion parameter.');
+            $this->redirect($redirect);
+        }
+
+        $f = new File();
+
+        $path = $f->prepare_conformer_folder($fragment->id, $ion->id);
+        $path = $path . 'COSMO/';
+
+        if(!file_exists($path))
+        {
+            $this->alert->warning('No files found.');
+            $this->redirect($redirect);
+        }
+
+        $files = scandir($path);
+        $prefix = strtolower($run->get_script_method() . '_' . $run->membrane->name . '_' . floatval($run->temperature));
+        $prefix = trim($prefix);
+        
+        foreach($files as $pt)
+        {
+            $pt = preg_replace('/^\.+/', '', $pt);
+
+            if($prefix == strtolower(substr($pt, 0, strlen($prefix))))
+            {
+                $files = scandir($path . $pt);
+
+                $files = array_filter($files, function($a){return !preg_match('/^\./', $a);});
+
+                
+                foreach(array_keys($files) as $k)
+                {
+                    $files[$k] = $path . $pt . "/" . $files[$k];
+                }
+
+                $zip = $f->zip($files, $path . 'cosmo.zip');
+
+                if(!$zip)
+                {
+                    $this->alert->warning('Cannot make the zip file.');
+                    $this->redirect($redirect); 
+                }
+
+                $filename = $fragment->id . '_' . $ion->id . '_cosmo';
+
+                header('Content-Tpe: application/zip');
+                // tell the browser we want to save it instead of displaying it
+                header('Content-Disposition: attachment; filename="'.$filename.'.zip";');
+                header("Content-length: " . filesize($zip));
+                header("Pragma: no-cache"); 
+                header("Expires: 0"); 
+                readfile("$zip");
+                die;
+            }
+        }
+
+        $this->alert->warning('No files found.');
+        $this->redirect($redirect);
+    }   
+
+
+    /**
      * Main function
      */
     public function index($path = self::PATH_PASSIVE)

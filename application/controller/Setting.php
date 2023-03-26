@@ -18,6 +18,7 @@ class SettingController extends Controller
     const MENU_SYSTEM = 'system';
     const MENU_ENUM_TYPES = 'enum_types';
     const MENU_SCHEDULER = "scheduler";
+    const MENU_COSMO = "cosmo";
 
     /**
      * System settings
@@ -375,6 +376,131 @@ class SettingController extends Controller
     }
 
     /**
+     * Cosmo settings
+     * 
+     * 
+     */
+    public function cosmo()
+    {
+        $user = new Users(session::user_id());
+        $u = Users_metacentrum::instance()
+            ->where('id_user', $user->id)
+            ->get_one();
+
+        $forge = new Forge('Cosmo settings');
+
+        $forge->add('cosmo_enabled')
+            ->title('Cosmo enabled')
+            ->type('checkbox')
+            ->value(1)
+            ->checked($this->config->get(Configs::COSMO_ENABLED));
+
+        $forge->add('remote_address')
+            ->title('Remote address')
+            ->value($this->config->get(Configs::COSMO_URL));
+
+        $forge->add('max_sdf')
+            ->title('Max molecules in SDF state')
+            ->value($this->config->get(Configs::COSMO_METACENTRUM_MAX_SDF));
+
+        $forge->add('max_ion')
+            ->title('Max molecules in ionized state')
+            ->value($this->config->get(Configs::COSMO_METACENTRUM_MAX_ION));
+
+        $forge->add('max_running')
+            ->title('Max running jobs')
+            ->value($this->config->get(Configs::COSMO_METACENTRUM_MAX_RUNNING));
+
+        $forge->add('account_enabled')
+            ->title('[' . $user->name . '] Account enabled')
+            ->type('checkbox')
+            ->value(1)
+            ->checked($u->id ? $u->enabled : '0');
+
+        $forge->add('username')
+            ->title('[' . $user->name . '] Sever login')
+            ->value($u->id ? $u->login : '');
+
+        $forge->add('password')
+            ->type('password')
+            ->title('[' . $user->name . '] Server password')
+            ->value($u->id ? Users_metacentrum::unhash($u->password) : '');
+
+        $forge->submit('Save');
+
+        $forge->init_post();
+
+        // Save new system config
+        if($this->form->is_post())
+        {
+            try
+            {
+                Db::beginTransaction();
+
+                $total_activated = count(Users_metacentrum::instance()->where('enabled', '1')->get_all());
+                $err = false;
+
+                if($this->form->param->cosmo_enabled && 
+                    (!$this->form->param->remote_address || 
+                    !$this->form->param->max_sdf || 
+                    !$this->form->param->max_ion || 
+                    !$this->form->param->max_running))
+                {
+                    $this->alert->warning('All cosmo settings must be set to enable cosmo computations.');
+                    $err = true;
+                }
+                else if($this->form->param->cosmo_enabled && !$total_activated && !$this->form->param->account_enabled)
+                {
+                    $this->alert->warning('At least one account must be enabled to enable cosmo computations.');
+                    $err = true;
+                }
+                else
+                {
+                    $this->config->set(Configs::COSMO_ENABLED, $this->form->param->cosmo_enabled ? 'true' : "false");
+                    $this->config->set(Configs::COSMO_URL, $this->form->param->remote_address);
+                    $this->config->set(Configs::COSMO_METACENTRUM_MAX_RUNNING, $this->form->param->max_running);
+                    $this->config->set(Configs::COSMO_METACENTRUM_MAX_ION, $this->form->param->max_ion);
+                    $this->config->set(Configs::COSMO_METACENTRUM_MAX_SDF, $this->form->param->max_sdf);
+                }   
+
+                if($this->form->param->account_enabled && (!$this->form->param->username || !$this->form->param->password))
+                {
+                    $this->alert->warning('Please, fill all account setting fields.'); 
+                    $err = true;
+                }
+                else if($this->form->param->username && $this->form->param->password)
+                {
+                    $u->enabled = $this->form->param->account_enabled ? 1 : 0;
+                    $u->login = $this->form->param->username;
+                    $u->password = Users_metacentrum::hash($this->form->param->password);
+                    $u->save();
+                }
+
+                if(!$err)
+                {
+                    $this->alert->success('Saved.');
+                    Db::commitTransaction();
+                }
+                else
+                {
+                    Db::rollbackTransaction();
+                }
+            }
+            catch(MmdbException $e)
+            {
+                Db::rollbackTransaction();
+                $this->alert->error($e);
+            }
+        }
+
+        $this->title = 'Cosmo setting';
+
+        $this->view = new View('settings/cosmo');
+        $this->view->navigator = self::createNavigator(self::MENU_COSMO);
+        $this->view->forge = $forge;
+    }
+
+    /**
      * Creates navigator for editor
      * 
      * @param string $active
@@ -407,6 +533,13 @@ class SettingController extends Controller
                 'name' => 'Scheduler',
                 'glyphicon' => 'time',
                 'ref' => self::MENU_SCHEDULER
+            ),
+            array
+            (
+                'type'  => self::MENU_COSMO,
+                'name' => 'Cosmo',
+                'glyphicon' => 'certificate',
+                'ref' => self::MENU_COSMO
             ),
         );
 

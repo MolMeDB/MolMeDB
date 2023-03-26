@@ -52,7 +52,7 @@ class Html
      * 
      * @return string
      */
-    public static function anchor($url, $title, $new_tab = FALSE)
+    public static function anchor($url, $title, $new_tab = FALSE, $include_redirection = FALSE)
     {
         if(!preg_match('/^http/', $url))
         {
@@ -62,6 +62,11 @@ class Html
         if(!strlen(trim($title)))
         {
             $title = '[_LINK]';
+        }
+
+        if($include_redirection)
+        {
+            $url .= "?redir=" . Url::redirect();
         }
 
         return "<a href='$url'" . ($new_tab ? 'target="_blank"' : '') . ">$title</a>";

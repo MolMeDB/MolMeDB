@@ -4,6 +4,165 @@ var res = [];
 var dataset = [];
 var export_data = [];
 
+var visibleCharts = {};
+
+/**
+ * Renders chart to the target. If exists and clear=false, then will be just added
+ * 
+ * @param {object} data 
+ * @param {string} targetID 
+ * @param {boolean} clear 
+ */
+function createLineChart(data, targetID, clear = false)
+{
+    if(typeof(data) == 'string')
+    {
+        data = JSON.parse(data);
+    }
+    
+    // Already exists? Add chart to existing one
+    if(targetID in visibleCharts && !clear)
+    {
+
+    }
+    else // Create new one
+    {
+        // Get yValue series keys
+        if(Object.keys(data).length)
+        {
+            let keys = Object.keys(data);
+            for(k in keys)
+            {
+                if(!data[keys[k]].chart_data)
+                {
+                    continue;
+                }
+
+                let d = data[keys[k]].chart_data;
+                let chartData = [];
+                
+                for(x in d)
+                {
+                    chartData.push(
+                        {
+                            x_dist: d[x].x,
+                            x: parseInt(x),
+                            y: d[x].y,
+                            membrane: data[keys[k]].membraneName,
+                            method: data[keys[k]].methodName,
+                            temperature: data[keys[k]].temperature
+                        }
+                    )
+                }
+
+                data[keys[k]].chart_data = chartData;
+            }
+        }
+        else
+        {
+            console.log("No data found...");
+            return;
+        }
+
+        console.log(data);
+
+        am5.ready(function() {
+            // Create root element
+            // https://www.amcharts.com/docs/v5/getting-started/#Root_element
+            var root = am5.Root.new(targetID);
+            
+            // Set themes
+            // https://www.amcharts.com/docs/v5/concepts/themes/
+            root.setThemes([
+              am5themes_Animated.new(root)
+            ]);
+            
+            
+            // Create chart
+            // https://www.amcharts.com/docs/v5/charts/xy-chart/
+            var chart = root.container.children.push(am5xy.XYChart.new(root, {
+              panX: false,
+              panY: false,
+              wheelX: null,
+              wheelY: null,
+              pinchZoomX:false
+            }));
+            
+            
+            // Add cursor
+            // https://www.amcharts.com/docs/v5/charts/xy-chart/cursor/
+            var cursor = chart.set("cursor", am5xy.XYCursor.new(root, {
+              behavior: "none"
+            }));
+            cursor.lineY.set("visible", false);
+            
+            
+            // Create axes
+            // https://www.amcharts.com/docs/v5/charts/xy-chart/axes/
+            var xAxis = chart.xAxes.push(am5xy.ValueAxis.new(root, {
+              renderer: am5xy.AxisRendererX.new(root, {}),
+            //   tooltip: am5.Tooltip.new(root, {}),
+              min: 0,
+              max: 50,
+            //   tooltipNumberFormat: "#.##",
+              extraTooltipPrecision: 2
+            }));
+            
+            var yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, {
+              renderer: am5xy.AxisRendererY.new(root, {})
+            }));
+
+            let allSeries = [];
+
+            let keys = Object.keys(data);
+            for(k in keys)
+            {
+                d = data[keys[k]];
+                console.log(d)
+                let s = am5xy.LineSeries.new(root, {
+                    name: "Series",
+                    xAxis: xAxis,
+                    yAxis: yAxis,
+                    valueYField: "y",
+                    valueXField: "x",
+                    tooltip: am5.Tooltip.new(root, {
+                        labelText: "{x_dist} nm: {valueY} kcal/mol"
+                })});
+
+                allSeries.push(chart.series.push(s));
+                
+                allSeries[k].data.setAll(d.chart_data);
+                allSeries[k].appear(1000);
+            }
+            
+            
+            // Set data and show series
+            // for(k in allSeries)
+            // {
+            //     allSeries[k].data.setAll(data);
+            //     allSeries[k].appear(1000);
+            // }
+
+            // Make stuff animate on load
+            // https://www.amcharts.com/docs/v5/concepts/animations/
+            chart.appear(1000, 100);
+
+            visibleCharts[targetID] = {
+                dataset: data,
+                chartRoot: chart
+            };
+        }); // end am5.ready()
+    }
+}
+
+
+
+
+
+
+
+
+
 function findNearestIndex(array, point){
     var count = array.length;
     var i = 0;
@@ -36,6 +195,7 @@ var myChart = fun;
 
 
 function loadLineChart(data){
+    console.log(data);
     var labelsSet = [];
     var color = ['rgba(50,230,21,1)', 'rgba(255,99,132,1)', 'rgba(80,99,210,1)', 'rgba(255,220,100,1)', 'rgba(0,50,255,1)' , 'rgba(229,146,0,1)', 'rgba(150,0,255,1)', 'rgba(110,200,132,1)', 
                  'rgba(215,99,255,1)', 'rgba(25,99,160,1)', 'rgba(255,150,0,1)', 'rgba(0,255,132,1)', 'rgba(100,150,0,1)', 'rgba(20,130,250,1)'];

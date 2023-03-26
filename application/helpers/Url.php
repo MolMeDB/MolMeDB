@@ -35,6 +35,16 @@ class Url
     }
 
     /**
+     * Returns uri
+     * 
+     * @return string
+     */
+    public static function uri()
+    {
+        return $_SERVER['REQUEST_URI'];
+    }
+
+    /**
      * Returns current base of url address
      * 
      * @return string
@@ -42,6 +52,17 @@ class Url
     public static function base()
     {
         $base_url = url::protocol().'://'.url::domain().url::suffix();
+		return $base_url;
+    }
+
+    /**
+     * Returns current full url address
+     * 
+     * @return string
+     */
+    public static function current()
+    {
+        $base_url = url::protocol().'://'.url::domain().url::uri();
 		return $base_url;
     }
 

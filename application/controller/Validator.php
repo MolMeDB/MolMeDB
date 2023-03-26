@@ -49,19 +49,28 @@ class ValidatorController extends Controller
     /**
      * Cosmo computations handler
      * 
+     * @param int $pagination
+     * 
      */
-    public function cosmo()
+    public function cosmo($pagination = 1, $per_page = 50)
     {
-        
-        // TODO
-        $records = Run_cosmo::instance()
-            ->limit(100)
-            ->order_by('priority DESC, state DESC, id', 'ASC')
-            ->get_all();
-        
+        $cosmo_model = new Run_cosmo();
+        $params = $this->form->param;
+
+        $records = $cosmo_model->get_list($pagination, $per_page, $params->compound, $params->state, $params->status);
+        $total = $cosmo_model->get_list_count($params->compound, $params->state, $params->status);
 
         $this->view = new View('cosmo/overview');
         $this->view->jobs = $records;
+        $paginator = new View_paginator();
+        $paginator->path()
+            ->active($pagination)
+            ->records_per_page($per_page);
+
+        $paginator->total_records($total);
+        $this->view->paginator($paginator);
+        $this->view->total = $total;
+        $this->view->params = $params;
 
         $this->breadcrumbs = new Breadcrumbs();
         $this->breadcrumbs
@@ -71,6 +80,46 @@ class ValidatorController extends Controller
         $this->title = 'COSMO';
     }
 
+    /**
+     * Force cosmo run
+     * 
+     * @param int $id_fragment - If set, all runs for given fragment are forced
+     * @param int $id_job - Only one job to force
+     */
+    public function force_cosmo_run($id_fragment = NULL, $id_job = NULL)
+    {
+        $fragment = new Fragments($id_fragment);
+        $cosmo = new Run_cosmo($id_job);
+
+        if(!$fragment->id && !$cosmo->id)
+        {
+            $this->alert->error('Invalid parameters.');
+            $this->redirect('validator/cosmo');
+        }
+
+        if($cosmo->id)
+        {
+            $cosmo->forceRun = 1;
+            $cosmo->state = Run_cosmo::STATE_PENDING;
+            $cosmo->status = Run_cosmo::STATUS_OK;
+            $cosmo->save();
+        }
+        else
+        {
+            $jobs = Run_cosmo::instance()->where('id_fragment', $fragment->id)->get_all();
+
+            foreach($jobs as $j)
+            {
+                $j->forceRun = 1;
+                $j->state = Run_cosmo::STATE_PENDING;
+                $j->status = Run_cosmo::STATUS_OK;
+                $j->save();
+            }
+        }
+
+        $this->alert->success('Job will be recomputed in next run.');
+        $this->redirect('validator/cosmo');
+    }
 
     /**
      * Returns detailed description and state of COSMO computation
@@ -78,13 +127,14 @@ class ValidatorController extends Controller
      * @param int $id
      * 
      */
-    public function cosmo_detail($id = NULL)
+    public function cosmo_detail($id_fragment = NULL)
     {
-        $cosmo = new Run_cosmo($id);
+        $cosmo_records = Run_cosmo::instance()->where('id_fragment', $id_fragment)->get_all();
+        $f = new File();
 
-        if(!$cosmo->id)
+        if(!count($cosmo_records))
         {
-            $this->alert->error('Job not found.');
+            $this->alert->error('Jobs not found.');
             $this->redirect('validator/cosmo');
         }
 
@@ -93,110 +143,120 @@ class ValidatorController extends Controller
         $python_logs = [];
         try
         {
-            $ioniz_states = Fragment_ionized::instance()->where('id_fragment', $cosmo->id_fragment)->get_all();
-            $substance = $cosmo->fragment->assigned_compound();
-
-            // Get results
-            if($cosmo->state >= Run_cosmo::STATE_RESULT_PARSED)
+            $ioniz_states = Fragment_ionized::instance()->where('id_fragment', $id_fragment)->get_all();
+            foreach($cosmo_records as $cosmo)
             {
-                foreach($ioniz_states as $ion)
+                $substance = $cosmo->fragment->assigned_compound();
+
+                // Get results
+                if($cosmo->state >= Run_cosmo::STATE_RESULT_PARSED)
                 {
-                    $cosmo_results[$ion->id] = new Iterable_object();
-                    $f = new File();
-
-                    $path = $f->prepare_conformer_folder($cosmo->fragment->id, $ion->id);
-
-                    if(file_exists($path . 'cosmo.log'))
+                    foreach($ioniz_states as $ion)
                     {
-                        $python_logs[$ion->id] = file_get_contents($path . 'cosmo.log');
-                    }
-
-                    $path = $path . 'COSMO/';
-
-                    if(!file_exists($path))
-                    {
-                        continue;
-                    }
-
-                    $files = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
-                    $prefix = strtolower($cosmo->get_script_method() . '_' . $cosmo->membrane->name . '_' . intval($cosmo->temperature));
-                    $prefix = trim($prefix);
-                    
-                    foreach($files as $pt)
-                    {
-                        if($prefix == strtolower(substr($pt, 0, strlen($prefix))))
+                        if(!isset($cosmo_results[$ion->id]))
                         {
-                            $out_path = $path . $pt . '/' . 'cosmo.parsed';
+                            $cosmo_results[$ion->id] = [];
+                        }
 
-                            if(!file_exists($out_path))
+                        $cosmo_results[$ion->id][$cosmo->id] = new Iterable_object();
+
+                        $path = $f->prepare_conformer_folder($cosmo->fragment->id, $ion->id);
+
+                        $path = $path . 'COSMO/';
+
+                        if(!file_exists($path))
+                        {
+                            continue;
+                        }
+
+                        $files = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
+                        $prefix = strtolower($cosmo->get_script_method() . '_' . str_replace(' ', '-',$cosmo->membrane->name) . '_' . str_replace('.', ',', $cosmo->temperature));
+                        $prefix = trim($prefix);
+
+                        foreach($files as $pt)
+                        {
+                            if($prefix == strtolower(substr($pt, 0, strlen($prefix))))
                             {
-                                continue;
-                            }
+                                $out_path = $path . $pt . '/' . 'cosmo_parsed.json';
 
-                            $data = json_decode(file_get_contents($out_path));
-                            
-                            foreach($data as $job)
-                            {
-                                $cosmo_results[$ion->id] = array();
-
-                                $energy_dist = $job->layer_positions;
-                                $temp = $job->temperature;
-
-                                foreach($job->solutes as $sol)
+                                if(!file_exists($out_path))
                                 {
-                                    $e_values = [];
-                                    
-                                    foreach($sol->energy_values as $e)
-                                    {
-                                        $e_values[] = round($e, 2);
-                                    }
-
-                                    $cosmo_results[$ion->id][] = (object)array
-                                    (
-                                        'logK' => $sol->logK,
-                                        'logPerm' => $sol->logPerm,
-                                        'energyValues' => $e_values,
-                                        'energyDistance' => $energy_dist,
-                                        'temperature' => $temp,
-                                        'membraneName' => $cosmo->membrane->name
-                                    );
+                                    $cosmo->state = Run_cosmo::STATE_RESULT_DOWNLOADED;
+                                    $cosmo->save();
+                                    continue;
                                 }
+
+                                $data = json_decode(file_get_contents($out_path));
+                                
+                                foreach($data as $job)
+                                {
+                                    $energy_dist = $job->layer_positions;
+                                    $temp = $job->temperature;
+
+                                    foreach($job->solutes as $sol)
+                                    {
+                                        $e_values = [];
+                                        
+                                        foreach($sol->energy_values as $e)
+                                        {
+                                            $e_values[] = round($e, 2);
+                                        }
+
+                                        $cosmo_results[$ion->id][$cosmo->id] = (object)array
+                                        (
+                                            'logK' => $sol->logK,
+                                            'logPerm' => $sol->logPerm,
+                                            'energyValues' => $e_values,
+                                            'energyDistance' => $energy_dist,
+                                            'temperature' => $temp,
+                                            'membraneName' => $cosmo->membrane->name,
+                                            'methodName'   => $cosmo->get_enum_method()
+                                        );
+                                    }
+                                }
+                                continue 2;
                             }
-                            continue 2;
                         }
                     }
                 }
             }
 
-            // Prepare energy chart data
-            foreach($cosmo_results as $ion_id => $data)
+            foreach($ioniz_states as $ion)
             {
-                $distances = [];
-                $values = [];
-                $chart_data = [];
-
-                // Merge distances
-                foreach($data as $row)
-                {   
-                    $distances = array_merge($distances, $row->energyDistance);
-                }
-                $distances = array_unique($distances);
-                sort($distances);
-            
-                foreach($distances as $d)
+                $path = $f->prepare_conformer_folder($id_fragment, $ion->id);
+                if(file_exists($path . 'cosmo.log'))
                 {
-                    $chart_data[] = (object)array
-                    (
-                        'x' => floatval($d)/10
-                    );
+                    $python_logs[$ion->id] = file_get_contents($path . 'cosmo.log');
                 }
+            }
 
-                foreach($data as $k => $row)
+            // Prepare energy chart data
+            foreach($cosmo_results as $ion_id => $ion_data)
+            {
+                foreach($ion_data as $cosmo_id => $data)
                 {
-                    $yk = 'y' . $k;
+                    if(!$data->membraneName)
+                    {
+                        continue;
+                    }
+
+                    $distances = $data->energyDistance;
+                    $chart_data = [];
+
+                    sort($distances);
+                
+                    foreach($distances as $d)
+                    {
+                        $chart_data[] = (object)array
+                        (
+                            'x' => floatval($d)/10
+                        );
+                    }
+
+                    $yk = 'y';
                     foreach($distances as $key => $d)
                     {
-                        $index = array_search($d, $row->energyDistance);
+                        $index = array_search($d, $data->energyDistance);
 
                         if($index === false)
                         {
@@ -204,12 +264,12 @@ class ValidatorController extends Controller
                         }
                         else
                         {
-                            $chart_data[$key]->$yk = floatval($row->energyValues[$index]);
+                            $chart_data[$key]->$yk = floatval($data->energyValues[$index]);
                         }
                     }
-                }
 
-                $cosmo_results[$ion_id]['chart_data'] = $chart_data;
+                    $cosmo_results[$ion_id][$cosmo_id]->chart_data = $chart_data;
+                }
             }
         }
         catch(MmdbException $e)
@@ -221,16 +281,17 @@ class ValidatorController extends Controller
         $this->breadcrumbs = new Breadcrumbs();
         $this->breadcrumbs->add('Administration', 'administration')
             ->add('COSMO', 'validator/cosmo')
-            ->add('Job: ' . $cosmo->id);
+            ->add('Fragment: ' . $id_fragment);
 
-        $this->title = 'Job ' . $cosmo->id;
+        $this->title = 'Fragment ' . $id_fragment;
         $this->view = new View('cosmo/job_detail');
-        $this->view->cosmo = $cosmo;
+        $this->view->cosmo = $cosmo_records[0];
+        $this->view->cosmo_records = $cosmo_records;
         $this->view->ion_states = $ioniz_states;
         $this->view->substance = $substance;
         $this->view->cosmo_results = $cosmo_results;
         $this->view->python_logs = $python_logs;
-        $this->view->ion_job = Run_ionization::instance()->where('id_fragment', $cosmo->fragment->id)->get_one();
+        $this->view->ion_job = Run_ionization::instance()->where('id_fragment', $id_fragment)->get_one();
     }
 
     /**

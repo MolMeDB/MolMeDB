@@ -21,9 +21,12 @@ STEP_CUBY_CHECK_STATUS = 5
 STEP_CUBY_GENERATE = 6
 STEP_CUBY_UPLOAD = 7
 STEP_CUBY_RUN = 8
+STEP_CUBY_RUN_JOB = 81
 STEP_COSMO_PREPARE = 9
 STEP_COSMO_RUN = 10
 STEP_COSMO_DOWNLOAD = 11
+
+sshClient = None
 
 ansi_escape = re.compile(r'''
     \x1B  # ESC
@@ -37,7 +40,7 @@ ansi_escape = re.compile(r'''
     )
 ''', re.VERBOSE)
 
-paramiko.util.log_to_file("paramiko.log")
+# paramiko.util.log_to_file("paramiko.log")
 
 def _err(text, sshClient = None):
     print("Error:", text)
@@ -89,9 +92,12 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
     #########################################################
     #################### STEP 0 #############################
     ############ Connect to the remote server ###############
-    _log(STEP_INIT, CODE_INIT)
-    _step(0, "SSH connection inizialize.")
-    sshClient = SSHClient(username=username, password=password,host=host, port=22)
+    global sshClient
+    if sshClient == None:
+        _log(STEP_INIT, CODE_INIT)
+        _step(0, "SSH connection inizialize.")
+        sshClient = SSHClient(username=username, password=password,host=host, port=22)
+
     
     # Init SDF File instances
     files = [SDFFile(f, sshClient=sshClient, charge=charge, forceRun=forceRun) for f in files]
@@ -117,9 +123,12 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
     _log(STEP_CHECK_RES, CODE_INIT)
     if cosmo.resultExists():
         _log(STEP_CHECK_RES, CODE_EXISTS)
-        _step(0, "Results already exists. Exiting...")
-        sshClient.close()
-        exit()
+        _step(0, "Results already exists.")
+        _log(STEP_COSMO_DOWNLOAD, CODE_INIT)
+        _step(8, "Downloading COSMO results...")
+        cosmo.downloadResults()
+        _log(STEP_COSMO_DOWNLOAD, CODE_OK)
+        return
     
     _step(STEP_CHECK_RES, CODE_OK)
 
@@ -197,6 +206,11 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
     running = 0
     hasResult = 0
     for f in files: 
+        if f.optimizationHistoryRun and not f.optimizationResults:
+            # Error occured
+            _log(STEP_CUBY_RUN_JOB, CODE_ERR, f.name)
+            continue
+
         if not f.readyToOptimize:
             if f.optimizationResults:
                 hasResult += 1
@@ -205,57 +219,55 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
                 running += 1
             continue
 
-        f.runOptimization()
+        jobID = f.runOptimization()
+        if jobID:
+            running += 1
+            _log(STEP_CUBY_RUN_JOB, CODE_OK, str(f.name) + "/" + str(jobID))
     
     if(running != 0):
         _log(STEP_CUBY_RUN, CODE_IS_RUNNING, str(running) + "/" + str(len(files)))
     else:
         _log(STEP_CUBY_RUN, CODE_OK, str(len(files) - running) + "/" + str(len(files)))
+        
     _step(5, "Done.")
 
     #########################################################
     ################ STEP 5 #################################
     ######## Copy COSMO files to one directory ##############
     #########################################################
-    if hasResult == len(files):
+    if running == 0 and hasResult >= len(files)/2:
         _step(6, "Copying prepared COSMO files for the COSMOmic/COSMOperm")
         _log(STEP_COSMO_PREPARE, CODE_INIT)
-        cosmoReady = 0
+        cosmoFiles = list()
         for f in files:
             if f.optimizationResults:
                 f.copyCosmoFile()
-                cosmoReady+=1
+                cosmoFiles.append(f)
 
         _step(6, "Done.")
-
 
         #########################################################
         ################# STEP 7 ################################
         #### Generate COSMOperm/COSMOmic job files ##############
         #########################################################
         _step(7, "Making COSMOperm/COSMOmic job files.")
-        # Check, if all results are copied
-        if cosmoReady != len(files):
-            _step(7, "Cosmo computation skipped. Computed " + str(cosmoReady) + "/" + str(len(files)) + " optimizations.")
-            _log(STEP_COSMO_PREPARE, CODE_WAITING, str(cosmoReady) + "/" + str(len(files)))
-        else:
-            _log(STEP_COSMO_PREPARE, CODE_OK)
-            _log(STEP_COSMO_RUN, CODE_INIT)
-            cosmo.prepareRun(files)
-            # Get COSMO run state
-            isRunning, hasResults = cosmo.getState()
-            if isRunning:
-                _log(STEP_COSMO_RUN, CODE_IS_RUNNING)
-            if hasResults:
-                _log(STEP_COSMO_RUN, CODE_HAS_RESULT)
-            _step(7, "COSMO run files generated. Uploading...")
-            if not cosmo.uploadRunFiles():
-                _log(STEP_COSMO_RUN, CODE_EXISTS)
-            _step(7, "Trying to run COSMO computation...")
-            jobId = cosmo.run()
-            if jobId:
-                _log(STEP_COSMO_RUN, CODE_OK, jobId)
-            _step(7, "Done.")
+        _log(STEP_COSMO_PREPARE, CODE_OK)
+        _log(STEP_COSMO_RUN, CODE_INIT)
+        cosmo.prepareRun(cosmoFiles)
+        # Get COSMO run state
+        isRunning, hasResults = cosmo.getState()
+        if isRunning:
+            _log(STEP_COSMO_RUN, CODE_IS_RUNNING)
+        if hasResults:
+            _log(STEP_COSMO_RUN, CODE_HAS_RESULT)
+        _step(7, "COSMO run files generated. Uploading...")
+        if not cosmo.uploadRunFiles():
+            _log(STEP_COSMO_RUN, CODE_EXISTS)
+        _step(7, "Trying to run COSMO computation...")
+        jobId = cosmo.run()
+        if jobId:
+            _log(STEP_COSMO_RUN, CODE_OK, jobId)
+        _step(7, "Done.")
 
         ##########################################################
         ################### STEP 8 ###############################
@@ -271,7 +283,6 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
             _step(8, "Waiting for COSMO results.")
 
     _step(10, "All steps done. Exiting...")
-    sshClient.close()
 
 
 class COSMO:
@@ -522,6 +533,7 @@ class SDFFile:
     
     SCRIPTPATH_PS = "[SCRIPT_PATH]"
     SDFPATH_PS = "[SDFPATH_PS]"
+    LOGPATH_PS = "[LOGPATH_PS]"
     
 
     def __init__(self, path, sshClient=None, charge = 0, forceRun=False):
@@ -537,7 +549,7 @@ class SDFFile:
 
         self.optimizeScripts = None
 
-        self.optimizationRunning = self.optimizationResults = False
+        self.optimizationRunning = self.optimizationResults = self.optimizationHistoryRun = False
 
         if not os.path.exists(path):
             _err("Target file not exists.")
@@ -595,6 +607,8 @@ class SDFFile:
 
             if out and len(out) and str(out[0]).startswith("/"):
                 self.remoteBasePath = str(out[0].rstrip("/")) + "/"
+                self.remoteBasePath = self.remoteBasePath.replace("/mnt/storage-", "/storage/")
+                self.remoteBasePath = self.remoteBasePath.replace("/nfs4", "")
             else:
                 _log(STEP_REMOTE_FOLDER, CODE_ERR)
                 _err("Cannot obtain full remote base path.", self.sshClient)
@@ -622,7 +636,7 @@ class SDFFile:
         return True
 
     def checkOptimizationStatus(self):
-        running, hasResult = False, False
+        running, hasResult, wasRun = False, False, False
         # Check, if job is potentialy running
         out_folder = self.remoteBasePath + self.FILE_FOLDERS[1] + "/" + self.name
         self.sshClient.shell_exec("mkdir -p " + out_folder)
@@ -636,6 +650,7 @@ class SDFFile:
             if f.endswith(".run"):
                 running = True
             if f == "OUTPUT":
+                wasRun = True
                 # Check if content is valid
                 l = self.sshClient.sftp.listdir(out_folder + "/OUTPUT")
                 l = list(filter(lambda f: f.startswith("job_step"), l))
@@ -650,12 +665,13 @@ class SDFFile:
 
         self.optimizationRunning = running
         self.optimizationResults = hasResult
+        self.optimizationHistoryRun = wasRun
 
         return running, hasResult
 
 
     def getOptimizeInputs(self, ncpu=8, ram=32, walltimeHs=10,queue="elixir"):
-        self.cuby.generate(self, ncpu=ncpu, ram=ram, walltimeHs=walltimeHs, queue=queue, includeTurobmolePreComputation=True)
+        self.cuby.generate(self, ncpu=ncpu, ram=ram, walltimeHs=walltimeHs, queue=queue, includeTurobmolePreComputation=False)
 
     def uploadCubyFiles(self):
         if self.optimizationResults and not self.forceRun:
@@ -672,6 +688,7 @@ class SDFFile:
         out_folder = self.remoteBasePath + self.FILE_FOLDERS[1] + "/" + self.name
         self.sshClient.shell_exec("mkdir -p " + out_folder)
         sdf_folder = self.remoteBasePath + self.FILE_FOLDERS[0]
+        log_foler = self.remoteBasePath.split("/COSMO/")[0] + "/COSMO/LOGS/RUNS/"
         
         # Check if file already exists
         existing = self.sshClient.sftp.listdir(out_folder)
@@ -688,6 +705,7 @@ class SDFFile:
         contentjob = str(self.cuby.getJob())
         contentjob = contentjob.replace(self.SCRIPTPATH_PS, out_folder)
         contentjob = contentjob.replace(self.SDFPATH_PS, sdf_folder)
+        contentjob = contentjob.replace(self.LOGPATH_PS, log_foler)
         # Upload both to the remote server
         # Create temporary file and upload to server
         tmpYaml = tempfile.NamedTemporaryFile(delete=False)
@@ -739,6 +757,7 @@ class SDFFile:
             self.sshClient.shell_exec("echo 'running' > " + jobID + ".run")
             self.optimizeJobID = jobID
             print(" --- OK. JobID:", jobID)
+            return jobID
         except Exception as e: 
             _log(STEP_CUBY_RUN, CODE_ERR)
             print(e)
@@ -849,6 +868,12 @@ class SSHClient:
             out.pop(0)
         return out
 
+def get_conformer_folder(id_fragment, id_ion):
+    group = int(id_fragment / 10000)
+    group = group * 10000
+    group = str(group) + "-" + str(group+10000)
+    return "media/files/conformers/" + group + "/" + str(id_fragment) + "/" + str(id_ion) + "/"
+
 
 ####### Read params #######
 import sys, getopt
@@ -859,8 +884,7 @@ params = sys.argv[1:]
 help = """ -- Invalid script setting. --
 
 Run cosmo_pipeline.py with the following parameters:
- --base <path>: Path to the folder with SDF conformer files or SDF file absolute path.
- --charge <int>: Molecule charge.
+ --ions <path>: List of ions to process in following format: <id_fragment/id_ion/charge> separated by space. Example: '1/110/0 2/30/-2'
  --host <url>: Remote server URL address, e.g. elmo.metacentrum.cz
  --username <string>: Remote server access username.
  --password <string>: Remote server access password.
@@ -878,12 +902,11 @@ Example:
 cosmo_pipeline.py --base /path/to/sdf/MM00040/neutral/ --cpu 8 --ram 32 --limit 10 --cosmo perm --temp 25 --membrane /path/to/membrane/DOPC.mic --membraneName DOPC
 """
 
-confPath = charge = usernam = password = host = username = password = cpu = ram = limitHs = membrane = membraneName = temperature= cosmoType=queue=forceRun=None
+ions = charge = usernam = password = host = username = password = cpu = ram = limitHs = membrane = membraneName = temperature= cosmoType=queue=forceRun=None
 
 try:
     opts, args = getopt.getopt(params, "", [
-        "base =",
-        "charge =",
+        "ions =",
         "host =",
         "cpu =",
         "ram =",
@@ -907,12 +930,20 @@ except Exception as e:
 try:
     for opt, arg in opts:
         opt = str(opt).strip()
-        if opt == "--base":
-            if not os.path.exists(arg):
-                raise Exception("Base path not exists.")
-            confPath = arg
-        if opt == "--charge":
-            charge = arg
+        if opt == "--ions":
+            t = arg.split()
+            ions = list()
+            if len(t) < 1:
+                raise Exception("No ion specified.")
+            for ion in t:
+                t2 = ion.split("/")
+                if len(t2) != 3:
+                    raise Exception("Invalid setting of ion: " + str(ion))
+                ions.append({
+                    "id_fragment": t2[0],
+                    "id_ion": t2[1],
+                    "charge": t2[2]
+                })
         elif opt == "--cpu":
             cpu = int(arg)
             if cpu < 1 or cpu > 64:
@@ -922,7 +953,7 @@ try:
         elif opt == "--ram":
             ram = int(arg)
             if ram < 1 or ram > 512:
-                raise Exception("Number or RAM must be number in 1-512 range.")
+                raise Exception("Number or [GB] RAM must be number in 1-512 range.")
         elif opt == "--limit":
             limitHs = int(arg)
             if limitHs < 0 or limitHs > 500:
@@ -953,26 +984,43 @@ except Exception as err:
     _log(STEP_INPUT_CHECK, CODE_ERR)
     exit(2)
 
-if None in [confPath, charge, cpu, ram, limitHs, cosmoType, temperature, membrane, membraneName, queue, username, password]:
+if None in [ions, cpu, ram, limitHs, cosmoType, temperature, membrane, membraneName, queue, username, password]:
     print("Missing parameters.")
-    print(confPath, cpu, ram, limitHs, cosmoType, temperature, membrane, membraneName, queue, username, password)
+    print([ions, cpu, ram, limitHs, cosmoType, temperature, membrane, membraneName, queue, username, password])
     print(help)
     _log(STEP_INPUT_CHECK, CODE_ERR)
     exit(2)
 
+# Iterate over ions and run script
+for ion in ions:
+    id_fragment, id_ion, charge = (int(ion['id_fragment']), int(ion['id_ion']), int(ion['charge']))
+    # Try to find path and check, if SDF files exists
+    path = get_conformer_folder(id_fragment, id_ion)
+    if not os.path.exists(path):
+        print("\n!! Path `" + path + "` not exists.")
+        exit()
 
-__main__(
-    confPath, 
-    host, 
-    username, 
-    password,
-    charge=charge,
-    cpu=cpu,
-    ram=ram,
-    limitHs=limitHs,
-    membrane=membrane,
-    membraneName=membraneName,
-    temp=temperature,
-    cosmo=cosmoType,  
-    queue=queue,
-    forceRun=forceRun)
+    print("\nJOB: " + str(id_fragment) + "/" + str(id_ion) + "/" + str(charge) + "\n")
+
+    # Process ion
+    __main__(
+        path, 
+        host, 
+        username, 
+        password,
+        charge=charge,
+        cpu=cpu,
+        ram=ram,
+        limitHs=limitHs,
+        membrane=membrane,
+        membraneName=membraneName,
+        temp=temperature,
+        cosmo=cosmoType,  
+        queue=queue,
+        forceRun=forceRun)
+    
+print("\n#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$#\n") # Log separator
+    
+if sshClient != None:
+    sshClient.close()
+

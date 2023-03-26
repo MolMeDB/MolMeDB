@@ -1,0 +1,73 @@
+<base href="<?= Url::base() . MEDIA_ROOT ?>" />
+<link rel="stylesheet" href="css/bootstrap.min.css"/>
+<link rel="stylesheet" href="css/LiteMol-plugin.min.css">
+<link rel="stylesheet" href="css/style.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/tree.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/tables.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/layout.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/flexbox.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/depict.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/stats.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/searchEngine.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/browse.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<script src="js/jquery-3.2.1.js"></script>
+<script src="js/LiteMol-plugin.min.js"></script>
+
+<style>
+    body{
+        background-image: none !important;
+    }
+</style>
+
+<div class="general-info">
+    <p class="compoundTitle">
+        <?= $substance->name ?>
+    </p>
+    <div style="display:flex; flex-direction:row; justify-content: start; flex-wrap: wrap;">
+        <div class="general-info" style="margin-right: 20px;">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <td>
+                            <b style="color: #4a82da">Structures</b>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th>SMILES</th>
+                        <td><?= $substance->SMILES ?></td>
+                    </tr>
+                    <tr>
+                        <th>2D structure</th>
+                        <td><?= Html::image_structure($substance->SMILES) ?></td>
+                    </tr>
+                    <tr>
+                        <th>3D structure</th>
+                        <td>
+                            <div class="structure" style="width: 500px;">
+                                <div id="litemol" class="structure3D"></div>
+                                <script>
+                                    var plugin = LiteMol.Plugin.create({ 
+                                        target: '#litemol', 
+                                        viewportBackground: '#fff',
+                                        layoutState: {
+                                            hideControls: true,
+                                        } 
+                                    });
+
+                                    plugin.loadMolecule({
+                                        id: '<?= $substance->identifier ?>',
+                                        url: '<?= Url::base() . 'file/show/' . $structure_3d['id'] ?>',
+                                        format: 'sdf' // default
+                                    });
+                                </script>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

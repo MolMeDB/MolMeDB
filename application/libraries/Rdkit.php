@@ -303,7 +303,7 @@ class Rdkit extends Identifier_loader
 
         try
         {
-            $response = self::$client->request($uri, $method, $params, FALSE, 60);
+            $response = self::$client->request($uri, $method, $params, FALSE, 180);
 
             if(is_object($response) || is_array($response))
             {

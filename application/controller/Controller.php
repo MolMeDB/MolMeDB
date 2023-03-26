@@ -77,7 +77,12 @@ abstract class Controller
             $url = $_GET['redirection'] ? $_GET['redirection'] : $url;
         }
 
-        header("Location: /$url"); 
+        if(!preg_match('/^http/', $url))
+        {
+            $url = "/$url";
+        }
+
+        header("Location: $url"); 
         header("Connection: close");
         exit;
     }

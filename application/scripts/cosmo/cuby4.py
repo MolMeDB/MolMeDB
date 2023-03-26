@@ -5,6 +5,7 @@ QUEUE_METACENTRUM = "default@meta-pbs.metacentrum.cz"
 QUEUE_CERIT = "@cerit-pbs.cerit-sc.cz"
 SCRIPTPATH_PS = "[SCRIPT_PATH]"
 SDFPATH_PS = "[SDFPATH_PS]"
+LOGPATH_PS = "[LOGPATH_PS]"
 JOB_NAME_PREFIX = "MMDB_C_"
 
 class CUBY4:
@@ -119,9 +120,10 @@ calculation_wcosmo:
 #PBS -q {queue} 
 #PBS -l select=1:ncpus={ncpu}:mem={ram}gb:scratch_shm=true
 #PBS -l walltime={walltimeHs}:00:00
-#PBS -o _{name}.out
-#PBS -e _{name}.err
+#PBS -o {LOGPATH_PS}{name}.out
+#PBS -e {LOGPATH_PS}{name}.err
 #PBS -N {JOB_NAME_PREFIX}OPT_{name}
+#PBS -m n
 trap 'clean_scratch' TERM EXIT
 cd $SCRATCHDIR || exit 1
 
@@ -135,7 +137,7 @@ SCRIPT_WORKDIR={SCRIPTPATH_PS}
 OUTPUT_WORKDIR=$SCRIPT_WORKDIR/OUTPUT
 
 # Adds cuby as executable command
-export PATH=/auto/praha5-elixir/home/xjur2k/SOFTWARE/cuby4/cuby:$PATH
+export PATH=/storage/praha5-elixir/home/xjur2k/SOFTWARE/cuby4/cuby:$PATH
 
 # Copy SDF
 cp $SDF_WORKDIR/{fileName} .

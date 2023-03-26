@@ -115,7 +115,7 @@ class File
     {
         $group = intval($id_fragment / 10000);
         $group = $group*10000;
-        $group .= '-' . ($group+1000); 
+        $group .= '-' . ($group+10000); 
 
         $path = self::FOLDER_CONFORMERS . "/" . $group . '/' . $id_fragment . "/" . $id_ion . '/';
 
@@ -141,7 +141,7 @@ class File
     {
         $group = intval($id_fragment / 10000);
         $group = $group*10000;
-        $group .= '-' . ($group+1000); 
+        $group .= '-' . ($group+10000); 
 
         $path = self::FOLDER_CONFORMERS . "/" . $group . '/' . $id_fragment . "/";
 

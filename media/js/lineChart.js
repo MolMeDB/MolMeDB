@@ -19,9 +19,7 @@ function createLineChart(data, targetID, clear = false)
     {
         data = JSON.parse(data);
     }
-
-    console.log(data);
-
+    
     // Already exists? Add chart to existing one
     if(targetID in visibleCharts && !clear)
     {
@@ -30,19 +28,34 @@ function createLineChart(data, targetID, clear = false)
     else // Create new one
     {
         // Get yValue series keys
-        if(data.length)
+        if(Object.keys(data).length)
         {
-            let d = data[0];
-            ys = Object.keys(d);
-
-            const index = ys.indexOf("x");
-            if (index > -1) { // only splice array when item is found
-                ys.splice(index, 1); // 2nd parameter means remove one item only
-            }
-            else
+            let keys = Object.keys(data);
+            for(k in keys)
             {
-                console.log("Cannot generate chart. X value not found.");
-                return;
+                if(!data[keys[k]].chart_data)
+                {
+                    continue;
+                }
+
+                let d = data[keys[k]].chart_data;
+                let chartData = [];
+                
+                for(x in d)
+                {
+                    chartData.push(
+                        {
+                            x_dist: d[x].x,
+                            x: parseInt(x),
+                            y: d[x].y,
+                            membrane: data[keys[k]].membraneName,
+                            method: data[keys[k]].methodName,
+                            temperature: data[keys[k]].temperature
+                        }
+                    )
+                }
+
+                data[keys[k]].chart_data = chartData;
             }
         }
         else
@@ -50,6 +63,8 @@ function createLineChart(data, targetID, clear = false)
             console.log("No data found...");
             return;
         }
+
+        console.log(data);
 
         am5.ready(function() {
             // Create root element
@@ -86,8 +101,9 @@ function createLineChart(data, targetID, clear = false)
             // https://www.amcharts.com/docs/v5/charts/xy-chart/axes/
             var xAxis = chart.xAxes.push(am5xy.ValueAxis.new(root, {
               renderer: am5xy.AxisRendererX.new(root, {}),
-              tooltip: am5.Tooltip.new(root, {}),
+            //   tooltip: am5.Tooltip.new(root, {}),
               min: 0,
+              max: 50,
             //   tooltipNumberFormat: "#.##",
               extraTooltipPrecision: 2
             }));
@@ -98,29 +114,34 @@ function createLineChart(data, targetID, clear = false)
 
             let allSeries = [];
 
-            for(v in ys)
+            let keys = Object.keys(data);
+            for(k in keys)
             {
-                // Add series
-                // https://www.amcharts.com/docs/v5/charts/xy-chart/series/
-                allSeries.push(chart.series.push(am5xy.LineSeries.new(root, {
+                d = data[keys[k]];
+                console.log(d)
+                let s = am5xy.LineSeries.new(root, {
                     name: "Series",
                     xAxis: xAxis,
                     yAxis: yAxis,
-                    valueYField: ys[v],
+                    valueYField: "y",
                     valueXField: "x",
                     tooltip: am5.Tooltip.new(root, {
-                        labelText: "{valueX} nm: {valueY} kcal/mol"
-                    })
-                })));
+                        labelText: "{x_dist} nm: {valueY} kcal/mol"
+                })});
+
+                allSeries.push(chart.series.push(s));
+                
+                allSeries[k].data.setAll(d.chart_data);
+                allSeries[k].appear(1000);
             }
             
             
             // Set data and show series
-            for(k in allSeries)
-            {
-                allSeries[k].data.setAll(data);
-                allSeries[k].appear(1000);
-            }
+            // for(k in allSeries)
+            // {
+            //     allSeries[k].data.setAll(data);
+            //     allSeries[k].appear(1000);
+            // }
 
             // Make stuff animate on load
             // https://www.amcharts.com/docs/v5/concepts/animations/

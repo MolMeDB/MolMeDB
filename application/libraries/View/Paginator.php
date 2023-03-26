@@ -48,7 +48,7 @@ class View_paginator
      */
     private static $default_per_page_options = array
     (
-        10,20,50,100
+        5,10,20,50,100
     );
 
     /**
@@ -89,8 +89,13 @@ class View_paginator
      * 
      * @return View_paginator
      */
-    public function path($path)
+    public function path($path = "")
     {
+        if(!$path)
+        {
+            return $this;
+        }
+
         $path = trim($path, '/');
         $this->uri_suffix = $path . '/';
         return $this;
@@ -350,7 +355,17 @@ class Paginator_option
 
         foreach($get_params as $key => $v)
         {
-            $params_suffix .= "&$key=$v";
+            if(!is_array($v))
+            {
+                $params_suffix .= "&$key=$v";
+            }
+            else
+            {
+                foreach($v as $val)
+                {
+                    $params_suffix .= "&$key%5B%5D=$val";
+                }
+            }
         }
 
         $params_suffix = '?' . ltrim($params_suffix, '&');

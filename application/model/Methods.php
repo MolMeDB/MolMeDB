@@ -15,6 +15,8 @@
  * @property datetime createDateTime
  * @property datetime $editDateTime
  * 
+ * @method Methods instance
+ * 
  */
 class Methods extends Db
 {
@@ -85,6 +87,126 @@ class Methods extends Db
             FROM methods m
             JOIN method_enum_type_links l ON l.id_method = m.id AND l.id_enum_type_link = ?
         ', array($enum_type_link_id));
+    }
+
+    /**
+     * Returns membrane detail for public
+     * 
+     * @return array|null
+     */
+    public function get_public_detail()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        return array
+        (
+            'id' => $this->id,
+            'name' => $this->name  
+        );
+    }
+
+    /**
+     * Tries to find method by doi/pmid/category/id/name 
+     * - Can be set category structure also 
+     * 
+     * @return Methods[]
+     */
+    public function find_all($query)
+    {
+        $result = [];
+
+        $by_identifier = new Methods($query);
+        if(!$by_identifier->id)
+        {
+            $by_identifier = Methods::instance()->where('name LIKE', $query)->get_one();
+        }
+
+        if($by_identifier->id)
+        {
+            $result = [$by_identifier];
+        }
+        else
+        {
+            // Try to find category by path
+            $query = 'Methods.' . $query;
+            $cats = explode('.', $query);
+            $cats_objects = [];
+
+            foreach($cats as $c)
+            {
+                $exists = Enum_types::instance()->where(array
+                (
+                    'name LIKE' => $c,
+                    'type'      => Enum_types::TYPE_METHOD_CATS
+                ))->get_one();
+
+                if(!$exists->id)
+                {
+                    ResponseBuilder::not_found('Category `' . $c .'` not found.');
+                }
+
+                $cats_objects[] = $exists;
+            }
+
+            $current = array_shift($cats_objects);
+            $curr_link_id = null;
+
+            // Check category structure validity
+            foreach($cats_objects as $c)
+            {
+                $link = Enum_type_links::instance()->where(array
+                (
+                    'id_enum_type' => $c->id,
+                    'id_enum_type_parent' => $current->id,
+                ) + ($curr_link_id ? ['id_parent_link' => $curr_link_id] : []))
+                ->get_one();
+
+                if(!$link->id)
+                {
+                    ResponseBuilder::not_found('Category `' . $c->name . '` is not child of category `' . $current->name . '`');
+                }
+
+                $current = $c;
+                $curr_link_id = $link->id;
+            }
+
+            $link_ids = [];
+
+            // Only one category provided
+            if(!$curr_link_id)
+            {
+                $links = Enum_type_links::instance()->where('id_enum_type_parent', $current->id)->get_all();
+                $link_ids = arr::get_values($links, 'id');
+                $last_total = 0;
+
+                while($last_total != count($link_ids))
+                {
+                    $last_total = count($link_ids);
+                    $links = Enum_type_links::instance()->in('id_parent_link', $link_ids)->get_all();
+                    $link_ids = array_unique(array_merge($link_ids, arr::get_values($links, 'id')));
+                }
+            }
+            else
+            {
+                $links = Enum_type_links::instance()
+                    ->where('id_parent_link', $curr_link_id)
+                    ->get_all();
+                $link_ids = array_merge(arr::get_values($links, 'id'), $curr_link_id);
+            }
+
+            if(count($link_ids))
+            {
+                $result = Methods::instance()
+                    ->join('JOIN method_enum_type_links etl ON etl.id_method = methods.id')
+                    ->in('etl.id_enum_type_link', $link_ids)
+                    ->get_all();
+            }
+        }
+
+        return $result;
     }
 
     /**

@@ -154,11 +154,12 @@ class Api_endpoint_parser
     * Checks if endpoint exists in loaded endpoints
 	* 
 	* @param string $endpoint
+	* @param HeaderParser $request
 	* @param bool $fast_check
     *
 	* @author Jaromir Hradil, Jakub Juracka
 	*/
-	public function find($endpoint, $method, $fast_check = FALSE)
+	public function find($endpoint, $request, $fast_check = FALSE)
 	{
         // If debug, always update all endpoints
         if(DEBUG)
@@ -166,6 +167,8 @@ class Api_endpoint_parser
             $fast_check = TRUE;
             $this->update_all();
         }
+
+        $method = $request->method_type;
 
 		$content = file_get_contents(self::URL_ENDPOINT_KEEPER_PATH);
 
@@ -190,7 +193,7 @@ class Api_endpoint_parser
             if (!$fast_check)
             {
                 $this->update_all();
-                return $this->find($endpoint, $method, TRUE);
+                return $this->find($endpoint, $request, TRUE);
             }
             return NULL;
         }
@@ -221,47 +224,6 @@ class Api_endpoint_parser
         $endpoints[$requested_endpoint_key]['uri_params'] = $uri_params;
 
         return $endpoints[$requested_endpoint_key];
-
-        // else if($method == HeaderParser::METHOD_GET)
-        // {
-        //     $backslash_params = [];
-        //     while(count($endpoint_arr) > 2)
-        //     {
-        //         $backslash_params[] = array_pop($endpoint_arr);
-        //         $endpoint_path = $method . "@" . implode('/', $endpoint_arr);
-
-        //         $requested_endpoint_key = self::get_endpoint_by_pattern($endpoint_path, array_keys($endpoints));
-
-        //         if($requested_endpoint_key)
-        //         {
-        //             $data = $endpoints[$requested_endpoint_key];
-        //             // Check for changes
-        //             $r = $this->get_method_detail($data['class_name'], $data['function_name']);
-
-        //             // Update
-        //             if(!$r || strtolower(preg_replace('/^Api/', '', $r['class_name'])) . $r['path'] !== implode('/', $endpoint_arr))
-        //             {
-        //                 file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
-        //                 return NULL;
-        //             }
-
-        //             $endpoints[$requested_endpoint_key] = $r;
-        //             file_put_contents(self::URL_ENDPOINT_KEEPER_PATH, json_encode($endpoints));
-
-        //             $endpoints[$requested_endpoint_key]['backslash_params'] = $backslash_params;
-        //             return $endpoints[$requested_endpoint_key];
-        //         }
-        //     }
-        // }
-		// else if(!$fast_check)
-		// {
-		// 	$this->update_all();
-        //     return $this->find($endpoint, $method, TRUE);
-		// }
-        // else
-        // {
-        //     return NULL;
-        // }
 	}
 
 	/**

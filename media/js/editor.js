@@ -30,7 +30,7 @@ $('.m_type').click(function()
     
 function editMembrane(id)
 {
-    var data = ajax_request("membranes/detail", {id: id});
+    var data = ajax_request("membranes/p/detail", {id: id});
     
     if(data === false)
     {

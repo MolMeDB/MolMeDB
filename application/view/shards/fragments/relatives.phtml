@@ -7,6 +7,16 @@
             justify-content: center;
             padding: 30px 10px;
         }
+        table, th, td{
+            border: 1px solid;
+            border-collapse: collapse;
+        }
+        th, td{
+            padding: 5px;
+        }
+        table{
+            margin-top: 20px;
+        }
     </style>
 </header>
 
@@ -17,37 +27,112 @@
     <div class="relatives-structure">
         <?= Html::image_structure($substance->SMILES) ?>
     </div>
-    <?php foreach($data as $row):?>
-    <div class="relatives-row">
-        <div>
-            <label>Requested</label> 
-            <div style="display: flex; flex-direction: row;">
+    <table>
+        <thead>
+            <th>Requested molecule core</th>
+            <th>Link</th>
+            <th>Funcional group</th>
+            <th>Structure</th>
+            <th>Common core</th>
+            <th>Structure</th>
+            <th>Funcional group</th>
+            <th>Link</th>
+            <th>Sibbling core</th>
+        </thead>
+        <tbody>
+            <?php foreach($data as $row): ?>
                 <?php if($row->id_substance_1 == $substance->id){$main = $row->fragmentation_1; $side = $row->fragmentation_2;}
                     else{$main = $row->fragmentation_2; $side = $row->fragmentation_1;}?>
-                <?php foreach($main->raw_fragments as $sf) : ?>
-                    <?= Html::image_structure($sf->fragment->fill_link_numbers($sf->fragment->smiles, explode(',', $sf->links))) ?>
-                <?php endforeach ?>
-            </div>
-        </div>
-        <div style="margin: 0 100px 0 100px;">
-            <label>Core</label> 
-            <div class="relatives-structure">
-                <?php $rl = $row->core->remove_links() ?>
-                <?= Html::image_structure($rl->fill_link_numbers($rl->smiles)) ?>
-            </div>
-        </div>
-        <div>
-            <label>Sibling [ID: <?= $side->id_substance ?>]</label> 
-            <div style="display: flex; flex-direction: row;">
-                <?php foreach($side->raw_fragments as $sf) : ?>
-                    <div style="display: flex; flex-direction: column; padding: 0 10px;">
-                        <?= Html::image_structure($sf->fragment->fill_link_numbers($sf->fragment->smiles, explode(',', $sf->links))) ?>
-                        <?php $fg = $sf->fragment->get_functional_group() ?>
-                        <?= $fg ? $fg->name : '' ?>
+                <?php 
+                    $frags = $main->raw_fragments->as_array();
+                    $side_frags = $side->raw_fragments->as_array();
+                    $mm = new Iterable_object(array_shift($frags));
+                    $mm_side = new Iterable_object(array_shift($side_frags));
+                    $fragment_model = new Fragments();
+                    $rowspan = max(count($frags), count($side_frags));
+                    $rowspan = $rowspan > 0 ? $rowspan : 1;
+                    ?>
+                <tr>
+                    <td rowspan="<?= $rowspan ?>">
+                        <div style="display:flex; flex-direction:column; align-items:center; justify-content:space-around;">
+                        <?= Html::image_structure($fragment_model->fill_link_numbers($mm->fragment['smiles'], explode(',', $mm->links))) ?>
+                        <?php $mol = new Substances($mm['id_substance']); echo Html::anchor('mol/' . $mol->identifier, $mol->identifier, true);?>
+                        </div>
+                    </td>
+                    <?php 
+                        $mm = count($frags) ? new Iterable_object(array_shift($frags)) : null;
+                        $fragment_model = new Fragments();
+                    ?>
+                    <?php if($mm) : ?>
+                    <td>
+                        <?= $mm->links ?>
+                    </td>
+                    <td>
+                        <?= $fragment_model->get_functional_group($mm->fragment['id']) ?>
+                    </td>
+                    <td>
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:space-around;">
+                        <?= Html::image_structure($fragment_model->fill_link_numbers($mm->fragment['smiles'], explode(',', $mm->links))) ?>
+                        </div>
+                    </td>
+                    <?php else : ?>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    <?php endif ?>
+                    <td rowspan="<?= $rowspan ?>">
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:space-around;">
+                        <?php $rl = $row->core->remove_links() ?>
+                        <?= Html::image_structure($rl->fill_link_numbers($rl->smiles)) ?>
                     </div>
-                <?php endforeach ?>
-            </div>
-        </div>
-    </div>
-    <?php endforeach ?>
+                    </td>
+                    <?php $nn =  count($side_frags) ? new Iterable_object(array_shift($side_frags)) : null; ?>
+                    <?php if ($nn) : ?> 
+                    <td><?= Html::image_structure($fragment_model->fill_link_numbers($nn->fragment['smiles'], explode(',', $nn->links))) ?></td>
+                    <td><?= $fragment_model->get_functional_group($nn->fragment['id']) ?></td>
+                    <td><?= $nn->links ?></td>
+                    <?php else: ?>
+                        <td></td><td></td><td></td>
+                    <?php endif ?>
+                    <td rowspan="<?= $rowspan ?>">
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:space-around;">
+                        <?= Html::image_structure($fragment_model->fill_link_numbers($mm_side->fragment['smiles'], explode(',', $mm_side->links))) ?>
+                        <?php $mol = new Substances($mm_side['id_substance']); echo Html::anchor('mol/' . $mol->identifier, $mol->identifier, true);?>
+                        </div>
+                    </td>
+                </tr>
+                <!-- Add other collapsed rows -->
+                <?php $rc = max(count($frags), count($side_frags)) ?>
+                <?php for($i = 0; $i < $rc; $i++) : ?>
+                <?php $mm = count($frags) ?  new Iterable_object(array_shift($frags)) : null; $nn = count($side_frags) ? new Iterable_object(array_shift($side_frags)) : null; 
+                ?>
+                <tr>
+                <?php if($mm) : ?>
+                    <td>
+                        <?= $mm->links ?>
+                    </td>
+                    <td>
+                        <?= $fragment_model->get_functional_group($mm->fragment['id']) ?>
+                    </td>
+                    <td>
+                        <?= Html::image_structure($fragment_model->fill_link_numbers($mm->fragment['smiles'], explode(',', $mm->links))) ?>
+                    </td>
+                    <?php else : ?>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    <?php endif ?>
+                    <?php if ($nn) : ?> 
+                    <td><?= Html::image_structure($fragment_model->fill_link_numbers($nn->fragment['smiles'], explode(',', $nn->links))) ?></td>
+                    <td><?= $fragment_model->get_functional_group($nn->fragment['id']) ?></td>
+                    <td><?= $nn->links ?></td>
+                    <?php else: ?>
+                        <td></td><td></td><td></td>
+                    <?php endif ?>
+                </tr>
+                <?php endfor ?>
+            <?php endforeach ?>
+            
+        </tbody>
+    </table>
 </div>

@@ -34,6 +34,11 @@ class SchedulerController extends Controller
     private $runs = [];
 
     /**
+     * @var Time
+     */
+    private $time;
+
+    /**
      * @var int
      */
     private $timeout_limit = null;
@@ -163,6 +168,12 @@ class SchedulerController extends Controller
                 {
                     $this->protected_call('update_pair_group_interactions', [], 1800);
                 }
+            }
+
+            // COSMO computations
+            if($this->config->get(Configs::COSMO_ENABLED))
+            {
+                $this->protected_call('cosmo_run', []);
             }
 
             $this->print("Scheduler END.");

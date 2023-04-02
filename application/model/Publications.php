@@ -27,6 +27,13 @@
  */
 class Publications extends Db
 {
+    /**
+     * DOI PREFIX
+     * 
+     * @var string
+     */
+    const DOI_PREFIX = "https://doi.org/";
+
     /** TYPES */
     const PUBCHEM = 1;
     const CHEMBL = 2;
@@ -47,6 +54,35 @@ class Publications extends Db
     {
         $this->table = 'publications';
         parent::__construct($id);
+    }
+
+    /**
+     * @return Publications
+     */
+    public static function instance()
+    {
+        return new Publications();
+    }
+
+    /**
+     * Returns public detail of reference
+     * 
+     * @return array|null
+     */
+    public function get_public_detail()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        return array
+        (
+            'doi' => str_replace(self::DOI_PREFIX, '', $this->doi),
+            'pmid' => $this->pmid,
+            'title' => $this->title,
+            'citation' => $this->citation
+        );
     }
 
     /**
@@ -280,10 +316,9 @@ class Publications extends Db
         $row = $this->queryOne(
             'SELECT id 
             FROM publications
-            WHERE pmid LIKE ? OR doi LIKE ? OR citation LIKE ?'
+            WHERE pmid LIKE ? OR doi LIKE "%'. $query .'" OR citation LIKE ?'
             , array
             (
-                $query,
                 $query,
                 $query
             ));

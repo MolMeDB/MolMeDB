@@ -153,16 +153,8 @@ class Interactions extends Db
 
 		return array
 		(
-			'Membrane' => array
-			(
-				'id' => $i->id_membrane,
-				'name' => $i->membrane->name
-			),
-			'Method' => array
-			(
-				'id' => $i->id_method,
-				'name' => $i->method->name
-			),
+			'Membrane' => $i->membrane->get_public_detail(),
+			'Method' => $i->method->get_public_detail(),
 			'Charge'    => $i->charge,
 			'Temperature' => array
 			(
@@ -221,8 +213,8 @@ class Interactions extends Db
 			),
 			'References' => array
 			(
-				'primary' => $i->id_reference ? $i->reference->citation : "N/A",
-				'secondary' => $i->dataset->id_publication ? $i->dataset->publication->citation : "N/A"
+				'primary' => $i->id_reference ? $i->reference->get_public_detail() : "N/A",
+				'secondary' => $i->dataset->id_publication ? $i->dataset->publication->get_public_detail() : "N/A"
 			)
 		);
 	}

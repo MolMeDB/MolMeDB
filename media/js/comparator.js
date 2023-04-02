@@ -1446,8 +1446,8 @@ function load_membranes_methods(methods=false)
         config.id_method = active_methods;
     }
 
-    var membranes_all = ajax_request('membranes/all', config);
-    var methods_all = ajax_request('methods/All', config);
+    var membranes_all = ajax_request('membranes/get/all', config);
+    var methods_all = ajax_request('methods/get/all', config);
 
     if(membranes_all == false || methods_all == false)
     {

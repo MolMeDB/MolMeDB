@@ -57,6 +57,16 @@ class Enum_types extends Db
     }
 
     /**
+     * To string
+     * 
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->name;
+    }
+
+    /**
      * Returns enum types by type
      * 
      * @return Enum_types[]|null

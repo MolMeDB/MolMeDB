@@ -171,8 +171,8 @@ class Transporters extends Db
             'pIC50'  => $this->IC50,
             'References' => array
             (
-                'Primary' => $this->id_reference ? $this->reference->citation : "N/A",
-				'Secondary' => $this->dataset->id_reference ? $this->dataset->reference->citation : "N/A"
+                'Primary' => $this->id_reference ? $this->reference->get_public_detail() : "N/A",
+				'Secondary' => $this->dataset->id_reference ? $this->dataset->reference->get_public_detail() : "N/A"
             )
         );
     }

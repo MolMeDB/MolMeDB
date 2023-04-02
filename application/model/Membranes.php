@@ -19,6 +19,8 @@
  * 
  * @property Enum_type_links $enum_type_link
  * 
+ * @method Membranes instance
+ * 
  */
 class Membranes extends Db
 {   
@@ -58,6 +60,33 @@ class Membranes extends Db
             ->get_one();
 
         return $mem->id ? $mem : NULL;
+    }
+
+
+    /**
+     * Returns membrane detail for public
+     * 
+     * @return array|null
+     */
+    public function get_public_detail($add_description = False)
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        $res = array
+        (
+            'id' => $this->id,
+            'name' => $this->name  
+        );
+
+        if($add_description)
+        {
+            $res['description'] = str_replace('&nbsp', " ", str_replace("\r", '', strip_tags($this->description)));
+        }
+
+        return $res;
     }
 
     /**
@@ -104,6 +133,106 @@ class Membranes extends Db
         }
 
         return $res;
+    }
+
+    /**
+     * Tries to find membrane by doi/pmid/category/id/name 
+     * - Can be set category structure also
+     * 
+     * @return Membranes[]
+     */
+    public function find_all($query)
+    {
+        $result = [];
+
+        $by_identifier = new Membranes($query);
+        if(!$by_identifier->id)
+        {
+            $by_identifier = Membranes::instance()->where('name LIKE', $query)->get_one();
+        }
+
+        if($by_identifier->id)
+        {
+            $result = [$by_identifier];
+        }
+        else
+        {
+            // Try to find category by path
+            $query = 'Membranes.' . $query;
+            $cats = explode('.', $query);
+            $cats_objects = [];
+
+            foreach($cats as $c)
+            {
+                $exists = Enum_types::instance()->where(array
+                (
+                    'name LIKE' => $c,
+                    'type'      => Enum_types::TYPE_MEMBRANE_CATS
+                ))->get_one();
+
+                if(!$exists->id)
+                {
+                    ResponseBuilder::not_found('Category `' . $c .'` not found.');
+                }
+
+                $cats_objects[] = $exists;
+            }
+
+            $current = array_shift($cats_objects);
+            $curr_link_id = null;
+
+            // Check category structure validity
+            foreach($cats_objects as $c)
+            {
+                $link = Enum_type_links::instance()->where(array
+                (
+                    'id_enum_type' => $c->id,
+                    'id_enum_type_parent' => $current->id,
+                ) + ($curr_link_id ? ['id_parent_link' => $curr_link_id] : []))
+                ->get_one();
+
+                if(!$link->id)
+                {
+                    ResponseBuilder::not_found('Category `' . $c->name . '` is not child of category `' . $current->name . '`');
+                }
+
+                $current = $c;
+                $curr_link_id = $link->id;
+            }
+
+            $link_ids = [];
+
+            // Only one category provided
+            if(!$curr_link_id)
+            {
+                $links = Enum_type_links::instance()->where('id_enum_type_parent', $current->id)->get_all();
+                $link_ids = arr::get_values($links, 'id');
+                $last_total = 0;
+
+                while($last_total != count($link_ids))
+                {
+                    $last_total = count($link_ids);
+                    $links = Enum_type_links::instance()->in('id_parent_link', $link_ids)->get_all();
+                    $link_ids = array_unique(array_merge($link_ids, arr::get_values($links, 'id')));
+                }
+            }
+            else
+            {
+                $links = Enum_type_links::instance()
+                    ->where('id_parent_link', $curr_link_id)
+                    ->get_all();
+                $link_ids = array_merge(arr::get_values($links, 'id'), [$curr_link_id]);
+            }
+
+            if(count($link_ids))
+            {
+                $result = Membranes::instance()
+                    ->join('JOIN membrane_enum_type_links etl ON etl.id_membrane = membranes.id')
+                    ->in('etl.id_enum_type_link', $link_ids)
+                    ->get_all();
+            }
+        }
+        return $result;
     }
 
     /**

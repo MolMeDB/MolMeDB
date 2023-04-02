@@ -1,21 +1,175 @@
 <?php
 
+use EasyRdf\Http\Response;
+
 /**
  * Internal API HANDLER
  */
 class ApiMembranes extends ApiController
 {    
+     ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### PUBLIC #########################################
+    ################################################################################
+    ################################################################################
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ########## membranes/all<?categorized> #########################################
+    ################################################################################
+
+    /**
+     * Returns all membranes (PUBLIC)
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @optional $categorized
+     * 
+     * @Path(/all)
+     */
+    public function P_get_all($categorized)
+    {
+        $result = [];
+        if(!$categorized)
+        {
+            $all = Membranes::instance()->get_all();
+
+            foreach($all as $mem)
+            {
+                $result[] = $mem->get_public_detail();
+            }
+        }
+        else
+        {
+            $d = Membranes::instance()->get_active_categories();
+
+            foreach($d as $id => $cats)
+            {
+                $m = new Membranes($id);
+                $result[] = array
+                (
+                    'membrane' => $m->get_public_detail(),
+                    'category' => $cats->category,
+                    'subcategory' => $cats->subcategory,
+                );
+            }
+        }
+
+        return $result;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ########## membranes/categories ################################################
+    ################################################################################
+
+    /**
+     * Returns all membrane categories (PUBLIC)
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @Path(/categories)
+     */
+    public function P_get_categories()
+    {
+        $et_model = new Enum_types();
+        $categories = $et_model->get_categories(Enum_types::TYPE_MEMBRANE_CATS);
+        $result = $this->clarify_cat_structure($categories);
+        return $result;
+    }
+
+    /**
+     * Clarify category structure
+     * 
+     * @param array $cats
+     * 
+     * @return array
+     */
+    private function clarify_cat_structure($cats)
+    {
+        $result = $cats;
+
+        foreach($cats as $key => $row)
+        {
+            unset($result[$key]['id_element']);
+            unset($result[$key]['id_enum_type']);
+            unset($result[$key]['fixed']);
+            unset($result[$key]['value']);
+            unset($result[$key]['last']);
+            if(isset($result[$key]['children']))
+            {
+                $result[$key]['children'] = $this->clarify_cat_structure($result[$key]['children']);
+                $result[$key]['subcategories'] = $result[$key]['children'];
+                unset($result[$key]['children']);
+            }
+        }
+
+        return $result;
+    }
+
+     ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ########## membranes/detail ################################################
+    ################################################################################
+
+    /**
+     * Returns detail of membrane
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @optional $identifier
+     * @param @optional $category
+     * 
+     * @Path(/detail)
+     */
+    public function P_detail($identifier, $category)
+    {
+        if(!$identifier && !$category)
+        {
+            ResponseBuilder::bad_request('At least one parameter must be set.');
+        }
+
+        $result = [];
+        $membranes = Membranes::instance()->find_all($identifier ? $identifier : $category);
+
+        foreach($membranes as $mem)
+        {
+            $result[] = $mem->get_public_detail(true);
+        }
+
+        return $result;
+    }
+
+     ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### PRIVATE ########################################
+    ################################################################################
+    ################################################################################
+
+    ////////////////////////////////////////////////////////////////////////////////
+
     /**
      * Returns membrane detail by given param
      * Priority: $id > $cam > $tag
      * 
      * @GET
+     * @INTERNAL
      * 
      * @param $id
      * @param $cam
      * @param $tag
      * 
-     * @PATH(/detail)
+     * @PATH(/p/detail)
      */
     public function get_detail($id, $cam, $tag)
     {
@@ -54,13 +208,14 @@ class ApiMembranes extends ApiController
      * Returns all membranes for given parameters
      * 
      * @GET
+     * @INTERNAL
      * 
      * @param $id_compound
      * @param $id_method
      * 
-     * @PATH(/all)
+     * @PATH(/get/all)
      */
-    public function getAll($id_compound, $id_method)
+    public function getAll_internal($id_compound, $id_method)
     {
         if(!is_array($id_compound) && $id_compound)
         {

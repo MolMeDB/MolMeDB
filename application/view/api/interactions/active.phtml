@@ -1,0 +1,169 @@
+<base href="<?= Url::base() . MEDIA_ROOT ?>" />
+<link rel="stylesheet" href="css/bootstrap.min.css"/>
+<link rel="stylesheet" href="css/LiteMol-plugin.min.css">
+<link rel="stylesheet" href="css/style.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/tree.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/tables.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/layout.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/flexbox.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/depict.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/stats.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/searchEngine.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<link rel="stylesheet" href="css/browse.css?ver=<?=CSS_VERSION?>" type="text/css"/>
+<style>
+    body{
+        background-image: none !important;
+    }
+</style>
+
+<?php $total_rows = 0; $limit = 1000;?>
+
+<?php foreach($data as $key => $row) : ?>
+<?php 
+    if($total_rows >= $limit)
+    {
+        echo '<h2>Row limit reached. Edit your query or request header to obtain the whole dataset.</h2>';
+        break;
+    }
+    $total_rows += count($row['active_interactions']);
+?>
+<div class="general-info">
+    Record <?= $key+1 ?>
+    <div style="display:flex; flex-direction:column; justify-content: start; flex-wrap: wrap;">
+        <div class="general-info" style="margin-right: 20px;">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <td>
+                            <b style="color: #4a82da">General info</b>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>Identifier</b></td>
+                        <td><?= Html::anchor('mol/' . $row['substance']['identifiers']['molmedb'], $row['substance']['identifiers']['molmedb'], true) ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>Molecular weight</b></td>
+                        <td><?= $row['substance']['molecular_weight'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>LogP</b></td>
+                        <td><?= $row['substance']['logp'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>Names</b></td>
+                        <td><?= implode(', ', $row['substance']['identifiers']['name']) ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>Pubchem IDs</b></td>
+                        <td><?= implode(', ', $row['substance']['identifiers']['pubchem']) ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>PDB IDs</b></td>
+                        <td><?= implode(', ', $row['substance']['identifiers']['pdb']) ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>Drugbank IDs</b></td>
+                        <td><?= implode(', ', $row['substance']['identifiers']['drugbank']) ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>ChEMBL IDs</b></td>
+                        <td><?= implode(', ', $row['substance']['identifiers']['chembl']) ?></td>
+                    </tr>
+                    <tr>
+                        <td><b>Structure</b></td>
+                        <td><?= Html::image_structure($row['substance']['identifiers']['smiles']) ?></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <?php if(isset($row['active_interactions'])) : ?>
+        <div class="general-info">
+            <b style="font-size:15px; color: #4a82da">Passive interactions</b>
+            <?php 
+                // HTML content template
+                $t = new Table([
+                    Table::S_PAGINATIOR_POSITION => 'left',
+                    Table::FILTER_HIDE_COLUMNS => TRUE,
+                    Table::FILTER_HIDE_COLUMNS_DEFAULT => true,
+                    Table::S_NODATA => "No data found..."
+                ]);
+
+                $t->column('Target.Name')
+                    ->numeric()
+                    ->css(array
+                    (
+                        'text-align' => 'center' // Centering - flex - justify-content: center;
+                    ))
+                    ->title('Target');
+
+                $t->column('Target.Uniprot_id')
+                    ->css(array
+                    (
+                        'text-align' => 'center'
+                    ))
+                    ->numeric()
+                    ->title('Uniprot ID');
+
+                $t->column('Type')
+                    ->css(array
+                    (
+                        'text-align' => 'center'
+                    ), true)
+                    ->title("Type"); 
+
+                $t->column('pKm')
+                    ->css(array
+                    (
+                        'text-align' => 'center'
+                    ))
+                    // ->accuracy('Position_acc')
+                    ->title("pKm");
+
+                $t->column('pEC50')
+                    ->css(array
+                    (
+                        'text-align' => 'center'
+                    ))
+                    // ->accuracy('Position_acc')
+                    ->title("pEC50");
+
+                $t->column('pKi')
+                    ->css(array
+                    (
+                        'text-align' => 'center'
+                    ))
+                    // ->accuracy('Position_acc')
+                    ->title("pKi");
+
+                $t->column('pIC50')
+                    ->css(array
+                    (
+                        'text-align' => 'center'
+                    ))
+                    // ->accuracy('Position_acc')
+                    ->title("pIC50");
+
+                $t->column('Note')
+                    ->long_text()
+                    ->title('Note');
+
+                $t->column('References.Primary.citation')
+                    ->long_text()
+                    ->title('Primary<br/> reference', "Original source");
+
+                $t->column('References.Secondary.citation')
+                    ->long_text()
+                    ->title('Secondary<br/> reference', "Source of input into databse if different from original");
+
+                $t->datasource($row['active_interactions']);
+
+                echo $t->html();
+            ?>
+        </div>
+        <?php endif ?>
+    </div>
+</div>
+<?php endforeach ?>

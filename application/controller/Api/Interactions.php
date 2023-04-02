@@ -17,208 +17,415 @@ class ApiInteractions extends ApiController
 
 
     ################################################################################
-    ########## interactions/passive/<id><?membrane><?method><?reference> ###########
+    ########## interactions/passive/<?id><?membrane><?method><?reference> ###########
     ################################################################################
 
+    
     /**
-     * Returns passive interactions by ids
+     * Returns COUNT of passive interactions
      * 
      * @GET
      * @PUBLIC
      * 
-     * @param @required $id
+     * @param @optional $id
      * @param @optional $membrane
      * @param @optional $method
      * @param @optional $reference
      * 
-     * @PATH(/passive/<id:.+>)
+     * @PATH(/passive/total)
+     */
+    public function P_passive_interactions_count($id, $membrane, $method, $reference)
+    {
+        $this->P_passive_interactions($id, $membrane, $method, $reference);
+        $data = $this->responses[HeaderParser::JSON];
+
+        $result = array
+        (
+            'compounds' => array
+            (
+                'query' => $id,
+                'total_hits' => 0,
+            ),
+            'membranes' => array
+            (
+                'query' => $membrane,
+                'total_hits' => 0
+            ),
+            'methods' => array
+            (
+                'query' => $method,
+                'total_hits' => 0,
+            ),
+            'references' => array
+            (
+                'query' => $reference,
+                'total_hits' => 0
+            ),
+            'interactions' => array
+            (
+                'total_hits' => 0
+            )
+        );
+
+        if($data)
+        {
+            $mems = [];
+            $mets = [];
+            $refs = [];
+
+            foreach($data as $comp)
+            {
+                $result['compounds']['total_hits']++;
+                $result['interactions']['total_hits']+=count($comp['passive_interactions']);
+
+                foreach($comp['passive_interactions'] as $pi)
+                {
+                    $mems[] = $pi['Membrane']['id'];
+                    $mets[] = $pi['Method']['id'];
+                    $refs[] = isset($pi['References']['primary']['citation']) ? $pi['References']['primary']['citation'] : null;
+                    $refs[] = isset($pi['References']['secondary']['citation']) ? $pi['References']['secondary']['citation'] : null;
+                }
+            }
+
+            $result['membranes']['total_hits'] = count(array_unique($mems));
+            $result['methods']['total_hits'] = count(array_unique($mets));
+            $result['references']['total_hits'] = count(array_unique($refs));
+        }
+
+        $this->responses = null;
+        return $result;
+    }
+
+    ################################################################################
+    ########## interactions/passive/<?id><?membrane><?method><?reference> ###########
+    ################################################################################
+
+    /**
+     * Returns passive interactions
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @optional $id
+     * @param @optional $membrane
+     * @param @optional $method
+     * @param @optional $reference
+     * 
+     * @PATH(/passive)
      */
     public function P_passive_interactions($id, $membrane, $method, $reference)
     {
-        if(!is_array($id))
+        if(!is_array($id) && $id)
 		{
 			$id = [$id];
 		}
 
-		if(empty($id) || !$id[0])
-		{
-			ResponseBuilder::bad_request('Invalid id list.');
-		}
-
         // Find membrane if set
-        $m_records = null;
+        $mem_records = null;
         if($membrane)
         {
-            $by_identifier = new Membranes($membrane);
-            if(!$by_identifier->id)
+            $mem_records = Membranes::instance()->find_all($membrane);
+
+            if(empty($mem_records))
             {
-                $by_identifier = Membranes::instance()->where('name LIKE', $membrane)->get_one();
-            }
-
-            if($by_identifier->id)
-            {
-                $m_records = [$by_identifier];
-            }
-            else
-            {
-                // Try to find category by path
-                $cats = explode('.', $membrane);
-                $cats_objects = [];
-
-                foreach($cats as $c)
-                {
-                    $exists = Enum_types::instance()->where(array
-                    (
-                        'name LIKE' => $c,
-                        'type'      => Enum_types::TYPE_MEMBRANE_CATS
-                    ))->get_one();
-
-                    if(!$exists->id)
-                    {
-                        ResponseBuilder::not_found('Membrane/category `' . $c .'` not found.');
-                    }
-
-                    $cats_objects[] = $exists;
-                }
-
-                $current = array_shift($cats_objects);
-                $curr_link_id = null;
-
-                foreach($cats_objects as $c)
-                {
-                    $link = Enum_type_links::instance()->where(array
-                    (
-                        'id_enum_type' => $c->id,
-                        'id_enum_type_parent' => $current->id,
-                    ) + ($curr_link_id ? ['id_parent_link' => $curr_link_id] : ['id_parrent_link IS NULL' => NULL]))
-                    ->get_one();
-
-                    if(!$link->id)
-                    {
-                        ResponseBuilder::not_found('Category `' . $c->name . '` does not have parent `' . $current->name . '`');
-                    }
-
-                    $current = $c;
-                    $curr_link_id = $link->id;
-                }
-
-                $link_ids = [];
-
-                // Only one category provided
-                if(!$curr_link_id)
-                {
-                    $links = Enum_type_links::instance()->where('id_enum_type_parent', $current->id)->get_all();
-                    $link_ids = arr::get_values($links, 'id');
-                    $total = 0;
-
-                    while($total != count($link_ids))
-                    {
-                        $total = count($link_ids);
-                        $links = Enum_type_links::instance()->in('id_parent_link', $link_ids)->get_all();
-                        $link_ids = array_merge($link_ids, arr::get_values($links, 'id'));
-                    }
-                }
-                else
-                {
-                    $links = Enum_type_links::instance()
-                        ->where('id_parent_link', $curr_link_id)
-                        ->get_all();
-                }
-
-                if(count($links))
-                {
-                    $m_records = Membranes::instance()
-                        ->join('JOIN membrane_enum_type_links etl ON etl.id_membrane = membranes.id')
-                        ->in('etl.id_enum_type_link', arr::get_values($links, 'id'))
-                        ->get_all();
-                }
-
-
-                $m_records = Membranes::instance()
-                    ->join('JOIN membrane_enum_type_links etl ON etl.id_membrane = membranes.id AND etl.id_enum_type_link = ' . $curr_link_id)
-                    ->get_all();
+                    ResponseBuilder::not_found('Membrane `' . $membrane . '` not found.');
             }
         }
 
-        echo count($m_records);
-        die;
-        
-		$result = array();
+        // Find method if set
+        $met_records = null;
+        if($method)
+        {
+           $met_records = Methods::instance()->find_all($method);
 
-		foreach($id as $q_id)
-		{
-            $substance = Substances::get_by_any_identifier($q_id);
+           if(empty($met_records))
+           {
+                ResponseBuilder::not_found('Method `' . $method . '` not found.');
+           }
+        }
 
-            if(!$substance->id)
+        // Find reference if set
+        $publication = null;
+        if($reference)
+        {
+            $publication = Publications::instance()->get_by_query($reference);
+
+            if(!$publication->id)
             {
-                continue;
+                ResponseBuilder::not_found('Publication `' . $reference . '` not found in MolMeDB.');
             }
+        }
+
+        if(empty($id) && !$mem_records && !$met_records && !$publication)
+        {
+            ResponseBuilder::bad_request('At least one parameter value must be set.');
+        }
+
+		$result = array();
             
-			$int = new Interactions($interaction_id);
-			$energy = new Energy();
+        $int = Interactions::instance();
 
-			if(!$int->id)
-			{
-				continue;
-			}
+        if(!empty($id))
+        {
+            $ids = [];
+            foreach($id as $q_id)
+            {
+                $s = new Substances($q_id);
+                $ids[] = $s->id;
+            }
 
-			// Check if energy value exists
-			$avail = $energy->where(array
-				(
-					'id_substance'	=> $int->id_substance,
-					'id_membrane'	=> $int->id_membrane,
-					'id_method'		=> $int->id_method
-				))
-				->get_one();
+            $int->in('id_substance', $ids);
+        }
 
-			$result[] = array
-			(
-				'id'			=> $int->id,
-				'substance'		=> $int->substance ? $int->substance->as_array() : NULL,
-				'membrane'		=> $int->membrane ? $int->membrane->name : NULL,
-				'method'		=> $int->method ? $int->method->name : NULL,
-				'comment'		=> $int->comment ? $int->comment : NULL,
-				'charge'		=> $int->charge,
-				'temperature'	=> $int->temperature,
-				'Position'		=> $int->Position,
-				'Position_acc' 	=> $int->Position_acc,
-				'Penetration'	=> $int->Penetration,
-				'Penetration_acc' 	=> $int->Penetration_acc,
-				'Water'			=> $int->Water,
-				'Water_acc' 	=> $int->Water_acc,
-				'LogK'			=> $int->LogK,
-				'LogK_acc' 		=> $int->LogK_acc,
-				'LogPerm'		=> $int->LogPerm,
-				'LogPerm_acc' 	=> $int->LogPerm_acc,
-				'theta'			=> $int->theta,
-				'theta_acc' 	=> $int->theta_acc,
-				'abs_wl'		=> $int->abs_wl,
-				'abs_wl_acc' 	=> $int->abs_wl_acc,
-				'fluo_wl'		=> $int->fluo_wl,
-				'fluo_wl_acc' 	=> $int->fluo_wl_acc,
-				'lt'			=> $int->lt,
-				'lt_acc' 		=> $int->lt_acc,
-				'QY'			=> $int->QY,
-				'QY_acc' 		=> $int->QY_acc,
-				'id_reference'	=> $int->id_reference,
-				'reference'		=> $int->reference ? $int->reference->citation : NULL,
-                'secondary_reference' => $int->dataset && $int->dataset->publication ? $int->dataset->publication->citation : null,
-				'id_dataset'	=> $int->id_dataset,
-				'id_substance'	=> $int->id_substance,
-				'id_membrane'	=> $int->id_membrane,
-				'id_method'		=> $int->id_method,
-				'energy_profile_flag'	=> $avail->id,
-				'last_update'	=> $int->editDateTime,
-				'uploaded'		=> $int->createDateTime
-			);
-		}
+        if(!empty($mem_records))
+        {
+            $int->in('id_membrane', arr::get_values($mem_records, 'id'));
+        }
 
-		if(count($result) === 1)
+        if(!empty($met_records))
+        {
+            $int->in('id_method', arr::get_values($met_records, 'id'));
+        }
+
+        if(isset($publication))
+        {
+            $int->in('id_reference', [$publication->id]);
+        }
+
+        $int = $int->order_by('id_substance')->get_all();
+
+        $last = new Substances();
+        $pi = [];
+        $row = [];
+
+        foreach($int as $i)
+        {
+            if($i->id_substance != $last->id)
+            {
+                // Save last if set
+                if($last->id)
+                {
+                    $row['passive_interactions'] = $pi;
+                    $result[] = $row;
+                }
+
+                // Create new
+                $pi = [];
+                $last = new Substances($i->id_substance);
+                $row = array
+                (
+                    'substance' => $last->get_public_detail(),
+                    'passive_interactions' => []
+                );
+            }
+
+            $pi[] = $i->get_public_detail();
+        }
+
+        $row['passive_interactions'] = $pi;
+        $result[] = $row;
+
+        $view = new View('api/interactions/passive');
+        $view->data = $result;
+
+        $this->responses = array
+        (
+            HeaderParser::HTML => $view->__toString(),
+            HeaderParser::JSON => $result
+        );
+    }
+
+
+    ################################################################################
+    ########## interactions/active/<?id><?membrane><?method><?reference> ###########
+    ################################################################################
+
+    
+    /**
+     * Returns COUNT of active interactions
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @optional $id
+     * @param @optional $target
+     * @param @optional $reference
+     * 
+     * @PATH(/active/total)
+     */
+    public function P_active_interactions_count($id, $target, $reference)
+    {
+        $this->P_active_interactions($id, $target, $reference);
+        $data = $this->responses[HeaderParser::JSON];
+
+        $result = array
+        (
+            'compounds' => array
+            (
+                'query' => $id,
+                'total_hits' => 0,
+            ),
+            'targets' => array
+            (
+                'query' => $target,
+                'total_hits' => 0
+            ),
+            'references' => array
+            (
+                'query' => $reference,
+                'total_hits' => 0
+            ),
+            'interactions' => array
+            (
+                'total_hits' => 0
+            )
+        );
+
+        if($data)
+        {
+            $targs = [];
+            $refs = [];
+
+            foreach($data as $comp)
+            {
+                $result['compounds']['total_hits']++;
+                $result['interactions']['total_hits']+=count($comp['active_interactions']);
+
+                foreach($comp['active_interactions'] as $pi)
+                {
+                    $targs[] = $pi['Target']['Name'];
+                    $refs[] = isset($pi['References']['primary']['citation']) ? $pi['References']['primary']['citation'] : null;
+                    $refs[] = isset($pi['References']['secondary']['citation']) ? $pi['References']['secondary']['citation'] : null;
+                }
+            }
+
+            $result['targets']['total_hits'] = count(array_unique($targs));
+            $result['references']['total_hits'] = count(array_unique($refs));
+        }
+
+        $this->responses = null;
+        return $result;
+    }
+
+    ################################################################################
+    ########## interactions/passive/<?id><?membrane><?method><?reference> ###########
+    ################################################################################
+
+    /**
+     * Returns active interactions
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @optional $id
+     * @param @optional $target
+     * @param @optional $reference
+     * 
+     * @PATH(/active)
+     */
+    public function P_active_interactions($id, $target, $reference)
+    {
+        if(!is_array($id) && $id)
 		{
-			$result = $result[0];
+			$id = [$id];
 		}
-		
-		return $result;
+
+        // Find method if set
+        $target_records = null;
+        if($target)
+        {
+           $target_records = Transporter_targets::instance()->find_all($target);
+
+           if(empty($target_records))
+           {
+                ResponseBuilder::not_found('Transporter target `' . $target . '` not found.');
+           }
+        }
+
+        // Find reference if set
+        $publication = null;
+        if($reference)
+        {
+            $publication = Publications::instance()->get_by_query($reference);
+
+            if(!$publication->id)
+            {
+                ResponseBuilder::not_found('Publication `' . $reference . '` not found in MolMeDB.');
+            }
+        }
+
+        if(empty($id) && !$target_records && !$publication)
+        {
+            ResponseBuilder::bad_request('At least one parameter value must be set.');
+        }
+
+		$result = array();
+            
+        $int = Transporters::instance();
+
+        if(!empty($id))
+        {
+            $ids = [];
+            foreach($id as $q_id)
+            {
+                $s = new Substances($q_id);
+                $ids[] = $s->id;
+            }
+
+            $int->in('id_substance', $ids);
+        }
+
+        if(!empty($target_records))
+        {
+            $int->in('id_target', arr::get_values($target_records, 'id'));
+        }
+
+        if(isset($publication))
+        {
+            $int->join("JOIN transporter_datasets td ON td.id = transporters.id_dataset AND td.id_reference = " . $publication->id);
+        }
+
+        $int = $int->order_by('id_substance')->get_all();
+
+        $last = new Substances();
+        $ai = [];
+        $row = [];
+
+        foreach($int as $i)
+        {
+            if($i->id_substance != $last->id)
+            {
+                // Save last if set
+                if($last->id)
+                {
+                    $row['active_interactions'] = $ai;
+                    $result[] = $row;
+                }
+
+                // Create new
+                $ai = [];
+                $last = new Substances($i->id_substance);
+                $row = array
+                (
+                    'substance' => $last->get_public_detail(),
+                    'active_interactions' => []
+                );
+            }
+
+            $ai[] = $i->get_public_detail();
+        }
+
+        $row['active_interactions'] = $ai;
+        $result[] = $row;
+
+        $view = new View('api/interactions/active');
+        $view->data = $result;
+
+        $this->responses = array
+        (
+            HeaderParser::HTML => $view->__toString(),
+            HeaderParser::JSON => $result
+        );
     }
 
 

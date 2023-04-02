@@ -53,7 +53,7 @@ class ApiEndpoint
 
         //Checking if endpoint was previously loaded
         $endpoint_parser = new Api_endpoint_parser();
-        $loaded_endpoint = $endpoint_parser->find($path, $this->request->method_type);
+        $loaded_endpoint = $endpoint_parser->find($path, $this->request);
 
         if(!$loaded_endpoint)
         {

@@ -567,11 +567,14 @@ function redirect(path, params = {}, method = 'GET')
 {
     var valid_methods = ['POST', 'GET'];
 
-    path = url_prefix + "/" + path.trim("/");
-
+    if(!path.match(/^http/))
+    {
+        path = url_prefix + "/" + path.trim("/");
+    }
+    
     method = method.toUpperCase();
     method = valid_methods.includes(method) ? method : "GET"; // Set method to get by default if not specified.
-
+    
     if(method === 'GET' && jQuery.isEmptyObject(params))
     {
         window.location.href = path;
@@ -621,7 +624,7 @@ function get_all_membranes()
  */
 function get_all_methods()
 {
-    var result = ajax_request("methods/all");
+    var result = ajax_request("methods/p/all");
 
     if(result === false)
         return [];

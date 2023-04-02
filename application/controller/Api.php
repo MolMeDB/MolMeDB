@@ -101,13 +101,16 @@ class ApiController extends Controller
     {
         foreach ($this->parsed_request->accept_type as $at_item) 
         {
+
             if(array_key_exists($at_item, HeaderParser::$accept_type_method))
             {
                 try
                 {
-                    $to_encode = isset($this->responses[$at_item]) ? $this->responses[$at_item] : (isset($this->responses['default']) ? $this->responses['default'] : null);
+                    $nn = '!@#$%!@$';
 
-                    if(!$to_encode)
+                    $to_encode = array_key_exists($at_item, $this->responses) ? $this->responses[$at_item] : (isset($this->responses['default']) ? $this->responses['default'] : $nn);
+
+                    if($to_encode === $nn)
                     {
                         continue;
                     }

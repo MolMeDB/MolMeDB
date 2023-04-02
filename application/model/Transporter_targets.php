@@ -10,6 +10,8 @@
  * @param datetime $create_datetime
  * 
  * @param Users $id_user 
+ * 
+ * @method Transporter_targets instance
  */
 class Transporter_targets extends Db
 {
@@ -46,6 +48,102 @@ class Transporter_targets extends Db
         );
         
         return new Transporter_targets($t->id);
+    }
+
+    /**
+     * Tries to find target by id/name or category 
+     * - Can be set category structure also 
+     * 
+     * @return Transporter_targets[]
+     */
+    public function find_all($query)
+    {
+        $result = [];
+
+        $by_identifier = $this->find($query, $query);
+
+        if($by_identifier->id)
+        {
+            $result = [$by_identifier];
+        }
+        else
+        {
+            // Try to find category by path
+            $cats = explode('.', $query);
+            $cats_objects = [];
+
+            foreach($cats as $c)
+            {
+                $exists = Enum_types::instance()->where(array
+                (
+                    'name LIKE' => $c,
+                    'type'      => Enum_types::TYPE_TRANSPORTER_CATS
+                ))->get_one();
+
+                if(!$exists->id)
+                {
+                    ResponseBuilder::not_found('Transporter target/category `' . $c .'` not found.');
+                }
+
+                $cats_objects[] = $exists;
+            }
+
+            $current = array_shift($cats_objects);
+            $curr_link_id = null;
+
+            // Check category structure validity
+            foreach($cats_objects as $c)
+            {
+                $link = Enum_type_links::instance()->where(array
+                (
+                    'id_enum_type' => $c->id,
+                    'id_enum_type_parent' => $current->id,
+                ) + ($curr_link_id ? ['id_parent_link' => $curr_link_id] : ['id_parrent_link IS NULL' => NULL]))
+                ->get_one();
+
+                if(!$link->id)
+                {
+                    ResponseBuilder::not_found('Category `' . $c->name . '` does not have parent category `' . $current->name . '`');
+                }
+
+                $current = $c;
+                $curr_link_id = $link->id;
+            }
+
+            $link_ids = [];
+
+            // Only one category provided
+            if(!$curr_link_id)
+            {
+                $links = Enum_type_links::instance()->where('id_enum_type_parent', $current->id)->get_all();
+                $link_ids = arr::get_values($links, 'id');
+                $last_total = 0;
+
+                while($last_total != count($link_ids))
+                {
+                    $last_total = count($link_ids);
+                    $links = Enum_type_links::instance()->in('id_parent_link', $link_ids)->get_all();
+                    $link_ids = array_unique(array_merge($link_ids, arr::get_values($links, 'id')));
+                }
+            }
+            else
+            {
+                $links = Enum_type_links::instance()
+                    ->where('id_parent_link', $curr_link_id)
+                    ->get_all();
+                $link_ids = array_merge(arr::get_values($links, 'id'), $curr_link_id);
+            }
+
+            if(count($link_ids))
+            {
+                $result = Transporter_targets::instance()
+                    ->join('JOIN transporter_target_enum_type_links etl ON etl.id_transporter_target = transporter_targets.id')
+                    ->in('etl.id_enum_type_link', $link_ids)
+                    ->get_all();
+            }
+        }
+
+        return $result;
     }
 
     /**

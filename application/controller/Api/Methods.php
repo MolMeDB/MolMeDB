@@ -5,6 +5,157 @@
  */
 class ApiMethods extends ApiController
 {   
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### PUBLIC #########################################
+    ################################################################################
+    ################################################################################
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ########## methods/all<?categorized> #########################################
+    ################################################################################
+
+    /**
+     * Returns all methods (PUBLIC)
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @optional $categorized
+     * 
+     * @Path(/all)
+     */
+    public function P_get_all($categorized)
+    {
+        $result = [];
+        if(!$categorized)
+        {
+            $all = Methods::instance()->get_all();
+
+            foreach($all as $mem)
+            {
+                $result[] = $mem->get_public_detail();
+            }
+        }
+        else
+        {
+            $d = Methods::instance()->get_active_categories();
+
+            foreach($d as $id => $cats)
+            {
+                $m = new Methods($id);
+                $result[] = array
+                (
+                    'membrane' => $m->get_public_detail(),
+                    'category' => $cats->category,
+                    'subcategory' => $cats->subcategory,
+                );
+            }
+        }
+
+        return $result;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ########## methods/categories ################################################
+    ################################################################################
+
+    /**
+     * Returns all membrane categories (PUBLIC)
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @Path(/categories)
+     */
+    public function P_get_categories()
+    {
+        $et_model = new Enum_types();
+        $categories = $et_model->get_categories(Enum_types::TYPE_METHOD_CATS);
+        $result = $this->clarify_cat_structure($categories);
+        return $result;
+    }
+
+    /**
+     * Clarify category structure
+     * 
+     * @param array $cats
+     * 
+     * @return array
+     */
+    private function clarify_cat_structure($cats)
+    {
+        $result = $cats;
+
+        foreach($cats as $key => $row)
+        {
+            unset($result[$key]['id_element']);
+            unset($result[$key]['id_enum_type']);
+            unset($result[$key]['fixed']);
+            unset($result[$key]['value']);
+            unset($result[$key]['last']);
+            if(isset($result[$key]['children']))
+            {
+                $result[$key]['children'] = $this->clarify_cat_structure($result[$key]['children']);
+                $result[$key]['subcategories'] = $result[$key]['children'];
+                unset($result[$key]['children']);
+            }
+        }
+
+        return $result;
+    }
+
+     ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ########## methods/detail ################################################
+    ################################################################################
+
+    /**
+     * Returns detail of method
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @optional $identifier
+     * @param @optional $category
+     * 
+     * @Path(/detail)
+     */
+    public function P_detail($identifier, $category)
+    {
+        if(!$identifier && !$category)
+        {
+            ResponseBuilder::bad_request('At least one parameter must be set.');
+        }
+
+        $result = [];
+        $membranes = Methods::instance()->find_all($identifier ? $identifier : $category);
+
+        foreach($membranes as $mem)
+        {
+            $result[] = $mem->get_public_detail(true);
+        }
+
+        return $result;
+    }
+
+     ////////////////////////////////////////////////////////////////////////////////
+
+    ################################################################################
+    ################################################################################
+    ############################### PRIVATE ########################################
+    ################################################################################
+    ################################################################################
+
+    ////////////////////////////////////////////////////////////////////////////////
+
     /**
      * Returns method detail by given param
      * Priority: $id > $cam > $tag
@@ -139,7 +290,7 @@ class ApiMethods extends ApiController
      * @param $id_compound 
      * @param $id_membrane 
      * 
-     * @PATH(/all)
+     * @PATH(/p/all)
      */
     public function getAll($id_compound, $id_membrane)
     {

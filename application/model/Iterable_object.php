@@ -16,7 +16,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
 
     protected $max_pos;
 
-    private $debug = False;
+    private $debug = false;
 
     const T_HAS_ONE = 1;
     const T_HAS_MANY = 2;
@@ -289,7 +289,9 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             echo __METHOD__ . ' / ';
         }
 
-        if($this->offsetExists($this->keys[$this->_position]))
+        // print_r($this->keys);
+
+        if(isset($this->keys[$this->_position]) && $this->offsetExists($this->keys[$this->_position]))
         {
             return $this->data[$this->keys[$this->_position]];
         }
@@ -327,7 +329,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
     /**
      * Moves current position to next element
      */
-    public function next()
+    public function next() : void
     {
         if ($this->debug) {
             echo __METHOD__ . ' / ';
@@ -338,7 +340,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
     /**
      * Rewinds back to the first element
      */
-    public function rewind()
+    public function rewind() : void
     {
         if ($this->debug) {
             echo __METHOD__ . ' / ';
@@ -349,12 +351,12 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
     /**
      * Checks if current position is valid
      */
-    public function valid()
+    public function valid() : bool
     {
         if ($this->debug) {
             echo __METHOD__ . ' - ' . $this->_position . ' / ';
         }
-        return $this->offsetExists($this->_position); //null !== $this->data[$this->_position];
+        return $this->offsetExists($this->_position);
     }
     // END of methods required by Iterator interface
 
@@ -445,7 +447,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
      * @return boolean
      * @abstracting ArrayAccess
      */
-    public function offsetExists($offset)
+    public function offsetExists($offset) : bool
     {
         return isset($this->data[$offset]) || (isset($this->keys[$offset]) && isset($this->data[$this->keys[$offset]]));
     }

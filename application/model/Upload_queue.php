@@ -99,10 +99,10 @@ class Upload_queue extends Db
      */
     public function start()
     {
-        // if(!$this->id || $this->state !== self::STATE_PENDING)
-        // {
-        //     return;
-        // }
+        if(!$this->id || $this->state !== self::STATE_PENDING)
+        {
+            throw new MmdbException('Cannot start file uploader. Invalid object instance.');
+        }
 
         try
         {
@@ -120,6 +120,7 @@ class Upload_queue extends Db
             $this->state = self::STATE_ERROR;
             $this->run_info = ['error' => $e->getMessage()];
             $this->save();
+            throw $e;
         }
 
         return;
@@ -298,7 +299,7 @@ class Upload_queue extends Db
         {
             Db::rollbackTransaction();
             $this->state = self::STATE_ERROR;
-            throw new MmdbException($e->getMessage(),'', $e->getCode(), $e) ;
+            throw new MmdbException($e->getMessage(),$e->getMessage(), $e->getCode(), $e) ;
         }
 
         $this->run_info = json_encode($msg);

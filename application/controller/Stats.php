@@ -37,9 +37,6 @@
 
         $this->view->files = $stats->get_stat_files();
 
-        // print_r($stats->get(Statistics::TYPE_IDENTIFIERS));
-        // die;
-
         $this->view->interactions = (object)array
         (
             'adding' => $stats->get(Statistics::TYPE_INTER_ADD),

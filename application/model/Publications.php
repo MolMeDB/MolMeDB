@@ -214,7 +214,7 @@ class Publications extends Db
      */
     public function get_empty_publications()
     {
-        $data =  $this->queryAll('
+        $data = $this->queryAll('
             SELECT DISTINCT p.*
             FROM publications p
             LEFT JOIN interaction i ON i.id_reference = p.id

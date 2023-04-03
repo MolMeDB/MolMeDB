@@ -257,9 +257,6 @@ class MolController extends Controller
 
         $table->datasource($dataset);
 
-        // echo $table->html();
-        // die;
-
         return $table->html();
     }
 }

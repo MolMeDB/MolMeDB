@@ -188,9 +188,9 @@ class SearchController extends Controller
             $list = $substance_model->search($query, $pagination);
             $total = $substance_model->search_count($query);
         } 
-        catch (ErrorUser $ex) 
+        catch (Exception $ex) 
         {
-            $this->addMessageError($ex);
+            $this->alert->error($ex);
             $this->redirect('search');
         }
 
@@ -289,20 +289,17 @@ class SearchController extends Controller
             $query = substr($query, $start, $len);
         }
 
-        $rdkit = new Rdkit();
-
-        $smiles = $rdkit->canonize_smiles($query);
-
         try 
         {
+            $rdkit = new Rdkit();
             $smiles = $rdkit->canonize_smiles($query);
 
             $list = $substance_model->search_by_smiles($smiles ? $smiles : $query, $pagination);
             $total = $substance_model->search_by_smiles_count($smiles ? $smiles : $query);
-        } 
-        catch (ErrorUser $ex) 
+        }
+        catch (Exception $ex) 
         {
-            $this->addMessageError($ex);
+            $this->alert->error($ex);
             $this->redirect('search');
         }
 

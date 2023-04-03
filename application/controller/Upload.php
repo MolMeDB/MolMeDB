@@ -21,7 +21,7 @@ class UploadController extends Controller
     private $menu_endpoints = array
     (
         self::M_DATASET => 'dataset',
-        self::M_ENERGY  => 'energy',
+        // self::M_ENERGY  => 'energy',
         self::M_MEMBRANE => 'membrane',
         self::M_METHOD => 'method',
         self::M_PUBLICATION => 'publication',
@@ -451,7 +451,11 @@ class UploadController extends Controller
         $this->title = 'Uploader';
 
         $this->view->detail = $data;
-        $this->view->queue = Upload_queue::instance()->where("type IS", "NULL")->order_by('id', 'DESC')->limit(15)->get_all();
+        $this->view->queue = Upload_queue::instance()
+            ->in("type", [Upload_queue::TYPE_PASSIVE_DATASET, Upload_queue::TYPE_ACTIVE_DATASET])
+            ->order_by('id', 'DESC')
+            ->limit(20)
+            ->get_all();
         $this->view->fileType = $fileType;
         $this->view->navigator = $this->createNavigator(self::M_DATASET);
 
@@ -489,6 +493,59 @@ class UploadController extends Controller
         $q->save();
 
         $this->alert->success('Job [ID: ' . $q->id . '] was canceled.');
+        $this->redirect('upload/dataset');
+    }
+
+    /**
+     * Cancels upload process in queue
+     * 
+     * @param int $id
+     * 
+     */
+    public function start($id)
+    {
+        $q = new Upload_queue($id);
+
+        // Todo access rights
+        
+        if(!$q->id)
+        {
+            $this->alert->error('Record not found.');
+            $this->redirect('upload/dataset');
+        }
+
+        if($q->state !== $q::STATE_PENDING)
+        {
+            $this->alert->error('Cannot start upload process. Process is not pending.');
+            $this->redirect('upload/dataset');
+        }
+
+        $q->state = $q::STATE_RUNNING;
+        $q->save();
+
+        try
+        {
+            $q->start();
+            $q->state = $q::STATE_DONE;
+            $this->alert->success('Dataset was successfully uploaded.');
+            if($q->id_dataset_passive)
+            {
+                $this->redirect('edit/dsInteractions/' . $q->id_dataset_passive);
+            }
+            else
+            {
+                $this->redirect('edit/dsTransporters/' . $q->id_dataset_passive);
+            }
+        }
+        catch(Exception $e)
+        {
+            $q->state = $q::STATE_ERROR;
+            $this->alert->error($e);
+        }
+        
+        $q->save();
+
+        $this->alert->success('Job [ID: ' . $q->id . '] was done.');
         $this->redirect('upload/dataset');
     }
 
@@ -761,6 +818,24 @@ class UploadController extends Controller
                 }
 
                 $attrs[$order] = $a;
+            }
+
+            foreach($content as $row)
+            {
+                foreach($attrs as $key => $attr)
+                {
+                    try
+                    {
+                        if(trim(strval($row[$key])) != '' && Upload_validator::get_attr_val($attr, $row[$key]) === NULL)
+                        {
+                            throw new Exception();
+                        }
+                    }
+                    catch(Exception $e)
+                    {
+                        throw new MmdbException('Invalid value `' . $row[$key] . '` for attribute `' . $attr . '`.');
+                    }
+                }
             }
 
             $dataset = new Datasets($file_object->id_dataset_passive);

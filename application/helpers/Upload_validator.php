@@ -262,6 +262,7 @@ class Upload_validator
             return NULL;
         }
 
+        $value = str_replace("\"", "", $value);
         $value = trim($value);
 
         // Is attribute numeric?

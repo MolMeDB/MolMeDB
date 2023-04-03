@@ -97,6 +97,7 @@
                             <td align="center">
                                 <?php if($q->state === $q::STATE_PENDING) : ?>
                                     <span title="Cancel" onclick="alert_window('Are you sure you want to cancel the process (ID = <?= $q->id ?>)?', 'upload/cancel/<?= $q->id ?>?redirection=upload/dataset', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span>
+                                    <span title="Upload now" onclick="alert_window('Are you sure you want to force upload (ID = <?= $q->id ?>)?', 'upload/start/<?= $q->id ?>?redirection=upload/dataset', false)" style="text-align: center; color: green; cursor:pointer;" class="glyphicon glyphicon-upload"></span>
                                 <?php elseif($q->state === $q::STATE_CANCELED) : ?>
                                     <span title="Queue up" onclick="alert_window('Are you sure you want to requeue the process? (ID = <?= $q->id ?>)?', 'upload/requeue/<?= $q->id ?>?redirection=upload/dataset', false)" style="text-align: center; color: orange; cursor:pointer;" class="glyphicon glyphicon-inbox"></span>
                                 <?php endif ?>

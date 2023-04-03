@@ -49,7 +49,6 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run',
-//        "match_functional_pairs"
     );
 
     /**
@@ -94,11 +93,11 @@ class SchedulerController extends Controller
             }
 
             // Delete substances without interactions
-            if(($this->check_time($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)) && 
-                $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
-            {
-                $this->protected_call('delete_empty_substances', []);
-            }
+            // if(($this->check_time($this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES_TIME)) && 
+            //     $this->config->get(Configs::S_DELETE_EMPTY_SUBSTANCES)))
+            // {
+            //     $this->protected_call('delete_empty_substances', []);
+            // }
 
             // Checks interactions datasets
             if(($this->check_time($this->config->get(Configs::S_VALIDATE_PASSIVE_INT_TIME)) && 
@@ -940,179 +939,179 @@ class SchedulerController extends Controller
         return true;
     }
 
-    /**
-     * Should be run only once. Matches all substance changes
-     * 
-     */
-    public function log_sub_changes()
-    {
-        // Deletes
-        $deletes = [
-            'found different',
-            'filled pubchem_logp value',
-            'waiting for validation',
-            'found SMILES',
-            'found possible duplicity',
-            'labeled as non duplicity',
-            'SQLSTATE',
-            'was validated',
-            'cannot find',
-            'is unreachable',
-            'found 3d structure on'
-        ];
+    // /**
+    //  * Should be run only once. Matches all substance changes
+    //  * 
+    //  */
+    // public function log_sub_changes()
+    // {
+    //     // Deletes
+    //     $deletes = [
+    //         'found different',
+    //         'filled pubchem_logp value',
+    //         'waiting for validation',
+    //         'found SMILES',
+    //         'found possible duplicity',
+    //         'labeled as non duplicity',
+    //         'SQLSTATE',
+    //         'was validated',
+    //         'cannot find',
+    //         'is unreachable',
+    //         'found 3d structure on'
+    //     ];
 
-        foreach($deletes as $wh)
-        {
-            Scheduler_errors::instance()->query("DELETE FROM `scheduler_errors` WHERE error_text LIKE '%$wh%'");
-        }
+    //     foreach($deletes as $wh)
+    //     {
+    //         Scheduler_errors::instance()->query("DELETE FROM `scheduler_errors` WHERE error_text LIKE '%$wh%'");
+    //     }
 
-        $changes = Scheduler_errors::instance()->where('error_text LIKE', "%on remote server%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
+    //     $changes = Scheduler_errors::instance()->where('error_text LIKE', "%on remote server%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
 
-        $links = [
-            'chebi' => 'chEBI',
-            'drugbank_id' => 'drugbank',
-            'chembl_id' => 'chEMBL',
-            'pdb_id' => 'pdb',
-            'pubchem_id' => 'pubchem',
-        ];
+    //     $links = [
+    //         'chebi' => 'chEBI',
+    //         'drugbank_id' => 'drugbank',
+    //         'chembl_id' => 'chEMBL',
+    //         'pdb_id' => 'pdb',
+    //         'pubchem_id' => 'pubchem',
+    //     ];
 
-        foreach($changes as $c)
-        {
-            $s = new Substances($c->id_substance);
+    //     foreach($changes as $c)
+    //     {
+    //         $s = new Substances($c->id_substance);
 
-            preg_match('/Found (.*) = (.*) on remote server./', $c->error_text, $all);
+    //         preg_match('/Found (.*) = (.*) on remote server./', $c->error_text, $all);
 
-            if(count($all) < 3)
-            {
-                continue;
-            }
+    //         if(count($all) < 3)
+    //         {
+    //             continue;
+    //         }
 
-            $src = $all[1];
-            $val = $all[2];
+    //         $src = $all[1];
+    //         $val = $all[2];
 
-            $attr = $links[$src];
+    //         $attr = $links[$src];
 
-            if($s->$attr == $val)
-            {
-                $s->$attr = NULL;
-                $s->save();
-                $c->delete();
-            }
-            else
-            {
-                $c->delete();
-            }
-        }
+    //         if($s->$attr == $val)
+    //         {
+    //             $s->$attr = NULL;
+    //             $s->save();
+    //             $c->delete();
+    //         }
+    //         else
+    //         {
+    //             $c->delete();
+    //         }
+    //     }
 
-        // Name changes
-        $rows = Scheduler_errors::instance()->where('error_text LIKE', "%found on%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
+    //     // Name changes
+    //     $rows = Scheduler_errors::instance()->where('error_text LIKE', "%found on%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
 
-        foreach($rows as $r)
-        {
-            $s = new Substances($r->id_substance);
+    //     foreach($rows as $r)
+    //     {
+    //         $s = new Substances($r->id_substance);
 
-            $s->name = $s->identifier;
-            $s->save();
+    //         $s->name = $s->identifier;
+    //         $s->save();
 
-            $r->delete();
-        }
+    //         $r->delete();
+    //     }
 
-        // CHEMBL ID in name
-        $rows = Scheduler_errors::instance()->where('error_text LIKE', "%found chembl_id in molecule name%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
+    //     // CHEMBL ID in name
+    //     $rows = Scheduler_errors::instance()->where('error_text LIKE', "%found chembl_id in molecule name%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
 
-        foreach($rows as $r)
-        {
-            $s = new Substances($r->id_substance);
+    //     foreach($rows as $r)
+    //     {
+    //         $s = new Substances($r->id_substance);
 
-            preg_match("/in molecule name = (.+)\./", $r->error_text, $all);
+    //         preg_match("/in molecule name = (.+)\./", $r->error_text, $all);
 
-            if(count($all) < 2)
-            {
-                continue;
-            }
+    //         if(count($all) < 2)
+    //         {
+    //             continue;
+    //         }
 
-            $d = $all[1];
+    //         $d = $all[1];
 
-            if(!$d)
-            {
-                continue;
-            }
+    //         if(!$d)
+    //         {
+    //             continue;
+    //         }
 
-            $s->name = $d;
-            $s->chEMBL = NULL;
-            $s->save();
+    //         $s->name = $d;
+    //         $s->chEMBL = NULL;
+    //         $s->save();
 
-            $r->delete();
-        }
+    //         $r->delete();
+    //     }
 
-        // Changes
-        $rows = Scheduler_errors::instance()->where('error_text LIKE', "%changes - [%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
+    //     // Changes
+    //     $rows = Scheduler_errors::instance()->where('error_text LIKE', "%changes - [%")->order_by('id_substance ASC, last_update', 'DESC')->get_all();
 
-        foreach($rows as $r)
-        {
-            $s = new Substances($r->id_substance);
+    //     foreach($rows as $r)
+    //     {
+    //         $s = new Substances($r->id_substance);
 
-            preg_match('/Changes - \[([a-z]+): (.*) => (.*)\]/i', $r->error_text, $all);
+    //         preg_match('/Changes - \[([a-z]+): (.*) => (.*)\]/i', $r->error_text, $all);
 
-            if(count($all) < 3)
-            {
-                continue;
-            }
+    //         if(count($all) < 3)
+    //         {
+    //             continue;
+    //         }
 
-            $attr = $all[1];
-            $from = $all[2] !== "NULL" ? $all[2] : NULL;
-            $to   = $all[3] !== "NULL" ? $all[3] : NULL;
+    //         $attr = $all[1];
+    //         $from = $all[2] !== "NULL" ? $all[2] : NULL;
+    //         $to   = $all[3] !== "NULL" ? $all[3] : NULL;
 
-            if(strtolower($s->$attr) == strtolower($to))
-            {
-                $s->$attr = $from;
-                $s->save();
-            }
+    //         if(strtolower($s->$attr) == strtolower($to))
+    //         {
+    //             $s->$attr = $from;
+    //             $s->save();
+    //         }
 
-            $r->delete();
-        }
+    //         $r->delete();
+    //     }
 
-        ##### NOW, SAVE ALL IDENTIFIER OF ALL MOLECULES AS UPLOADED #######
-        $substnaces = Substances::instance()->queryAll('
-            SELECT s.*
-            FROM substances s
-            WHERE s.id NOT IN (
-                SELECT DISTINCT id_substance 
-                FROM validator_identifiers
-                )
-        ');
-        $vi = new Validator_identifiers();
+    //     ##### NOW, SAVE ALL IDENTIFIER OF ALL MOLECULES AS UPLOADED #######
+    //     $substnaces = Substances::instance()->queryAll('
+    //         SELECT s.*
+    //         FROM substances s
+    //         WHERE s.id NOT IN (
+    //             SELECT DISTINCT id_substance 
+    //             FROM validator_identifiers
+    //             )
+    //     ');
+    //     $vi = new Validator_identifiers();
 
-        foreach($substnaces as $s)
-        {
-            $s = new Substances($s->id);
+    //     foreach($substnaces as $s)
+    //     {
+    //         $s = new Substances($s->id);
 
-            // Remove inchikey
-            $s->inchikey = NULL;
-            $s->save();
+    //         // Remove inchikey
+    //         $s->inchikey = NULL;
+    //         $s->save();
 
-            if(!$vi->init_substance_identifiers($s))
-            {
-                $this->print("ERROR OCCURED: " . $s->id . ' / ' . $s->name . '.');
-                die;
-            }
-        }
+    //         if(!$vi->init_substance_identifiers($s))
+    //         {
+    //             $this->print("ERROR OCCURED: " . $s->id . ' / ' . $s->name . '.');
+    //             die;
+    //         }
+    //     }
 
-        // Delete old 3D structures
-        $t = scandir(File::FOLDER_3DSTRUCTURES);
+    //     // Delete old 3D structures
+    //     $t = scandir(File::FOLDER_3DSTRUCTURES);
         
-        foreach($t as $f)
-        {
-            if(is_dir(File::FOLDER_3DSTRUCTURES . $f) || !preg_match('/\.mol$/', $f))
-            {
-                continue;
-            }
+    //     foreach($t as $f)
+    //     {
+    //         if(is_dir(File::FOLDER_3DSTRUCTURES . $f) || !preg_match('/\.mol$/', $f))
+    //         {
+    //             continue;
+    //         }
 
-            unlink(File::FOLDER_3DSTRUCTURES . $f);
-        }
+    //         unlink(File::FOLDER_3DSTRUCTURES . $f);
+    //     }
 
-        die;
-    }
+    //     die;
+    // }
 
 
     /**
@@ -2291,65 +2290,65 @@ class SchedulerController extends Controller
     }
 
 
-    /**
-     * Finds molecules without passive or active interactions
-     * and removes them from the DB 
-     *  - Pubchem LogP doesnt count as interaction
-     *  - Molecule must have missing identifiers
-     * 
-     */
-    public function delete_empty_substances()
-    {
-        $subst_model = new Substances();
-        $empty = $subst_model->get_empty_substances();
-        $total = 0;
-        $molecules = array(['Deleted molecules']);
+    // /**
+    //  * Finds molecules without passive or active interactions
+    //  * and removes them from the DB 
+    //  *  - Pubchem LogP doesnt count as interaction
+    //  *  - Molecule must have missing identifiers
+    //  * 
+    //  */
+    // public function delete_empty_substances()
+    // {
+    //     $subst_model = new Substances();
+    //     $empty = $subst_model->get_empty_substances();
+    //     $total = 0;
+    //     $molecules = array(['Deleted molecules']);
 
-        foreach($empty as $s_id)
-        {
-            $substance = new Substances($s_id);
+    //     foreach($empty as $s_id)
+    //     {
+    //         $substance = new Substances($s_id);
 
-            if(!$substance->id)
-            {
-                continue;
-            }
+    //         if(!$substance->id)
+    //         {
+    //             continue;
+    //         }
 
-            $total++;
+    //         $total++;
 
-            $molecules[] = [$substance->name];
-            $substance->delete();
-        }
+    //         $molecules[] = [$substance->name];
+    //         $substance->delete();
+    //     }
 
-        // Save report and send to the admins
-        if($total)
-        {
-            try
-            {
-                $report = new File();
-                $name = $report->generateName();
-                $file_path = MEDIA_ROOT . 'files/schedulerReports/subs_delete_' . $name . '.csv';
-                $report->create($file_path);
-                $report->writeCSV($molecules);
+    //     // Save report and send to the admins
+    //     if($total)
+    //     {
+    //         try
+    //         {
+    //             $report = new File();
+    //             $name = $report->generateName();
+    //             $file_path = MEDIA_ROOT . 'files/schedulerReports/subs_delete_' . $name . '.csv';
+    //             $report->create($file_path);
+    //             $report->writeCSV($molecules);
 
-                $f = new Files();
-                $f->path = $file_path;
-                $f->name = $name;
-                $f->type = $f::T_SCHEDULER_DEL_EMPTY_SUBSTANCES;
+    //             $f = new Files();
+    //             $f->path = $file_path;
+    //             $f->name = $name;
+    //             $f->type = $f::T_SCHEDULER_DEL_EMPTY_SUBSTANCES;
 
-                $f->save();
+    //             $f->save();
 
-                // Send emails
-                $this->send_email_to_admins('A total of ' . $total . ' molecules were deleted.', 'Scheduler autoremove report', $file_path);
-            }
-            catch(MmdbException $e)
-            {
-                $this->print($e->getMessage());
-                $this->run->id_exception = $e->getExceptionId();
-            }
+    //             // Send emails
+    //             $this->send_email_to_admins('A total of ' . $total . ' molecules were deleted.', 'Scheduler autoremove report', $file_path);
+    //         }
+    //         catch(MmdbException $e)
+    //         {
+    //             $this->print($e->getMessage());
+    //             $this->run->id_exception = $e->getExceptionId();
+    //         }
 
-            $this->print('Total ' . $total . ' substances were deleted.');
-        }
-    }
+    //         $this->print('Total ' . $total . ' substances were deleted.');
+    //     }
+    // }
 
     /**
      * Checks interactions datasets

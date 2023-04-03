@@ -1188,47 +1188,6 @@ class Substances extends Db
         return $res;
     }
 
-
-    /**
-     * Returns substances without interaction data
-     * 
-     * @return array
-     */
-    public function get_empty_substances()
-    {
-        $method_model = new Methods();
-        $method = $method_model->get_by_type(Methods::PUBCHEM_LOGP_TYPE);
-
-        if(!$method || !$method->id)
-        {
-            return [];
-        }
-
-        $result = [];
-
-        $d = $this->queryAll('
-            SELECT DISTINCT id 
-            FROM
-            (
-                SELECT s.id, i.id as iid, t.id as tid
-                FROM substances s
-                LEFT JOIN interaction i ON i.id_substance = s.id AND i.id_method != ?
-                LEFT JOIN transporters t ON t.id_substance = s.id
-                WHERE s.pubchem IS NULL AND s.drugbank IS NULL AND s.chEBI IS NULL AND s.pdb IS NULL AND s.chEMBL IS NULL
-                GROUP BY id
-            ) as t
-            WHERE t.iid IS NULL AND t.tid IS NULL
-        ', array($method->id));
-
-        foreach($d as $r)
-        {
-            $result[] = $r->id;
-        }
-
-        return $result;
-    }
-
-
     /**
      * Returns substance_ids which are labeled as nonduplicity
      * 
@@ -1282,15 +1241,15 @@ class Substances extends Db
             (
                 SELECT DISTINCT s.id, s.name
                 FROM (
-                    SELECT id
+                    SELECT id, name
                     FROM substances s
                     WHERE name LIKE ?
                     
                     UNION
 
-                    SELECT DISTINCT id_substance as id
-                    FROM `alternames`
-                    WHERE `name` LIKE ?) as a
+                    SELECT DISTINCT id_substance as id, value as altername 
+                    FROM `validator_identifiers`
+                    WHERE `value` LIKE ?) as a
                 JOIN substances as s ON a.id = s.id
                 ORDER BY IF(s.name RLIKE "^[a-z]", 1, 2), s.name
             ) tab ',
@@ -1318,9 +1277,9 @@ class Substances extends Db
                 
                 UNION
 
-                SELECT DISTINCT id_substance as id, name as altername 
-                FROM `alternames`
-                WHERE `name` LIKE ?) as a
+                SELECT DISTINCT id_substance as id, value as altername 
+                FROM `validator_identifiers`
+                WHERE `value` LIKE ?) as a
             JOIN substances as s ON a.id = s.id
             ORDER BY IF(s.name RLIKE "^[a-z]", 1, 2), s.name'
             , array($query, $query));

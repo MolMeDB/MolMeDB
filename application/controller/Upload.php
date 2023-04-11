@@ -497,7 +497,7 @@ class UploadController extends Controller
     }
 
     /**
-     * Cancels upload process in queue
+     * Starts upload process in queue
      * 
      * @param int $id
      * 

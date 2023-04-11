@@ -42,6 +42,8 @@ class Configs extends Db
     const S_UPDATE_PAIR_GROUPS_TIME = 'scheduler_update_pair_groups_time';
     const S_UPDATE_PAIR_GROUPS_STATS_TIME = 'scheduler_update_pair_groups_stats_time';
     const S_MATCH_FUNCT_PAIRS = 'scheduler_match_func_pairs';
+    const S_AUTOUPLOAD_INTERACTIONS = 'scheduler_autoupload_interactions';
+    const S_AUTOUPLOAD_INTERACTIONS_TIME = 'scheduler_autoupload_interactions_time';
 
     // Email attributes
     const EMAIL_ENABLED = "email_enabled";
@@ -93,6 +95,8 @@ class Configs extends Db
         self::S_UPDATE_PAIR_GROUPS_TIME,
         self::S_UPDATE_PAIR_GROUPS_STATS_TIME,
         self::S_MATCH_FUNCT_PAIRS,
+        self::S_AUTOUPLOAD_INTERACTIONS,
+        self::S_AUTOUPLOAD_INTERACTIONS_TIME,
         // Email
         self::EMAIL_ENABLED,
         self::EMAIL,

@@ -312,6 +312,16 @@ class SettingController extends Controller
         $forge->add(Configs::S_UPDATE_PAIR_GROUPS_STATS_TIME)
             ->title('Update stats start time')
             ->value($this->config->get(Configs::S_UPDATE_PAIR_GROUPS_STATS_TIME));
+    
+        $forge->add(Configs::S_AUTOUPLOAD_INTERACTIONS)
+            ->title('Autoupload pending interaction datasets')
+            ->type('checkbox')
+            ->value(1)
+            ->checked($this->config->get(Configs::S_AUTOUPLOAD_INTERACTIONS));
+
+        $forge->add(Configs::S_AUTOUPLOAD_INTERACTIONS_TIME)
+            ->title('Autoupload time')
+            ->value($this->config->get(Configs::S_AUTOUPLOAD_INTERACTIONS_TIME));
 
 
         // $forge->add(Configs::S_CHECK_MEMBRANES_METHODS)

@@ -175,6 +175,13 @@ class SchedulerController extends Controller
                 $this->protected_call('run_cosmo', []);
             }
 
+            // Upload new datasets
+            if($this->config->get(Configs::S_AUTOUPLOAD_INTERACTIONS) &&
+                $this->check_time($this->config->get(Configs::S_AUTOUPLOAD_INTERACTIONS_TIME)))
+            {
+                $this->protected_call('autoupload_interactions', [], 1800);
+            }
+
             $this->print("Scheduler END.");
         }
         catch(Exception $e)
@@ -251,6 +258,45 @@ class SchedulerController extends Controller
         {
             Db::rollbackTransaction();
             throw $e;
+        }
+    }
+
+    /**
+     * Autouploads interactions which are pending
+     * 
+     * @author Jakub Juracka
+     */
+    public function autoupload_interactions()
+    {
+        $pending = Upload_queue::instance()
+            ->where('state', Upload_queue::STATE_PENDING)
+            ->get_all();
+
+        foreach($pending as $record)
+        {
+            if(!$this->can_continue())
+            {
+                $this->print('Autoupload_interactions max runtime exceeded. Will continue in next run.');
+                return;
+            }
+
+            // Start uploading
+            $record->state = $record::STATE_RUNNING;
+            $record->save();
+
+            try
+            {
+                $this->print('Trying to run upload record id:' . $record->id);
+                $record->start();
+                $record->state = $record::STATE_DONE;
+            }
+            catch(Exception $e)
+            {
+                $record->state = $record::STATE_ERROR;
+                $this->print($e->getMessage());
+            }
+            
+            $record->save();
         }
     }
 

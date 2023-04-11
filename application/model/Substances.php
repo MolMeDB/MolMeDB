@@ -1918,4 +1918,42 @@ class Substances extends Db
             parent::save();
         }
     }
+
+    /**
+     * Returns names - first name is main name
+     * 
+     * @return array
+     */
+    public function get_valid_names()
+    {
+        if(!$this || !$this->id)
+        {
+            return [];
+        }
+
+        $vi = new Validator_identifiers();
+
+        $ids = $vi->get_all_substance_values_by_type($this->id, Validator_identifiers::ID_NAME);
+
+        $names = [];
+        $active_name = '';
+        foreach($ids as $n)
+        {
+            if($n->state === Validator_identifiers::STATE_VALIDATED)
+            {
+                if($n->active === Validator_identifiers::ACTIVE && !$active_name)
+                {
+                    $active_name = $n->value;
+                }
+                else
+                {
+                    array_push($names, $n->value);
+                }
+            }
+        }
+        array_unshift($names,$active_name);
+
+        return $names;
+    }
+    
 }

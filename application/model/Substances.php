@@ -1425,7 +1425,7 @@ class Substances extends Db
         if(strlen($query) < 5)
         {
             return $this->queryOne('
-                SELECT COUNT(s.id) as count
+                SELECT COUNT(DISTINCT s.id) as count
                 FROM substances s
                 JOIN (SELECT DISTINCT id_substance
                     FROM substances_fragments sf 
@@ -1441,7 +1441,7 @@ class Substances extends Db
             $ids = Fragments_options::instance()->get_all_options_ids($fragment->id);
 
             return $this->queryOne('
-                SELECT COUNT(s.id) as count
+                SELECT COUNT(DISTINCT s.id) as count
                 FROM substances s
                 JOIN substances_fragments sf ON sf.id_substance = s.id AND sf.id_fragment IN ("' . implode('","', $ids) . '")
                 ORDER BY sf.similarity DESC, IF(name RLIKE "^[a-z]", 1, 2) ASC, name ASC')->count;
@@ -1450,7 +1450,7 @@ class Substances extends Db
         $query_all = '%' . $query . '%';
 
         return $this->queryOne('
-            SELECT COUNT(s.id) as count
+            SELECT COUNT(DISTINCT s.id) as count
             FROM substances s
             JOIN (SELECT DISTINCT id_substance, IF(f.smiles = ?, 100/sf.total_fragments, 0) as exact
                 FROM substances_fragments sf 

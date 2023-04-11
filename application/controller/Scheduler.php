@@ -172,7 +172,7 @@ class SchedulerController extends Controller
             // COSMO computations
             if($this->config->get(Configs::COSMO_ENABLED))
             {
-                $this->protected_call('cosmo_run', []);
+                $this->protected_call('run_cosmo', []);
             }
 
             $this->print("Scheduler END.");

@@ -95,7 +95,11 @@ class Metacentrum
 
         exec($script, $output, $code);
 
-        if(count($output) == 1)
+        if(count($output) == 0)
+        {
+           $output = [];
+        }
+        else if(count($output) == 1)
         {
             $output = json_decode($output[0]);
         }

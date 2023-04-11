@@ -473,6 +473,7 @@ class SettingController extends Controller
                     $u->enabled = $this->form->param->account_enabled ? 1 : 0;
                     $u->login = $this->form->param->username;
                     $u->password = Users_metacentrum::hash($this->form->param->password);
+                    $u->id_user = session::user_id();
                     $u->save();
                 }
 

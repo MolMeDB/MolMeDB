@@ -52,7 +52,7 @@ class ValidatorController extends Controller
      * @param int $pagination
      * 
      */
-    public function cosmo($pagination = 1, $per_page = 50)
+    public function cosmo($pagination = 1, $per_page = 20)
     {
         $cosmo_model = new Run_cosmo();
         $params = $this->form->param;
@@ -409,6 +409,8 @@ class ValidatorController extends Controller
                     $q = new Run_cosmo();
 
                     $q->id_fragment = $f->id;
+                    $q->state = Run_cosmo::STATE_PENDING;
+                    $q->status = Run_cosmo::STATUS_OK;
                     $q->temperature = $temperature;
                     $q->id_membrane = $membrane->id;
                     $q->method = $method;

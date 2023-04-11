@@ -66,6 +66,15 @@ class Config
             return NULL;
         }
 
+        if(in_array(strtolower($detail->value), ['true']))
+        {
+            return true;
+        }
+        if(in_array(strtolower($detail->value), ['false']))
+        {
+            return false;
+        }
+
         // If exists
         return $detail->value;
     }

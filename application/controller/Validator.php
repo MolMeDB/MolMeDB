@@ -296,6 +296,8 @@ class ValidatorController extends Controller
 
     /**
      * Adds new smiles records to cosmo computations
+     * 
+     * @author Jakub Juracka
      */
     public function add_cosmo_smi()
     {
@@ -368,7 +370,7 @@ class ValidatorController extends Controller
                         throw new MmdbException('Cannot canonize smiles ' . $l . '. Please, check the input.', 'Cannot canonize smiles ' . $l . '. Please, check the input.');
                     }
 
-                    // Check if structure is neural
+                    // Check if structure is neutral
                     if(!$f->is_neutral($can))
                     {
                         throw new MmdbException('Structure ' . $can . ' doesnt look to be neutral.', 'Structure ' . $can . ' doesnt look to be neutral.');
@@ -387,6 +389,13 @@ class ValidatorController extends Controller
 
                     $fragments[] = $record;
                 }
+
+                // Create record about upload
+                $cosmo_dataset = new Run_cosmo_datasets();
+                $cosmo_dataset->id_user = session::user_id();
+                // $cosmo_dataset->comment = $this->form->param->comment;
+
+                $cosmo_dataset->save();
 
                 // Add to the queue
                 foreach($fragments as $f)
@@ -409,6 +418,7 @@ class ValidatorController extends Controller
                     $q = new Run_cosmo();
 
                     $q->id_fragment = $f->id;
+                    $q->id_dataset = $cosmo_dataset->id;
                     $q->state = Run_cosmo::STATE_PENDING;
                     $q->status = Run_cosmo::STATUS_OK;
                     $q->temperature = $temperature;

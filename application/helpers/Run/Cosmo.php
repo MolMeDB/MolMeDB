@@ -7,6 +7,8 @@
  * @property int $state
  * @property int $status
  * @property int $forceRun
+ * @property int $id_dataset
+ * @property Run_cosmo_datasets $dataset
  * @property int $id_fragment
  * @property Fragments $fragment
  * @property int $id_membrane
@@ -105,7 +107,12 @@ class Run_cosmo extends Db
     protected $has_one = array
     (
         'id_fragment',
-        'id_membrane'
+        'id_membrane',
+        'id_dataset' => array
+        (
+            'class' => 'Run_cosmo_datasets',
+            'var' => 'dataset'
+        )
     );
 
     public static function get_all_status()

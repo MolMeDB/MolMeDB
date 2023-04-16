@@ -532,7 +532,11 @@ class SchedulerController extends Controller
                 
                 if($ion_states === false)
                 {
-                    throw new MmdbException('Cannot get fragment [id:' . $record->id_fragment . '] ionization states.');
+                    $text = 'Cannot get fragment [id:' . $record->id_fragment . '] ionization states.';
+                    $record->log = $text;
+                    $record->status = $cosmo::STATUS_ERROR;
+                    $record->save();
+                    continue;
                 }
 
                 try
@@ -614,7 +618,11 @@ class SchedulerController extends Controller
 
                     if($confs === false)
                     {
-                        throw new MmdbException('Cannot generate conformers.');
+                        $text = 'Cannot generate conformers.';
+                        $record->log = $text;
+                        $record->status = $cosmo::STATUS_ERROR;
+                        $record->save();
+                        continue;
                     }
 
                     foreach($confs as $key => $cf)

@@ -48,6 +48,10 @@
                         <?= $cosmo->get_enum_status() ?>
                         <?php if($cosmo->status == Run_cosmo::STATUS_ERROR) : ?>
                         <a href="/validator/force_cosmo_run/0/<?= $cosmo->id ?>?redirection=<?= Url::current() ?>" title="Recompute all"><span style="cursor:pointer;" class="glyphicon glyphicon-repeat"></span></a>
+                        <span title="<?php 
+                            if(json_decode($cosmo->log) === null) echo $cosmo->log;
+                            else echo 'No info.';
+                        ?>" class="glyphicon glyphicon-info-sign"></span>
                         <?php endif ?>
                     </td>
                     <td><?= $cosmo->temperature ?></td>

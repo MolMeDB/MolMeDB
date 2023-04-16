@@ -242,7 +242,7 @@ class Rdkit extends Identifier_loader
      * @return object
      * @throws MmDbException
      */
-    function get_ionization_states($smiles, $limit = 20)
+    function get_ionization_states($smiles, $limit = 10)
     {
         if(!self::$STATUS || !$smiles)
         {
@@ -265,7 +265,36 @@ class Rdkit extends Identifier_loader
 
             if(is_object($response) || is_array($response))
             {
-                return $response;
+                $result = [];
+                $result['molecules'] = [];
+                $result['pH_start'] = $response->pH_start;
+                $result['pH_end'] = $response->pH_end;
+                // check all charges and filter variants with lowest charge
+                if(property_exists($response, 'molecules'))
+                {
+                    $candidates = [];
+                    foreach($response->molecules as $smi)
+                    {
+                        $charge = Fragments::instance()->get_charge($smi);
+                        $candidates[] = array
+                        (
+                            'charge' => $charge,
+                            'smiles' => $smi
+                        );
+                    }
+
+                    usort($candidates, function($a, $b){ return intval($a['charge']) < intval($b['charge']); });
+
+                    $total = 0;
+                    foreach($candidates as $c)
+                    {
+                        if($total >= $limit) break;
+                        $result['molecules'][] = $c['smiles'];
+                        $total++;
+                    }
+                }
+
+                return $result;
             }
 
             return false;

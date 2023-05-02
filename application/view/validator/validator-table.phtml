@@ -60,9 +60,39 @@
                 ?>
                 <tr>
                     <td colspan="3" style="text-align:center;">
-                        <button type="button" class="btn btn-default">Merge left</button>
-                        <button type="button" class="btn btn-default">Not a duplicity</button>
-                        <button type="button" class="btn btn-default">Merge right</button>
+                        <button
+                            onclick="resolveDuplicity(
+                                <?= $pair->substance_1->id ?>,
+                                <?= $pair->substance_2->id ?>,
+                                <?= Validator_identifier_duplicities::STATE_DUPLICITY_LEFT ?>
+                            )"
+                            type="button"
+                            class="btn btn-default"
+                        >
+                            Merge left
+                        </button>
+                        <button
+                            onclick="resolveDuplicity(
+                                <?= $pair->substance_1->id ?>,
+                                <?= $pair->substance_2->id ?>,
+                                <?= Validator_identifier_duplicities::STATE_NON_DUPLICITY ?>
+                            )"
+                            type="button"
+                            class="btn btn-default"
+                        >
+                            Not a duplicity
+                        </button>
+                        <button
+                            onclick="resolveDuplicity(
+                                <?= $pair->substance_1->id ?>,
+                                <?= $pair->substance_2->id ?>,
+                                <?= Validator_identifier_duplicities::STATE_DUPLICITY_RIGHT ?>
+                            )"
+                            type="button"
+                            class="btn btn-default"
+                        >
+                            Merge right
+                        </button>
                     </td>
                 </tr>
             </table>
@@ -88,4 +118,13 @@
             '<?= $index ?>right2dStructure<?= $pair->substance_2->id ?>'
         )
     })
+
+    function resolveDuplicity(substance_id_left, substance_id_right, state) {
+        const ajax_data = ajax_request('validator/resolve_duplicity',
+            {
+                substance_id_left: substance_id_left,
+                substance_id_right: substance_id_right,
+                state: state,
+            }, "POST");
+    }
 </script>

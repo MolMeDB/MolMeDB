@@ -30,14 +30,14 @@ class ApiValidator extends ApiController
             ResponseBuilder::bad_request('Provided state is invalid.');
         }
 
-        $res = $this->queryOne('
+        $res = Db::instance()->queryOne('
             SELECT *
             FROM validator_identifiers_duplicities vid
             WHERE vid.id_validator_identifier_1 = ? AND vid.id_validator_identifier_2 = ?
         ', array($substance_id_left, $substance_id_right,));
-
+        
         if (!$res->id) {
-            throw new \ApiException("No duplicities found for given substances.");
+            ResponseBuilder::bad_request("No duplicities found for given substances.");
         }
 
         Db::instance()->queryOne('

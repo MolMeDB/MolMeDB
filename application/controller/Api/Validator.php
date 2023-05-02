@@ -1,36 +1,40 @@
 <?php
 
-class Validator extends ApiController
+/**
+ * Api Validator controller
+ */
+class ApiValidator extends ApiController
 {
     /**
      * @POST
+     * @INTERNAL
      *
-     * @param int $substance_id_1
-     * @param int $substance_id_2
-     * @param int $state
+     * @param @required $substance_id_left
+     * @param @required $substance_id_right
+     * @param @required $state
      *
-     * @Path(/validator/resolve_duplicity)
-     *
-     * @throws \ApiException|\DbException
+     * @Path(/resolve_duplicity)
      */
     public function resolve_duplicity(
-        int $substance_id_1,
-        int $substance_id_2,
-        int $state
+        $substance_id_left,
+        $substance_id_right,
+        $state
     ): void {
         if (
-            $state !== Validator_identifier_duplicities::STATE_DUPLICITY_LEFT
-            ||
-            $state !== Validator_identifier_duplicities::STATE_DUPLICITY_RIGHT
+            $state != Validator_identifier_duplicities::STATE_DUPLICITY_LEFT
+            &&
+            $state != Validator_identifier_duplicities::STATE_DUPLICITY_RIGHT
+            &&
+            $state != Validator_identifier_duplicities::STATE_NON_DUPLICITY
         ) {
-            throw new \ApiException("Provided state is invalid.");
+            ResponseBuilder::bad_request('Provided state is invalid.');
         }
 
         $res = $this->queryOne('
             SELECT *
             FROM validator_identifiers_duplicities vid
             WHERE vid.id_validator_identifier_1 = ? AND vid.id_validator_identifier_2 = ?
-        ', array($substance_id_1, $substance_id_2,));
+        ', array($substance_id_left, $substance_id_right,));
 
         if (!$res->id) {
             throw new \ApiException("No duplicities found for given substances.");

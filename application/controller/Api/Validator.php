@@ -20,12 +20,14 @@ class ApiValidator extends ApiController
         $substance_id_right,
         $state
     ): void {
+        $state = (int)$state;
+
         if (
-            $state != Validator_identifier_duplicities::STATE_DUPLICITY_LEFT
+            $state !== Validator_identifier_duplicities::STATE_DUPLICITY_LEFT
             &&
-            $state != Validator_identifier_duplicities::STATE_DUPLICITY_RIGHT
+            $state !== Validator_identifier_duplicities::STATE_DUPLICITY_RIGHT
             &&
-            $state != Validator_identifier_duplicities::STATE_NON_DUPLICITY
+            $state !== Validator_identifier_duplicities::STATE_NON_DUPLICITY
         ) {
             ResponseBuilder::bad_request('Provided state is invalid.');
         }

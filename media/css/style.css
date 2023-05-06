@@ -2767,7 +2767,8 @@ table.setting-form-table > tbody tr {
 .hover-iframe {
     display: none;
     position: absolute;
-    width: 600px;
+    max-width: 600px;
+    width: 180%;
     top: 0%;
     z-index: 10;
 }

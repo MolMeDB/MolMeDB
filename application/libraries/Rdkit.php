@@ -272,10 +272,26 @@ class Rdkit extends Identifier_loader
                 // check all charges and filter variants with lowest charge
                 if(property_exists($response, 'molecules'))
                 {
+                    if(count($response->molecules) > 4)
+                    {
+                        $result['molecules'] = array
+                        (
+                            $smiles  
+                        );  
+
+                        return (object) $result;
+                    }
+
                     $candidates = [];
                     foreach($response->molecules as $smi)
                     {
                         $charge = Fragments::instance()->get_charge($smi);
+
+                        if(abs($charge) > 2)
+                        {
+                            continue;
+                        }
+
                         $candidates[] = array
                         (
                             'charge' => $charge,
@@ -294,7 +310,7 @@ class Rdkit extends Identifier_loader
                     }
                 }
 
-                return $result;
+                return (object) $result;
             }
 
             return false;

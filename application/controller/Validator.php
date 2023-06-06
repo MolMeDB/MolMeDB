@@ -170,7 +170,7 @@ class ValidatorController extends Controller
                         }
 
                         $files = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
-                        $prefix = strtolower($cosmo->get_script_method() . '_' . str_replace(' ', '-',$cosmo->membrane->name) . '_' . str_replace('.', ',', $cosmo->temperature));
+                        $prefix = strtolower($cosmo->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$cosmo->membrane->name)) . '_' . str_replace('.', ',', $cosmo->temperature));
                         $prefix = trim($prefix);
 
                         foreach($files as $pt)

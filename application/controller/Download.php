@@ -117,7 +117,7 @@ class DownloadController extends Controller
         }
 
         $files = scandir($path);
-        $prefix = strtolower($run->get_script_method() . '_' . $run->membrane->name . '_' . floatval($run->temperature));
+        $prefix = strtolower($run->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$run->membrane->name)) . '_' . str_replace('.', ',', $run->temperature));
         $prefix = trim($prefix);
         
         foreach($files as $pt)

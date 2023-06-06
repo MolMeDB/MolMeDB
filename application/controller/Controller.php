@@ -79,7 +79,7 @@ abstract class Controller
 
         if(!preg_match('/^http/', $url))
         {
-            $url = "/$url";
+            $url = "/".ltrim("$url","/");
         }
 
         header("Location: $url"); 

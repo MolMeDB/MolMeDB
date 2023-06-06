@@ -232,10 +232,10 @@ class Metacentrum
             '--membName' => $cosmo_run->membrane->name,
         );
 
-        // if($force)
-        // {
-        //     $params["force"] = "true";
-        // }
+        if($force)
+        {
+            $params["force"] = "true";
+        }
 
         foreach($params as $key => $val)
         {

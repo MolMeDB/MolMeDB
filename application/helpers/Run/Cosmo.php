@@ -375,7 +375,7 @@ class Run_cosmo extends Db
                 $temp .= ',0';
             }
 
-            $req_folder = $this->get_script_method() . '_' . str_replace(' ', '-',$this->membrane->name) . '_' . $temp;
+            $req_folder = $this->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$this->membrane->name)) . '_' . $temp;
 
             foreach($pos_results as $folder)
             {

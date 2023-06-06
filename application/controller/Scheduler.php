@@ -369,22 +369,6 @@ class SchedulerController extends Controller
      */
     public function run_cosmo()
     {
-        $cosmo = new Run_cosmo();
-        // Process final data
-        $toFinal = $cosmo->where(array
-            (
-                'state >=' => $cosmo::STATE_RESULT_DOWNLOADED,
-                'status'  => $cosmo::STATUS_OK
-            ))
-            ->get_all();
-
-        foreach($toFinal as $job)
-        {
-            $job->process_results();
-            $job->state = Run_cosmo::STATE_RESULT_PARSED;
-            $job->save();
-        }
-
         if(!$this->config->get(Configs::COSMO_ENABLED))
         {
             return;
@@ -512,7 +496,7 @@ class SchedulerController extends Controller
                 'status'  => $cosmo::STATUS_OK
             ))
             ->order_by('priority DESC, status DESC, id', 'ASC')
-            ->limit($t > 0 ? $t : 0)
+            ->limit($t > 0 ? $t : 1)
             ->get_all();
 
         foreach($prepare_sdf as $record)
@@ -663,7 +647,7 @@ class SchedulerController extends Controller
             // stop if queue is full
             if(count($jobs) >= $max_metacentrum_queue_items)
             {
-                throw new Exception('Maximum jobs in queue.');
+                throw new MmdbException('Maximum jobs in queue.');
             }
             
             $remaining_jobs = $max_metacentrum_queue_items - count($jobs);

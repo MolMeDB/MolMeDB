@@ -274,10 +274,7 @@ class Rdkit extends Identifier_loader
                 {
                     if(count($response->molecules) > 4)
                     {
-                        $result['molecules'] = array
-                        (
-                            $smiles  
-                        );  
+                        $result['molecules'] = array();  
 
                         return (object) $result;
                     }
@@ -304,7 +301,7 @@ class Rdkit extends Identifier_loader
                     $total = 0;
                     foreach($candidates as $c)
                     {
-                        if($total >= $limit) break;
+                        if($total >= $limit || abs($c['charge']) > 3) break;
                         $result['molecules'][] = $c['smiles'];
                         $total++;
                     }

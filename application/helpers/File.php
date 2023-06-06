@@ -121,7 +121,7 @@ class File
 
         if(!file_exists($path))
         {
-            if(!mkdir($path, 0777, TRUE))
+            if(!mkdir($path, 0775, TRUE))
             {
                 throw new Exception('Cannot create folder structure.');
             }
@@ -136,6 +136,7 @@ class File
      * @param int $id_fragment
      * 
      * @return void
+     * 
      */
     public function remove_conformer_folder($id_fragment)
     {

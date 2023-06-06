@@ -23,9 +23,9 @@
                             </span>
                         </div>
                         <div class="structure">
-                            <div id="2dStructure" class="structure2D">
+                            <div  class="structure2D" style="display: block;">
+                            <div class="chemdiv"><?= Html::image_structure($substance->SMILES, $substance->identifier, TRUE) ?></div>
                             </div>
-                            <div id="loader"></div>
                         </div>
                     </div>
                     <div class="general-info" style="height: 450px; overflow:unset;">
@@ -598,7 +598,6 @@
 
         window.onload = function ()
         {
-            update();
             init_callbacks();
         };
 

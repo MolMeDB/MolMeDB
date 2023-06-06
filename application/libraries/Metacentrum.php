@@ -128,7 +128,7 @@ class Metacentrum
      * 
      * @param Run_cosmo[] $cosmo_run
      */
-    public static function run_cosmo($cosmo_runs, $host, $username, $password, $queue)
+    public static function run_cosmo($cosmo_runs, $host, $username, $password, $queue, $limit = 10, $force = false)
     {
         $valid_runs = [];
         $script_inputs = [];
@@ -225,7 +225,7 @@ class Metacentrum
             '--queue' => $queue,
             '--cpu'  => 8,
             '--ram'  => 32,
-            '--limit' => 10,
+            '--limit' => $limit,
             '--cosmo' => $cosmo_run->get_script_method(),
             '--temp'  => $cosmo_run->temperature,
             '--membrane' => $membrane->origin_path,

@@ -174,9 +174,11 @@ class Html
      * 
      * @return string
      */
-    public static function image_structure($smiles)
+    public static function image_structure($smiles, $name = NULL, $include_annotation = false)
     {
-        return self::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($smiles));
+        return $include_annotation ?  
+            self::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($smiles) . ($name ? (urlencode(' ') . $name) : '' ) . '&amp;abbr=reagents&amp;hdisp=bridgehead&amp;showtitle=true&amp;zoom=2.2&amp;annotate=none') : 
+            self::image('https://molmedb.upol.cz/depict/cow/svg?smi=' . urlencode($smiles));
     }
 
     /**

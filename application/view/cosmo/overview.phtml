@@ -22,11 +22,6 @@
         </div>
     </div>
 </form>
-<div class="action-bar">
-    <div>
-        <button class="btn btn-sm btn-info"><a href="/validator/add_cosmo_smi"> Add new dataset</a></button>
-    </div>
-</div>
 <script>
     $('.btn-check').change(function() {
         if(this.checked)
@@ -70,7 +65,7 @@
                 <td><?= $inst->get_enum_state($j->state, True) ?></td>
                 <td><?= date("d. m. Y", strtotime($j->last_update)) ?></td>
                 <td>
-                    <a href="/validator/cosmo_detail/<?= $j->id_fragment ?>" title="Detail"><span style="cursor:pointer;" class="glyphicon glyphicon-eye-open"></span></a>
+                    <a href="/validator/cosmo_detail/<?= $j->id_fragment ?>?id_dataset=<?=$j->id_dataset?>" title="Detail"><span style="cursor:pointer;" class="glyphicon glyphicon-eye-open"></span></a>
                     <a title="Remove job"><span style="cursor:pointer;" onclick="alert_window('Do you really want to delete the record?', 'delete/cosmo_job/<?= $j->id ?>');" class="glyphicon glyphicon-trash"></span></a>
                     <?php if($j->status == Run_cosmo::STATUS_ERROR) : ?>
                     <a href="/validator/force_cosmo_run/<?= $j->id_fragment ?>?redirection=<?= Url::current() ?>" title="Recompute all"><span style="cursor:pointer;" class="glyphicon glyphicon-repeat"></span></a>

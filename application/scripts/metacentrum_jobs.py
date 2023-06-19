@@ -66,7 +66,11 @@ class SSHClient:
             self.close()
             _err("Cannot initialize kerberos token.")
         # Get qsub path
-        output = self.shell_exec("which qsub")
+        for i in range(3):
+            output = self.shell_exec("which qsub")
+            if i < 2 and (not len(output) or not str(output[0]).startswith("/")):
+                time.sleep(2)
+
         if not len(output) or not str(output[0]).startswith("/"):
             self.close()
             _err("Cannot get `qsub` remote path")
@@ -118,10 +122,13 @@ class SSHClient:
         return out
     
 
-def __main__(server, username, password):
+def __main__(server, username, password, include_finished = False):
     import json
     sshClient = SSHClient(username=username, password=password,host=server, port=22)
-    jobs = sshClient.shell_exec("qstat -xwru " + username)
+    if include_finished:
+        jobs = sshClient.shell_exec("qstat -xwfu " + username)
+    else:
+        jobs = sshClient.shell_exec("qstat -xwrfu " + username)
 
     jobs = [str(row).split() for row in jobs]
 
@@ -140,6 +147,7 @@ try:
         "host =",
         "username =",
         "password =",
+        "include_finished ="
     ])
 except Exception as e:
     print("Invalid parameter set.")
@@ -148,6 +156,7 @@ except Exception as e:
     exit(2)
 
 username = password= host = None
+include_finished = False
 
 try:
     for opt, arg in opts:
@@ -158,6 +167,8 @@ try:
             password = arg
         elif opt == "--host":
             host = arg
+        elif opt == "--include_finished" and arg == 'true':
+            include_finished = True
 
 except Exception as err:
     print("\n!! " + str(err) + " !!\n")
@@ -168,4 +179,4 @@ except Exception as err:
 if None in [username, password, host]:
     _err("Invalid parameters")
 
-__main__(host, username, password)
+__main__(host, username, password, include_finished=include_finished)

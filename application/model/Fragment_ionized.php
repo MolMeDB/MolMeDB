@@ -23,6 +23,8 @@ class Fragment_ionized extends Db
     const COSMO_F_OPTIMIZE_ERR_PARTIAL = 2;
     const COSMO_F_COSMO_DOWNLOADED     = 3;
     const COSMO_F_COSMO_PARSED         = 4;
+    const COSMO_F_KILLED               = 5;
+    const COSMO_F_RE_RUN               = 6;
 
     /**
      * Constructor

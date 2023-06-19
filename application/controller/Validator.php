@@ -16,7 +16,7 @@ class ValidatorController extends Controller
     private $menu_endpoints = array
     (
         self::M_CHECK_DUPLICITY => 'duplicity',
-        self::M_COSMO => 'cosmo',
+        self::M_COSMO => 'cosmo_datasets',
     );
 
     /**
@@ -52,18 +52,32 @@ class ValidatorController extends Controller
      * @param int $pagination
      * 
      */
-    public function cosmo($pagination = 1, $per_page = 20)
+    public function cosmo($id_dataset = null, $pagination = 1, $per_page = 20)
     {
+        $dataset = new Run_cosmo_datasets($id_dataset);
+
+        if(!$dataset->id)
+        {
+            $this->alert->error('Dataset doesnt exists.');
+            $this->redirect('validator/cosmo_datasets');
+        }
+
         $cosmo_model = new Run_cosmo();
         $params = $this->form->param;
 
-        $records = $cosmo_model->get_list($pagination, $per_page, $params->compound, $params->state, $params->status);
-        $total = $cosmo_model->get_list_count($params->compound, $params->state, $params->status);
+        $total = $cosmo_model->get_list_count($id_dataset, $params->compound, $params->state, $params->status);
+
+        if($total < $pagination * $per_page)
+        {
+            $pagination = intval($total / $per_page) + 1;
+        }
+
+        $records = $cosmo_model->get_list($id_dataset, $pagination, $per_page, $params->compound, $params->state, $params->status);
 
         $this->view = new View('cosmo/overview');
         $this->view->jobs = $records;
         $paginator = new View_paginator();
-        $paginator->path()
+        $paginator->path($id_dataset)
             ->active($pagination)
             ->records_per_page($per_page);
 
@@ -75,9 +89,106 @@ class ValidatorController extends Controller
         $this->breadcrumbs = new Breadcrumbs();
         $this->breadcrumbs
             ->add('Administration', "administration", TRUE)
-            ->add('COSMO');
+            ->add('COSMO datasets', 'validator/cosmo_datasets', true)
+            ->add('Dataset [ID: ' . $dataset->id . ']');
 
         $this->title = 'COSMO';
+    }
+
+    /**
+     * Cosmo computations handler
+     * 
+     * @param int $pagination
+     * 
+     */
+    public function cosmo_datasets($pagination = 1, $per_page = 20)
+    {
+        $dataset_model = new Run_cosmo_datasets();
+
+        $params = $this->form->param;
+
+        $total = $dataset_model->get_list_count($params->comment);
+
+        if($total < $pagination * $per_page)
+        {
+            $pagination = intval($total / $per_page) + 1;
+        }
+
+        $records = $dataset_model->get_list($pagination, $per_page, $params->comment);
+
+        $this->view = new View('cosmo/datasets');
+        $this->view->datasets = $records;
+
+        $paginator = new View_paginator();
+        $paginator->path()
+            ->active($pagination)
+            ->records_per_page($per_page);
+        $paginator->total_records($total);
+
+        $this->view->paginator($paginator);
+        $this->view->total = $total;
+        $this->view->params = $params;
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', "administration", TRUE)
+            ->add('COSMO datasets');
+
+        $this->title = 'COSMO datasets';
+    }
+
+    /**
+     * Cosmo computations handler
+     * 
+     * @param int $pagination
+     * 
+     */
+    public function edit_cosmo_dataset($id_dataset)
+    {
+        $dataset = new Run_cosmo_datasets($id_dataset);
+
+        if(!$dataset->id)
+        {
+            $this->alert->error('Dataset doesnt exist.');
+            $this->redirect('validator/cosmo_datasets');
+        }
+
+        $form = new Forge('Cosmo dataset [' . $dataset->id . ']');
+
+        $form->add('comment')
+            ->type('longtext')
+            ->title('Comment')
+            ->value($dataset->comment);
+
+        $form->submit('Save');
+
+        if($this->form->is_post())
+        {
+            $params = $this->form->param;
+            try
+            {
+                $dataset->comment = $params->comment;
+                $dataset->save();
+                $this->alert->success('Saved.');
+                $this->redirect('validator/cosmo_datasets');
+            }
+            catch(MmdbException $e)
+            {
+                $this->alert->error($e);
+            }
+        }
+
+
+        $this->view = new View('forge');
+        $this->view->forge = $form;
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', "administration", TRUE)
+            ->add('COSMO datasets', "validator/cosmo_datasets", true)
+            ->add('Edit record [ID: ' . $dataset->id . ']');
+
+        $this->title = 'COSMO dataset';
     }
 
     /**
@@ -102,6 +213,7 @@ class ValidatorController extends Controller
             $cosmo->forceRun = 1;
             $cosmo->state = Run_cosmo::STATE_PENDING;
             $cosmo->status = Run_cosmo::STATUS_OK;
+            $cosmo->error_count = NULL;
             $cosmo->save();
         }
         else
@@ -113,6 +225,7 @@ class ValidatorController extends Controller
                 $j->forceRun = 1;
                 $j->state = Run_cosmo::STATE_PENDING;
                 $j->status = Run_cosmo::STATUS_OK;
+                $j->error_count = NULL;
                 $j->save();
             }
         }
@@ -138,88 +251,14 @@ class ValidatorController extends Controller
             $this->redirect('validator/cosmo');
         }
 
+        $dataset = new Run_cosmo_datasets($this->form->param->id_dataset);
+
         // Collect info to display
-        $cosmo_results = [];
         $python_logs = [];
         try
         {
             $ioniz_states = Fragment_ionized::instance()->where('id_fragment', $id_fragment)->get_all();
-            foreach($cosmo_records as $cosmo)
-            {
-                $substance = $cosmo->fragment->assigned_compound();
-
-                // Get results
-                if($cosmo->state >= Run_cosmo::STATE_RESULT_PARSED)
-                {
-                    foreach($ioniz_states as $ion)
-                    {
-                        if(!isset($cosmo_results[$ion->id]))
-                        {
-                            $cosmo_results[$ion->id] = [];
-                        }
-
-                        $cosmo_results[$ion->id][$cosmo->id] = new Iterable_object();
-
-                        $path = $f->prepare_conformer_folder($cosmo->fragment->id, $ion->id);
-
-                        $path = $path . 'COSMO/';
-
-                        if(!file_exists($path))
-                        {
-                            continue;
-                        }
-
-                        $files = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
-                        $prefix = strtolower($cosmo->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$cosmo->membrane->name)) . '_' . str_replace('.', ',', $cosmo->temperature));
-                        $prefix = trim($prefix);
-
-                        foreach($files as $pt)
-                        {
-                            if($prefix == strtolower(substr($pt, 0, strlen($prefix))))
-                            {
-                                $out_path = $path . $pt . '/' . 'cosmo_parsed.json';
-
-                                if(!file_exists($out_path))
-                                {
-                                    $cosmo->state = Run_cosmo::STATE_RESULT_DOWNLOADED;
-                                    $cosmo->save();
-                                    continue;
-                                }
-
-                                $data = json_decode(file_get_contents($out_path));
-                                
-                                foreach($data as $job)
-                                {
-                                    $energy_dist = $job->layer_positions;
-                                    $temp = $job->temperature;
-
-                                    foreach($job->solutes as $sol)
-                                    {
-                                        $e_values = [];
-                                        
-                                        foreach($sol->energy_values as $e)
-                                        {
-                                            $e_values[] = round($e, 2);
-                                        }
-
-                                        $cosmo_results[$ion->id][$cosmo->id] = (object)array
-                                        (
-                                            'logK' => $sol->logK,
-                                            'logPerm' => $sol->logPerm,
-                                            'energyValues' => $e_values,
-                                            'energyDistance' => $energy_dist,
-                                            'temperature' => $temp,
-                                            'membraneName' => $cosmo->membrane->name,
-                                            'methodName'   => $cosmo->get_enum_method()
-                                        );
-                                    }
-                                }
-                                continue 2;
-                            }
-                        }
-                    }
-                }
-            }
+            $substance = $cosmo_records[0]->fragment->assigned_compound();
 
             foreach($ioniz_states as $ion)
             {
@@ -227,48 +266,6 @@ class ValidatorController extends Controller
                 if(file_exists($path . 'cosmo.log'))
                 {
                     $python_logs[$ion->id] = file_get_contents($path . 'cosmo.log');
-                }
-            }
-
-            // Prepare energy chart data
-            foreach($cosmo_results as $ion_id => $ion_data)
-            {
-                foreach($ion_data as $cosmo_id => $data)
-                {
-                    if(!$data->membraneName)
-                    {
-                        continue;
-                    }
-
-                    $distances = $data->energyDistance;
-                    $chart_data = [];
-
-                    sort($distances);
-                
-                    foreach($distances as $d)
-                    {
-                        $chart_data[] = (object)array
-                        (
-                            'x' => floatval($d)/10
-                        );
-                    }
-
-                    $yk = 'y';
-                    foreach($distances as $key => $d)
-                    {
-                        $index = array_search($d, $data->energyDistance);
-
-                        if($index === false)
-                        {
-                            $chart_data[$key]->$yk = null;
-                        }
-                        else
-                        {
-                            $chart_data[$key]->$yk = floatval($data->energyValues[$index]);
-                        }
-                    }
-
-                    $cosmo_results[$ion_id][$cosmo_id]->chart_data = $chart_data;
                 }
             }
         }
@@ -280,8 +277,14 @@ class ValidatorController extends Controller
 
         $this->breadcrumbs = new Breadcrumbs();
         $this->breadcrumbs->add('Administration', 'administration')
-            ->add('COSMO', 'validator/cosmo')
-            ->add('Fragment: ' . $id_fragment);
+            ->add('COSMO datasets', 'validator/cosmo_datasets');
+
+        if($dataset->id)
+        {
+            $this->breadcrumbs->add('Dataset [ID: ' . $dataset->id . ']', 'validator/cosmo/' . $dataset->id);
+        }
+            
+        $this->breadcrumbs->add('Fragment: ' . $id_fragment);
 
         $this->title = 'Fragment ' . $id_fragment;
         $this->view = new View('cosmo/job_detail');
@@ -289,7 +292,6 @@ class ValidatorController extends Controller
         $this->view->cosmo_records = $cosmo_records;
         $this->view->ion_states = $ioniz_states;
         $this->view->substance = $substance;
-        $this->view->cosmo_results = $cosmo_results;
         $this->view->python_logs = $python_logs;
         $this->view->ion_job = Run_ionization::instance()->where('id_fragment', $id_fragment)->get_one();
     }
@@ -311,6 +313,7 @@ class ValidatorController extends Controller
                 $method = $this->form->param->method;
                 $priority = $this->form->param->priority;
                 $temperature = $this->form->param->temperature;
+                $comment = $this->form->param->comment;
 
                 if(!Run_cosmo::is_valid_method($method))
                 {
@@ -337,37 +340,39 @@ class ValidatorController extends Controller
                     throw new MmdbException('No SMILES file uploaded.', 'No SMILES file uploaded.');
                 }
 
-                $f = fopen($this->form->file->smiles->tmp_name, 'r');
+                $fstream = fopen($this->form->file->smiles->tmp_name, 'r');
 
-                if(!$f)
+                if(!$fstream)
                 {
                     throw new MmdbException('Cannot read SMILES file content.', 'Cannot read SMILES file content.');
                 }
-
-                $lines = [];
-
-                while(($line = fgets($f)) !== false)
-                {
-                    if(strlen($line) > 2)
-                    {
-                        $lines[] = trim($line);
-                    }
-                }
-
-                fclose($f);
 
                 // Canonize each smiles
                 $canonized = [];
                 $rdkit = new Rdkit();
                 $f = new Fragments();
+                $line_count = 0;
 
-                foreach($lines as $l)
+                while(($line = fgets($fstream)) !== false)
                 {
-                    $can = $rdkit->canonize_smiles($l);
+                    $line_count++;
+                    if(strlen($line) < 2)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        $can = $rdkit->canonize_smiles($line);
+                    }
+                    catch(MmdbException $e)
+                    {
+                        $can = false;
+                    }
 
                     if($can == false)
                     {
-                        throw new MmdbException('Cannot canonize smiles ' . $l . '. Please, check the input.', 'Cannot canonize smiles ' . $l . '. Please, check the input.');
+                        throw new MmdbException('Cannot canonize smiles `' . $line . '`. Please, check the input.', 'Cannot canonize smiles `' . $line . '` on line ' . $line_count . '. Please, check the input.');
                     }
 
                     // Check if structure is neutral
@@ -378,6 +383,8 @@ class ValidatorController extends Controller
 
                     $canonized[] = $can;
                 }
+
+                fclose($fstream);
 
                 $fragments = [];
 
@@ -393,7 +400,8 @@ class ValidatorController extends Controller
                 // Create record about upload
                 $cosmo_dataset = new Run_cosmo_datasets();
                 $cosmo_dataset->id_user = session::user_id();
-                // $cosmo_dataset->comment = $this->form->param->comment;
+                $cosmo_dataset->create_date = date('Y-m-d');
+                $cosmo_dataset->comment = $comment;
 
                 $cosmo_dataset->save();
 
@@ -436,7 +444,6 @@ class ValidatorController extends Controller
             {
                 Db::rollbackTransaction();
                 $this->alert->error($e);
-                $this->redirect('validator/cosmo');
             }
         }
 
@@ -452,7 +459,7 @@ class ValidatorController extends Controller
         $this->breadcrumbs = new Breadcrumbs();
         $this->breadcrumbs
             ->add('Administration', 'administration', TRUE)
-            ->add('COSMO', 'validator/cosmo', true)
+            ->add('COSMO datasets', 'validator/cosmo_datasets', true)
             ->add('Add new records to queue');
     }
 

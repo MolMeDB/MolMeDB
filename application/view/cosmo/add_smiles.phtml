@@ -25,6 +25,10 @@
         <?php endforeach ?>
     </select><br/><br/>
     <label>Temperature: [°C]</label><br/>
-    <input type="number" name="temperature" required/><br/><br/>
+    <input type="number" name="temperature" value="25" required/><br/><br/>
+    <label>Comment:</label><br/>
+    <?= Html::textarea('comment', '') ?>
+    </textarea>    
+    <br/><br/>
     <button type="submit" class="btn btn-sm btn-success">Upload</button>
 </form>

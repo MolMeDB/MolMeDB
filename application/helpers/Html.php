@@ -114,6 +114,19 @@ class Html
     }
 
     /**
+     * Generates text input
+     * 
+     * @param string $name
+     * @param string $value
+     * 
+     * @return string
+     */
+    public static function textarea($name, $value)
+    {
+        return "<textarea class='form-control' name='$name' value='$value'>$value</textarea>";
+    }
+
+    /**
      * Generates checkbox input
      * 
      * @param string $name

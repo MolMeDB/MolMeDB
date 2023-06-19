@@ -19,7 +19,7 @@ function createLineChart(data, targetID, clear = false)
     {
         data = JSON.parse(data);
     }
-    
+
     // Already exists? Add chart to existing one
     if(targetID in visibleCharts && !clear)
     {
@@ -63,8 +63,6 @@ function createLineChart(data, targetID, clear = false)
             console.log("No data found...");
             return;
         }
-
-        console.log(data);
 
         am5.ready(function() {
             // Create root element
@@ -118,7 +116,6 @@ function createLineChart(data, targetID, clear = false)
             for(k in keys)
             {
                 d = data[keys[k]];
-                console.log(d)
                 let s = am5xy.LineSeries.new(root, {
                     name: "Series",
                     xAxis: xAxis,

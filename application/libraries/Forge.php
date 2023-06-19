@@ -174,6 +174,10 @@ class Forge
                     $result .= Html::password_input($item->name, $item->value, $item->checked);
                     break;
 
+                case 'longtext':
+                    $result .= Html::textarea($item->name, $item->value);
+                    break;
+
                 default:
                     $result .= '' . Html::text_input($item->name, $item->value);
                     break;
@@ -250,6 +254,7 @@ class ForgeItem
     private static $valid_types = array
     (
         'text',
+        'longtext',
         'number',
         'checkbox',
         'password'

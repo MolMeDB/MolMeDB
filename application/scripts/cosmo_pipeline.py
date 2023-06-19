@@ -54,7 +54,7 @@ def _log(step, code, suffix = ""):
     print("_LOG_: " + str(step) + "/" + str(code) + " [" + suffix + "]")
 
 
-def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitHs=10, membrane=None, membraneName = None, temp=25, queue="elixir", cosmo="perm", forceRun = False):
+def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitHs=10, membrane=None, membraneName = None, temp=25, queue="elixir", cosmo="perm", forceRun = False, reRun = False):
     # Must be folder of conformers
     confPath, file = File.getFolder(confPath)
     # Check if folder exists
@@ -100,7 +100,7 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
 
     
     # Init SDF File instances
-    files = [SDFFile(f, sshClient=sshClient, charge=charge, forceRun=forceRun) for f in files]
+    files = [SDFFile(f, sshClient=sshClient, charge=charge, forceRun=forceRun, reRun=reRun) for f in files]
     _step(0, "Done")
 
     cosmo = COSMO(
@@ -176,15 +176,18 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
     _step(3, "Generating CUBY4 optimizing job files...")
     _log(STEP_CUBY_GENERATE, CODE_INIT)
     for f in files:
-        f.getOptimizeInputs(ncpu=cpu, ram=ram, walltimeHs=limitHs,queue=queue)
+        if not reRun or (not f.optimizationResults and not f.optimizationRunning):
+            f.getOptimizeInputs(ncpu=cpu, ram=ram, walltimeHs=limitHs,queue=queue)
     _log(STEP_CUBY_GENERATE, CODE_OK)
     _step(3, "Done.")
 
     _step(4, "Uploading cuby4 files to remote server...")
+    
     skipped = uploaded = running = 0
     _log(STEP_CUBY_UPLOAD, CODE_INIT)
     for f in files: 
-        r = f.uploadCubyFiles()
+        if not reRun or (not f.optimizationResults and not f.optimizationRunning):
+            r = f.uploadCubyFiles()
         if r == "running":
             running+= 1
         elif r == "skip":
@@ -206,7 +209,7 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
     running = 0
     hasResult = 0
     for f in files: 
-        if f.optimizationHistoryRun and not f.optimizationResults:
+        if not reRun and f.optimizationHistoryRun and not f.optimizationResults:
             # Error occured
             _log(STEP_CUBY_RUN_JOB, CODE_ERR, f.name)
             continue
@@ -235,7 +238,8 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
     ################ STEP 5 #################################
     ######## Copy COSMO files to one directory ##############
     #########################################################
-    if running == 0 and hasResult >= len(files)/2:
+    # Never run cosmo computation in reRun! There should be wrong membrane and temperature setting!
+    if not reRun and running == 0 and hasResult >= len(files)/2:
         _step(6, "Copying prepared COSMO files for the COSMOmic/COSMOperm")
         _log(STEP_COSMO_PREPARE, CODE_INIT)
         cosmoFiles = list()
@@ -470,7 +474,7 @@ class COSMO:
 #PBS -q {self.queue}
 #PBS -N MMDB_COSMO_{self.type}_{f.name}
 #PBS -l select=1:ncpus=10:mem=5gb:scratch_local=5gb
-#PBS -l walltime=5:00:00
+#PBS -l walltime=10:00:00
 trap 'clean_scratch' TERM EXIT
 cd $SCRATCHDIR || exit 1
 
@@ -536,7 +540,7 @@ class SDFFile:
     LOGPATH_PS = "[LOGPATH_PS]"
     
 
-    def __init__(self, path, sshClient=None, charge = 0, forceRun=False):
+    def __init__(self, path, sshClient=None, charge = 0, forceRun=False, reRun = False):
         self.path = str(path).strip()
         self.sshClient = sshClient
         self.folder, self.fileName = self.getFolder(path)
@@ -546,6 +550,7 @@ class SDFFile:
         self.cuby = CUBY4()
         self.readyToOptimize = False
         self.charge = charge
+        self.reRun = reRun
 
         self.optimizeScripts = None
 
@@ -613,8 +618,9 @@ class SDFFile:
                 _log(STEP_REMOTE_FOLDER, CODE_ERR)
                 _err("Cannot obtain full remote base path.", self.sshClient)
             return True
-        except:
+        except Exception as e:
             _log(STEP_REMOTE_FOLDER, CODE_ERR)
+            print(e)
             _err("Exception occured during making file structure.", self.sshClient)
 
     def uploadSdfFile(self):
@@ -718,11 +724,11 @@ class SDFFile:
             with open(tmpJob.name, "w") as tY:
                 tY.write(contentjob)
             # Upload
-            if self.name + ".yaml" not in existing or self.forceRun:
+            if self.name + ".yaml" not in existing or self.forceRun or self.reRun:
                 self.sshClient.sftp.put(tmpYaml.name, out_folder + "/" + self.name + ".yaml")
             else: 
                 skipped = True
-            if self.name + ".job" not in existing or self.forceRun:
+            if self.name + ".job" not in existing or self.forceRun or self.reRun:
                 self.sshClient.sftp.put(tmpJob.name, out_folder + "/" + self.name + ".job")
             else: 
                 skipped = True
@@ -808,6 +814,7 @@ class SSHClient:
             username=self.username, 
             password=self.password
         )
+        import time
         # init shell
         self.shell = self.ssh.invoke_shell()
         self.shell_exec("clear")
@@ -817,7 +824,11 @@ class SSHClient:
             self.close()
             _err("Cannot initialize kerberos token.")
         # Get qsub path
-        output = self.shell_exec("which qsub")
+        for i in range(3):
+            output = self.shell_exec("which qsub")
+            if i < 2 and (not len(output) or not str(output[0]).startswith("/")):
+                time.sleep(2)
+
         if not len(output) or not str(output[0]).startswith("/"):
             self.close()
             _err("Cannot get `qsub` remote path")
@@ -902,7 +913,7 @@ Example:
 cosmo_pipeline.py --base /path/to/sdf/MM00040/neutral/ --cpu 8 --ram 32 --limit 10 --cosmo perm --temp 25 --membrane /path/to/membrane/DOPC.mic --membraneName DOPC
 """
 
-ions = charge = usernam = password = host = username = password = cpu = ram = limitHs = membrane = membraneName = temperature= cosmoType=queue=forceRun=None
+ions = charge = usernam = password = host = reRun = username = password = cpu = ram = limitHs = membrane = membraneName = temperature= cosmoType=queue=forceRun=None
 
 try:
     opts, args = getopt.getopt(params, "", [
@@ -919,6 +930,7 @@ try:
         "queue =",
         "username =",
         "password =",
+        "reRun =",
     ])
 except Exception as e:
     print("Invalid parameter set.")
@@ -974,6 +986,9 @@ try:
             username = arg
         elif opt == "--password":
             password = arg
+        elif opt == "--reRun":
+            if str(arg).lower() == "true": reRun = True
+            else: reRun = False
         elif opt == "--force":
             if str(arg).lower() == "true": forceRun = True
             else: forceRun = False
@@ -1017,7 +1032,8 @@ for ion in ions:
         temp=temperature,
         cosmo=cosmoType,  
         queue=queue,
-        forceRun=forceRun)
+        forceRun=forceRun,
+        reRun=reRun)
     
 print("\n#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$#\n") # Log separator
     

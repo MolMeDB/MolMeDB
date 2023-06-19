@@ -5,6 +5,7 @@
  * 
  * @property int $id
  * @property int $state
+ * @property int $error_count
  * @property int $status
  * @property int $forceRun
  * @property int $id_dataset
@@ -114,6 +115,17 @@ class Run_cosmo extends Db
             'var' => 'dataset'
         )
     );
+
+    public function increase_error_count()
+    {
+        $this->error_count =  ($this->error_count !== null) ? $this->error_count + 1 : 1;
+        if($this->error_count > 2)
+        {
+            // $this->error_count = 0;
+            $this->status = Run_cosmo::STATUS_ERROR;
+        }
+        $this->save();
+    }
 
     public static function get_all_status()
     {
@@ -250,12 +262,137 @@ class Run_cosmo extends Db
     }
 
     /**
+     * Merge all results for given ion and returns
+     * 
+     * @param Fragment_ionized $ion
+     * 
+     * @return object[]
+     */
+    public static function get_ion_results($ion)
+    {
+        if(!($ion instanceof Fragment_ionized) || !$ion->id)
+        {
+            throw new Exception('Invalid $ion instance.');
+        }
+
+        $f = new File();
+
+        $cosmo_runs = self::instance()->where('id_fragment', $ion->id_fragment)->get_all();
+
+        $results = [];
+
+        foreach($cosmo_runs as $cosmo)
+        {
+            $path = $f->prepare_conformer_folder($cosmo->fragment->id, $ion->id);
+            $path = $path . 'COSMO/';
+            if(!file_exists($path)) // Results not exists yet
+            {
+                continue;
+            }
+
+            $files = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
+            $prefix = strtolower($cosmo->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$cosmo->membrane->name)) . '_' . str_replace('.', ',', $cosmo->temperature));
+            $prefix = trim($prefix);
+
+            foreach($files as $pt)
+            {
+                if($prefix == strtolower(substr($pt, 0, strlen($prefix))))
+                {
+                    $out_path = $path . $pt . '/' . 'cosmo_parsed.json';
+
+                    if(!file_exists($out_path) && $cosmo->state > Run_cosmo::STATE_RESULT_DOWNLOADED) // Exists results but not parsed!
+                    {
+                        $cosmo->state = Run_cosmo::STATE_RESULT_DOWNLOADED;
+                        $cosmo->save();
+                        continue;
+                    }
+                    elseif(!file_exists($out_path))
+                    {
+                        continue;
+                    }
+
+                    $data = json_decode(file_get_contents($out_path));
+                    
+                    foreach($data as $job)
+                    {
+                        $energy_dist = $job->layer_positions;
+                        $temp = $job->temperature;
+
+                        foreach($job->solutes as $sol)
+                        {
+                            $e_values = [];
+                            
+                            foreach($sol->energy_values as $e)
+                            {
+                                $e_values[] = round($e, 2);
+                            }
+
+                            $results[$cosmo->id] = (object)array
+                            (
+                                'logK' => $sol->logK,
+                                'logPerm' => $sol->logPerm,
+                                'energyValues' => $e_values,
+                                'energyDistance' => $energy_dist,
+                                'temperature' => $temp,
+                                'membraneName' => $cosmo->membrane->name,
+                                'methodName'   => $cosmo->get_enum_method()
+                            );
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Add chart data
+        foreach($results as $cosmo_id => $data)
+        {
+            if(!$data->membraneName)
+            {
+                continue;
+            }
+
+            $distances = $data->energyDistance;
+            $chart_data = [];
+
+            sort($distances);
+        
+            foreach($distances as $d)
+            {
+                $chart_data[] = (object)array
+                (
+                    'x' => floatval($d)/10
+                );
+            }
+
+            $yk = 'y';
+            foreach($distances as $key => $d)
+            {
+                $index = array_search($d, $data->energyDistance);
+
+                if($index === false)
+                {
+                    $chart_data[$key]->$yk = null;
+                }
+                else
+                {
+                    $chart_data[$key]->$yk = floatval($data->energyValues[$index]);
+                }
+            }
+
+            $results[$cosmo_id]->chart_data = $chart_data;
+        }
+
+        return $results;
+    }
+
+    /**
      * Returns all results
      * 
      * @param $pagination
      * @param $per_page
      */
-    public function get_list($pagination, $per_page, $compound_query = NULL, $states = [], $status = [])
+    public function get_list($id_dataset, $pagination, $per_page, $compound_query = NULL, $states = [], $status = [])
     {
         $join = $where = '';
 
@@ -283,10 +420,10 @@ class Run_cosmo extends Db
             $where .= "rc.status IN('" . implode("','", $status) . "') ";         
         }
 
-        $where = $where != '' ? 'WHERE ' . $where : '';
+        $where = $where != '' ? 'WHERE ' . $where . ' AND rc.id_dataset = ' . $id_dataset : ' WHERE rc.id_dataset = ' . $id_dataset;
 
         return Run_cosmo::instance()->queryAll(
-            "SELECT rc.id_fragment, MIN(rc.state) as state, MAX(rc.status) as status, rc.create_date, rc.last_update
+            "SELECT rc.id_fragment, MIN(rc.state) as state, MAX(rc.status) as status, rc.create_date, rc.last_update, rc.id_dataset
             FROM run_cosmo rc
             $join
             $where
@@ -299,7 +436,7 @@ class Run_cosmo extends Db
     /**
      * Returns count of all results
      */
-    public function get_list_count($compound_query = NULL, $states = [], $status = [])
+    public function get_list_count($id_dataset, $compound_query = NULL, $states = [], $status = [])
     {
         $join = $where = '';
 
@@ -321,7 +458,7 @@ class Run_cosmo extends Db
             $where .= "rc.status IN('" . implode("','", $status) . "') ";         
         }
 
-        $where = $where != '' ? 'WHERE ' . $where : '';
+        $where = $where != '' ? 'WHERE ' . $where . ' AND rc.id_dataset = ' . $id_dataset : ' WHERE rc.id_dataset = ' . $id_dataset;
 
         return Run_cosmo::instance()->queryOne(
             "SELECT COUNT(*) as count

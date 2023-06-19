@@ -162,7 +162,7 @@ class Api_endpoint_parser
 	public function find($endpoint, $request, $fast_check = FALSE)
 	{
         // If debug, always update all endpoints
-        if(DEBUG)
+        if(TRUE)
         {
             $fast_check = TRUE;
             $this->update_all();

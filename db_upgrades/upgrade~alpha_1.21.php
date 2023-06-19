@@ -15,7 +15,7 @@ $upgrade_sql = array
     "CREATE TABLE `run_ionization` (`id` INT NOT NULL AUTO_INCREMENT , `id_fragment` INT NOT NULL , `ph_start` DECIMAL NOT NULL , `ph_end` DECIMAL NOT NULL , `datetime` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
     "ALTER TABLE `run_ionization` ADD FOREIGN KEY (`id_fragment`) REFERENCES `fragments`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
     
-    "CREATE TABLE `run_cosmo` (`id` INT NOT NULL AUTO_INCREMENT , `id_fragment` INT NOT NULL , `temperature` DECIMAL NOT NULL , `id_membrane` INT NOT NULL , `method` TINYINT NOT NULL COMMENT 'CosmoPerm/CosmoMic' , `priority` TINYINT NOT NULL DEFAULT '1' , `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , `last_update` DATETIME on update CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
+    "CREATE TABLE `run_cosmo` (`id` INT NOT NULL AUTO_INCREMENT , `id_fragment` INT NOT NULL , `temperature` DECIMAL NOT NULL , `id_membrane` INT NOT NULL , `method` TINYINT NOT NULL COMMENT 'CosmoPerm/CosmoMic' , `priority` TINYINT NOT NULL DEFAULT '1' , `last_update` DATETIME on update CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
     "ALTER TABLE `run_cosmo` ADD FOREIGN KEY (`id_fragment`) REFERENCES `fragments`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;", 
     "ALTER TABLE `run_cosmo` ADD FOREIGN KEY (`id_membrane`) REFERENCES `membranes`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
     "ALTER TABLE `run_cosmo` ADD `status` TINYINT NOT NULL DEFAULT '1' AFTER `state`;",

@@ -1,0 +1,49 @@
+<!-- FILTER -->
+<form method="get">
+<div style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; margin-bottom: 40px;">
+        <h4>Search</h4>
+        <div style="display: flex; flex-direction: row; justify-content: flex-start;">
+            <input class="searchEngine" value="<?= $params->comment ?>" style="width:400px;" type="text" name="comment" placeholder="Search by dataset comment" id="compoundSearch"><button type="submit" class="btn btn-sm btn-success">Search / Submit filters</button>
+        </div>
+    </div>
+</form>
+<div class="action-bar">
+    <div>
+        <button class="btn btn-sm btn-info"><a href="/validator/add_cosmo_smi"> Add new dataset</a></button>
+    </div>
+</div>
+
+ <div class="tab_detail" id="tab_transporters">
+    <h3 style="text-align: center;"><b>Cosmo datasets</b> (<?= $total ?>)</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <td>ID</td>
+                <td>Comment</td>
+                <td>Author</td>
+                <td>Total compounds</td>
+                <td>Stats (pending/running/done)</td>
+                <td>Stats (total errors)</td>
+                <td>Upload date</td>
+                <td>Actions</td>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach($datasets as $d): ?>
+            <tr>
+                <td><?= $d->id ?></td>
+                <td><?= $d->comment ?></td>
+                <td><?= $d->author ?></td>
+                <td><?= $d->total_runs ?></td>
+                <td><?= $d->total_pending . "/" . $d->total_running . '/' . $d->total_done ?></td>
+                <td><?= $d->total_error ?></td>
+                <td><?= $d->create_date != NULL ? date("d. m. Y", strtotime($d->create_date)) : 'Unknown' ?></td>
+                <td>
+                    <a href="/validator/cosmo/<?= $d->id ?>" title="Detail"><span style="cursor:pointer;" class="glyphicon glyphicon-eye-open"></span></a>
+                    <a href="/validator/edit_cosmo_dataset/<?= $d->id ?>" title="Edit comment"><span style="cursor:pointer;" class="glyphicon glyphicon-edit"></span></a>
+                </td>
+            </tr>
+            <?php endforeach ?>
+        </tbody>
+    </table>
+ </div>

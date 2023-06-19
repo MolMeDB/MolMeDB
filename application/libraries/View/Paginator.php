@@ -158,7 +158,7 @@ class View_paginator
         $max_item = intval($this->total_records / $this->records_per_page)+1;
         $items = [];
 
-        $this->active = $this->active > $max_item ? $max_item : $this->active;
+        $this->active = $this->active > $max_item ? 1 : $this->active;
         $this->active = $this->active < 1 ? 1 : $this->active;
 
         $sw = null;

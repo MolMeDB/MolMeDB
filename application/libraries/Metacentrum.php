@@ -69,7 +69,7 @@ class Metacentrum
      * 
      * @return Metacentrum_job[]
      */
-    public static function get_job_list($username, $password, $queue)
+    public static function get_job_list($username, $password, $queue, $include_finished = False)
     {
         if(!array_key_exists($queue, self::$queue_servers))
         {
@@ -85,6 +85,11 @@ class Metacentrum
             '--password' => $password,
             '--host'     => $server 
         );
+
+        if($include_finished)
+        {
+            $params['--include_finished'] = 'true';
+        }
 
         foreach($params as $key => $val)
         {
@@ -109,15 +114,45 @@ class Metacentrum
         }
 
         $result = [];
+        $started = false;
+        $curr_row = [];
+
+        if(!is_iterable($output)) // Empty result
+        {
+            return [];
+        }
 
         foreach($output as $row)
         {
-            if(!is_array($row) || count($row) < 11 || $row[1] !== $username)
+            if(!is_array($row) || empty($row))
             {
+                $started = false;
+                $job = new Metacentrum_job($curr_row);
+                $result[$job->job_name] = $job;
+                $curr_row = [];
                 continue;
             }
 
-            $result[] = new Metacentrum_job($row);
+            if($started)
+            {
+                $row = implode(' ', $row);
+                $row = explode('=', $row);
+                if(count($row) < 2)
+                {
+                    continue;
+                }
+
+                $curr_row[trim($row[0])] = trim($row[1]);
+                continue;
+            }
+
+            $row = implode(' ', $row);
+
+            if(preg_match('/^\s*Job\s+Id/', $row))
+            {
+                $started = true;
+                $curr_row['job_id'] = trim(explode(':', $row)[1]);
+            }
         }
 
         return $result;
@@ -128,7 +163,7 @@ class Metacentrum
      * 
      * @param Run_cosmo[] $cosmo_run
      */
-    public static function run_cosmo($cosmo_runs, $host, $username, $password, $queue, $limit = 10, $force = false)
+    public static function run_cosmo($cosmo_runs, $host, $username, $password, $queue, $limit = 20, $force = false)
     {
         $valid_runs = [];
         $script_inputs = [];
@@ -282,6 +317,7 @@ class Metacentrum
             $ions = Fragment_ionized::instance()->where('id_fragment', $cosmo_run->id_fragment)->get_all();
 
             $last_steps = [];
+            $increased = false;
 
             foreach($ions as $ion)
             {
@@ -349,10 +385,10 @@ class Metacentrum
                     {
                         $ion->cosmo_flag = max(intval($ion->cosmo_flag), Fragment_ionized::COSMO_F_COSMO_DOWNLOADED);
                     }
-                    // If error occued, stop computing
+                    // If error occured, stop computing
                     else if($ss[1] == Metacentrum::CODE_ERROR)
                     {
-                        $cosmo_run->status = Run_cosmo::STATUS_ERROR;
+                        $increased = True;
                         break;
                     }
                 }
@@ -383,9 +419,18 @@ class Metacentrum
                 $cosmo_run->status = Run_cosmo::STATUS_ERROR;
             }
 
+            if($increased)
+            {
+                $cosmo_run->increase_error_count();
+            }
+            else if(count($ions) != $err_ions) // No fatal error?
+            {
+                $cosmo_run->error_count = NULL;
+                $cosmo_run->status = Run_cosmo::STATUS_OK;
+            }
+
             $last_steps = array_map(function($a){return $a == Metacentrum::CSM_STEP_CHECK_RESULT ? Metacentrum::CSM_STEP_COSMO_DOWNLOAD : $a;}, $last_steps);
             
-
             if(!empty($last_steps))
             {
                 // Minimum of successful steps
@@ -415,6 +460,200 @@ class Metacentrum
 
             $cosmo_run->forceRun = NULL;
             $cosmo_run->save();
+        }
+
+    }
+
+
+    /**
+     * Runs cosmo on metacentrum and download results
+     * 
+     * @param Run_cosmo[] $cosmo_runs
+     */
+    public static function run_failed_cosmo($cosmo_runs, $ion_ids, $host, $username, $password, $queue, $limit = 20)
+    {
+        $valid_runs = [];
+        $script_inputs = [];
+
+        if(!count($cosmo_runs))
+        {
+            return;
+        }
+
+        foreach($cosmo_runs as $cosmo_run)
+        {
+            if(!$cosmo_run || !$cosmo_run->id)
+            {
+                continue;
+            }
+
+            $f = new File();
+
+            $cosmo_ions = Fragment_ionized::instance()->where('id_fragment', $cosmo_run->id_fragment)->get_all();
+
+            // Get logs
+            $logs = new MetacentrumLog(MetacentrumLog::TYPE_COSMO_RUN, $cosmo_run->log);
+
+            $membrane = new File($cosmo_run->membrane->cosmo_file->path);
+
+            if(!$membrane->exists())
+            {
+                throw new Exception('Membrane file does not exist.');
+            }
+
+            $valid_runs[] = $cosmo_run;
+            
+            foreach($cosmo_ions as $ion)
+            {
+                if(!in_array($ion->id, $ion_ids))
+                {
+                    continue;
+                }
+
+                $logs->add($ion->id);
+
+                // Add to run list
+                $script_inputs[] = $cosmo_run->id_fragment . '/' . $ion->id . '/' . $cosmo_run->fragment->get_charge($ion->smiles);
+            }
+        }
+
+        if(!count($valid_runs))
+        {
+            return;
+        }
+
+        $cosmo_run = $valid_runs[0];
+        $membrane = new File($cosmo_run->membrane->cosmo_file->path);
+
+        ///////////////////////////////////
+        // Run COSMO
+        $script = "python3 " . APP_ROOT . "scripts/cosmo_pipeline.py";
+        $params = array
+        (
+            '--ions' => implode(' ', $script_inputs),
+            '--host' => $host,
+            '--username' => $username, 
+            '--password' => $password,
+            '--queue' => $queue,
+            '--cpu'  => 8,
+            '--ram'  => 32,
+            '--limit' => $limit,
+            '--cosmo' => $cosmo_run->get_script_method(),
+            '--temp'  => $cosmo_run->temperature,
+            '--membrane' => $membrane->origin_path,
+            '--membName' => $cosmo_run->membrane->name,
+            '--reRun' => "true"
+        );
+
+        foreach($params as $key => $val)
+        {
+            $script .= ' ' . $key . ' \'' . $val . '\'';
+        }
+
+        # Include errors? DEBUG ONLY
+        if(DEBUG)
+        {
+            $script .= ' 2>&1';
+        }
+
+        $output = [];
+
+        exec($script, $output, $code);
+
+        $outputs = [];
+        $init = TRUE; $index = 0;
+        foreach($output as $o)
+        {
+            if(!strlen($o))
+            {
+                continue;
+            }
+
+            if(($init && !preg_match('/JOB:/', $o)))
+            {
+                continue;
+            }
+            else if(preg_match('/JOB:/', $o))
+            {
+                $init = false;
+                $index = preg_replace('/\s+/', '', preg_replace('/^\s*JOB:/', '', $o));
+                $outputs[$index] = [];
+            }
+
+            $outputs[$index][] = $o;
+        }
+
+        // Process results
+        foreach($valid_runs as $cosmo_run)
+        {
+            // Load all ions
+            $ions = Fragment_ionized::instance()->where('id_fragment', $cosmo_run->id_fragment)->get_all();
+
+            $last_steps = [];
+
+            foreach($ions as $ion)
+            {
+                
+                $log_key = $cosmo_run->id_fragment . '/' . $ion->id . '/' . $cosmo_run->fragment->get_charge($ion->smiles);
+                
+                if(!isset($outputs[$log_key])) // Log not exists
+                {
+                    continue;
+                }
+
+                $last_steps[$ion->id] = Metacentrum::CSM_STEP_INPUT_CHECK;
+
+                $output = $outputs[$log_key];
+                $path = $f->prepare_conformer_folder($cosmo_run->id_fragment, $ion->id);
+
+                // Save whole log to the file
+                array_unshift($output, "\n\nReRUN - " . date("Y-m-d H:i:s"));
+                file_put_contents($path . 'cosmo.log', implode("\n", $output), FILE_APPEND);
+
+                $connected = FALSE;
+                
+                // Process output
+                foreach($output as $row)
+                {
+                    // Process just logs
+                    if(!preg_match('/^\s*_LOG_/', $row))
+                    {
+                        continue;
+                    }
+
+                    $l = preg_replace('/^\s*_LOG_:\s*/', '', $row);
+                    $l = trim($l);
+
+                    $tuple = explode(' ', $l);
+
+                    if(count($tuple) < 2)
+                    {
+                        continue;
+                    }
+                    $ss = explode('/', $tuple[0]);
+
+                    $logs->setState($ss[0], $ss[1], $tuple[1]);
+
+                    if($ss[0] == self::CSM_STEP_INIT && $ss[1] == Metacentrum::CODE_OK)
+                    {
+                        $connected = TRUE;
+                    }
+
+                    if($ss[0] == self::CSM_STEP_CUBY_RUN_JOB && $ss[1] == Metacentrum::CODE_OK)
+                    {
+                        $cosmo_run->state = Run_cosmo::STATE_OPTIMIZATION_RUNNING;
+                        $cosmo_run->save();
+                        $ion->cosmo_flag = NULL;
+                        $ion->save();
+                    }
+                }
+
+                if(!$connected)
+                {
+                    throw new MmdbException('Cannot connect to metacentrum server. Log: ' . $cosmo_run->id_fragment . '/' . $ion->id);
+                }
+
+            }
         }
     }
 }
@@ -607,6 +846,8 @@ class MetacentrumLog
 class Metacentrum_job 
 {
     /** @var string */
+    public $job_name;
+    /** @var string */
     public $username;
     /** @var string */
     public $queue;
@@ -620,6 +861,19 @@ class Metacentrum_job
     public $runtime;
     /** @var string */
     public $state;
+    /** @var bool */
+    public $killed = 0;
+    /** @var int */
+    public $id_fragment;
+    /** @var int */
+    public $id_ion;
+    /** @var int */
+    public $id_conformer;
+    /** @var int */
+    public $job_type;
+
+    const TYPE_OPTIMIZATION = 1;
+    const TYPE_COSMO = 2;
 
     /**
      * Constructor
@@ -629,13 +883,47 @@ class Metacentrum_job
     function __construct($data)
     {
         // Init
-        $this->username   = $data[1];
-        $this->queue      = $data[2];
-        $this->cpu        = $data[6];
-        $this->ram        = $data[7];
-        $this->max_runtime= $data[8];
-        $this->state      = $data[9];
-        $this->runtime    = $data[10];
+        $this->job_name   = isset($data["Job_Name"]) ? $data["Job_Name"] : null;
+        $this->username   = isset($data["Job_Owner"]) ? explode("@", $data["Job_Owner"])[0] : null;
+        $this->queue      = isset($data["queue"]) ? $data["queue"] : null;
+        $this->cpu        = isset($data["Resource_List.ncpus"]) ? $data["Resource_List.ncpus"] : null;
+        $this->ram        = isset($data["Resource_List.mem"]) ? $data["Resource_List.mem"] : null;
+        $this->max_runtime= isset($data["Resource_List.walltime"]) ? $data["Resource_List.walltime"] : null;
+        $this->state      = isset($data["job_state"]) ? $data["job_state"] : null;
+        $this->runtime    = isset($data["resources_used.walltime"]) ? $data["resources_used.walltime"] : null;
+
+        if(strpos($this->job_name, 'MMDB_C_OPT') !== FALSE)
+        {
+            $this->job_type = self::TYPE_OPTIMIZATION;
+        }
+        else if(strpos($this->job_name, 'MMDB_COSMO') !== FALSE)
+        {
+            $this->job_type = self::TYPE_COSMO;
+        }
+
+        // process job name
+        $nums = explode('_', $this->job_name);
+        $nums = array_reverse($nums);
+
+        if(count($nums) > 2)
+        {
+            $this->id_conformer = $nums[0];
+            $this->id_ion = $nums[1];
+            $this->id_fragment = $nums[2];
+        }
+
+        // Check, if process was killed (runtime reason)
+        $max_hours = explode(':', $this->max_runtime);
+        $used_hours = explode(':', $this->runtime);
+
+        if(count($max_hours) < 2 || count($used_hours) < 2)
+            return;
+
+        $max_minutes = intval($max_hours[1]); $max_hours = intval($max_hours[0]);
+        $used_minutes = intval($used_hours[1]); $used_hours = intval($used_hours[0]);
+
+        $this->killed = $used_hours > $max_hours || 
+            ($used_hours == $max_hours && $used_minutes >= $max_minutes) ? 1 : 0;
     }
 
     /**
@@ -656,5 +944,64 @@ class Metacentrum_job
     public function is_queued()
     {
         return $this->state == 'Q';
+    }
+
+    /**
+     * Checks if job is finished
+     * 
+     * @return boolean
+     */
+    public function is_finished()
+    {
+        return $this->state == 'F' || $this->is_killed();
+    }
+
+    /**
+     * Checks if job is killed
+     * 
+     * @return boolean
+     */
+    public function is_killed()
+    {
+        return $this->killed;
+    }
+
+    /**
+     * Finds corresponding job in DB
+     * 
+     * @return Fragment_ionized
+     */
+    public function get_db_ion()
+    {
+        if(!$this->id_fragment || !$this->id_ion)
+        {
+            return null;
+        }
+
+        return Fragment_ionized::instance()->where(array
+        (
+            'id' => $this->id_ion,
+            'id_fragment' => $this->id_fragment
+        ))->get_one();
+    }
+
+    /**
+     * Finds corresponding job in DB
+     * 
+     * @return null|Run_cosmo
+     */
+    public function get_db_cosmo_run()
+    {
+        if(!$this->id_fragment || !$this->id_ion)
+        {
+            return null;
+        }
+
+        return Run_cosmo::instance()->where(array
+        (
+            'id_fragment' => $this->id_fragment
+        ))
+        ->order_by('id')
+        ->get_one();
     }
 }

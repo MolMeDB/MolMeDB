@@ -48,7 +48,8 @@ class SchedulerController extends Controller
      */
     static $accessible = array
     (
-        'run',
+        'run', 
+        // 'run_cosmo'
     );
 
     /**
@@ -636,12 +637,91 @@ class SchedulerController extends Controller
             $queue = Metacentrum::QUEUE_ELIXIR;
             $host = $this->config->get(Configs::COSMO_URL);
 
-            // Get running/queued jobs on metacentrum
-            $jobs = $metacentrum->get_job_list($username, $password, $queue);
-            
+            // Get jobs on metacentrum
+            $jobs = $metacentrum->get_job_list($username, $password, $queue, true);
+
             if($jobs === NULL)
             {
                 throw new MmdbException('Cannot get list of running jobs.');
+            }
+
+            // Exclude done jobs
+            $killed = [];
+            $t = $jobs;
+            foreach($t as $key => $job)
+            {
+                if($job->is_killed())
+                {
+                    $killed[] = $job;
+                }
+                if($job->is_finished() && !$job->is_killed())
+                {
+                    unset($jobs[$key]);
+                }
+            }
+
+            // Run all killed again if can
+            $to_run_again = array
+            (
+                40 => [],
+                80 => [],
+                120 => []
+            );
+            $to_run_again_cosmo = array();
+            foreach($killed as $job)
+            {
+                $ion = $job->get_db_ion();
+                $db_run = $job->get_db_cosmo_run();
+                
+                if($ion->id == NULL || !$db_run->id) // Not in DB
+                {
+                    continue;
+                }
+                
+                if($job->job_type == Metacentrum_job::TYPE_COSMO)
+                {
+                    $db_run->status = Run_cosmo::STATUS_ERROR;
+                    $db_run->save();
+                    continue;
+                }
+
+                $to_run_again_cosmo[] = $db_run;
+
+                if($job->max_runtime == '20:00:00')
+                {
+                    $to_run_again[40][] = $ion->id;
+                }
+                elseif($job->max_runtime == '40:00:00')
+                {
+                    $to_run_again[80][] = $ion->id;
+                }
+                elseif($job->max_runtime == '120:00:00')
+                {
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_ERR_PARTIAL;
+                    $ion->save();
+                }
+                else
+                {
+                    $to_run_again[120][] = $ion->id;
+                }
+            }
+
+            if(!count($to_run_again[40]))
+            {
+                unset($to_run_again[40]);
+            }
+            if(!count($to_run_again[80]))
+            {
+                unset($to_run_again[80]);
+            }
+            if(!count($to_run_again[120]))
+            {
+                unset($to_run_again[120]);
+            }
+
+            foreach($to_run_again as $hours => $ion_ids)
+            {
+                $metacentrum->run_failed_cosmo($to_run_again_cosmo, $ion_ids, $host, $username, $password, $queue, $hours);
             }
 
             // stop if queue is full
@@ -649,7 +729,7 @@ class SchedulerController extends Controller
             {
                 throw new MmdbException('Maximum jobs in queue.');
             }
-            
+
             $remaining_jobs = $max_metacentrum_queue_items - count($jobs);
 
             // Get all possible combinations of membrane/method/temperature

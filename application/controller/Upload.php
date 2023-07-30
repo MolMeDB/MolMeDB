@@ -520,30 +520,15 @@ class UploadController extends Controller
             $this->redirect('upload/dataset');
         }
 
-        $q->state = $q::STATE_RUNNING;
-        $q->save();
-
         try
         {
             $q->start();
-            $q->state = $q::STATE_DONE;
             $this->alert->success('Dataset was successfully uploaded.');
-            if($q->id_dataset_passive)
-            {
-                $this->redirect('edit/dsInteractions/' . $q->id_dataset_passive);
-            }
-            else
-            {
-                $this->redirect('edit/dsTransporters/' . $q->id_dataset_passive);
-            }
         }
         catch(Exception $e)
         {
-            $q->state = $q::STATE_ERROR;
             $this->alert->error($e);
         }
-        
-        $q->save();
 
         $this->alert->success('Job [ID: ' . $q->id . '] was done.');
         $this->redirect('upload/dataset');

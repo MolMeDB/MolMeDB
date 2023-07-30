@@ -19,6 +19,7 @@
  * @property int $priority
  * @property string $create_date
  * @property string $last_update
+ * @property string $next_remote_check
  * @property string $log
  * 
  * @author Jakub Juračka

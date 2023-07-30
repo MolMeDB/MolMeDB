@@ -9,8 +9,8 @@ $upgrade_sql = array
 (
     "ALTER TABLE `validator_identifiers` ADD `id_dataset_passive` INT NULL DEFAULT NULL AFTER `id_source`;",
     "ALTER TABLE `validator_identifiers` ADD `id_dataset_active` INT NULL DEFAULT NULL AFTER `id_dataset_passive`;",
-    "ALTER TABLE `validator_identifiers` ADD FOREIGN KEY (`id_dataset_active`) REFERENCES `transporter_datasets`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
-    "ALTER TABLE `validator_identifiers` ADD FOREIGN KEY (`id_dataset_passive`) REFERENCES `datasets`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
+    "ALTER TABLE `validator_identifiers` ADD FOREIGN KEY (`id_dataset_active`) REFERENCES `transporter_datasets`(`id`) ON DELETE SET NULL ON UPDATE RESTRICT;",
+    "ALTER TABLE `validator_identifiers` ADD FOREIGN KEY (`id_dataset_passive`) REFERENCES `datasets`(`id`) ON DELETE SET NULL ON UPDATE RESTRICT;",
     "ALTER TABLE `interaction` DROP `validated`;",
     "ALTER TABLE `interaction` DROP `CAM`;",
     "ALTER TABLE `files` ADD `id_dataset_active` INT NULL DEFAULT NULL AFTER `id_validator_structure`, ADD `id_dataset_passive` INT NULL DEFAULT NULL AFTER `id_dataset_active`;",

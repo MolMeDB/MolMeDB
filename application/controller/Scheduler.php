@@ -281,23 +281,16 @@ class SchedulerController extends Controller
                 return;
             }
 
-            // Start uploading
-            $record->state = $record::STATE_RUNNING;
-            $record->save();
-
             try
             {
                 $this->print('Trying to run upload record id:' . $record->id);
                 $record->start();
-                $record->state = $record::STATE_DONE;
             }
             catch(Exception $e)
             {
-                $record->state = $record::STATE_ERROR;
                 $this->print($e->getMessage());
+                throw $e;
             }
-            
-            $record->save();
         }
     }
 
@@ -762,7 +755,7 @@ class SchedulerController extends Controller
                         SELECT rn.*
                         FROM run_cosmo rn
                         JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag != ? OR fi.cosmo_flag IS NULL)
-                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ?
+                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ? AND next_remote_check <= ?
                         LIMIT ?) as t
                     GROUP BY t.id
                     ORDER BY priority DESC, method DESC, last_update ASC"
@@ -773,6 +766,7 @@ class SchedulerController extends Controller
                     $setting['method'],
                     $setting['temperature'],
                     $setting['id_membrane'],
+                    date("Y-m-d H:i:s"),
                     $remaining_jobs
                 ), FALSE);
 
@@ -788,7 +782,7 @@ class SchedulerController extends Controller
                         SELECT rn.*
                         FROM run_cosmo rn
                         JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag != ? OR fi.cosmo_flag IS NULL)
-                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ?
+                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ? AND next_remote_check <= ?
                         LIMIT ?) as t
                     GROUP BY t.id
                     ORDER BY priority DESC, method DESC, last_update ASC"
@@ -799,6 +793,7 @@ class SchedulerController extends Controller
                     $setting['method'],
                     $setting['temperature'],
                     $setting['id_membrane'],
+                    date("Y-m-d H:i:s"),
                     $remaining_jobs
                 ),FALSE);
 
@@ -829,7 +824,7 @@ class SchedulerController extends Controller
                         SELECT rn.*
                         FROM run_cosmo rn
                         JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag != ? OR fi.cosmo_flag IS NULL)
-                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ?
+                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ? AND next_remote_check <= ?
                         LIMIT ?) as t
                     GROUP BY t.id
                     ORDER BY priority DESC, method DESC, last_update ASC"
@@ -840,6 +835,7 @@ class SchedulerController extends Controller
                     $setting['method'],
                     $setting['temperature'],
                     $setting['id_membrane'],
+                    date("Y-m-d H:i:s"),
                     max($remaining_jobs, 50)
                 ), FALSE));
 
@@ -857,7 +853,10 @@ class SchedulerController extends Controller
 
                 foreach ($t as $c)
                 {
-                    $candidates[] = new Run_cosmo($c['id']);
+                    $cddt = new Run_cosmo($c['id']);
+                    $cddt->last_update = date('Y-m-d H:i:s');
+                    $cddt->save();
+                    $candidates[] = $cddt;
                 }
 
                 $metacentrum->run_cosmo($candidates, $host, $username, $password, $queue);

@@ -448,10 +448,12 @@ class Metacentrum
                 else if($min_step < Metacentrum::CSM_STEP_COSMO_PREPARE)
                 {
                     $cosmo_run->state = Run_cosmo::STATE_OPTIMIZATION_RUNNING;
+                    $cosmo_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+$limit hours"));
                 }
                 else if($min_step < Metacentrum::CSM_STEP_COSMO_DOWNLOAD)
                 {
                     $cosmo_run->state = Run_cosmo::STATE_COSMO_RUNNING;
+                    $cosmo_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+5 hours"));
                 }
 
                 // And save logs

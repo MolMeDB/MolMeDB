@@ -118,7 +118,7 @@ class Upload_queue extends Db
         catch(Exception $e)
         {
             $this->state = self::STATE_ERROR;
-            $this->run_info = ['error' => $e->getMessage()];
+            $this->run_info = json_encode(['error' => $e->getMessage()]);
             $this->save();
             throw $e;
         }

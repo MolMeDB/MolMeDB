@@ -239,7 +239,7 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
     ######## Copy COSMO files to one directory ##############
     #########################################################
     # Never run cosmo computation in reRun! There should be wrong membrane and temperature setting!
-    if not reRun and running == 0 and hasResult >= len(files)/2:
+    if not reRun and hasResult >= len(files)/2:
         _step(6, "Copying prepared COSMO files for the COSMOmic/COSMOperm")
         _log(STEP_COSMO_PREPARE, CODE_INIT)
         cosmoFiles = list()

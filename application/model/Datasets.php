@@ -339,7 +339,7 @@ class Datasets extends Db
             return $result;
         }
         
-        $groups = $this->queryAll('SELECT * FROM groups');
+        $groups = $this->queryAll('SELECT * FROM `groups`');
         $access_groups = $this->queryAll('SELECT id_gp FROM access_ds_gp WHERE id_dataset = ?', array($id));
         
         foreach($groups as $group)

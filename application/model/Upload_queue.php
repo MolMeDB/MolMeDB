@@ -63,7 +63,7 @@ class Upload_queue extends Db
     );
 
     /** STATES */
-    const STATE_PENDING = 0;
+    const STATE_PENDING = 99;
     const STATE_RUNNING = 1;
     const STATE_DONE = 2;
     const STATE_ERROR = 3;   
@@ -99,7 +99,7 @@ class Upload_queue extends Db
      */
     public function start()
     {
-        if(!$this->id || $this->state !== self::STATE_PENDING)
+        if(!$this->id || $this->state != self::STATE_PENDING)
         {
             throw new MmdbException('Cannot start file uploader. Invalid object instance.');
         }

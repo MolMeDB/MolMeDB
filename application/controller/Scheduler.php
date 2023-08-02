@@ -49,7 +49,7 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run', 
-        // 'run_cosmo'
+//        'run_cosmo'
     );
 
     /**
@@ -171,7 +171,7 @@ class SchedulerController extends Controller
             }
 
             // COSMO computations
-            if($this->config->get(Configs::COSMO_ENABLED))
+            if($this->config->get(Configs::COSMO_ENABLED) && $this->check_time("xx:x0|xx:x2|xx:x4|xx:x6|xx:x8"))
             {
                 $this->protected_call('run_cosmo', []);
             }
@@ -638,6 +638,14 @@ class SchedulerController extends Controller
                 throw new MmdbException('Cannot get list of running jobs.');
             }
 
+	    if(!isset($jobs['total']) || !isset($jobs['jobs']))
+	    {
+		throw new MmdbException('Invalid structure of jobs.');
+	    }
+
+	    $running_jobs_total = $jobs['total'];
+	    $jobs = $jobs['jobs'];
+
             // Exclude done jobs
             $killed = [];
             $t = $jobs;
@@ -718,7 +726,7 @@ class SchedulerController extends Controller
             }
 
             // stop if queue is full
-            if(count($jobs) >= $max_metacentrum_queue_items)
+            if($running_jobs_total >= $max_metacentrum_queue_items)
             {
                 throw new MmdbException('Maximum jobs in queue.');
             }
@@ -864,6 +872,7 @@ class SchedulerController extends Controller
         }
         catch(MmdbException $e)
         {
+	    print_r($e);
             $this->print($e->getMessage());
         }
 
@@ -1265,7 +1274,21 @@ class SchedulerController extends Controller
                 if(strtolower($h) == 'xx' && strtolower($m) == 'xx')
                 {
                     return true;
-                };
+                }
+
+		if(strtolower($h) == 'xx' || (strtolower(substr($h, 0, 1)) == 'x' && is_numeric(substr($h, 1, 1))))
+		{
+		    if(strtolower($h) != 'xx' && (($this->time->get_hour() % 10) !== intval(substr($h, 1, 1))))
+		    {
+		        continue;
+		    }
+
+		    if(strtolower($m) == 'xx' || (strtolower(substr($m, 0, 1)) == 'x' && is_numeric(substr($m, 1, 1)) &&
+		      ($this->time->get_minute() % 10) == intval(substr($m, 1, 1))))
+		    {
+			return true;
+		    }
+		}
 
                 continue;
             }

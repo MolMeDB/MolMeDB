@@ -98,20 +98,42 @@ class Metacentrum
 
         $output = [];
 
+//	$script .= ' 2>&1';
+
         exec($script, $output, $code);
+
+	if($code != 0)
+	{
+	    echo "Invalid code number: " . $code;
+	    return NULL; //Error
+	}
 
         if(count($output) == 0)
         {
+//	   echo "Empty outout";
            $output = [];
         }
         else if(count($output) == 1)
         {
+//	    echo "Decoding...";
+	    //print_r($output);
             $output = json_decode($output[0]);
+	    //print_r($output);
         }
         else
         {
+//	    echo "Error...";
             return null; // Error
         }
+
+	$total_jobs = array_shift($output);
+	$total_jobs = preg_replace('/^\s*Total\s+jobs:\s*/', "", $total_jobs);
+	if(!is_numeric($total_jobs))
+	{
+//	    echo "Invalid number of jobs: " . $total_jobs;
+	    return null;
+	}
+	$total_jobs = intval($total_jobs);
 
         $result = [];
         $started = false;
@@ -119,12 +141,13 @@ class Metacentrum
 
         if(!is_iterable($output)) // Empty result
         {
-            return [];
+//	    echo "Not iterable content...";
+            return null;
         }
 
         foreach($output as $row)
         {
-            if(!is_array($row) || empty($row))
+            if(!is_array($row) || !count($row))
             {
                 $started = false;
                 $job = new Metacentrum_job($curr_row);
@@ -155,7 +178,7 @@ class Metacentrum
             }
         }
 
-        return $result;
+        return ['total' => $total_jobs, 'jobs' => $result];
     }
 
     /**
@@ -365,7 +388,7 @@ class Metacentrum
                     }
                     $ss = explode('/', $tuple[0]);
 
-                    $logs->setState($ss[0], $ss[1], $tuple[1]);
+                    //$logs->setState($ss[0], $ss[1], $tuple[1]);
 
                     if($ss[0] == self::CSM_STEP_INIT && $ss[1] == Metacentrum::CODE_OK)
                     {
@@ -613,7 +636,7 @@ class Metacentrum
                 file_put_contents($path . 'cosmo.log', implode("\n", $output), FILE_APPEND);
 
                 $connected = FALSE;
-                
+
                 // Process output
                 foreach($output as $row)
                 {
@@ -634,7 +657,7 @@ class Metacentrum
                     }
                     $ss = explode('/', $tuple[0]);
 
-                    $logs->setState($ss[0], $ss[1], $tuple[1]);
+                    //$logs->setState($ss[0], $ss[1], $tuple[1]);
 
                     if($ss[0] == self::CSM_STEP_INIT && $ss[1] == Metacentrum::CODE_OK)
                     {
@@ -645,6 +668,7 @@ class Metacentrum
                     {
                         $cosmo_run->state = Run_cosmo::STATE_OPTIMIZATION_RUNNING;
                         $cosmo_run->save();
+			$cosmo_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+$limit hours"));
                         $ion->cosmo_flag = NULL;
                         $ion->save();
                     }

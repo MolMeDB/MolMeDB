@@ -26,9 +26,10 @@ ansi_escape = re.compile(r'''
 ''', re.VERBOSE)
 
 def _err(text, sshClient = None):
+    import sys
     print("Error:", text)
     if sshClient: sshClient.close()
-    exit()
+    sys.exit(1)
 
 def _step(num, text):
     print("STEP", str(num) + ":", text)
@@ -45,7 +46,6 @@ class SSHClient:
         self.qsub = None
         self.ssh = None
         self.sftp = None
-
         self.connect()
 
     def connect(self):
@@ -89,16 +89,16 @@ class SSHClient:
         # if self.sftp: self.sftp.close()
         if self.ssh: self.ssh.close()
 
-    def shell_exec(self, command, clear=True):
+    def shell_exec(self, command, clear=False):
         if clear:
             pass
-            # self.shell.send("clear\n")
+#            self.shell.send("clear\n")
         # Execute command
         self.shell.send(command+"\n")
         # Read output
         out = ""
         # sleep is essential, recv_ready returns False without sleep
-        time.sleep(1)
+        time.sleep(3)
         while self.shell.recv_ready():
             out += str(self.shell.recv(2048))
 
@@ -126,17 +126,20 @@ def __main__(server, username, password, include_finished = False):
     import json
     sshClient = SSHClient(username=username, password=password,host=server, port=22)
     if include_finished:
+        totalJobs = sshClient.shell_exec("qstat -pwu " + username + " | wc -l")
         jobs = sshClient.shell_exec("qstat -xwfu " + username)
     else:
-        jobs = sshClient.shell_exec("qstat -xwrfu " + username)
+        totalJobs = sshClient.shell_exec("qstat -pwu " + username + " | wc -l")
+        jobs = sshClient.shell_exec("qstat -pwfu " + username)
 
     jobs = [str(row).split() for row in jobs]
+
+    jobs.insert(0, "Total jobs: " + str(totalJobs[0]))
 
     print(
         json.dumps(jobs)
     )
     sshClient.close()
-
 
 # Read params
 import sys, getopt

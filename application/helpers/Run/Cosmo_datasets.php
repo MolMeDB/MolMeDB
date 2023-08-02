@@ -49,14 +49,17 @@ class Run_cosmo_datasets extends Db
         $where = $where != '' ? 'WHERE ' . $where : '';
 
         return Run_cosmo_datasets::instance()->queryAll(
-            "SELECT d.id, d.comment, u.id as id_user, u.name as author, COUNT(c.id) as total_runs, 
+            "SELECT d.id, d.comment, u.id as id_user, u.name as author, CONCAT(COUNT(c.id), ' (', ROUND(SUM(c.done)/COUNT(c.id)*100, 2), '%)') as total_runs, 
                 SUM(IF(c.state = 0 and c.status = 1, 1, 0)) as total_pending,
                 SUM(IF(c.state > 0 and c.state < 5 and c.status = 1, 1, 0)) as total_running,
                 SUM(IF(c.state >= 5 and c.status = 1, 1, 0)) as total_done,
                 SUM(IF(c.status = 3, 1, 0)) as total_error,
-                d.create_date
+                d.create_date, MAX(c.last_update) as last_update
             FROM run_cosmo_datasets d
-            LEFT JOIN run_cosmo c ON c.id_dataset = d.id
+            LEFT JOIN (
+                SELECT *, IF(state > " . Run_cosmo::STATE_COSMO_RUNNING . " OR status != " . Run_cosmo::STATUS_OK . ", 1, 0) as done
+                FROM run_cosmo
+            ) c ON c.id_dataset = d.id
             LEFT JOIN users u ON u.id = d.id_user
             $where
             GROUP BY id

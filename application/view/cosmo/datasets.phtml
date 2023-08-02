@@ -28,8 +28,8 @@
                 <td>Comment</td>
                 <td>Author</td>
                 <td>Total compounds</td>
-                <td>Stats (pending/running/done)</td>
-                <td>Stats (total errors)</td>
+                <td>Stats (<span style="color: blue;">pending</span>/<span style="color: #bf5600;">running</span>/<span style="color: green;">done</span>/<span style="color: red;">errors</span>)</td>
+                <td>Last update</td>
                 <td>Upload date</td>
                 <td>Actions</td>
             </tr>
@@ -41,8 +41,8 @@
                 <td><?= $d->comment ?></td>
                 <td><?= $d->author ?></td>
                 <td><?= $d->total_runs ?></td>
-                <td><?= $d->total_pending . "/" . $d->total_running . '/' . $d->total_done ?></td>
-                <td><?= $d->total_error ?></td>
+                <td><?= '<span style="color: blue;">' . $d->total_pending . "</span>/<span style=\"color: #bf5600;\">" . $d->total_running . '</span>/<span style="color: green;">' . $d->total_done . "</span>/<span style=\"color: red;\">" . $d->total_error . '</span>' ?></td>
+                <td><?= $d->last_update != NULL ? date("d. m. Y", strtotime($d->last_update)) : 'Unknown' ?></td>
                 <td><?= $d->create_date != NULL ? date("d. m. Y", strtotime($d->create_date)) : 'Unknown' ?></td>
                 <td>
                     <a href="/validator/cosmo/<?= $d->id ?>" title="Detail"><span style="cursor:pointer;" class="glyphicon glyphicon-eye-open"></span></a>

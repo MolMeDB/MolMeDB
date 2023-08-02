@@ -7,9 +7,15 @@
         </div>
     </div>
 </form>
-<div class="action-bar">
-    <div>
-        <button class="btn btn-sm btn-info"><a href="/validator/add_cosmo_smi"> Add new dataset</a></button>
+<div style="display:flex; flex-direction: row; justify-content: space-between;">
+    <div style="width: 600px;">
+        <strong>Running jobs:</strong> <?= Config::get(Configs::COSMO_TOTAL_RUNNING) ?> (<strong>Last update:</strong> <?= Config::get(Configs::COSMO_LAST_UPDATE) ? date("d/m/Y H:i", strtotime(Config::get(Configs::COSMO_LAST_UPDATE))) : "Never" ?>)
+    </div>
+
+    <div class="action-bar">
+        <div>
+            <button class="btn btn-sm btn-info"><a href="/validator/add_cosmo_smi"> Add new dataset</a></button>
+        </div>
     </div>
 </div>
 

@@ -57,6 +57,8 @@ class Configs extends Db
 
     // COSMO attributes
     const COSMO_ENABLED = "cosmo_enabled";
+    const COSMO_TOTAL_RUNNING = "cosmo_total_in_queue_running";
+    const COSMO_LAST_UPDATE = "cosmo_last_update";
     const COSMO_URL = "cosmo_url";
     const COSMO_METACENTRUM_MAX_SDF = "cosmo_max_sdf";
     const COSMO_METACENTRUM_MAX_ION = "cosmo_max_ion";
@@ -108,6 +110,8 @@ class Configs extends Db
         self::EMAIL_ADMIN_EMAILS,
         // COSMO
         self::COSMO_ENABLED,
+        self::COSMO_TOTAL_RUNNING,
+        self::COSMO_LAST_UPDATE,
         self::COSMO_URL,
         self::COSMO_METACENTRUM_MAX_SDF,
         self::COSMO_METACENTRUM_MAX_ION,

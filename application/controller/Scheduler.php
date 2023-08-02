@@ -638,13 +638,17 @@ class SchedulerController extends Controller
                 throw new MmdbException('Cannot get list of running jobs.');
             }
 
-	    if(!isset($jobs['total']) || !isset($jobs['jobs']))
-	    {
-		throw new MmdbException('Invalid structure of jobs.');
-	    }
+	        if(!isset($jobs['total']) || !isset($jobs['jobs']))
+            {
+                throw new MmdbException('Invalid structure of jobs.');
+            }
 
-	    $running_jobs_total = $jobs['total'];
-	    $jobs = $jobs['jobs'];
+            $running_jobs_total = $jobs['total'];
+            $jobs = $jobs['jobs'];
+
+            // Update info
+            Config::set(Configs::COSMO_TOTAL_RUNNING, $running_jobs_total);
+            Config::set(Configs::COSMO_LAST_UPDATE, date("Y-m-d H:m"));
 
             // Exclude done jobs
             $killed = [];
@@ -731,7 +735,7 @@ class SchedulerController extends Controller
                 throw new MmdbException('Maximum jobs in queue.');
             }
 
-            $remaining_jobs = $max_metacentrum_queue_items - count($jobs);
+            $remaining_jobs = $max_metacentrum_queue_items - $running_jobs_total;
 
             // Get all possible combinations of membrane/method/temperature
             $settings = Run_cosmo::instance()

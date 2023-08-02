@@ -648,7 +648,7 @@ class SchedulerController extends Controller
 
             // Update info
             Config::set(Configs::COSMO_TOTAL_RUNNING, $running_jobs_total);
-            Config::set(Configs::COSMO_LAST_UPDATE, date("Y-m-d H:m"));
+            Config::set(Configs::COSMO_LAST_UPDATE, date("Y-m-d H:i"));
 
             // Exclude done jobs
             $killed = [];

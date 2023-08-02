@@ -9,7 +9,7 @@
 </form>
 <div style="display:flex; flex-direction: row; justify-content: space-between;">
     <div style="width: 600px;">
-        <strong>Running jobs:</strong> <?= Config::get(Configs::COSMO_TOTAL_RUNNING) ?> (<strong>Last update:</strong> <?= Config::get(Configs::COSMO_LAST_UPDATE) ? date("d/m/Y H:i", strtotime(Config::get(Configs::COSMO_LAST_UPDATE))) : "Never" ?>)
+        <strong>Running jobs:</strong> <?= Config::get(Configs::COSMO_TOTAL_RUNNING) . "/" . Config::get(Configs::COSMO_METACENTRUM_MAX_RUNNING) ?> (<strong>Last update:</strong> <?= Config::get(Configs::COSMO_LAST_UPDATE) ? date("d/m/Y H:i", strtotime(Config::get(Configs::COSMO_LAST_UPDATE))) : "Never" ?>)
     </div>
 
     <div class="action-bar">

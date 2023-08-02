@@ -486,6 +486,7 @@ function modal_editor(id_row, active_interactions = false)
         // Fill the form
         $('#id_interaction').val(id_row);
         $('#substance_name').val(values.substance.name);
+        $('#comment').val(values.comment);
         $('#SMILES').val(values.substance.SMILES);
         $('#charge').val(values.charge);
         $('#LogP').val(values.substance.LogP);

@@ -279,7 +279,7 @@ tr.table-pagination .table-pagination-arrows span{
 }
 
 .long-text{
-    min-width: 150px;
+    min-width: max-content;
 }
 
 .accuracy{

@@ -720,6 +720,7 @@ class EditController extends Controller
                             $substance->check_identifiers();
 
                             // Edit interaction
+                            $interaction->comment = $this->form->param->comment;
                             $interaction->Position = $this->form->param->Position;
                             $interaction->Position_acc = $this->form->param->Position_acc;
                             $interaction->Penetration = $this->form->param->Penetration;
@@ -1359,7 +1360,7 @@ class EditController extends Controller
     {
         $thead = array
         (
-            'edit' => 'Edit', 'delete' => 'Delete', 'id' => 'ID', 'name' => 'Molecule', 'charge' => 'Q', 'LogP' => 'LogP', 'LogK' => 'LogK',
+            'edit' => 'Edit', 'delete' => 'Delete', 'id' => 'ID', 'name' => 'Molecule', "comment" => "Note", 'charge' => 'Q', 'LogP' => 'LogP', 'LogK' => 'LogK',
             'Position' => 'X_min', 'Penetration' => 'G_pen', 'Water' => 'G_wat', 'LogPerm' => 'LogPerm', 'theta' => 'Theta', 'abs_wl' => 'abs_wl', 'fluo_wl' => 'fluo_wl',
             'QY' => 'QY', 'lt' => 'lt'
         );

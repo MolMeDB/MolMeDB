@@ -910,7 +910,7 @@ class ApiInteractions extends ApiController
             ->accuracy('lt_acc')
             ->title('lt<br/><label class="units">[ns]</label>', "Fluorescence lifetime");
 
-        $t->column('note')
+        $t->column('comment')
             ->long_text()
             ->title('Note');
 

@@ -1,4 +1,4 @@
-import re, os, time
+import re, os, time, binascii
 import paramiko
 
 CODE_INIT = 0
@@ -61,20 +61,10 @@ class SSHClient:
         self.shell = self.ssh.invoke_shell()
         self.shell_exec("clear")
         # Switch to bash
-        self.shell_exec("bash")
+#        self.shell_exec("bash")
         if not self.kinit():
             self.close()
             _err("Cannot initialize kerberos token.")
-        # Get qsub path
-        for i in range(3):
-            output = self.shell_exec("which qsub")
-            if i < 2 and (not len(output) or not str(output[0]).startswith("/")):
-                time.sleep(2)
-
-        if not len(output) or not str(output[0]).startswith("/"):
-            self.close()
-            _err("Cannot get `qsub` remote path")
-        self.qsub = output[0]
 
     def kinit(self):
         out = self.shell_exec("kinit")
@@ -105,7 +95,10 @@ class SSHClient:
         out = out.replace("\\r", "")
         out = out.replace("\\t", "")
         out = out.replace("\\x1b", "\x1b")
+        out = out.replace("\\x00", "")
+        out = re.sub(r'\s+', " ", out)
         out = out.split('\\n')
+
         if len(out) < 2:
             return []
         out = [ansi_escape.sub('', t) for t in out]

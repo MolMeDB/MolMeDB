@@ -105,6 +105,7 @@ class Metacentrum
 	if($code != 0)
 	{
 	    echo "Invalid code number: " . $code;
+//	    print_r($output);
 	    return NULL; //Error
 	}
 

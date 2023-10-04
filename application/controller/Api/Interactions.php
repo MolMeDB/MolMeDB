@@ -815,7 +815,7 @@ class ApiInteractions extends ApiController
             ))
             ->title('Method');
 
-        $t->column('Q')
+        $t->column('charge')
             ->css(array
             (
                 'text-align' => 'center'

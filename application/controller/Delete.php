@@ -59,7 +59,7 @@ class DeleteController extends Controller
         // if not exists
         if(!$detail->id)
         {
-            $this->addMessageError('Membrane with given ID was not found.');
+            $this->alert->error('Membrane with given ID was not found.');
             $this->redirect('redirection');
         }
 
@@ -74,7 +74,7 @@ class DeleteController extends Controller
             $this->redirect($redirection);
         }
 
-        $this->addMessageSuccess('Membrane detail was deleted.');
+        $this->alert->success('Membrane detail was deleted.');
         $this->redirect($redirection);
     }
 
@@ -91,7 +91,7 @@ class DeleteController extends Controller
         // if not exists
         if(!$detail->id)
         {
-            $this->addMessageError('Method with given ID was not found.');
+            $this->alert->error('Method with given ID was not found.');
             $this->redirect('redirection');
         }
 
@@ -106,7 +106,7 @@ class DeleteController extends Controller
             $this->redirect($redirection);
         }
 
-        $this->addMessageSuccess('Method detail was deleted.');
+        $this->alert->success('Method detail was deleted.');
         $this->redirect($redirection);
     }
 
@@ -123,7 +123,7 @@ class DeleteController extends Controller
         // Checks if compound exists
         if(!$detail->id)
         {
-            $this->addMessageError('Param');
+            $this->alert->error('Param');
             $this->redirect('error');
         }
 
@@ -137,7 +137,7 @@ class DeleteController extends Controller
             $this->redirect('error');
         }
 
-        $this->addMessageSuccess('Record was deleted.');
+        $this->alert->success('Record was deleted.');
         $this->redirect('detail/intro');
     }
 
@@ -160,12 +160,12 @@ class DeleteController extends Controller
 
             if(!$dataset->id)
             {
-                $this->addMessageError('Dataset not found.');
+                $this->alert->error('Dataset not found.');
             }
             try
             {
                 $dataset->delete();    
-                $this->addMessageSuccess('Dataset was deleted.');    
+                $this->alert->success('Dataset was deleted.');    
             }
             catch(MmdbException $e)
             {
@@ -182,13 +182,13 @@ class DeleteController extends Controller
 
             if(!$interaction->id)
             {
-                $this->addMessageError('Record');
+                $this->alert->error('Record');
                 $this->redirect($redirect_path);
             }
             try
             {
                 $interaction->delete();
-                $this->addMessageSuccess('Interaction [ID: ' . $id . '] was deleted.');
+                $this->alert->success('Interaction [ID: ' . $id . '] was deleted.');
             }
             catch(MmdbException $e)
             {
@@ -197,7 +197,7 @@ class DeleteController extends Controller
         }
         else
         {
-            $this->addMessageError('Invalid parameter type.');
+            $this->alert->error('Invalid parameter type.');
         }
 
         $this->redirect($redirect);
@@ -221,12 +221,12 @@ class DeleteController extends Controller
 
             if(!$dataset->id)
             {
-                $this->addMessageError('Dataset not found.');
+                $this->alert->error('Dataset not found.');
             }
             try
             {
                 $dataset->delete();    
-                $this->addMessageSuccess('Dataset was deleted.');    
+                $this->alert->success('Dataset was deleted.');    
             }
             catch(MmdbException $e)
             {
@@ -243,13 +243,13 @@ class DeleteController extends Controller
 
             if(!$interaction->id)
             {
-                $this->addMessageError('Record');
+                $this->alert->error('Record');
                 $this->redirect($redirect_path);
             }
             try
             {
                 $interaction->delete();
-                $this->addMessageSuccess('Transporter detail [ID: ' . $id . '] was deleted.');
+                $this->alert->success('Transporter detail [ID: ' . $id . '] was deleted.');
             }
             catch(MmdbException $e)
             {
@@ -258,7 +258,7 @@ class DeleteController extends Controller
         }
         else
         {
-            $this->addMessageError('Invalid parameter type.');
+            $this->alert->error('Invalid parameter type.');
         }
 
         $this->redirect($redirect);

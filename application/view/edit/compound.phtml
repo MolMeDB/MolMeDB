@@ -104,7 +104,7 @@
                     <?php $i = 0;
                     foreach ($interactions_all as $int) : ?>
                         <tr>
-                            <td align="center"><span onclick="alert_window('Are you sure you want to delete a record (ID = <?= $int->id ?>)?', 'delete/interaction/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span></td>
+                            <td align="center"><span onclick="alert_window('Are you sure you want to delete a record (ID = <?= $int->id ?>)?', 'delete/interaction/<?= DeleteController::T_DETAIL ?>/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>', false)" style="text-align: center; color: red; cursor:pointer;" class="glyphicon glyphicon-remove"></span></td>
                             <td align="center"><span onclick="redirect('edit/interaction/<?= $int->id ?>?redirection=edit/compound/<?= $detail->id ?>')" style="text-align: center; color: green; cursor:pointer;" class="glyphicon glyphicon-edit"></span></td>
                             <td><?= $int->id ?></td>
                             <td style="text-align: center;"><a href="/edit/dsInteractions/<?= $int->id_dataset ?>" target="_blank"><?= $int->id_dataset ?></a></td>

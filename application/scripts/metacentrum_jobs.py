@@ -68,6 +68,7 @@ class SSHClient:
 
     def kinit(self):
         out = self.shell_exec("kinit")
+        time.sleep(4)
         if not len(out):
             return True
         # Set password if required

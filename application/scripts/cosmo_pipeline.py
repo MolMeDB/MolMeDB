@@ -42,11 +42,13 @@ ansi_escape = re.compile(r'''
 
 # paramiko.util.log_to_file("paramiko.log")
 
-def _err(text, sshClient = None):
+def _err(text, sshClient = None, exit=True):
     print("Error:", text)
     if sshClient: sshClient.close()
-    exit()
-
+    if exit: 
+        exit()
+    else:
+        raise Exception()
 def _step(num, text):
     print("STEP", str(num) + ":", text)
 
@@ -60,7 +62,7 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
     # Check if folder exists
     if not os.path.exists(confPath):
         _log(STEP_INPUT_CHECK, CODE_ERR)
-        _err("Target folder not exists.")
+        _err("Target folder not exists.",exit=False)
 
     if not os.path.exists(membrane):
         _log(STEP_INPUT_CHECK, CODE_ERR)
@@ -78,13 +80,13 @@ def __main__(confPath, host, username, password, charge=0, cpu=8, ram=32, limitH
         files = [os.path.abspath(confPath + f) for f in files]
     elif not os.path.exists(file):
         _log(STEP_INPUT_CHECK, CODE_ERR)
-        _err("SDF file", file, "not exists.")
+        _err("SDF file", file, "not exists.",exit=False)
     else:
         files = [file]
 
     if len(files) == 0:
         _log(STEP_INPUT_CHECK, CODE_ERR)
-        _err("No SDF files found.")
+        _err("No SDF files found.",exit=False)
 
     _log(STEP_INPUT_CHECK, CODE_OK)
 
@@ -837,6 +839,7 @@ class SSHClient:
 
     def kinit(self):
         out = self.shell_exec("kinit")
+        time.sleep(4)
         if not len(out):
             return True
         # Set password if required
@@ -1008,33 +1011,36 @@ if None in [ions, cpu, ram, limitHs, cosmoType, temperature, membrane, membraneN
 
 # Iterate over ions and run script
 for ion in ions:
-    id_fragment, id_ion, charge = (int(ion['id_fragment']), int(ion['id_ion']), int(ion['charge']))
-    # Try to find path and check, if SDF files exists
-    path = get_conformer_folder(id_fragment, id_ion)
-    if not os.path.exists(path):
-        print("\n!! Path `" + path + "` not exists.")
-        exit()
+    try:
+        id_fragment, id_ion, charge = (int(ion['id_fragment']), int(ion['id_ion']), int(ion['charge']))
+        # Try to find path and check, if SDF files exists
+        path = get_conformer_folder(id_fragment, id_ion)
+        if not os.path.exists(path):
+            print("\n!! Path `" + path + "` not exists.")
+            exit()
 
-    print("\nJOB: " + str(id_fragment) + "/" + str(id_ion) + "/" + str(charge) + "\n")
+        print("\nJOB: " + str(id_fragment) + "/" + str(id_ion) + "/" + str(charge) + "\n")
 
-    # Process ion
-    __main__(
-        path, 
-        host, 
-        username, 
-        password,
-        charge=charge,
-        cpu=cpu,
-        ram=ram,
-        limitHs=limitHs,
-        membrane=membrane,
-        membraneName=membraneName,
-        temp=temperature,
-        cosmo=cosmoType,  
-        queue=queue,
-        forceRun=forceRun,
-        reRun=reRun)
-    
+        # Process ion
+        __main__(
+            path, 
+            host, 
+            username, 
+            password,
+            charge=charge,
+            cpu=cpu,
+            ram=ram,
+            limitHs=limitHs,
+            membrane=membrane,
+            membraneName=membraneName,
+            temp=temperature,
+            cosmo=cosmoType,  
+            queue=queue,
+            forceRun=forceRun,
+            reRun=reRun)
+    except:
+        continue;
+
 print("\n#$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$#\n") # Log separator
     
 if sshClient != None:

@@ -355,7 +355,7 @@ class Metacentrum
 
                 if(!isset($outputs[$log_key])) // Log not exists
                 {
-                    echo $cosmo_run->id . ' / ' . $log_key . ' / Log not found';
+                    echo $cosmo_run->id . ' / ' . $log_key . ' / Log not found\n';
                     continue;
                 }
 
@@ -390,6 +390,14 @@ class Metacentrum
                     $ss = explode('/', $tuple[0]);
 
                     //$logs->setState($ss[0], $ss[1], $tuple[1]);
+
+                    if($ss[0] == self::CSM_STEP_INPUT_CHECK && $ss[1] == Metacentrum::CODE_ERROR)
+                    {
+                        // Missing inputs? Force run.
+                        $cosmo_run->forceRun = 1;
+                        $cosmo_run->save();
+                        continue 3;
+                    }
 
                     if($ss[0] == self::CSM_STEP_INIT && $ss[1] == Metacentrum::CODE_OK)
                     {

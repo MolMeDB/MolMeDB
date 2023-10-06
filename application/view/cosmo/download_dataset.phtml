@@ -1,0 +1,39 @@
+<h3>Download COSMO dataset [ID:<?= $dataset->id ?>]</h3>
+<strong>Comment:</strong> <?= $dataset->comment ?>
+
+<form method="POST">
+    <div style="display:flex; flex-direction:column; justify-content: flex-start; align-items: center;">
+    <table class="setting-form-table" style="width: auto;">
+        <thead>
+            <tr>
+                <td>Parameters</td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Include only structures with results</td>
+                <td><input type="radio" value="0" name="only_computed"> <label>No</label> &nbsp; &nbsp; <input type="radio" name="only_computed" value="1" checked> <label>Yes</label></td>
+            </tr>
+            <tr>
+                <td>Type of results</td>
+                <td><input type="radio" value="json" name="result_type" checked> <label>Parsed (JSON)</label> &nbsp; &nbsp; 
+                <input type="radio" value="raw" name="result_type"> <label>Raw (XML+TAB+OUT)</label> &nbsp; &nbsp; 
+                <input type="radio" value="both" name="result_type"> <label>Both</label></td>
+            </tr>
+            <tr>
+                <td>Include SDF (conformer) files</td>
+                <td><input type="radio" value="0" name="sdf" checked> <label>No</label> &nbsp; &nbsp; <input value="1" type="radio" name="sdf"> <label>Yes</label></td>
+            </tr>
+            <tr>
+                <td>Include cosmo input file </td>
+                <td><input type="radio" value="0" name="remote_input" checked> <label>No</label> &nbsp; &nbsp; <input type="radio" value="1" name="remote_input"> <label>Yes</label></td>
+            </tr>
+            <tr>
+                <td>Include membrane file [micelle.mic] </td>
+                <td><input type="radio" value="0" name="membrane" checked> <label>No</label> &nbsp; &nbsp; <input type="radio" value="1" name="membrane"> <label>Yes</label></td>
+            </tr>
+        </tbody>
+    </table>
+    <button style="margin-top:10px;" type="submit" class="btn-sm btn-success pull-left btn">Download [.zip]</button>
+    </div>
+</form>

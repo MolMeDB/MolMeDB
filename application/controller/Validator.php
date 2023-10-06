@@ -159,7 +159,7 @@ class ValidatorController extends Controller
         {
             try
             {
-            $form_data = $this->form->param;
+                $form_data = $this->form->param;
                 $cosmo_runs = Run_cosmo::instance()->where('id_dataset', $dataset->id)->get_all();
 
                 $f = new File();
@@ -186,6 +186,14 @@ class ValidatorController extends Controller
                 {
                     throw new Exception('Cannot create folder in tmp folder.');
                 }
+
+                // Add info file
+                file_put_contents($parental_dir."/info.txt", json_encode(array
+                (
+                    'comment' => $dataset->comment,
+                    'uploaded' => $dataset->create_date,
+                    'uploader' => $dataset->user->name
+                )));
 
                 // Go through all runs
                 foreach($cosmo_runs as $run)
@@ -298,15 +306,15 @@ class ValidatorController extends Controller
                             }
                         }
 
-                        if($form_data->sdf == 1 && !file_exists($dir_path.'/sdf'))
+                        if($form_data->sdf == 1 && !file_exists($target_folder.'sdf'))
                         {
                             $sdf = preg_grep('/\.sdf$/', scandir($f->prepare_conformer_folder($run->id_fragment, $ion->id)));
                             // Create folder for SDF files
-                            if(mkdir($dir_path.'/sdf'))
+                            if(mkdir($target_folder.'sdf'))
                             {
                                 foreach($sdf as $s)
                                 {
-                                    copy($f->prepare_conformer_folder($run->id_fragment, $ion->id) . $s, $dir_path.'/sdf/'.$s);
+                                    copy($f->prepare_conformer_folder($run->id_fragment, $ion->id) . $s, $target_folder.'sdf/'.$s);
                                 }
                             }
                         }

@@ -31,7 +31,7 @@ class Substances_fragments extends Db
 
     protected $has_one = array
     (
-        'id_fragment'
+        'id_fragment',
     );
 
     /**

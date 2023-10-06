@@ -1,5 +1,6 @@
 <?php
 
+use function PHPSTORM_META\map;
 
 /**
  * Data validator
@@ -135,6 +136,232 @@ class ValidatorController extends Controller
             ->add('COSMO datasets');
 
         $this->title = 'COSMO datasets';
+    }
+
+    /**
+     * Downloads cosmo dataset
+     * 
+     * @param int $dataset_id
+     * 
+     * @author Jakub Juracka
+     */
+    public function download_cosmo_dataset($dataset_id)
+    {
+        $dataset = new Run_cosmo_datasets($dataset_id);
+
+        if(!$dataset->id)
+        {
+            $this->alert->warning(PARAMETER);
+            $this->redirect('validator/cosmo_datasets');
+        }
+
+        if($this->form->is_post())
+        {
+            try
+            {
+            $form_data = $this->form->param;
+                $cosmo_runs = Run_cosmo::instance()->where('id_dataset', $dataset->id)->get_all();
+
+                $f = new File();
+                $zip_paths = [];
+
+                $parental_dir = sys_get_temp_dir() . "/Dataset_" . $dataset->id;
+
+                if(file_exists($parental_dir)){
+                    $iterator = new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($parental_dir, 
+                            RecursiveDirectoryIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::CHILD_FIRST
+                    );
+                    foreach ($iterator as $file) {
+                        if ($file->isDir()) {
+                        rmdir($file->getPathname());
+                        } else {
+                        unlink($file->getPathname());
+                        }
+                    }
+                    rmdir($parental_dir);
+                }
+                if(!mkdir($parental_dir))
+                {
+                    throw new Exception('Cannot create folder in tmp folder.');
+                }
+
+                // Go through all runs
+                foreach($cosmo_runs as $run)
+                {
+                    $mol_link = Substances_fragments::instance()->where(array
+                    (
+                        'id_fragment' => $run->id_fragment,
+                        'total_fragments' => 1
+                    ))->get_one();
+                    $molecule = new Substances($mol_link && $mol_link->id_substance ? $mol_link->id_substance : null);
+                    $name = $molecule->id ? $molecule->identifier : "f" . $run->id_fragment;
+
+                    // For each run, create folder, fill with files and add to the final zip
+                    $dir_path = $parental_dir . "/" .$name;
+
+                    if(!in_array($dir_path, $zip_paths))
+                    {
+                        if(file_exists($dir_path)){
+                            $iterator = new RecursiveIteratorIterator(
+                                new RecursiveDirectoryIterator($dir_path, 
+                                    RecursiveDirectoryIterator::SKIP_DOTS),
+                                RecursiveIteratorIterator::CHILD_FIRST
+                            );
+                            foreach ($iterator as $file) {
+                                if ($file->isDir()) {
+                                rmdir($file->getPathname());
+                                } else {
+                                unlink($file->getPathname());
+                                }
+                            }
+                            rmdir($dir_path);
+                        }
+                        if(!mkdir($dir_path))
+                        {
+                            throw new Exception('Cannot create folder in tmp folder.');
+                        }
+                        $zip_paths[] = $dir_path;
+                    }
+
+                    // Load all ions
+                    $ions = Fragment_ionized::instance()->where('id_fragment', $run->id_fragment)->get_all();
+
+                    foreach($ions as $ion)
+                    {
+                        $path = $f->prepare_conformer_folder($run->id_fragment, $ion->id) . 'COSMO/';
+                        // Check, if results exists if required
+                        $path .= $run->get_result_folder_name() . '/';
+
+                        if(!is_dir($path))
+                        {
+                            continue;
+                        }
+
+                        $avail_files = scandir($path);
+                        $folder_info = array
+                        (
+                            'xml' => preg_grep('/\.xml$/', $avail_files),
+                            'inp' => preg_grep('/\.inp$/', $avail_files),
+                            'out' => preg_grep('/\.out$/', $avail_files),
+                            'json'=> preg_grep('/\.json$/', $avail_files),
+                            'tab' => preg_grep('/\.tab$/', $avail_files),
+                            'mic' => preg_grep('/\.mic$/', $avail_files),
+                        );
+
+                        if($form_data->only_computed == 1 && empty($folder_info['xml']))
+                        {
+                            continue;
+                        }
+
+                        // Get charge
+                        $charge = $ion->fragment->get_charge($ion->smiles);
+                        $target_folder = $dir_path.'/Q_'.$charge.'/ION_'.$ion->id.'/';
+
+                        // Make folder for results
+                        mkdir($target_folder,0777, true);
+
+                        // Add input SMILES
+                        file_put_contents($target_folder . 'structure.smi', $ion->smiles);
+
+                        if(in_array($form_data->result_type, ['json', 'both']) && !empty($folder_info['json']))
+                        {
+                            foreach($folder_info['json'] as $json_file)
+                            {
+                                copy($path . $json_file, $target_folder . $json_file);
+                            }
+                        }
+                        if(in_array($form_data->result_type, ['raw', 'both']) && 
+                            (!empty($folder_info['xml']) || !empty($folder_info['out']) || !empty($folder_info['tab'])))
+                        {
+                            foreach(['xml','out','tab'] as $k)
+                                foreach($folder_info[$k] as $_file)
+                                {
+                                    copy($path . $_file, $target_folder . $_file);
+                                }
+                        }
+
+                        if($form_data->membrane == 1 && !empty($folder_info['mic']))
+                        {
+                            foreach($folder_info['mic'] as $_file)
+                            {
+                                copy($path . $_file, $target_folder . $_file);
+                            }
+                        }
+
+                        if($form_data->remote_input == 1 && !empty($folder_info['inp']))
+                        {
+                            foreach($folder_info['inp'] as $_file)
+                            {
+                                copy($path . $_file, $target_folder . $_file);
+                            }
+                        }
+
+                        if($form_data->sdf == 1 && !file_exists($dir_path.'/sdf'))
+                        {
+                            $sdf = preg_grep('/\.sdf$/', scandir($f->prepare_conformer_folder($run->id_fragment, $ion->id)));
+                            // Create folder for SDF files
+                            if(mkdir($dir_path.'/sdf'))
+                            {
+                                foreach($sdf as $s)
+                                {
+                                    copy($f->prepare_conformer_folder($run->id_fragment, $ion->id) . $s, $dir_path.'/sdf/'.$s);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Add all to the zip file
+                $zip = new ZipArchive();
+                $zip_path = sys_get_temp_dir() . '/Cosmo_Dataset_' . $dataset->id .'.zip';
+                $zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+                $files = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($parental_dir),
+                    RecursiveIteratorIterator::LEAVES_ONLY
+                );
+
+                foreach ($files as $name => $file)
+                {
+                    // Skip directories (they would be added automatically)
+                    if (!$file->isDir())
+                    {
+                        // Get real and relative path for current file
+                        $filePath = $file->getRealPath();
+                        $relativePath = substr($filePath, strlen($parental_dir) + 1);
+
+                        // Add current file to archive
+                        $zip->addFile($filePath, $relativePath);
+                    }
+                }
+
+                // Zip archive will be created only after closing object
+                $zip->close();
+
+                // Download zip file
+                header("Content-type: application/zip"); 
+                header("Content-Disposition: attachment; filename=Cosmo_Dataset_" . $dataset->id . '.zip'); 
+                header("Pragma: no-cache"); 
+                header("Expires: 0"); 
+                readfile("$zip_path");
+                exit;
+            }
+            catch(Exception $e)
+            {
+                $this->alert->error($e);
+            }
+        }
+
+        $this->title = 'Download COSMO dataset';
+        $this->breadcrumbs = Breadcrumbs::instance()
+            ->add('Administration', "administration", TRUE)
+            ->add('COSMO datasets', 'validator/cosmo_datasets')
+            ->add('Download dataset [id: ' . $dataset->id . ']');
+
+        $this->view = new View('cosmo/download_dataset');
+        $this->view->dataset = $dataset;
     }
 
     /**

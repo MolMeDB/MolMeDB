@@ -473,6 +473,23 @@ class Run_cosmo extends Db
             )->count;
     }
 
+    public function get_result_folder_name()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        $temp = str_replace('.', ',', $this->temperature);
+
+        if(strpos($temp, ',') === false)
+        {
+            $temp .= ',0';
+        }
+
+        return $this->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$this->membrane->name)) . '_' . $temp;
+    }
+
     /**
      * Process final data and save them in json to file
      * 

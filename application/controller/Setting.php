@@ -197,6 +197,12 @@ class SettingController extends Controller
         $this->view->chembl_pattern = isset($_POST[Configs::DB_CHEMBL_PATTERN]) ? $_POST[Configs::DB_CHEMBL_PATTERN] : $this->config->get(Configs::DB_CHEMBL_PATTERN);
         $this->view->chebi_pattern = isset($_POST[Configs::DB_CHEBI_PATTERN]) ? $_POST[Configs::DB_CHEBI_PATTERN] : $this->config->get(Configs::DB_CHEBI_PATTERN);
         $this->view->navigator = self::createNavigator(self::MENU_SYSTEM);
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', "administration", TRUE)
+            ->add('Setting')
+            ->add('System');
     }
 
     /**
@@ -366,6 +372,12 @@ class SettingController extends Controller
         $this->view = new View('settings/scheduler');
         $this->view->forge = $forge->form();
         $this->view->navigator = self::createNavigator(self::MENU_SCHEDULER);
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', "administration", TRUE)
+            ->add('Setting')
+            ->add('Scheduler');
     }
 
     /**
@@ -383,15 +395,30 @@ class SettingController extends Controller
         $this->view->enum_types = self::generate_tree($enum_type_model->get_structure());
         $this->view->items = self::get_free_items();
         $this->view->navigator = self::createNavigator(self::MENU_ENUM_TYPES);
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', "administration", TRUE)
+            ->add('Setting')
+            ->add('Enum types');
     }
 
     /**
      * Cosmo settings
-     * 
-     * 
      */
     public function cosmo()
     {
+        // Check, if hash function exists
+        try
+        {
+            Users_metacentrum::unhash('1234');
+        }
+        catch(HashException $e)
+        {
+            Users_metacentrum::hash('1234');
+            $this->alert->warning('New hash function was created. Please, change all saved metacentrum user`s passwords.');
+        }
+
         $user = new Users(session::user_id());
         $u = Users_metacentrum::instance()
             ->where('id_user', $user->id)
@@ -509,6 +536,12 @@ class SettingController extends Controller
         $this->view = new View('settings/cosmo');
         $this->view->navigator = self::createNavigator(self::MENU_COSMO);
         $this->view->forge = $forge;
+
+        $this->breadcrumbs = new Breadcrumbs();
+        $this->breadcrumbs
+            ->add('Administration', "administration", TRUE)
+            ->add('Setting')
+            ->add('Cosmo');
     }
 
     /**

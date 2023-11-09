@@ -164,7 +164,7 @@ class Substances_fragments extends Db
                 'id_fragment' => $r->id_fragment,
                 'functional_group' => $fun_group,
                 'fragment_smiles' => $r->fragment->smiles,
-                'smiles' => Fragments::instance()->fill_link_numbers($r->fragment->smiles, explode(',', $r->links)),
+                'smiles' => Fragments::instance()->fill_link_numbers($r->fragment->smiles, explode(',', $r->links ?? "")),
                 // 'smiles_clear' => $clear_child->s&miles
             );
         }

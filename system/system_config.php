@@ -1,12 +1,10 @@
 <?php
 
-require_once('config.php');
-require_once('version.php');
-require_once('system/exceptions.php');
-ini_set('memory_limit', '-1');
-
-require_once('system/server.php');
-
+/**
+ * Internal system configuration
+ * 
+ * @author Jakub Juracka
+ */
 class System_config
 {
     /**
@@ -14,11 +12,16 @@ class System_config
 	 */
 	const VERSION_REGEX = '^(((alpha|beta|dev|rc)([1-9][0-9]*)?)(\_(\d|[1-9][0-9]+)\.(\d|[0-9][0-9]+))?)$';
 
+    /**
+     * Is DB connected?
+     */
+    public static $db_connected = FALSE;
+
+    /**
+     * Constructor
+     */
     function __construct()
     {
-        // Register autoload function
-        spl_autoload_register("self::autoloadFunction");
-
         // Connect to DB
         self::DB_CONNECT();
 
@@ -27,6 +30,16 @@ class System_config
             // Check DB version
             self::check_DB_version();
         }
+
+        self::$db_connected = TRUE;
+    }
+
+    /**
+     * Init system config
+     */
+    public static function connect()
+    {
+        return new System_config();
     }
 
     /**
@@ -40,8 +53,15 @@ class System_config
 
         // Check, if GROUP_BY is not restricted
         $db->check_group_by_restrictions();
-
-        $db_ver = $db->get_db_version();
+        try
+        {
+            $db_ver = $db->get_db_version();
+        }
+        catch(Exception $e)
+        {
+            throw new Exception('Looks like DB is not initialized. Please, check the DB status and try again.');
+        }
+        
         $app_ver = DB_VERSION;
 
         if($db_ver == $app_ver)
@@ -178,7 +198,7 @@ class System_config
      * 
      * @param string $class - Class name
      */
-    public static function autoloadFunction($class)
+    public static function autoload($class)
     {
         $targets = array
         (

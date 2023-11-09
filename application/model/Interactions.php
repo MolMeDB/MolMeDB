@@ -34,7 +34,6 @@
  * @property integer $user_id
  * @property datetime $createDateTime
  * @property datetime $editDateTime
- * 
  * @property Substances $substance
  * @property Membranes $membrane
  * @property Datasets $dataset
@@ -223,13 +222,13 @@ class Interactions extends Db
 	/**
 	 * 
 	 * @param integer $id
-	 * @param integer $idInteraction
-	 * @param integer $idMethod
-	 * @param integer $idMembrane
+	 * @param integer|null $idInteraction
+	 * @param integer|null $idMethod
+	 * @param integer|null $idMembrane
 	 *
-	 * @return type
+	 * @return Iterable_object
 	 */
-    public function returnDetail($id, $idInteraction = false, $idMethod, $idMembrane)
+    public function returnDetail($id, $idInteraction = false, $idMethod = NULL, $idMembrane = NULL)
     {
         if(!$idInteraction){
         $res = $this->queryOne('SELECT *

@@ -398,7 +398,7 @@ class Table_column
     /**
      * @var string
      */
-    private $acc_suffix;
+    private $acc_prefix;
 
     /**
      * Constructor

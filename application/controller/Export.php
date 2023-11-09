@@ -28,7 +28,7 @@ class ExportController extends Controller
      * @param string $type
      * @param int $id_substance
      */
-    public function mol($type = self::PASSIVE, $id_substance)
+    public function mol($type = self::PASSIVE, $id_substance = NULL)
     {
         $substance = new Substances($id_substance);
 
@@ -276,6 +276,8 @@ class ExportController extends Controller
         }
         catch(Exception $e)
         {
+            print_r($e);
+            die;
             $this->alert->error('Cannot export membrane data.');
             $this->redirect('browse/membranes');
         }

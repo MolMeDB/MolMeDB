@@ -14,6 +14,7 @@
 **/files/uploadReports/*
 **/files/schedulerReports/*
 **/files/3DStructures/* 
+**/files/download/*
 
 /vendor/**
 
@@ -21,3 +22,5 @@
 /config.php
 /composer.lock
 
+### System local files ###
+/system/hash/**

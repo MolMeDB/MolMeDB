@@ -90,7 +90,7 @@ class Users_metacentrum extends Db
 
         if(!file_exists($setting_path.$filename))
         {
-            throw new MmdbException('Hash function not deined.');
+            throw new HashException('Hash function not defined.');
         }
 
         // Load setting

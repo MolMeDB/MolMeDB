@@ -72,7 +72,7 @@
                     </div>
                     <?php elseif($col->is_long_text) : ?>
                     <?php $content = $col->value($row); ?>
-                    <div class="tooltip-helper <?= strlen($content) > 15 ? "long-text" : "" ?>">
+                    <div class="tooltip-helper <?= strlen($content ?? "") > 15 ? "long-text" : "" ?>">
                         <p>
                             <?php echo $col->value($row);?>
                         </p>

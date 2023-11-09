@@ -305,6 +305,8 @@ class BrowseController extends Controller
      */
     private static function get_substring($string, $limit)
     {
+        $string ??= "";
+
         if(strlen($string) <= $limit)
         {
             return $string;

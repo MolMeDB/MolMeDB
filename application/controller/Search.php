@@ -23,6 +23,9 @@ class SearchController extends Controller
         self::T_TRANSPORTER
     );
 
+    /** Paginator instance*/
+    private $paginator;
+
     /**
      * Constructor
      */
@@ -44,7 +47,7 @@ class SearchController extends Controller
         // Is type valid?
         if(!in_array($type, $this->valid_types))
         {
-            $this->addMessageWarning('Invalid parameter');
+            $this->alert->warning('Invalid parameter');
             $this->redirect('search/' . self::T_COMPOUND);
         }
 
@@ -101,7 +104,7 @@ class SearchController extends Controller
         }
 
         // Remove whisper if exists
-        $end = strpos($query, '[');
+        $end = strpos($query ?? "", '[');
 
         if($end)
         {
@@ -149,7 +152,7 @@ class SearchController extends Controller
         } 
         catch (ErrorUser $ex) 
         {
-            $this->addMessageError($ex);
+            $this->alert->error($ex);
             $this->redirect('search');
         }
 
@@ -241,7 +244,7 @@ class SearchController extends Controller
         } 
         catch (ErrorUser $ex) 
         {
-            $this->addMessageError($ex);
+            $this->alert->error($ex);
             $this->redirect('search');
         }
 
@@ -349,7 +352,7 @@ class SearchController extends Controller
         } 
         catch (ErrorUser $ex) 
         {
-            $this->addMessageError($ex);
+            $this->alert->error($ex);
             $this->redirect('search');
         }
 

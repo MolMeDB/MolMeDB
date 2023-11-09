@@ -364,7 +364,7 @@ class Datasets extends Db
     
 
     // DELETE
-    private function item_in_array($array = array(), $item){
+    private function item_in_array($array = array(), $item = NULL){
         foreach($array as $i)
             if($i[0] === $item)
                 return true;

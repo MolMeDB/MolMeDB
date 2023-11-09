@@ -235,7 +235,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
      * 
      * @return int
      */
-    public function count()
+    public function count() : int
     {
         if(is_object($this->data))
         {
@@ -282,7 +282,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
     /**
      * Returns current element
      */
-    public function current()
+    public function current() : mixed
     {
         if($this->debug)
         {
@@ -302,7 +302,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
     /**
      * Returns key of current element
      */
-    public function key()
+    public function key() : mixed
     {
         if ($this->debug) {
             echo __METHOD__ . ' -> ' . $this->_position . ' -> ';
@@ -427,7 +427,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
      * @access public
      * @abstracting ArrayAccess
      */
-    public function offsetSet($offset, $value)
+    public function offsetSet(mixed $offset, mixed $value) : void
     {
         if (is_null($offset)) 
         {
@@ -459,7 +459,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
      * @access public
      * @abstracting ArrayAccess
      */
-    public function offsetUnset($offset)
+    public function offsetUnset(mixed $offset) : void
     {
         if ($this->offsetExists($offset)) 
         {
@@ -475,7 +475,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
      * @return mixed
      * @abstracting ArrayAccess
      */
-    public function offsetGet($offset)
+    public function offsetGet(mixed $offset) : mixed
     {
         if($this->debug)
         {

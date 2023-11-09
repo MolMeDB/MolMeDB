@@ -234,7 +234,7 @@ class Db extends Iterable_object
     {
         foreach($this->data as $key => $val)
         {
-            if(trim($val) === '')
+            if(trim($val ?? "") === '')
             {
                 $this->data[$key] = NULL;
             }
@@ -803,7 +803,7 @@ class Db extends Iterable_object
                         $this->where .= $attr . ' "' . $val . '"';
                     }
                 } 
-                else if(strtoupper($val) === 'NULL' || $val === NULL)
+                else if($val === NULL || strtoupper($val) === 'NULL')
                 {
                     $this->where .=  $attr . ' IS NULL';
                 }

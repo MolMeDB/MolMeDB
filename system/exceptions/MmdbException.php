@@ -39,20 +39,22 @@ class MmdbException extends Exception
         {
             $ex = $previous ? $previous : $this;
 
-            $e = new Exceptions($this->error_id);
+            if(System_config::$db_connected)
+            {
+                $e = new Exceptions($this->error_id);
 
-            $e->status = Exceptions::STATUS_NEW;
-            $e->level = $this->level;
-            $e->code = (int)$ex->getCode();
-            $e->file = $ex->getFile();
-            $e->line = $ex->getLine();
-            $e->trace = json_encode(debug_backtrace());
-            $e->message = $ex->getMessage();
-            $e->id_user = session::user_id();
+                $e->status = Exceptions::STATUS_NEW;
+                $e->level = $this->level;
+                $e->code = (int)$ex->getCode();
+                $e->file = $ex->getFile();
+                $e->line = $ex->getLine();
+                $e->trace = json_encode(debug_backtrace());
+                $e->message = $ex->getMessage();
+                $e->id_user = session::user_id();
 
-            $e->save();
-
-            $this->error_id = $e->id;
+                $e->save();
+                $this->error_id = $e->id;
+            }
         }
     }
     

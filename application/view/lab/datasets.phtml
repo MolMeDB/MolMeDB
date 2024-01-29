@@ -1,0 +1,53 @@
+<head>
+    <link rel='stylesheet' href='css/lab.css?ver=" . CSS_VERSION . "'></link>
+</head>
+
+<div class="p-title">
+    <div class="p-big">My datasets</div>
+</div>
+
+<div class="general-info">
+    <p class="note-info text-left">
+        This page provides a comprehensive summary of all the datasets you've uploaded. 
+        Here, you can track the current processing stage of each dataset and download the data that has already been processed.
+        Occasionally, calculating the interaction for a specific molecule <b>may be unsuccessful</b>. 
+        This issue is commonly due to an improper conformation of the molecule, preventing it from undergoing optimization. 
+        If you encounter this problem, we advise you to review the SMILES notation of your molecule.
+        <br/><br/>
+        Please be aware that due to the canonicalization process of SMILES for entries, the <b>SMILES representation of molecules might differ</b> in downloaded data compared to the version you submitted during the upload.
+        <br/><br/>
+        Are you missing a feature or have another question? Please do not hesitate to <a href="mailto:molmedb@upol.cz">contact us</a>.   
+    </p>
+    
+    <div class="tab_detail" id="tab_transporters">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <td>ID</td>
+                    <td>Note</td>
+                    <td>Total (progress)</td>
+                    <td>Stats (<span style="color: blue;">pending</span>/<span style="color: #bf5600;">running</span>/<span style="color: green;">done</span>/<span style="color: red;">errors</span>)</td>
+                    <td>Last update</td>
+                    <td>Upload date</td>
+                    <td>Actions</td>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach($datasets as $d): ?>
+                <tr>
+                    <td><?= $d->id ?></td>
+                    <td><?= $d->comment ?></td>
+                    <td><?= $d->total_runs ?></td>
+                    <td><?= '<span style="color: blue;">' . $d->total_pending . "</span>/<span style=\"color: #bf5600;\">" . $d->total_running . '</span>/<span style="color: green;">' . $d->total_done . "</span>/<span style=\"color: red;\">" . $d->total_error . '</span>' ?></td>
+                    <td><?= $d->last_update != NULL ? date("d. m. Y", strtotime($d->last_update)) : 'Unknown' ?></td>
+                    <td><?= $d->create_date != NULL ? date("d. m. Y", strtotime($d->create_date)) : 'Unknown' ?></td>
+                    <td>
+                        <a href="/lab/edit_cosmo_dataset/<?= $d->id ?>" title="Edit comment"><span style="cursor:pointer;" class="glyphicon glyphicon-edit"></span></a>
+                        <a href="/lab/download_cosmo_dataset/<?= $d->id ?>" title="Download computed results"><span style="cursor:pointer;" class="glyphicon glyphicon-download"></span></a>
+                    </td>
+                </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+</div>

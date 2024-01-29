@@ -108,9 +108,9 @@ class Html
      * 
      * @return string
      */
-    public static function text_input($name, $value)
+    public static function text_input($name, $value, $required = false)
     {
-        return "<input class='form-control' type='text' name='$name' value='$value'>";
+        return "<input class='form-control' type='text' name='$name' value='$value' " . ($required ? ' required' : '') . ">";
     }
 
     /**
@@ -134,9 +134,9 @@ class Html
      * 
      * @return string
      */
-    public static function checkbox_input($name, $value, $checked = 'false', $disabled = 'false')
+    public static function checkbox_input($name, $value, $checked = 'false', $disabled = 'false', $required = false)
     {
-        return "<input type='checkbox' name='$name' value='$value' " . ($checked === 'true' ? 'checked' : ' ') . ($disabled === 'true' ? 'disabled' : '') . ">";
+        return "<input type='checkbox' name='$name' value='$value' " . ($checked === 'true' ? ' checked ' : ' ') . ($disabled === 'true' ? ' disabled' : '') . ($required ? ' required' : ' ') . ">";
     }
 
     /**
@@ -147,9 +147,9 @@ class Html
      * 
      * @return string
      */
-    public static function password_input($name, $value)
+    public static function password_input($name, $value, $required = false)
     {
-        return "<input class='form-control' type='password' name='$name' value='$value'>";
+        return "<input class='form-control' type='password' name='$name' value='$value' " . ($required ? ' required' : '') . ">";
     }
 
     /**

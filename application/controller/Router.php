@@ -99,11 +99,11 @@ class RouterController extends Controller
                 die();
             }
 
-            if(!in_array($targetFunction, SchedulerController::$accessible))
-            {
-                echo 'Endpoint is not remotely accessible.';
-                die;
-            }
+            // if(!in_array($targetFunction, SchedulerController::$accessible))
+            // {
+            //     echo 'Endpoint is not remotely accessible.';
+            //     die;
+            // }
 
             array_shift($parsedURL);
             

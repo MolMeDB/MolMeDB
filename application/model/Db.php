@@ -113,6 +113,44 @@ class Db extends Iterable_object
         return null;
     }
 
+    /**
+     * Link current instance to another table item
+     * 
+     * @author Jakub Juracka
+     */
+    public function link($instance)
+    {
+        if(!$this->id || !$this->has_many_and_belongs_to || !$instance || !$instance->id)
+        {
+            return false;
+        }
+
+        foreach($this->has_many_and_belongs_to as $table => $data)
+        {
+            $remote_key = array_keys($data)[0];
+            $local_key = $data[0];
+            
+            // Check if class is valid
+            if($data[$remote_key]['class'] != get_class($instance))
+            {
+                continue;
+            }
+
+            $exists = $this->queryOne("SELECT * FROM $table WHERE $remote_key = $instance->id AND $local_key = $this->id");
+
+            if(count($exists))
+            {
+                return true; // Already linked
+            }
+
+            $this->insert($table, array
+            (
+                $remote_key => $instance->id,
+                $local_key => $this->id
+            ));
+        }
+    }
+
     /** Function for connection to the DB
      * 
      * @param string host 

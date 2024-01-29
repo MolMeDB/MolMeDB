@@ -38,4 +38,14 @@ class Regexp
 
         return preg_match($regexp, $string);
     }
+
+    /**
+     * Checks, if email is valid
+     * 
+     * @return bool
+     */
+    public static function is_valid_email($string)
+    {
+        return filter_var($string, FILTER_VALIDATE_EMAIL);
+    }
 }

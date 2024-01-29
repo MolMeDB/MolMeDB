@@ -36,6 +36,13 @@ abstract class Controller
     protected $config;
 
     /** 
+     * Holds Session info
+     * 
+     * @var Iterable_object
+     */
+    protected $session;
+
+    /** 
      * Alerts handler 
      * 
      * @var Alert
@@ -62,6 +69,12 @@ abstract class Controller
         $this->config = new Config();
         $this->alert = new Alert();
         $this->form = new Form();
+        $this->session = new Iterable_object($_SESSION, true);
+        if($this->session->user === null)
+        {
+            $this->session->user = new Users();
+        }
+
         self::$requested_header = self::$requested_header ?? new HeaderParser();
     }
     
@@ -75,6 +88,11 @@ abstract class Controller
         if($prefer_setting && isset($_GET['redirection']))
         {
             $url = $_GET['redirection'] ? $_GET['redirection'] : $url;
+        }
+
+        if($prefer_setting && $url == 'login' && !isset($_GET['redirection'])) // Remember current url
+        {
+            $this->redirect('login?redirection=' . Url::uri());
         }
 
         if(!preg_match('/^http/', $url))

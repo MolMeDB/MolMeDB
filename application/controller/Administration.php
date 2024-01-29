@@ -15,7 +15,6 @@ class AdministrationController extends Controller
     function __construct()
     {
         parent::__construct();
-        $this->verifyUser(true);
     }
 
     /**
@@ -23,6 +22,9 @@ class AdministrationController extends Controller
      */
     public function index() 
     {
+        // Acces controll
+        $this->verifyUser(true);
+
         $user_manager = new Users();
         $upload_controller = new UploadController();
         $edit_controller = new EditController();
@@ -47,8 +49,11 @@ class AdministrationController extends Controller
      */
     public function logout()
     {
-        $usermanager = new Users();
-        $usermanager->logout();
-        $this->redirect('login');
+        if($this->session->user->id)
+        {
+            $usermanager = new Users();
+            $usermanager->logout();
+        }
+        $this->redirect('login', false);
     }
 }

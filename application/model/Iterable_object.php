@@ -163,30 +163,33 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
             {
                 foreach($values as $table => $vals)
                 {
+                    $keys = array_keys($vals);
                     // IS STRUCTURE VALID ?
-                    if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
-                        !isset($vals['own']) || !isset($vals['remote']))
+                    if(!is_array($vals) || count($vals) != 2 || !is_array($vals[$keys[0]]) || 
+                        !isset($vals[$keys[0]]['var']) || !isset($vals[$keys[0]]['class']))
                     {
                         continue;
                     }
 
-                    $class_name = $vals['class'];
-                    $new_key = $vals['var'];
-                    $remote_key = $vals['remote'];
-                    $own_key = $vals['own'];
+                    $remote_data = $vals[$keys[0]];
+                    $remote_key = $keys[0];
+                    $local_key = $vals[0];
+
+                    $remote_class_name = $remote_data['class'];
+                    $remote_var = $remote_data['var'];
 
                     // Not valid input, set value to NULL
-                    if (!class_exists($class_name) || !$this->id || in_array($class_name, $abandoned_classes)) 
+                    if (!class_exists($remote_class_name) || !$this->id || in_array($remote_class_name, $abandoned_classes)) 
                     {
-                        $this->$new_key = NULL;
+                        $this->$remote_var = NULL;
                         continue;
                     } 
                     
                     // Get data from M:N table
                     $rows = $db->queryAll("
-                        SELECT $remote_key as id
+                        SELECT DISTINCT $remote_key as id
                         FROM $table
-                        WHERE $own_key = '$this->id'
+                        WHERE $local_key = '$this->id'
                     ");
 
                     $ids = [];
@@ -196,8 +199,8 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                         $ids[] = $r->id;
                     }
 
-                    $new_class = new $class_name();
-                    $this->$new_key = $new_class->in('id', $ids)->get_all();
+                    $new_class = new $remote_class_name();
+                    $this->$remote_var = $new_class->in('id', $ids)->get_all();
                 }
             }
             // HAS MANY parsing

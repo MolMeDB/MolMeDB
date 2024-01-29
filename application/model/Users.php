@@ -5,6 +5,8 @@
  * 
  * @property integer $id
  * @property string $name
+ * @property string $email
+ * @property string $affiliation
  * @property string $password
  * @property string $token
  * @property bool $guest
@@ -65,7 +67,7 @@ class Users extends Db
     public function login($name, $password)
     {
         $user = $this->queryOne('
-            SELECT name, id, superadmin, guest
+            SELECT name, id, superadmin, guest, email, affiliation
             FROM users
             WHERE name = ? AND password = ?', 
             array
@@ -159,9 +161,9 @@ class Users extends Db
     /**
      * Gets user's detail
      * 
-     * @return Users
+     * @return Users|null
      */
-    public function returnUser()
+    public static function returnUser()
     {
         if (isset($_SESSION['user']))
         {

@@ -876,7 +876,6 @@ class SchedulerController extends Controller
         }
         catch(MmdbException $e)
         {
-	    print_r($e);
             $this->print($e->getMessage());
         }
 

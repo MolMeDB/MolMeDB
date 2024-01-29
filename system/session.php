@@ -26,6 +26,16 @@ class session
     }
 
     /**
+     * Returns user email
+     * 
+     * @return string|null
+     */
+    public static function user_email()
+    {
+        return isset($_SESSION['user']) && isset($_SESSION['user']['email']) ? $_SESSION['user']['email'] : NULL;
+    }
+
+    /**
      * Checks, if some user is logged in
      * 
      * @return boolean

@@ -1,0 +1,47 @@
+<head>
+    <link rel='stylesheet' href='css/lab.css?ver=<?= CSS_VERSION ?>'></link>
+</head>
+
+<div class="p-title">
+    <div>
+        <div class="p-welcome">Welcome </div><div class="p-mmdb">MolMeDB member!</div>
+    </div>
+    <div class="p-email">
+        <?= session::user_email() ? session::user_email() : 'Please, log in.' ?>
+    </div>
+</div>
+
+<div class="general-info">
+    <p class="note-info text-left">
+        <b>Welcome to the MolMeDB Laboratory,</b> your gateway to discovering the interactions of molecules that interest you. 
+        As a valued member of our community, you have the opportunity to not only access detailed interaction values for the molecules but also contribute significantly to the enrichment of our ever-growing database.
+        The process is straightforward: if the interactions you seek are not yet in the database, simply follow the links below to request a custom calculation. 
+        <br/><br/>
+        MolMeDB Lab serves as a quick portal for accessing molecular interaction data. You have the ability to upload your desired dataset in its entirety. 
+        Once uploaded, the dataset details will display the number of interactions already calculated. These calculated interactions are available for immediate download. 
+        Any remaining interactions will be queued for future computation.
+    </p>
+    <div class="section-list">
+        <div>
+            <div class="section-list-item section-list-item-shadow" onclick="redirect('lab/datasets')">
+                <div class="lab-li-icon">
+                    <div class="lab-li-icon-1"></div>
+                </div>
+                <div class="lab-li-title">
+                    My datasets
+                </div>
+            </div>
+            <div class="section-list-divider">
+
+            </div>
+            <div class="section-list-item" onclick="redirect('lab/new_dataset')">
+                <div class="lab-li-icon">
+                    <div class="lab-li-icon-2"></div>
+                </div>
+                <div class="lab-li-title">
+                    Add calculations
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

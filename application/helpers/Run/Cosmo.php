@@ -117,6 +117,25 @@ class Run_cosmo extends Db
         )
     );
 
+    /**
+     * Get assigned datasets
+     * 
+     * @return Cosmo_datasets[]
+     */
+    public function get_assigned_datasets()
+    {
+        if(!$this || !$this->id)
+        {
+            return [];
+        }
+
+        $ids = arr::get_values(
+            $this->queryAll('SELECT id_cosmo_dataset as id FROM run_cosmo_cosmo_datasets WHERE id_run_cosmo = ?', array($this->id))
+            ,'id');
+
+        return Run_cosmo_datasets::instance()->in('id', $ids)->get_all();
+    }
+
     public function increase_error_count()
     {
         $this->error_count =  ($this->error_count !== null) ? $this->error_count + 1 : 1;

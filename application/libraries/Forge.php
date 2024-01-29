@@ -36,6 +36,11 @@ class Forge
     protected $submit;
 
     /**
+     * Footer link
+     */
+    protected $footer_link;
+
+    /**
      * Has error?
      */
     protected $has_error = FALSE;
@@ -147,6 +152,20 @@ class Forge
     }
 
     /**
+     * Registration link
+     * 
+     * @param string $url
+     * @param string $text
+     * 
+     * @return Forge
+     */
+    public function footer_link($url, $text)
+    {
+        $this->footer_link = Html::anchor($url, $text);
+        return $this;
+    }
+
+    /**
      * Generates final form from given settings
      * 
      * @return string HTML
@@ -157,7 +176,7 @@ class Forge
 
         $result = '<div class="setting-form"><form method="' . $this->method . '" action="' . $this->target . '">';
         $result .= "<table class='setting-form-table'>";
-        $result .= "<thead><tr><td> $this->title </td></tr></thead>";
+        $result .= "<thead><tr><td colspan='2'> $this->title </td></tr></thead>";
         $result .= '<tbody>';
 
         foreach($this->items as $item)
@@ -167,11 +186,11 @@ class Forge
             switch($item->type)
             {
                 case 'checkbox':
-                    $result .= '' . Html::checkbox_input($item->name, $item->value, $item->checked, $item->disabled);
+                    $result .= '' . Html::checkbox_input($item->name, $item->value, $item->checked, $item->disabled, $item->required);
                     break;
 
                 case 'password':
-                    $result .= Html::password_input($item->name, $item->value, $item->checked);
+                    $result .= Html::password_input($item->name, $item->value, $item->required);
                     break;
 
                 case 'longtext':
@@ -179,7 +198,7 @@ class Forge
                     break;
 
                 default:
-                    $result .= '' . Html::text_input($item->name, $item->value);
+                    $result .= '' . Html::text_input($item->name, $item->value, $item->required);
                     break;
             }
 
@@ -191,7 +210,7 @@ class Forge
             $result .= '</td></tr>';
         }
 
-        $result .= "</tbody></table>$this->submit</form></div>";
+        $result .= "</tbody></table><div class='flex-row space-between' style='align-items:center;'><div style='padding-left:30px;'>$this->footer_link </div> <div>$this->submit</div></div></form></div>";
 
         return $result;
     }
@@ -247,6 +266,11 @@ class ForgeItem
      * 
      */
     public $disabled;
+
+    /**
+     * 
+     */
+    public $required;
 
     /**
      * Valid types
@@ -329,6 +353,17 @@ class ForgeItem
         {
             $this->disabled = 'true';
         }
+        return $this;
+    }
+
+    /**
+     * Is required?
+     * 
+     * @param bool $ch
+     */
+    public function required($ch = true)
+    {
+        $this->required = $ch;
         return $this;
     }
 

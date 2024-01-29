@@ -113,7 +113,6 @@ class Url
 	 */
 	public static function rdf_domain($strict_remote = false)
 	{
-        // TODO
         if(DEBUG_API && !$strict_remote)
         {
             return self::base() . 'api/rdf/';
@@ -129,5 +128,17 @@ class Url
     public static function get_2d_structure_source($smiles)
     {
         return "https://molmedb.upol.cz/depict/cow/svg?smi=" . urlencode($smiles);
+    }
+
+    /**
+     * Returns user verification url
+     * 
+     * @param string $token
+     * 
+     * @return string
+     */
+    public static function verification($token)
+    {
+        return self::base() . 'lab/verify/' . $token;
     }
 }

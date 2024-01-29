@@ -1,0 +1,112 @@
+<head>
+    <link rel='stylesheet' href='css/lab.css?ver=" . CSS_VERSION . "'></link>
+</head>
+
+<div class="p-title">
+    <div class="p-big">Add new dataset</div>
+</div>
+
+<div class="general-info">
+<p class="note-info text-left">
+    <b>Please read!</b>
+    <br/><br/>
+    On this page you can enter new tasks for calculating the values of molecule interactions. Please remember that interaction calculations are demanding 
+    and we can normally compute about 1,000 interactions per day. 
+    So, depending on the length of the queue, it can take up to several days to process your dataset.
+    <br/><br/>
+    <b>Limits</b>
+    <br/>
+    Each user can upload up to 200 molecules in one dataset and can have a maximum of 5 <b>unfinished</b> datasets in the queue.
+    <br/><br/>
+    <b>Notifications</b>
+    <br/>
+    As soon as the calculations of your dataset start, you will be notified by email. You will also be notified of the completion of calculations along with 
+    information on the number of completed/failed calculations.
+    <br/><br/>
+    <b>What happens to the calculated data?</b>
+    <br/>
+    The data will be stored in the MolMeDB database for other interactions and offered to the public. 
+    In addition, the author of the dataset will be able to download the entire data after logging into his account.
+    <br/><br/>
+    <b>Input file format</b>
+    <br/>
+    The user must specify for which molecules he wishes to calculate the interactions. 
+    Molecules must be written in SMILES notation in simple text format = <b>one SMILES record per line</b>. 
+    A small example file can be <a href="files/examples/smilesFile_example.csv">downloaded here</a>.
+    <br/><br/>
+    <b>Computation parameters</b>
+    <br/>
+    We have prepared several membranes for calculations and their description can be found in the Browse->Membranes section.
+    Currently are available two basic methods - CosmoMic and CosmoPerm. If you are not sure about your choice, choose the newer CosmoPerm method.
+    Finally, put the temperature value and you can write some note for the dataset description.
+    <br/><br/>
+    If you are missing some options (such as a different membrane), please do not hesitate to <a href="mailto:molmedb@upol.cz">contact us</a>.   
+</p>
+    <form method="post" id="form_add" enctype="multipart/form-data">
+        <div>
+            <div class="lab-form-label">
+                <div class="lab-form-label-number">1</div>
+                <div class="lab-form-label-text">Structure File</div>
+            </div>
+            <div class="lab-form-input">
+                <input type="file" name="smiles" required>
+            </div>
+        </div>
+        <div>
+            <div class="lab-form-label">
+                <div class="lab-form-label-number">2</div>
+                <div class="lab-form-label-text">Membrane</div>
+            </div>
+            <div class="lab-form-input">
+                <select name="membrane">
+                    <?php foreach($membranes as $membrane) : ?>
+                        <option value="<?= $membrane->id ?>"><?= $membrane->name ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+        </div>
+        <div>
+            <div class="lab-form-label">
+                <div class="lab-form-label-number">3</div>
+                <div class="lab-form-label-text">Method</div>
+            </div>
+            <div class="lab-form-input">
+                <select name="method">
+                    <?php foreach($methods as $id => $method) : ?>
+                        <option <?= $id == Run_cosmo::METHOD_COSMOPERM ? 'selected' : '' ?> value="<?= $id ?>"><?= $method ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+        </div>
+        <div>
+            <div class="lab-form-label">
+                <div class="lab-form-label-number">4</div>
+                <div class="lab-form-label-text">Temperature [°C]</div>
+            </div>
+            <div class="lab-form-input">
+                <input type="number" name="temperature" value="25" required>
+            </div>
+        </div>
+        <div>
+            <div class="lab-form-label">
+                <div class="lab-form-label-number">5</div>
+                <div class="lab-form-label-text">Note</div>
+            </div>
+            <div class="lab-form-input">
+                <textarea name="comment" placeholder="Describe your dataset for future identification..."></textarea>
+            </div>
+        </div>
+        <div>
+            <button class="btn btn-submit btn-success pull-right" id="upload" type="submit">Upload</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $("#form_add").submit(function () {
+            $('#upload').attr("disabled", true);
+            return true;
+        });
+    });
+</script>

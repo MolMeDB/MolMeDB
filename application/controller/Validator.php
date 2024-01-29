@@ -667,6 +667,7 @@ class ValidatorController extends Controller
                     $q->temperature = $temperature;
                     $q->id_membrane = $membrane->id;
                     $q->method = $method;
+                    $q->priority = $priority;
 
                     $q->save();
                 }
@@ -697,7 +698,6 @@ class ValidatorController extends Controller
             ->add('COSMO datasets', 'validator/cosmo_datasets', true)
             ->add('Add new records to queue');
     }
-
 
     /**
      * 

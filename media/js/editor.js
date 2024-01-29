@@ -149,7 +149,7 @@ function editMethod(id)
     btn_delete.setAttribute("onclick", "redirect('delete/method/" + id + "')");
     btn_delete.setAttribute("type", "button");
     btn_delete.setAttribute("id", "btn_delete");
-    btn_delete.innerHTML = "Delete membrane";
+    btn_delete.innerHTML = "Delete method";
     form.appendChild(btn_delete);
 
     document.getElementById("methName").innerHTML = data.name;

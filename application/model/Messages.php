@@ -17,6 +17,7 @@ class Messages extends Db
     const TYPE_COSMO_DATASET_PROGRESS_NEW   = 2;
     const TYPE_COSMO_DATASET_PROGRESS_DONE  = 3;
     const TYPE_WELCOME_MESSAGE_ADMIN_NOTIFY  = 4;
+    const TYPE_COSMO_STATS  = 5;
 
     /**
      * Constructor

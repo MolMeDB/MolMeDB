@@ -49,7 +49,8 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run', 
-//        'run_cosmo'
+       'run_cosmo',
+       'send_cosmo_stats'
     );
 
     /**
@@ -171,8 +172,12 @@ class SchedulerController extends Controller
             }
 
             // COSMO computations
-            if($this->config->get(Configs::COSMO_ENABLED) && $this->check_time("xx:x0|xx:x2|xx:x4|xx:x6|xx:x8"))
+            if($this->config->get(Configs::COSMO_ENABLED) && $this->check_time("xx:x0|xx:x5"))
             {
+                if($this->check_time("23:55"))
+                {
+                    $this->protected_call('send_cosmo_stats', []);
+                }
                 $this->protected_call('run_cosmo', []);
             }
 
@@ -228,6 +233,127 @@ class SchedulerController extends Controller
     {
         $model = new Substance_pair_groups();
         $model->update_all();
+    }
+
+    /**
+     * Sends COSMO stats to admins
+     * 
+     * @author Jakub Juracka
+     */
+    public function send_cosmo_stats()
+    {
+        // Get stats
+        $today_processed = Db::instance()->queryOne(
+            'SELECT COUNT(*) as count
+            FROM run_cosmo
+            WHERE last_update > ? 
+            ', array(date('Y-m-d 00:00:00')))->count;
+
+        $today_computed = Db::instance()->queryOne(
+            'SELECT COUNT(*) as count
+            FROM run_cosmo
+            WHERE last_update > ? AND state > ? AND status = ? 
+            ', array(date("Y-m-d 00:00:00"), Run_cosmo::STATE_COSMO_RUNNING, Run_cosmo::STATUS_OK))->count;
+
+        $today_errors = Db::instance()->queryOne(
+            'SELECT COUNT(*) as count
+            FROM run_cosmo
+            WHERE last_update > ? AND status = ? 
+            ', array(date("Y-m-d 00:00:00"), Run_cosmo::STATUS_ERROR))->count;
+
+        $message = Messages::get_by_type(Messages::TYPE_COSMO_STATS);
+
+        $text = $message->email_text;
+        $data = array
+        (
+            'type' => 'daily stats',
+            'total' => $today_processed,
+            'completed' => $today_computed,
+            'errors' => $today_errors
+        );
+
+        foreach($data as $key => $val)
+            $text = str_replace("{{$key}}", $val, $text);
+
+        $this->send_email_to_admins($text, $message->email_subject);
+
+        // Send week stats
+        if(date("w") == 0)
+        {
+            // Get stats
+            $week_processed = Db::instance()->queryOne(
+                'SELECT COUNT(*) as count
+                FROM run_cosmo
+                WHERE last_update > ? 
+                ', array(date('Y-m-d 00:00:00', strtotime('-7 days'))))->count;
+
+            $week_computed = Db::instance()->queryOne(
+                'SELECT COUNT(*) as count
+                FROM run_cosmo
+                WHERE last_update > ? AND state > ? AND status = ? 
+                ', array(date('Y-m-d 00:00:00', strtotime('-7 days')), Run_cosmo::STATE_COSMO_RUNNING, Run_cosmo::STATUS_OK))->count;
+
+            $week_errors = Db::instance()->queryOne(
+                'SELECT COUNT(*) as count
+                FROM run_cosmo
+                WHERE last_update > ? AND status = ? 
+                ', array(date('Y-m-d 00:00:00', strtotime('-7 days')), Run_cosmo::STATUS_ERROR))->count;
+
+            $message = Messages::get_by_type(Messages::TYPE_COSMO_STATS);
+
+            $text = $message->email_text;
+            $data = array
+            (
+                'type' => 'weekly stats',
+                'total' => $week_processed,
+                'completed' => $week_computed,
+                'errors' => $week_errors
+            );
+
+            foreach($data as $key => $val)
+                $text = str_replace("{{$key}}", $val, $text);
+
+            $this->send_email_to_admins($text, $message->email_subject);
+        }
+
+        // Send month stats
+        if(intval(date("d")) == 29)
+        {
+            // Get stats
+            $week_processed = Db::instance()->queryOne(
+                'SELECT COUNT(*) as count
+                FROM run_cosmo
+                WHERE last_update > ? 
+                ', array(date('Y-m-d 00:00:00', strtotime('-1 month'))))->count;
+
+            $week_computed = Db::instance()->queryOne(
+                'SELECT COUNT(*) as count
+                FROM run_cosmo
+                WHERE last_update > ? AND state > ? AND status = ? 
+                ', array(date('Y-m-d 00:00:00', strtotime('-1 month')), Run_cosmo::STATE_COSMO_RUNNING, Run_cosmo::STATUS_OK))->count;
+
+            $week_errors = Db::instance()->queryOne(
+                'SELECT COUNT(*) as count
+                FROM run_cosmo
+                WHERE last_update > ? AND status = ? 
+                ', array(date('Y-m-d 00:00:00', strtotime('-1 month')), Run_cosmo::STATUS_ERROR))->count;
+
+            $message = Messages::get_by_type(Messages::TYPE_COSMO_STATS);
+
+            $text = $message->email_text;
+            $data = array
+            (
+                'type' => 'monthly stats',
+                'total' => $week_processed,
+                'completed' => $week_computed,
+                'errors' => $week_errors
+            );
+
+            foreach($data as $key => $val)
+                $text = str_replace("{{$key}}", $val, $text);
+
+            $this->send_email_to_admins($text, $message->email_subject);
+        }
     }
 
     /**

@@ -200,7 +200,10 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                     }
 
                     $new_class = new $remote_class_name();
-                    $this->$remote_var = $new_class->in('id', $ids)->get_all();
+                    if(!empty($ids))
+                        $this->$remote_var = $new_class->in('id', $ids)->get_all();
+                    else
+                        $this->$remote_var = [];
                 }
             }
             // HAS MANY parsing

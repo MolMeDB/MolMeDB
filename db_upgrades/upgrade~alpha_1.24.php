@@ -8,6 +8,7 @@
 $upgrade_sql = array
 (
     "ALTER TABLE `users` ADD `email` VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL AFTER `name`;",
+    "ALTER TABLE `users` ADD `affiliation` VARCHAR(255) NULL DEFAULT NULL AFTER `email`;",
     "CREATE TABLE `user_verification` (`id` INT NOT NULL AUTO_INCREMENT , `id_user` INT NOT NULL , `token` VARCHAR(255) NOT NULL , `approved` TINYINT NOT NULL , `validity_date` DATETIME NOT NULL , `create_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP , PRIMARY KEY (`id`)) ENGINE = InnoDB;",
     "ALTER TABLE `user_verification` ADD FOREIGN KEY (`id_user`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE RESTRICT;",
     "ALTER TABLE `user_verification` ADD `total_sent` TINYINT NOT NULL DEFAULT '1' AFTER `token`;",

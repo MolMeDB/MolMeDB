@@ -8,8 +8,6 @@
  * @property int $error_count
  * @property int $status
  * @property int $forceRun
- * @property int $id_dataset
- * @property Run_cosmo_datasets $dataset
  * @property int $id_fragment
  * @property Fragments $fragment
  * @property int $id_membrane
@@ -110,11 +108,6 @@ class Run_cosmo extends Db
     (
         'id_fragment',
         'id_membrane',
-        'id_dataset' => array
-        (
-            'class' => 'Run_cosmo_datasets',
-            'var' => 'dataset'
-        )
     );
 
     /**
@@ -440,11 +433,12 @@ class Run_cosmo extends Db
             $where .= "rc.status IN('" . implode("','", $status) . "') ";         
         }
 
-        $where = $where != '' ? 'WHERE ' . $where . ' AND rc.id_dataset = ' . $id_dataset : ' WHERE rc.id_dataset = ' . $id_dataset;
+        $where = $where != '' ? 'WHERE ' . $where . ' AND rccd.id_cosmo_dataset = ' . $id_dataset : ' WHERE rccd.id_cosmo_dataset = ' . $id_dataset;
 
         return Run_cosmo::instance()->queryAll(
-            "SELECT rc.id_fragment, MIN(rc.state) as state, MAX(rc.status) as status, rc.create_date, rc.last_update, rc.id_dataset
+            "SELECT rc.id_fragment, MIN(rc.state) as state, MAX(rc.status) as status, rc.create_date, rc.last_update, rccd.id_cosmo_dataset as id_dataset
             FROM run_cosmo rc
+            JOIN run_cosmo_cosmo_datasets rccd ON rc.id = rccd.id_run_cosmo
             $join
             $where
             GROUP BY id_fragment
@@ -478,13 +472,14 @@ class Run_cosmo extends Db
             $where .= "rc.status IN('" . implode("','", $status) . "') ";         
         }
 
-        $where = $where != '' ? 'WHERE ' . $where . ' AND rc.id_dataset = ' . $id_dataset : ' WHERE rc.id_dataset = ' . $id_dataset;
+        $where = $where != '' ? 'WHERE ' . $where . ' AND rccd.id_cosmo_dataset = ' . $id_dataset : ' WHERE rccd.id_cosmo_dataset = ' . $id_dataset;
 
         return Run_cosmo::instance()->queryOne(
             "SELECT COUNT(*) as count
             FROM (
                 SELECT rc.id_fragment
                 FROM run_cosmo rc
+                JOIN run_cosmo_cosmo_datasets rccd ON rc.id = rccd.id_run_cosmo
                 $join
                 $where
                 GROUP BY id_fragment

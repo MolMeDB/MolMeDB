@@ -160,7 +160,7 @@ class ValidatorController extends Controller
             try
             {
                 $form_data = $this->form->param;
-                $cosmo_runs = Run_cosmo::instance()->where('id_dataset', $dataset->id)->get_all();
+                $cosmo_runs = $dataset->cosmo_runs;
 
                 $f = new File();
                 $zip_paths = [];
@@ -661,7 +661,6 @@ class ValidatorController extends Controller
                     $q = new Run_cosmo();
 
                     $q->id_fragment = $f->id;
-                    $q->id_dataset = $cosmo_dataset->id;
                     $q->state = Run_cosmo::STATE_PENDING;
                     $q->status = Run_cosmo::STATUS_OK;
                     $q->temperature = $temperature;
@@ -670,11 +669,24 @@ class ValidatorController extends Controller
                     $q->priority = $priority;
 
                     $q->save();
+
+                    // And link
+                    $cosmo_dataset->link($q);
+                }
+
+                // If dataset is empty, then remove
+                $cd = new Run_cosmo_datasets($cosmo_dataset->id);
+
+                if(!count($cd->cosmo_runs))
+                {
+                    $this->alert->warning('No new cosmo runs created. Deleting empty dataset.');
+                    Db::rollbackTransaction();
+                    $this->redirect('validator/cosmo_datasets');
                 }
 
                 Db::commitTransaction();
                 $this->alert->success('New queue records were created.');
-                $this->redirect('validator/cosmo');
+                $this->redirect('validator/cosmo/' . $cosmo_dataset->id);
             }
             catch(MmdbException $e)
             {

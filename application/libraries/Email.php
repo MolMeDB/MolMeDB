@@ -1,4 +1,13 @@
-<?php require_once 'vendor/autoload.php';
+<?php 
+//Import the PHPMailer class into the global namespace
+use PHPMailer\PHPMailer\PHPMailer; //important, on php files with more php stuff move it to the top
+use PHPMailer\PHPMailer\SMTP; //important, on php files with more php stuff move it to the top
+
+//SMTP needs accurate times, and the PHP time zone MUST be set
+//This should be done in your php.ini, but this is how to do it if you don't have access to that
+date_default_timezone_set('Europe/Prague');
+
+require_once 'vendor/autoload.php';
 
 class Email extends Controller
 {
@@ -14,9 +23,9 @@ class Email extends Controller
 
     public static $valid_ports = array
     (
-        25,
         465,
-        587
+        587,
+        993
     );
 
     const EMAIL_REGEXP = '/(?:[a-z0-9!#$%&\'*+\/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&\'*+\/=?^_`{|}~-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/';
@@ -28,19 +37,23 @@ class Email extends Controller
     {
         parent::__construct();
 
+        $this->client = new PHPMailer(true);
+
+
         $this->server = $this->config->get(Configs::EMAIL_SMTP_SERVER);
         $this->port = intval($this->config->get(Configs::EMAIL_SMTP_PORT));
         $this->username = $this->config->get(Configs::EMAIL_SMTP_USERNAME);
         $this->password = $this->config->get(Configs::EMAIL_SMTP_PASSWORD);
-        $this->email_sender = (object) array
+        $this->email_sender = array
         (
-            $this->config->get(Configs::EMAIL) => $this->config->get(Configs::EMAIL_SERVER_USERNAME)
+            $this->config->get(Configs::EMAIL),
+            $this->config->get(Configs::EMAIL_SERVER_USERNAME)
         );
 
         // Default port value
         if(!in_array($this->port, self::$valid_ports))
         {
-            $this->port = 25;
+            $this->port = self::$valid_ports[0];
         }
 
         if(!$this->server)
@@ -61,26 +74,31 @@ class Email extends Controller
      */
     private function init()
     {
-        if($this->port == 25)
+        $this->client->Port = $this->port;
+
+        if ($this->port == 465)
         {
-            $transport = new Swift_SmtpTransport($this->server, $this->port);
+            $this->client->SMTPSecure = 'ssl';
         }
-        else if ($this->port == 465)
+        else
         {
-            $transport = new Swift_SmtpTransport($this->server, $this->port, 'ssl');
+            $this->client->SMTPSecure = 'tls';
         }
-        else if ($this->port == 587)
-        {
-            $transport = new Swift_SmtpTransport($this->server, $this->port, 'tls');
-        }
+
+        $this->client->SMTPAuth = true;
+
+        $this->client->CharSet = 'UTF-8';
+        $this->client->isSMTP();
+        $this->client->Host = $this->server;
 
         if($this->username && $this->password)
         {
-            $transport->setUsername($this->username);
-            $transport->setPassword($this->password);
+            $this->client->Username = $this->username;
+            $this->client->Password = $this->password;
         }
 
-        $this->client = new Swift_Mailer($transport);
+        $this->client->SetFrom($this->email_sender[0], $this->email_sender[1]);
+        $this->client->addReplyTo($this->email_sender[0], $this->email_sender[1]);
     }
 
     /**
@@ -130,29 +148,34 @@ class Email extends Controller
 
         if(!$subject || trim($subject) == '')
         {
-            $subject = 'MolMeDB info';
+            $subject = 'MolMeDB: info';
         }
 
-        // Create a message
-        $message = new Swift_Message($subject);
-        $message->setContentType("text/html");
+        // Add recipients
+        foreach($valid_recipients as $email => $name)
+        {
+            if(Regexp::is_valid_email($email))
+                $this->client->AddAddress($email, $name);
+            else
+                $this->client->AddAddress($name, $name);
+        }
 
-        $message->setFrom($this->email_sender)
-            ->setTo($valid_recipients)
-            ->setBody($text);
+        $this->client->Subject = $subject;
+        $this->client->Body = $text;
+        $this->client->AltBody = strip_tags($text);
 
         if($attachment_path)
         {
-            $message->attach(Swift_Attachment::fromPath($attachment_path));
+            $this->client->addAttachment->attach($attachment_path);
         }
 
-        // Send the message
-        $result = $this->client->send($message);
-
-        if(!$result)
+        if(!$this->client->send())
         {
+            $this->client->clearAllRecipients();
             throw new Exception('Email was not send.');
         }
+
+        $this->client->clearAllRecipients();
     }
 
     /**

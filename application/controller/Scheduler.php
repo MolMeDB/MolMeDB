@@ -49,7 +49,7 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run', 
-    //    'run_cosmo',
+    //    'notify_computed_datasets',
     //    'send_emails',
     //    'check_cosmo_results'
     );
@@ -182,6 +182,10 @@ class SchedulerController extends Controller
                 if($this->check_time("2x:x5"))
                 {
                     $this->protected_call('check_cosmo_results', []);
+                }
+                if($this->check_time("xx:x5|xx:x0"))
+                {
+                    $this->protected_call('notify_computed_datasets', []);
                 }
                 $this->protected_call('run_cosmo', []);
             }
@@ -483,6 +487,37 @@ class SchedulerController extends Controller
                     'Exception thrown during `match_functional_pairs` method run.</br>' . $e->getMessage()
                 );
                 throw $ex;
+            }
+        }
+    }
+
+    /**
+     * Sends notifications about computed datasets
+     * 
+     */
+    public function notify_computed_datasets()
+    {
+        if(!$this->config->get(Configs::COSMO_ENABLED))
+        {
+            return;
+        }
+
+        $datasets = Run_cosmo_datasets::instance()->queryAll('
+            SELECT *
+            FROM run_cosmo_datasets
+            WHERE notify_state != ? OR notify_state IS NULL
+        ', array(Run_cosmo_datasets::PROGRESS_DONE));
+
+        foreach($datasets as $dataset)
+        {
+            $dataset = new Run_cosmo_datasets($dataset->id);
+            $stats = $dataset->get_stats();
+            $total_pending = $stats->total_pending;
+            $total_running = $stats->total_running;
+
+            if($total_pending == 0 && $total_running == 0)
+            {
+                $dataset->notify_progress(Run_cosmo_datasets::PROGRESS_DONE);
             }
         }
     }

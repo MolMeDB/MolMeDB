@@ -698,6 +698,9 @@ class ValidatorController extends Controller
                     $this->redirect('validator/cosmo_datasets');
                 }
 
+                // Send information email
+                $cd->notify_progress($cd::PROGRESS_NEW);
+
                 Db::commitTransaction();
                 $this->alert->success('New queue records were created.');
                 $this->redirect('validator/cosmo/' . $cosmo_dataset->id);

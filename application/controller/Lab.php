@@ -92,7 +92,7 @@ class LabController extends Controller
                 // Get number of unfinised datasets
                 $ds_model = new Run_cosmo_datasets();
                 
-                if($ds_model->get_total_running(session::user_id()) > 4)
+                if(!session::is_admin() && $ds_model->get_total_running(session::user_id()) > 4)
                 {
                     throw new MmdbException('Dataset limit reached.', "You have reached the limit of the number of unfinished datasets in the queue. Please wait for one of your datasets to complete.");
                 }

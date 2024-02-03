@@ -8,6 +8,7 @@
  * @property int $id_user
  * @property Users $user
  * @property string $token
+ * @property int $notify_state
  * @property int $id_file
  * @property Files $file
  * @property string $create_date
@@ -107,6 +108,33 @@ class Run_cosmo_datasets extends Db
         }
 
         return $total_running;
+    }
+
+    /**
+     * Returns stats for current dataset
+     * 
+     * @return object
+     */
+    public function get_stats()
+    {
+        if(!$this->id)
+        {
+            return null;
+        }
+
+        return Run_cosmo_datasets::instance()->queryOne(
+            "SELECT d.id, d.comment, COUNT(c.id) as total_runs, 
+                SUM(IF(c.state = 0 and c.status = 1, 1, 0)) as total_pending,
+                SUM(IF(c.state > 0 and c.state < 5 and c.status = 1, 1, 0)) as total_running,
+                SUM(IF(c.state >= 5 and c.status = 1, 1, 0)) as total_done,
+                SUM(IF(c.status = 3, 1, 0)) as total_error,
+                d.create_date
+            FROM run_cosmo_datasets d
+            LEFT JOIN run_cosmo_cosmo_datasets rccd ON rccd.id_cosmo_dataset = d.id
+            LEFT JOIN run_cosmo c ON c.id = rccd.id_run_cosmo
+            WHERE d.id = ?
+            GROUP BY id"
+        , array($this->id));
     }
 
     /**
@@ -238,9 +266,9 @@ class Run_cosmo_datasets extends Db
         // Get stats
         $stats = $this->get_list(1,10,null,null,$ds->token)[0];
 
-        $text = str_replace("{total}", $stats->total_runs, $text);
-        $text = str_replace("{error}", $stats->total_error, $text);
-        $text = str_replace("{done}", $stats->total_done, $text);
+        $text = str_replace("{total}", $stats->total_runs ?? "0", $text);
+        $text = str_replace("{error}", $stats->total_error ?? "0", $text);
+        $text = str_replace("{done}", $stats->total_done ?? "0", $text);
 
         // Send email
         $eq = new Email_queue();
@@ -250,6 +278,9 @@ class Run_cosmo_datasets extends Db
         $eq->text = $text;
         $eq->status = $eq::SENDING;
         $eq->save();
+
+        $ds->notify_state = $progress;
+        $ds->save();
     }
 
     /**

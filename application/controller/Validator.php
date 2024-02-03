@@ -187,6 +187,8 @@ class ValidatorController extends Controller
                     throw new Exception('Cannot create folder in tmp folder.');
                 }
 
+                $smiles_links = [];
+
                 // Add info file
                 file_put_contents($parental_dir."/info.txt", json_encode(array
                 (
@@ -205,6 +207,8 @@ class ValidatorController extends Controller
                     ))->get_one();
                     $molecule = new Substances($mol_link && $mol_link->id_substance ? $mol_link->id_substance : null);
                     $name = $molecule->id ? $molecule->identifier : "f" . $run->id_fragment;
+
+                    $smiles_links[$name] = [];
 
                     // For each run, create folder, fill with files and add to the final zip
                     $dir_path = $parental_dir . "/" .$name;
@@ -272,12 +276,19 @@ class ValidatorController extends Controller
 
                         // Add input SMILES
                         file_put_contents($target_folder . 'structure.smi', $ion->smiles);
+                        $smiles_links[$name][] = array
+                        (
+                            'smiles' => $ion->smiles,
+                            'charge' => $charge,
+                            'ion_id' => $ion->id
+                        );
 
                         if(in_array($form_data->result_type, ['json', 'both']) && !empty($folder_info['json']))
                         {
                             foreach($folder_info['json'] as $json_file)
                             {
-                                copy($path . $json_file, $target_folder . $json_file);
+                                $content = json_decode(file_get_contents($path . $json_file));
+                                file_put_contents($target_folder . $json_file, json_encode($content, JSON_PRETTY_PRINT));
                             }
                         }
                         if(in_array($form_data->result_type, ['raw', 'both']) && 
@@ -320,6 +331,9 @@ class ValidatorController extends Controller
                         }
                     }
                 }
+
+                // Add info file
+                file_put_contents($parental_dir."/smiles_links.txt", json_encode($smiles_links, JSON_PRETTY_PRINT));
 
                 // Add all to the zip file
                 $zip = new ZipArchive();

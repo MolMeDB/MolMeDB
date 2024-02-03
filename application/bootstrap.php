@@ -20,6 +20,10 @@ define("APP_ROOT", "application/");
 define("SYS_ROOT", "system/");
 define("MEDIA_ROOT", "media/");
 
+/**
+ * Set datetime
+ */
+date_default_timezone_set("Europe/Prague");
 
 /**
  * Import config with DB connection info

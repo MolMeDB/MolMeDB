@@ -230,7 +230,7 @@ class UploadController extends Controller
                 $membrane->keywords = $this->form->param->membrane_keywords;
                 $membrane->CAM = $this->form->param->membrane_CAM;
                 $membrane->references = $this->form->param->membrane_references;
-                $membrane->idTag = $this->form->param->membrane_CAM; 
+                $membrane->idTag = str_replace('/','_',$this->form->param->membrane_CAM); 
 
                 $membrane->save();
 

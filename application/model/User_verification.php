@@ -163,7 +163,11 @@ class User_verification extends Db
             // Must be at least 5 minutes between sendings
             if($ver->last_sent_date && strtotime($ver->last_sent_date) > strtotime('-5 minutes'))
             {
-                throw new MmdbException('Too often sending ver. email.', 'Please wait for the email. The next email can be send on ' . date("Y-m-d H:i:s", strtotime('+5 minutes', strtotime($ver->last_sent_date))));
+                $minutes = round(abs(strtotime('+5 minutes', strtotime($ver->last_sent_date)) - strtotime('now')) / 60);
+
+                $msg = $minutes < 2 ? 'one minute.' : $minutes . ' minutes.';
+
+                throw new MmdbException('Too often sending ver. email.', 'Please wait for the email. The next email can be send in ' . $msg);
             }
 
             $ver->total_sent++;

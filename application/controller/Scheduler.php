@@ -50,7 +50,8 @@ class SchedulerController extends Controller
     (
         'run', 
        'run_cosmo',
-       'send_cosmo_stats'
+       'send_emails'
+    //    'send_cosmo_stats'
     );
 
     /**
@@ -1383,7 +1384,7 @@ class SchedulerController extends Controller
             $this->time = new Time();
         }
 
-        $times = explode('|', $time);
+        $times = explode('|', $time ?? "");
 
         foreach($times as $time)
         {

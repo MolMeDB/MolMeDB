@@ -288,7 +288,7 @@ class Metacentrum
             '--cosmo' => $cosmo_run->get_script_method(),
             '--temp'  => $cosmo_run->temperature,
             '--membrane' => $membrane->origin_path,
-            '--membName' => $cosmo_run->membrane->name,
+            '--membName' => $cosmo_run->membrane->idTag,
         );
 
         if($force)

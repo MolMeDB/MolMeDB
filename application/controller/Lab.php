@@ -419,6 +419,7 @@ class LabController extends Controller
             $zip_paths = [];
 
             $parental_dir = sys_get_temp_dir() . "/Dataset_" . $dataset->id;
+            $smiles_links = [];
 
             if(file_exists($parental_dir)){
                 $iterator = new RecursiveIteratorIterator(
@@ -462,6 +463,8 @@ class LabController extends Controller
 
                 // For each run, create folder, fill with files and add to the final zip
                 $dir_path = $parental_dir . "/" .$name;
+
+                $smiles_links[$name] = [];
 
                 if(!in_array($dir_path, $zip_paths))
                 {
@@ -523,6 +526,13 @@ class LabController extends Controller
                     $charge = $ion->fragment->get_charge($ion->smiles);
                     $target_folder = $dir_path.'/Q_'.$charge.'/ION_'.$ion->id.'/';
 
+                    $smiles_links[$name][] = array
+                    (
+                        'smiles' => $ion->smiles,
+                        'charge' => $charge,
+                        'ion_id' => $ion->id
+                    );
+
                     // Make folder for results
                     mkdir($target_folder,0777, true);
 
@@ -558,10 +568,13 @@ class LabController extends Controller
                             }
                         }
                         // And save again
-                        file_put_contents($target_folder . $_file, json_encode($content));
+                        file_put_contents($target_folder . $_file, json_encode($content, JSON_PRETTY_PRINT));
                     }
                 }
             }
+
+            // Add info file
+            file_put_contents($parental_dir."/smiles_links.txt", json_encode($smiles_links, JSON_PRETTY_PRINT));
 
             // Add all to the zip file
             $zip = new ZipArchive();
@@ -753,11 +766,13 @@ class LabController extends Controller
                     $message = Messages::get_by_type(Messages::TYPE_VALIDATION_WELCOME_MESSAGE);
                     $email_text = $message->email_text;
 
+                    $url = Url::verification($verification->token);
+
                     $data = array
                     (
                         'login' => $login,
                         'password' => $password,
-                        'validation_url' => Url::verification($verification->token)
+                        'validation_url' => Html::anchor($url, $url)
                     );
 
                     foreach($data as $key => $val)

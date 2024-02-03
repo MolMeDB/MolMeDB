@@ -304,7 +304,7 @@ class Run_cosmo extends Db
             }
 
             $files = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
-            $prefix = strtolower($cosmo->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$cosmo->membrane->name)) . '_' . str_replace('.', ',', $cosmo->temperature));
+            $prefix = strtolower($cosmo->get_result_folder_name());
             $prefix = trim($prefix);
 
             foreach($files as $pt)
@@ -501,7 +501,7 @@ class Run_cosmo extends Db
             $temp .= ',0';
         }
 
-        return $this->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$this->membrane->name)) . '_' . $temp;
+        return $this->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$this->membrane->idTag)) . '_' . $temp;
     }
 
     /**
@@ -537,14 +537,8 @@ class Run_cosmo extends Db
             }
 
             $pos_results = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
-            $temp = str_replace('.', ',', $this->temperature);
-
-            if(strpos($temp, ',') === false)
-            {
-                $temp .= ',0';
-            }
-
-            $req_folder = $this->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$this->membrane->name)) . '_' . $temp;
+            
+            $req_folder = $this->get_result_folder_name();
 
             foreach($pos_results as $folder)
             {

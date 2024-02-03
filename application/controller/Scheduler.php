@@ -49,9 +49,9 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run', 
-       'run_cosmo',
-       'send_emails'
-    //    'send_cosmo_stats'
+    //    'run_cosmo',
+    //    'send_emails',
+    //    'check_cosmo_results'
     );
 
     /**
@@ -178,6 +178,10 @@ class SchedulerController extends Controller
                 if($this->check_time("23:55"))
                 {
                     $this->protected_call('send_cosmo_stats', []);
+                }
+                if($this->check_time("2x:x5"))
+                {
+                    $this->protected_call('check_cosmo_results', []);
                 }
                 $this->protected_call('run_cosmo', []);
             }
@@ -481,6 +485,204 @@ class SchedulerController extends Controller
                 throw $ex;
             }
         }
+    }
+
+    /**
+     * Checks COSMO results validity
+     * - If dataset is labeled as DONE but results are not included, then change state
+     * - ....
+     */
+    public function check_cosmo_results()
+    {
+        if(!$this->config->get(Configs::COSMO_ENABLED))
+        {
+            return;
+        }
+
+        // Last checked id
+        $last_id = Config::get('scheduler_cosmo_last_checked_id');
+        $last_id = $last_id ?? 0;
+
+        $runs = Run_cosmo::instance()->where([
+            'id >' => $last_id, 
+            'forceRun IS' => null,
+            'status' => Run_cosmo::STATUS_OK])
+            ->limit(3000)->get_all();
+
+        if(!count($runs))
+        {
+            Config::set('scheduler_cosmo_last_checked_id', 0);
+            return;
+        }
+
+        $new_states = [
+            Run_cosmo::STATE_PENDING => [],
+            Run_cosmo::STATE_IONIZED => [],
+            Run_cosmo::STATE_COSMO_RUNNING => [],
+            Run_cosmo::STATE_RESULT_DOWNLOADED => [],
+            'errors' => []
+        ];
+
+        foreach($runs as $run)
+        {
+            $run = new Run_cosmo($run->id);
+            try
+            {
+                $run->beginTransaction();
+                Config::set('scheduler_cosmo_last_checked_id', $run->id);
+                $state = $run->state;
+
+                $ions = Fragment_ionized::instance()->where('id_fragment', $run->id_fragment)->get_all();
+
+                // Check, if ionization was successfull
+                if(!count($ions) && $state >= $run::STATE_IONIZED)
+                {
+                    $run->state = $run::STATE_PENDING;
+                    $run->save();
+                    $new_states[$run::STATE_PENDING][] = $run->id;
+                    $run->commitTransaction();
+                    continue;
+                }
+
+                // Check, if SDF files are generated
+                if($state >= $run::STATE_SDF_READY)
+                {
+                    foreach($ions as $ion)
+                    {
+                        // Ignore flagged ions
+                        if($ion->cosmo_flag == Fragment_ionized::COSMO_F_KILLED || $ion->cosmo_flag == Fragment_ionized::COSMO_F_RE_RUN)
+                        {
+                            continue;
+                        }
+
+                        $name = $run->id_fragment . '_' . $ion->id;
+
+                        $fileHelper = new File();
+                        $folder = $fileHelper->prepare_conformer_folder($run->id_fragment,$ion->id);
+                        $folder_files = scandir($folder);
+
+                        // Exists some conformers with this name?
+                        $exists = false;
+                        foreach($folder_files as $a)
+                        {
+                            if(strpos($a, $name) !== false)
+                            {
+                                $exists = true;
+                                break;
+                            }
+                        }
+
+                        // Missing any SDF?
+                        if(!$exists)
+                        {
+                            $run->state = $run::STATE_IONIZED;
+                            $run->save();
+                            $new_states[$run::STATE_IONIZED][] = $run->id;
+                            $run->commitTransaction();
+                            continue 2;
+                        }
+                    }
+                }
+
+                // Exists results?
+                if($state >= $run::STATE_RESULT_DOWNLOADED)
+                {
+                    $fl = new File();
+
+                    foreach($ions as $ion)
+                    {
+                        // Ignore flagged ions
+                        if($ion->cosmo_flag == Fragment_ionized::COSMO_F_KILLED || $ion->cosmo_flag == Fragment_ionized::COSMO_F_RE_RUN)
+                        {
+                            continue;
+                        }
+
+                        $path = $fl->prepare_conformer_folder($run->id_fragment, $ion->id) . 'COSMO/';
+                        $has_results = FALSE;
+                        $is_done = FALSE;
+
+                        if(!file_exists($path))
+                        {
+                            continue; // Results not exists
+                        }
+
+                        $pos_results = array_filter(scandir($path), function($a){return !preg_match('/^\./', $a);});
+                        
+                        $req_folder = $run->get_result_folder_name();
+
+                        foreach($pos_results as $folder)
+                        {
+                            if($folder != $req_folder)
+                            {
+                                continue;
+                            }
+
+                            $f_path = $path . $folder . '/';
+
+                            if(!is_dir($f_path))
+                            {
+                                continue;
+                            }
+
+                            if(file_exists($f_path . 'cosmo.xml'))
+                            {
+                                $has_results = true;
+                            }
+
+                            // Check if data were already processed
+                            if(file_exists($f_path . 'cosmo_parsed.json'))
+                            {
+                                $is_done = true;
+                                break;
+                            }
+                        }
+
+                        // Enforce new file download
+                        if(!$has_results)
+                        {
+                            $run->state = $run::STATE_COSMO_RUNNING;
+                            $run->save();
+                            $new_states[$run::STATE_COSMO_RUNNING][] = $run->id;
+                            $run->commitTransaction();
+                            continue 2;
+                        }
+
+                        // Parse data again
+                        if(!$is_done)
+                        {
+                            $run->state = $run::STATE_RESULT_DOWNLOADED;
+                            $run->save();
+                            $new_states[$run::STATE_RESULT_DOWNLOADED][] = $run->id;
+                            $run->commitTransaction();
+                            continue 2;
+                        }
+                    }
+                }
+                $run->commitTransaction();
+            }
+            catch (Exception $e)
+            {
+                $new_states['errors'][] = $run->id;
+                $run->rollbackTransaction();
+                throw $e;
+            }
+        }
+
+        // If states are not empty
+        if(count($new_states[Run_cosmo::STATE_PENDING]) || 
+            count($new_states[Run_cosmo::STATE_IONIZED]) || 
+            count($new_states[Run_cosmo::STATE_COSMO_RUNNING]) || 
+            count($new_states[Run_cosmo::STATE_RESULT_DOWNLOADED]) || 
+            count($new_states['errors'])
+        )
+            $this->send_email_to_admins("<p>Dear administrator,</p>
+<p>scheduler run `check_cosmo_results` was executed. Stats (set new states: [Run_cosmo_ids]):" .
+"<br />Pending: " . implode(',', $new_states[Run_cosmo::STATE_PENDING]) .
+"<br />Ionized: " . implode(',', $new_states[Run_cosmo::STATE_IONIZED]) .
+"<br />Running cosmo: " . implode(',', $new_states[Run_cosmo::STATE_COSMO_RUNNING]) .
+"<br />Results downloaded: " . implode(',', $new_states[Run_cosmo::STATE_RESULT_DOWNLOADED]) .
+"<br />Error occued during processing following IDs: " . implode(',', $new_states['errors']) .
+"</p><p>MolMeDB Team</p>", "MolMeDB: Scheduler run");
     }
 
     /**

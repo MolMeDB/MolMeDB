@@ -833,7 +833,7 @@ class Db extends Iterable_object
 
                 if (count(explode(' ', $attr)) > 1) 
                 {
-                    if ($val == "NULL" || trim($val) === '') {
+                    if ($val == "NULL" || trim($val ?? "") === '') {
                         $this->where .= $attr . ' NULL';
                     } 
                     else 

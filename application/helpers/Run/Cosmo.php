@@ -708,7 +708,7 @@ class Run_cosmo extends Db
 
                     // Save result
                     $out_path = $f_path . 'cosmo_parsed.json';
-                    if(!file_put_contents($out_path, json_encode($final)))
+                    if(!file_put_contents($out_path, json_encode($final), JSON_PRETTY_PRINT))
                     {
                         throw new MmdbException('Cannot save final parsed data.');
                     }

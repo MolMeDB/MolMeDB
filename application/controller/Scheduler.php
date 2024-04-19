@@ -49,6 +49,7 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run', 
+        // 'validate_substance_identifiers'
     //    'notify_computed_datasets',
     //    'send_emails',
     //    'check_cosmo_results'
@@ -1256,11 +1257,23 @@ class SchedulerController extends Controller
         foreach($toFinal as $job)
         {
             $job->process_results();
-            $job->state = Run_cosmo::STATE_RESULT_PARSED;
-            $job->save();
         }
 
         // Save final data to the DB // TODO
+        // Process final data
+        $toSave = $cosmo->where(array
+            (
+                'state' => $cosmo::STATE_RESULT_PARSED,
+                'status'  => $cosmo::STATUS_OK
+            ))
+            ->order_by('priority DESC, id', 'ASC')
+            ->limit(50)
+            ->get_all();
+
+        foreach($toSave as $job)
+        {
+            $job->save_results();
+        }
     }
 
     /**
@@ -2100,6 +2113,24 @@ class SchedulerController extends Controller
                     {
                         $smiles_o = $val_identifiers->get_active_substance_value($s->id, $val_identifiers::ID_SMILES);
 
+                        if(!$smiles_o->id)
+                        {
+                            // Try some valid/new SMILES from uploaded identifiers
+                            $smiles_os = $val_identifiers->get_all_substance_values_by_type($s->id, Validator_identifiers::ID_SMILES);
+                            
+                            foreach($smiles_os as $sm_o)
+                            {
+                                if($sm_o->state === $val_identifiers::STATE_INVALID)
+                                {
+                                    continue;
+                                }
+
+                                // Take the first one
+                                $smiles_o = $sm_o;
+                                break;
+                            }
+                        }
+
                         if($smiles_o->id) // Has SMILES?
                         {
                             // Try canonize 
@@ -2139,17 +2170,26 @@ class SchedulerController extends Controller
                                     $new->active_msg = 'Canonized by RDkit.';
                                     $new->save();
 
-                                    $log->update_state($s->id, $log->type, $log::STATE_DONE);
+                                    $smiles_o = $new;
+
+                                    // $log->update_state($s->id, $log->type, $log::STATE_DONE);
                                 }
                                 else if($canonized && $canonized === $smiles_o->value)
                                 {
                                     $smiles_o->flag = Validator_identifiers::SMILES_FLAG_CANONIZED;
                                     $smiles_o->state = $smiles_o::STATE_VALIDATED;
+                                    $smiles_o->active = Validator_identifiers::ACTIVE;
                                     $smiles_o->state_msg = 'Validated and canonized by RDkit.';
                                     $smiles_o->save();
 
-                                    $log->update_state($s->id, $log->type, $log::STATE_DONE);
+                                    // $log->update_state($s->id, $log->type, $log::STATE_DONE);
                                 }
+                            }
+                            else if($smiles_o->flag === Validator_identifiers::SMILES_FLAG_CANONIZED && 
+                                $smiles_o->active != Validator_identifiers::ACTIVE)
+                            {
+                                $smiles_o->active = Validator_identifiers::ACTIVE;
+                                $smiles_o->save();
                             }
                             
                             // Save structure fingerprint
@@ -2167,7 +2207,7 @@ class SchedulerController extends Controller
                                 }
                             }
                             
-                            if($smiles_o->flag == Validator_identifiers::SMILES_FLAG_CANONIZED && $s->fingerprint)
+                            if($smiles_o->active == Validator_identifiers::ACTIVE && $s->fingerprint)
                             {
                                 $log->update_state($s->id, $log->type, $log::STATE_DONE);
                             }
@@ -2242,8 +2282,10 @@ class SchedulerController extends Controller
                                 $new->value = $smiles;
                                 $new->flag = $canonized ? Validator_identifiers::SMILES_FLAG_CANONIZED : Validator_identifiers::SMILES_FLAG_CANONIZATION_ERROR;
                                 $new->id_user = NULL;
-                                $new->state = $source->is_credible($server_id) ? Validator_identifiers::STATE_VALIDATED : Validator_identifiers::STATE_NEW;
-                                $new->active = $new->state == $source::STATE_VALIDATED ? $source::ACTIVE : $source::INACTIVE;
+                                $new->state = Validator_identifiers::STATE_VALIDATED;
+                                $new->active = $canonized ? Validator_identifiers::ACTIVE : Validator_identifiers::INACTIVE;
+                                // $new->state = $source->is_credible($server_id) ? Validator_identifiers::STATE_VALIDATED : Validator_identifiers::STATE_NEW;
+                                // $new->active = $new->state == $source::STATE_VALIDATED ? $source::ACTIVE : $source::INACTIVE;
 
                                 $new->save();
 

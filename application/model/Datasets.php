@@ -30,6 +30,7 @@ class Datasets extends Db
     /** TYPES */
     const PUBCHEM = 1;
     const CHEMBL = 2;
+    const COSMO_LOCAL = 3;
 
 	private $enum_visibilities = array
 	(
@@ -41,7 +42,8 @@ class Datasets extends Db
     private static $valid_types = array
     (
         self::PUBCHEM,
-        self::CHEMBL
+        self::CHEMBL,
+        self::COSMO_LOCAL
     );
 
     /** Foreign keys to other tables */

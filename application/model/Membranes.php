@@ -78,7 +78,7 @@ class Membranes extends Db
         $res = array
         (
             'id' => $this->id,
-            'name' => $this->name  
+            'name' => $this->name
         );
 
         if($add_description)

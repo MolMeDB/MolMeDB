@@ -23,12 +23,14 @@ class Methods extends Db
     /** Method specical types */
     const PUBCHEM_LOGP_TYPE = 1;
     const CHEMBL_LOGP_TYPE = 2;
+    const COSMO18_TYPE = 3;
 
     /** Valid types */
     private static $valid_types = array
     (
         self::PUBCHEM_LOGP_TYPE,
         self::CHEMBL_LOGP_TYPE,
+        self::COSMO18_TYPE
     );
 
     /**

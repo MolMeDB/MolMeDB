@@ -111,14 +111,21 @@ class File
      * 
      * @return string - Path/to/folder/
      */
-    public function prepare_conformer_folder($id_fragment, $id_ion)
+    public function prepare_conformer_folder($id_fragment, $id_ion = null)
     {
         $group = intval($id_fragment / 10000);
         $group = $group*10000;
         $group .= '-' . ($group+10000); 
 
-        $path = self::FOLDER_CONFORMERS . "/" . $group . '/' . $id_fragment . "/" . $id_ion . '/';
-
+        if(!$id_ion)
+        {
+            $path = self::FOLDER_CONFORMERS . "/" . $group . '/' . $id_fragment . "/";
+        }
+        else
+        {
+            $path = self::FOLDER_CONFORMERS . "/" . $group . '/' . $id_fragment . "/" . $id_ion . '/';
+        }
+        
         if(!file_exists($path))
         {
             if(!mkdir($path, 0775, TRUE))

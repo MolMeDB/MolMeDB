@@ -6,7 +6,7 @@
  * 
  * @author Jakub Juračka
  */
-class Metacentrum 
+class Metacentrum extends Rdkit
 {
     const BASE_PATH = APP_ROOT . "scripts/";
 
@@ -61,13 +61,21 @@ class Metacentrum
     );
 
     /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    /**
      * Returns list of jobs in queue
      * 
      * @param string $username
      * @param string $password
      * @param string $queue
      * 
-     * @return Metacentrum_job[]
+     * @return array
      */
     public static function get_job_list($username, $password, $queue, $include_finished = False)
     {
@@ -78,113 +86,300 @@ class Metacentrum
 
         $server = self::$queue_servers[$queue];
 
-        $script = "python3 " . APP_ROOT . 'scripts/metacentrum_jobs.py';
+        $uri = 'cosmo/runningJobs';
+        $method = Http_request::METHOD_GET;
         $params = array
         (
-            '--username' => $username,
-            '--password' => $password,
-            '--host'     => $server 
+            'server' => $server,
+            'include_finished' => $include_finished ? 1 : 0,
+            'ignoreSFTP'    => 1
         );
 
-        if($include_finished)
+        self::$client->set_credentials($username, $password);
+
+        try
         {
-            $params['--include_finished'] = 'true';
-        }
+            $response = self::$client->request($uri, $method, $params, FALSE, 60);
 
-        foreach($params as $key => $val)
-        {
-            $script .= ' ' . $key . ' \'' . $val . '\'';
-        }
-
-        $output = [];
-
-//	$script .= ' 2>&1';
-
-        exec($script, $output, $code);
-
-	if($code != 0)
-	{
-	    echo "Invalid code number: " . $code;
-//	    print_r($output);
-	    return NULL; //Error
-	}
-
-        if(count($output) == 0)
-        {
-//	   echo "Empty outout";
-           $output = [];
-        }
-        else if(count($output) == 1)
-        {
-//	    echo "Decoding...";
-	    //print_r($output);
-            $output = json_decode($output[0]);
-	    //print_r($output);
-        }
-        else
-        {
-//	    echo "Error...";
-            return null; // Error
-        }
-
-	$total_jobs = array_shift($output);
-	$total_jobs = preg_replace('/^\s*Total\s+jobs:\s*/', "", $total_jobs);
-	if(!is_numeric($total_jobs))
-	{
-//	    echo "Invalid number of jobs: " . $total_jobs;
-	    return null;
-	}
-	$total_jobs = intval($total_jobs);
-
-        $result = [];
-        $started = false;
-        $curr_row = [];
-
-        if(!is_iterable($output)) // Empty result
-        {
-//	    echo "Not iterable content...";
-            return null;
-        }
-
-        foreach($output as $row)
-        {
-            if(!is_array($row) || !count($row))
+            if(is_object($response) && isset($response->status) && $response->status == 'ok')
             {
-                $started = false;
-                $job = new Metacentrum_job($curr_row);
-                $result[$job->job_name] = $job;
-                $curr_row = [];
-                continue;
-            }
+                $jobs = [];
 
-            if($started)
-            {
-                $row = implode(' ', $row);
-                $row = explode('=', $row);
-                if(count($row) < 2)
+                foreach($response->jobs as $job)
                 {
-                    continue;
+                    $new = new Metacentrum_job($job);
+                    // Keep only last occurance of job
+                    $jobs[$new->get_name_without_prefix()] = $new; 
                 }
 
-                $curr_row[trim($row[0])] = trim($row[1]);
-                continue;
-            }
-
-            $row = implode(' ', $row);
-
-            if(preg_match('/^\s*Job\s+Id/', $row))
-            {
-                $started = true;
-                $curr_row['job_id'] = trim(explode(':', $row)[1]);
+                return ['total' => $response->total, 'jobs' => $jobs];
             }
         }
+        catch(Exception $e)
+        {
+            throw new MmdbException('Cannot get job list.', 'Cannot get job list.', 0, $e);
+        }
 
-        return ['total' => $total_jobs, 'jobs' => $result];
+        return null;
+    }
+
+    /**
+     * Clear remote folder structure
+     * 
+     * @param int $id_fragment
+     * @param int $id_ion
+     */
+    public static function clear_remote_folder($username, $password, $id_fragment, $id_ion = NULL)
+    {
+        if(!$id_fragment)
+        {
+            return false;
+        }
+
+        $uri = 'cosmo/clearFolderStructure';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'idFragment' => $id_fragment,
+            'idIon'     => $id_ion
+        );
+
+        self::$client->set_credentials($username, $password);
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params, FALSE, 60);
+
+            if(is_object($response) && isset($response->status) && $response->status == 'ok')
+            {
+                return true;
+            }
+        }
+        catch(Exception $e)
+        {
+            throw new MmdbException($e->getMessage(), $e->getMessage(), 0, $e);
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns optimization status of all conformer files
+     * 
+     * @param int $id_fragment
+     * @param int $id_ion
+     */
+    public static function get_optimization_status($username, $password, $id_fragment, $id_ion = NULL)
+    {
+        if(!$id_fragment || !$id_ion)
+        {
+            return false;
+        }
+
+        $uri = 'cosmo/checkOptimizationStatus';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'idFragment' => $id_fragment,
+            'idIon'     => $id_ion
+        );
+
+        self::$client->set_credentials($username, $password);
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params, FALSE, 60);
+
+            if(is_object($response) && isset($response->status) && $response->status == 'ok')
+            {
+                return $response->response;
+            }
+        }
+        catch(Exception $e)
+        {
+            throw new MmdbException($e->getMessage(), $e->getMessage(), 0, $e);
+        }
+
+        return false;
+    }
+
+    /**
+     * Upload SDF to remote server
+     * 
+     * @param int $id_fragment
+     * @param int $id_ion
+     */
+    public static function upload_sdf($username, $password, $id_fragment, $id_ion)
+    {
+        if(!$id_fragment || !$id_ion)
+        {
+            return false;
+        }
+
+        $uri = 'cosmo/uploadSDF';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'idFragment' => $id_fragment,
+            'idIon'     => $id_ion
+        );
+
+        self::$client->set_credentials($username, $password);
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params, FALSE, 120);
+
+            if(is_object($response) && isset($response->status) && $response->status == 'ok')
+            {
+                return true;
+            }
+        }
+        catch(Exception $e)
+        {
+            throw new MmdbException($e->getMessage(), $e->getMessage(), 0, $e);
+        }
+
+        return false;
+    }
+
+    /**
+     * Optimize SDF files
+     * 
+     * @param int $id_fragment
+     * @param int $id_ion
+     */
+    public static function optimize_sdf($username, $password, $id_fragment, $id_ion, $reRun = False, $queue = self::QUEUE_ELIXIR, $walltime_hours = 20)
+    {
+        if(!$id_fragment || !$id_ion || !$queue)
+        {
+            return false;
+        }
+
+        $uri = 'cosmo/optimizeSDF';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'idFragment' => $id_fragment,
+            'idIon'     => $id_ion,
+            'queue'     => $queue,
+            'reRun'     => $reRun ? 1 : 0,
+            'hours'     => $walltime_hours
+        );
+
+        self::$client->set_credentials($username, $password);
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params, FALSE, 120);
+
+            if(is_object($response) && isset($response->status) && $response->status == 'ok')
+            {
+                return $response;
+            }
+        }
+        catch(Exception $e)
+        {
+            throw new MmdbException($e->getMessage(), $e->getMessage(), 0, $e);
+        }
+
+        return false;
+    }
+
+    /**
+     * Optimize SDF files
+     * 
+     * @param int $id_fragment
+     * @param int $id_ion
+     */
+    public static function run_remote_cosmo($username, $password, $id_fragment, $id_ion, $membrane_id, $temperature, $cosmo_type, $forceRun = False, $queue = self::QUEUE_ELIXIR)
+    {
+        if(!$id_fragment || !$id_ion || !$queue)
+        {
+            return false;
+        }
+
+        $uri = 'cosmo/run';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'idFragment' => $id_fragment,
+            'idIon'     => $id_ion,
+            'queue'     => $queue,
+            'membraneId' => $membrane_id,
+            'temp'      => number_format($temperature, 1),
+            'cosmoType' => $cosmo_type,
+            'forceRun'     => $forceRun ? 1 : 0
+        );
+
+        self::$client->set_credentials($username, $password);
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params, FALSE, 120);
+
+            if(is_object($response) && property_exists($response, 'status'))
+            {
+                return $response;
+            }
+        }
+        catch(Exception $e)
+        {
+            throw new MmdbException($e->getMessage(), $e->getMessage(), 0, $e);
+        }
+
+        return false;
+    }
+
+    /**
+     * Downloads cosmo results
+     * 
+     * @param int $id_fragment
+     * @param int $id_ion
+     */
+    public static function download_cosmo_results($username, $password, $id_fragment, $id_ion, $membrane_id, $temperature, $cosmo_type)
+    {
+        if(!$id_fragment || !$id_ion)
+        {
+            return false;
+        }
+
+        $uri = 'cosmo/getResults';
+        $method = Http_request::METHOD_GET;
+        $params = array
+        (
+            'idFragment' => $id_fragment,
+            'idIon'     => $id_ion,
+            'membraneId' => $membrane_id,
+            'temp'      => number_format($temperature, 1),
+            'cosmoType' => $cosmo_type,
+        );
+
+        self::$client->set_credentials($username, $password);
+
+        try
+        {
+            $response = self::$client->request($uri, $method, $params, FALSE, 120, FALSE);
+
+            if(strpos($response, 'status') !== FALSE)
+            {
+                return False;
+            }
+
+            return $response;
+        }
+        catch(Exception $e)
+        {
+            throw new MmdbException($e->getMessage(), $e->getMessage(), 0, $e);
+        }
+
+        return false;
     }
 
     /**
      * Runs cosmo on metacentrum and download results
      * 
+     * @deprecated
      * @param Run_cosmo[] $cosmo_run
      */
     public static function run_cosmo($cosmo_runs, $host, $username, $password, $queue, $limit = 20, $force = false)
@@ -242,6 +437,7 @@ class Metacentrum
             
             $err_ions = 0;
 
+            // Run cosmo for each ion
             foreach($ions as $ion)
             {
                 if($ion->cosmo_flag == Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE)
@@ -259,80 +455,152 @@ class Metacentrum
                     exec("find $fl -exec chmod 0777 {} +");
                 }
 
+                $sdfs = array_filter(scandir($path), function($a){return preg_match('/\.sdf$/', $a);});
+
+                if($force)
+                {
+                    // Remove all files on remote server
+                    if(!self::clear_remote_folder($cosmo_run->id_fragment, $ion->id))
+                    {
+                        throw new MmdbException('Cannot clear remote folder for fragment/ion: ', $cosmo_run->id_fragment . '/' . $ion->id);
+                    }
+                }
+
+                // No run yet?
+                if($ion->cosmo_flag === null)
+                {
+                    // Upload SDF files to remote server
+                    if(!self::upload_sdf($cosmo_run->id_fragment, $ion->id))
+                    {
+                        throw new MmdbException('Cannot upload SDF files for fragment/ion: ', $cosmo_run->id_fragment . '/' . $ion->id);
+                    }
+                    else
+                    {
+                        $ion->cosmo_flag = Fragment_ionized::COSMO_F_SDF_UPLOADED;
+                        $ion->save();
+                    }
+                }
+
+                if($ion->cosmo_flag === Fragment_ionized::COSMO_F_SDF_UPLOADED)
+                {
+                    // Run optimization 
+                    $response = self::optimize_sdf($cosmo_run->id_fragment, $ion->id, false, self::QUEUE_ELIXIR);
+
+                    if($response === false)
+                    {
+                        throw new MmdbException('Cannot run optimization for fragment/ion: ', $cosmo_run->id_fragment . '/' . $ion->id);
+                    }
+
+                    if(count($response->errorFiles))
+                    {
+                        $ion->cosmo_flag = count($response->errorFiles) === count($sdfs) ? Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE : Fragment_ionized::COSMO_F_OPTIMIZE_ERR_PARTIAL;
+                        $ion->save();
+                    }
+
+                    // Done?
+                    if($ion->cosmo_flag !== Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE && $response->running == 0)
+                    {
+                        if($response->hasResult > 0 && $response->hasResult >= count($sdfs)/2)
+                        {
+                            $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_DONE;
+                            $ion->save();
+                        }
+                    }
+                    else if($response->running > 0)
+                    {
+                        $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING;
+                        $ion->save();
+                    }
+                }
+
+                // RUN COSMO IF READY
+                if($ion->cosmo_flag === Fragment_ionized::COSMO_F_OPTIMIZE_DONE)
+                {
+                    self::run_remote_cosmo(
+                        $cosmo_run->id_fragment, 
+                        $ion->id, 
+                        $cosmo_run->membrane->id, 
+                        $cosmo_run->temperature, 
+                        $cosmo_run->get_script_method(),
+                        $force, 
+                        $queue
+                    );
+                }
+
                 // Add to run list
                 $script_inputs[] = $cosmo_run->id_fragment . '/' . $ion->id . '/' . $cosmo_run->fragment->get_charge($ion->smiles);
             }
         }
 
-        if(!count($valid_runs))
-        {
-            return;
-        }
+        // if(!count($valid_runs))
+        // {
+        //     return;
+        // }
 
-        $cosmo_run = $valid_runs[0];
-        $membrane = new File($cosmo_run->membrane->cosmo_file->path);
+        // $cosmo_run = $valid_runs[0];
+        // $membrane = new File($cosmo_run->membrane->cosmo_file->path);
 
-        ///////////////////////////////////
-        // Run COSMO
-        $script = "python3 " . APP_ROOT . "scripts/cosmo_pipeline.py";
-        $params = array
-        (
-            '--ions' => implode(' ', $script_inputs),
-            '--host' => $host,
-            '--username' => $username, 
-            '--password' => $password,
-            '--queue' => $queue,
-            '--cpu'  => 8,
-            '--ram'  => 32,
-            '--limit' => $limit,
-            '--cosmo' => $cosmo_run->get_script_method(),
-            '--temp'  => $cosmo_run->temperature,
-            '--membrane' => $membrane->origin_path,
-            '--membName' => $cosmo_run->membrane->idTag,
-        );
+        // ///////////////////////////////////
+        // // Run COSMO
+        // $script = "python3 " . APP_ROOT . "scripts/cosmo_pipeline.py";
+        // $params = array
+        // (
+        //     '--ions' => implode(' ', $script_inputs),
+        //     '--host' => $host,
+        //     '--username' => $username, 
+        //     '--password' => $password,
+        //     '--queue' => $queue,
+        //     '--cpu'  => 8,
+        //     '--ram'  => 32,
+        //     '--limit' => $limit,
+        //     '--cosmo' => $cosmo_run->get_script_method(),
+        //     '--temp'  => $cosmo_run->temperature,
+        //     '--membrane' => $membrane->origin_path,
+        //     '--membName' => $cosmo_run->membrane->idTag,
+        // );
 
-        if($force)
-        {
-            $params["force"] = "true";
-        }
+        // if($force)
+        // {
+        //     $params["force"] = "true";
+        // }
 
-        foreach($params as $key => $val)
-        {
-            $script .= ' ' . $key . ' \'' . $val . '\'';
-        }
+        // foreach($params as $key => $val)
+        // {
+        //     $script .= ' ' . $key . ' \'' . $val . '\'';
+        // }
 
-        # Include errors? DEBUG ONLY
-        if(DEBUG)
-        {
-            $script .= ' 2>&1';
-        }
+        // # Include errors? DEBUG ONLY
+        // if(DEBUG)
+        // {
+        //     $script .= ' 2>&1';
+        // }
 
-        $output = [];
+        // $output = [];
 
-        exec($script, $output, $code);
+        // exec($script, $output, $code);
 
-        $outputs = [];
-        $init = TRUE; $index = 0;
-        foreach($output as $o)
-        {
-            if(!strlen($o))
-            {
-                continue;
-            }
+        // $outputs = [];
+        // $init = TRUE; $index = 0;
+        // foreach($output as $o)
+        // {
+        //     if(!strlen($o))
+        //     {
+        //         continue;
+        //     }
 
-            if(($init && !preg_match('/JOB:/', $o)))
-            {
-                continue;
-            }
-            else if(preg_match('/JOB:/', $o))
-            {
-                $init = false;
-                $index = preg_replace('/\s+/', '', preg_replace('/^\s*JOB:/', '', $o));
-                $outputs[$index] = [];
-            }
+        //     if(($init && !preg_match('/JOB:/', $o)))
+        //     {
+        //         continue;
+        //     }
+        //     else if(preg_match('/JOB:/', $o))
+        //     {
+        //         $init = false;
+        //         $index = preg_replace('/\s+/', '', preg_replace('/^\s*JOB:/', '', $o));
+        //         $outputs[$index] = [];
+        //     }
 
-            $outputs[$index][] = $o;
-        }
+        //     $outputs[$index][] = $o;
+        // }
 
         // Process results
         foreach($valid_runs as $cosmo_run)
@@ -677,7 +945,7 @@ class Metacentrum
                     {
                         $cosmo_run->state = Run_cosmo::STATE_OPTIMIZATION_RUNNING;
                         $cosmo_run->save();
-			$cosmo_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+$limit hours"));
+			            $cosmo_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+$limit hours"));
                         $ion->cosmo_flag = NULL;
                         $ion->save();
                     }
@@ -917,6 +1185,7 @@ class Metacentrum_job
      */
     function __construct($data)
     {
+        $data = (array)$data;
         // Init
         $this->job_name   = isset($data["Job_Name"]) ? $data["Job_Name"] : null;
         $this->username   = isset($data["Job_Owner"]) ? explode("@", $data["Job_Owner"])[0] : null;
@@ -927,17 +1196,17 @@ class Metacentrum_job
         $this->state      = isset($data["job_state"]) ? $data["job_state"] : null;
         $this->runtime    = isset($data["resources_used.walltime"]) ? $data["resources_used.walltime"] : null;
 
-        if(strpos($this->job_name, 'MMDB_C_OPT') !== FALSE)
+        if(strpos($this->job_name ?? "", 'MMDB_C_OPT') !== FALSE)
         {
             $this->job_type = self::TYPE_OPTIMIZATION;
         }
-        else if(strpos($this->job_name, 'MMDB_COSMO') !== FALSE)
+        else if(strpos($this->job_name ?? "", 'MMDB_COSMO') !== FALSE)
         {
             $this->job_type = self::TYPE_COSMO;
         }
 
         // process job name
-        $nums = explode('_', $this->job_name);
+        $nums = explode('_', $this->job_name ?? "");
         $nums = array_reverse($nums);
 
         if(count($nums) > 2)
@@ -948,8 +1217,8 @@ class Metacentrum_job
         }
 
         // Check, if process was killed (runtime reason)
-        $max_hours = explode(':', $this->max_runtime);
-        $used_hours = explode(':', $this->runtime);
+        $max_hours = explode(':', $this->max_runtime ?? "");
+        $used_hours = explode(':', $this->runtime ?? "");
 
         if(count($max_hours) < 2 || count($used_hours) < 2)
             return;
@@ -969,6 +1238,16 @@ class Metacentrum_job
     public function is_running()
     {
         return $this->state == 'R';
+    }
+
+    /**
+     * Returns job name without prefix
+     * 
+     * @return string
+     */
+    public function get_name_without_prefix()
+    {
+        return str_replace(array('MMDB_C_OPT_', 'MMDB_COSMO_'), '', $this->job_name ?? "");
     }
 
     /**

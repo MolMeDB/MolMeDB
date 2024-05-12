@@ -9,6 +9,8 @@
  * @property integer $id_substance
  * @property float $temperature
  * @property float $charge
+ * @property integer $id_fragment_ion
+ * @property Fragment_ionized $fragment_ion
  * @property float $id_reference
  * @property string $comment
  * @property float $Position
@@ -68,6 +70,11 @@ class Interactions extends Db
 		(
 			'var' => 'reference',
 			'class' => 'Publications'		
+		),
+		'id_fragment_ion' => array
+		(
+			'var' => 'fragment_ion',
+			'class' => 'Fragment_ionized'		
 		)
 	);
 

@@ -19,12 +19,23 @@ class Fragment_ionized extends Db
     /**
      * COSMO flags
      */
+    const COSMO_F_SDF_ERROR            = -3;
+    const COSMO_F_SDF_CREATED          = -2;
+    const COSMO_F_SDF_UPLOADED         = -1;
+    const COSMO_F_OPTIMIZE_RUNNING     = 0;
     const COSMO_F_OPTIMIZE_ERR_COMLETE = 1;
     const COSMO_F_OPTIMIZE_ERR_PARTIAL = 2;
-    const COSMO_F_COSMO_DOWNLOADED     = 3;
-    const COSMO_F_COSMO_PARSED         = 4;
-    const COSMO_F_KILLED               = 5;
-    const COSMO_F_RE_RUN               = 6;
+    const COSMO_F_OPTIMIZE_DONE        = 3;    
+    // const COSMO_F_COSMO_RUNNING        = 4; //3
+    // const COSMO_F_COSMO_DONE           = 5; //3
+    // const COSMO_F_COSMO_ERROR          = 6; //3
+    // const COSMO_F_COSMO_DOWNLOADED     = 7; //3
+    // const COSMO_F_COSMO_PARSED         = 8; //4
+    // const COSMO_F_COSMO_DB_SAVED       = 20; //4
+    /** @var */
+    const COSMO_F_KILLED               = 5; //5
+    /** @var @deprecated */
+    const COSMO_F_RE_RUN               = 6; //6
 
     /**
      * Constructor

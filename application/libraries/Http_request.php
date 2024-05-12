@@ -53,6 +53,14 @@ class Http_request
 		}
 	}
 
+	/**
+	 * Sets authorization header
+	 */
+	public function set_credentials($user, $secret)
+	{
+		$token = base64_encode($user . ':' . $secret);
+		$this->curl->set_headers(array('Authorization: Basic ' .$token));
+	}
 
 	public function set_authorization_header($token)
 	{
@@ -118,7 +126,7 @@ class Http_request
 
 			foreach($data as $key => $val)
 			{
-				$url .= $key . '=' . urlencode($val) . '&';
+				$url .= $key . '=' . urlencode($val ?? "") . '&';
 			}
 
 			$url = rtrim($url, '&');

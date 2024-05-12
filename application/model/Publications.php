@@ -37,12 +37,14 @@ class Publications extends Db
     /** TYPES */
     const PUBCHEM = 1;
     const CHEMBL = 2;
+    const COSMO = 3;
 
     /** Valid types */
     private static $valid_types = array
     (
         self::PUBCHEM,
-        self::CHEMBL
+        self::CHEMBL,
+        self::COSMO
     );
 
     /**

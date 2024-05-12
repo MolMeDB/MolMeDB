@@ -134,11 +134,7 @@
                         <td><?= $cosmo->fragment->get_charge($ion->smiles) ?></td>
                         <td><?= Html::image_structure($ion->smiles) ?></td>
                         <td>
-                            <?php if($ion->cosmo_flag >= Fragment_ionized::COSMO_F_COSMO_DOWNLOADED) : ?>
-                                <?= Html::anchor('download/cosmo_results/' . $cosmo->id_fragment . '/' . $ion->id, 'Download', FALSE, TRUE) ?>
-                            <?php else : ?>
-                                In progress...
-                            <?php endif ?>
+                            <?= Html::anchor('download/cosmo_results/' . $cosmo->id_fragment . '/' . $ion->id, 'Download', FALSE, TRUE) ?>
                         </td>
                     </tr>
                 </tbody>
@@ -203,7 +199,6 @@ window.onload = function ()
 {
     <?php foreach($ion_states as $ion)
     {
-        if($ion->cosmo_flag != Fragment_ionized::COSMO_F_COSMO_PARSED) {continue;} 
         $json = json_encode(Run_cosmo::get_ion_results($ion));
         echo 'createLineChart(\'' . $json . '\', "e_chart_' . $ion->id . '");';
     } ?>

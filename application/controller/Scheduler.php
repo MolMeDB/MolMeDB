@@ -49,6 +49,7 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run', 
+        // 'run_cosmo',
         // 'validate_substance_identifiers'
     //    'notify_computed_datasets',
     //    'send_emails',
@@ -174,22 +175,22 @@ class SchedulerController extends Controller
             }
 
             // COSMO computations
-            if($this->config->get(Configs::COSMO_ENABLED) && $this->check_time("xx:x0|xx:x5"))
-            {
+            // if($this->config->get(Configs::COSMO_ENABLED) && $this->check_time("xx:x0|xx:x5"))
+            // {
                 if($this->check_time("23:55"))
                 {
                     $this->protected_call('send_cosmo_stats', []);
                 }
-                if($this->check_time("2x:x5"))
-                {
+                // if($this->check_time("2x:x5"))
+                // {
                     $this->protected_call('check_cosmo_results', []);
-                }
+                // }
                 if($this->check_time("xx:x5|xx:x0"))
                 {
                     $this->protected_call('notify_computed_datasets', []);
                 }
                 $this->protected_call('run_cosmo', []);
-            }
+            // }
 
             // Upload new datasets
             if($this->config->get(Configs::S_AUTOUPLOAD_INTERACTIONS) &&
@@ -556,6 +557,8 @@ class SchedulerController extends Controller
             Run_cosmo::STATE_IONIZED => [],
             Run_cosmo::STATE_COSMO_RUNNING => [],
             Run_cosmo::STATE_RESULT_DOWNLOADED => [],
+            Run_cosmo::STATE_RESULT_PARSED => [],
+            Run_cosmo::STATE_RESULT_DB_STORED => [],
             'errors' => []
         ];
 
@@ -686,11 +689,8 @@ class SchedulerController extends Controller
                         // Parse data again
                         if(!$is_done)
                         {
-                            $run->state = $run::STATE_RESULT_DOWNLOADED;
-                            $run->save();
-                            $new_states[$run::STATE_RESULT_DOWNLOADED][] = $run->id;
-                            $run->commitTransaction();
-                            continue 2;
+                            $run->process_results($ion->id);
+                            continue;
                         }
                     }
                 }
@@ -704,11 +704,65 @@ class SchedulerController extends Controller
             }
         }
 
+        // // Label cosmo runs with some ions with parsed results
+        $toCheck = Run_cosmo::instance()->queryAll(
+            "SELECT DISTINCT rc.*
+            FROM run_cosmo rc
+            LEFT JOIN fragments_ionized fi ON fi.id_fragment = rc.id_fragment AND fi.cosmo_flag = ?
+            WHERE rc.state = ?
+            ", array(
+                Fragment_ionized::COSMO_F_OPTIMIZE_DONE,
+                Run_cosmo::STATE_RESULT_DOWNLOADED
+                )
+            );
+
+        foreach($toCheck as $r)
+        {
+            $run = new Run_cosmo($r->id);
+            $ions = Fragment_ionized::instance()->where('id_fragment', $run->id_fragment)->get_all();
+            $pass = True;
+
+            foreach($ions as $ion)
+            {
+                if($ion->cosmo_flag == Fragment_ionized::COSMO_F_KILLED || 
+                    $ion->cosmo_flag == Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE || 
+                    $ion->cosmo_flag == Fragment_ionized::COSMO_F_SDF_ERROR)
+                {
+                    continue;
+                }
+
+                if(!isset(Run_cosmo::get_ion_results($ion)[$r->id]))
+                {   
+                    $pass = false;
+                }
+            }
+
+            if($pass)
+            {
+                $run->state = Run_cosmo::STATE_RESULT_PARSED;
+                $run->save();
+
+                $new_states[Run_cosmo::STATE_RESULT_PARSED][] = $run->id;
+            }
+        }
+
+        // Finally, save data to DB
+        $to_save = Run_cosmo::instance()
+            ->where('state', Run_cosmo::STATE_RESULT_PARSED)
+            ->get_all();
+        
+        foreach($to_save as $run)
+        {
+            $run->save_results();
+        }
+
         // If states are not empty
         if(count($new_states[Run_cosmo::STATE_PENDING]) || 
             count($new_states[Run_cosmo::STATE_IONIZED]) || 
             count($new_states[Run_cosmo::STATE_COSMO_RUNNING]) || 
             count($new_states[Run_cosmo::STATE_RESULT_DOWNLOADED]) || 
+            count($new_states[Run_cosmo::STATE_RESULT_PARSED]) || 
+            count($new_states[Run_cosmo::STATE_RESULT_DB_STORED]) || 
             count($new_states['errors'])
         )
             $this->send_email_to_admins("<p>Dear administrator,</p>
@@ -717,6 +771,7 @@ class SchedulerController extends Controller
 "<br />Ionized: " . implode(',', $new_states[Run_cosmo::STATE_IONIZED]) .
 "<br />Running cosmo: " . implode(',', $new_states[Run_cosmo::STATE_COSMO_RUNNING]) .
 "<br />Results downloaded: " . implode(',', $new_states[Run_cosmo::STATE_RESULT_DOWNLOADED]) .
+"<br />Results parsed: " . implode(',', $new_states[Run_cosmo::STATE_RESULT_PARSED]) .
 "<br />Error occued during processing following IDs: " . implode(',', $new_states['errors']) .
 "</p><p>MolMeDB Team</p>", "MolMeDB: Scheduler run");
     }
@@ -740,6 +795,13 @@ class SchedulerController extends Controller
 
         $cosmo = new Run_cosmo();
         $rdkit = new Rdkit();
+        $metacentrum = new Metacentrum();
+
+        $u = Users_metacentrum::instance()->where('enabled', '1')->get_one();
+        $metacentrum = new Metacentrum();
+        $username = $u->login;
+        $password = Users_metacentrum::unhash($u->password);
+        $queue = Metacentrum::QUEUE_ELIXIR;
         
         // At first, delete what should be deleted
         $to_delete = $cosmo->where(array
@@ -755,34 +817,50 @@ class SchedulerController extends Controller
             try
             {
                 Db::beginTransaction();
-                // Remove all stored files
-                $f = new File();
-                $f->remove_conformer_folder($record->id_fragment);
 
-                // Remove all ionized states
-                $fo = Fragment_ionized::instance()->where('id_fragment', $record->id_fragment)->get_all();
-                
-                foreach($fo as $f)
+                $has_options = $cosmo->where(array
+                    (
+                        'id_fragment' => $record->id_fragment,
+                        'status !='   => $cosmo::STATUS_REMOVE
+                    ))->get_all();
+
+                if(count($has_options))
                 {
-                    $f->delete();
+                    // Just delete record and do not affect other jobs
+                    $record->delete();
                 }
-
-                // Remove ionization info
-                $r = Run_ionization::instance()->where('id_fragment', $record->id_fragment)->get_one();
-
-                if($r->id)
+                else
                 {
-                    $r->delete();
-                }
+                    // Remove all stored files
+                    $f = new File();
+                    $f->remove_conformer_folder($record->id_fragment);
 
-                // Finaly remove cosmo job record
-                $record->delete();
+                    // Remove all ionized states
+                    $fo = Fragment_ionized::instance()->where('id_fragment', $record->id_fragment)->get_all();
+                    
+                    foreach($fo as $f)
+                    {
+                        $f->delete();
+                    }
+
+                    // Remove ionization info
+                    $r = Run_ionization::instance()->where('id_fragment', $record->id_fragment)->get_one();
+
+                    if($r->id)
+                    {
+                        $r->delete();
+                    }
+
+                    // Finaly remove cosmo job record
+                    $record->delete();
+                }
                 
                 Db::commitTransaction();
             }
             catch(MmdbException $e)
             {
                 Db::rollbackTransaction();
+                $e->log();
             }
         }
 
@@ -807,16 +885,12 @@ class SchedulerController extends Controller
                     // Clear data and start again
                     $f = new File();
                     $f->remove_conformer_folder($record->id_fragment);
-                    // Remove all ionized states
-                    $fo = Fragment_ionized::instance()->where('id_fragment', $record->id_fragment)->get_all();
-                    
-                    foreach($fo as $f)
-                    {
-                        $f->delete();
-                    }
 
-                    // Remove ionization info
-                    $r = Run_ionization::instance()->where('id_fragment', $record->id_fragment)->get_one();
+                    // // Remove remote folder structure
+                    if($metacentrum->clear_remote_folder($username, $password, $record->id_fragment) === false)
+                    {
+                        throw new MmdbException("Failed to clear remote folder structure", "Failed to clear remote folder structure", 0);
+                    }
 
                     if($r->id)
                     {
@@ -833,7 +907,9 @@ class SchedulerController extends Controller
             }
             catch(MmdbException $e)
             {
+                echo $e->getMessage();
                 Db::rollbackTransaction();
+                $e->log();
             }
         }
 
@@ -875,9 +951,11 @@ class SchedulerController extends Controller
                 
                 if($ion_states === false)
                 {
+                    // Todo: Only increase error count and try again in next iteration
                     $text = 'Cannot get fragment [id:' . $record->id_fragment . '] ionization states.';
                     $record->log = $text;
                     $record->status = $cosmo::STATUS_ERROR;
+                    $record->error_count = 1;
                     $record->save();
                     continue;
                 }
@@ -904,22 +982,24 @@ class SchedulerController extends Controller
 
                         $fi->id_fragment = $record->fragment->id;
                         $fi->smiles = $smiles;
+                        $fi->cosmo_flag = NULL;
                         $fi->save();
                     } 
 
                     // + add molecule as is
-                    $exists = Fragment_ionized::instance()->where('smiles LIKE', $run_i->fragment->smiles)->get_one();
+                    $exists = Fragment_ionized::instance()->where('smiles LIKE', $record->fragment->smiles)->get_one();
 
                     if(!$exists->id)
                     {
                         $fi = new Fragment_ionized();
 
-                        $fi->id_fragment = $run_i->id_fragment;
-                        $fi->smiles = $smiles;
+                        $fi->id_fragment = $record->id_fragment;
+                        $fi->smiles = $record->fragment->smiles;
                         $fi->save();
                     }
 
                     $record->state = $cosmo::STATE_IONIZED;
+                    $record->error_count = NULL;
                     $record->save();
 
                     Db::commitTransaction();
@@ -936,6 +1016,8 @@ class SchedulerController extends Controller
                 // Generate conformers and save SDF files
                 $ion_states = Fragment_ionized::instance()->where('id_fragment', $record->id_fragment)->get_all();
 
+                $has_some_SDFs = False;
+
                 foreach($ion_states as $ion)
                 {
                     $name = $record->id_fragment . '_' . $ion->id;
@@ -949,9 +1031,10 @@ class SchedulerController extends Controller
                         // Exists some conformers with this name?
                         if(strpos($a, $name) !== false)
                         {
-                            // Conformer exists
-                            $record->state = $cosmo::STATE_SDF_READY;
-                            $record->save();
+                            // Conformers exists
+                            $ion->cosmo_flag = Fragment_ionized::COSMO_F_SDF_CREATED;
+                            $ion->save();
+                            $has_some_SDFs = true;
                             continue 2;
                         }
                     }
@@ -961,10 +1044,8 @@ class SchedulerController extends Controller
 
                     if($confs === false)
                     {
-                        $text = 'Cannot generate conformers.';
-                        $record->log = $text;
-                        $record->status = $cosmo::STATUS_ERROR;
-                        $record->save();
+                        $ion->cosmo_flag = Fragment_ionized::COSMO_F_SDF_ERROR;
+                        $ion->save();
                         continue;
                     }
 
@@ -977,10 +1058,27 @@ class SchedulerController extends Controller
                         }
                         fclose($f);
                     }
+
+                    if(count($confs))
+                    {
+                        $ion->cosmo_flag = Fragment_ionized::COSMO_F_SDF_CREATED;
+                        $ion->save();
+                        $has_some_SDFs = true;
+                    }
                 }
 
-                $record->state = $cosmo::STATE_SDF_READY;
-                $record->save();
+                if($has_some_SDFs)
+                {
+                    $record->state = $cosmo::STATE_SDF_READY;
+                    $record->save();
+                }
+                else
+                {
+                    $text = 'Cannot generate conformers.';
+                    $record->log = $text;
+                    $record->status = $cosmo::STATUS_ERROR;
+                    $record->save();
+                }
             }
         }
 
@@ -988,15 +1086,9 @@ class SchedulerController extends Controller
         {
             $f = new File();
 
-            $u = Users_metacentrum::instance()->where('enabled', '1')->get_one();
-            $metacentrum = new Metacentrum();
-            $username = $u->login;
-            $password = Users_metacentrum::unhash($u->password);
-            $queue = Metacentrum::QUEUE_ELIXIR;
-            $host = $this->config->get(Configs::COSMO_URL);
-
             // Get jobs on metacentrum
             $jobs = $metacentrum->get_job_list($username, $password, $queue, true);
+            $raw_jobs = $jobs['jobs'];
 
             if($jobs === NULL)
             {
@@ -1008,18 +1100,30 @@ class SchedulerController extends Controller
                 throw new MmdbException('Invalid structure of jobs.');
             }
 
-            $running_jobs_total = $jobs['total'];
             $jobs = $jobs['jobs'];
-
-            // Update info
-            Config::set(Configs::COSMO_TOTAL_RUNNING, $running_jobs_total);
-            Config::set(Configs::COSMO_LAST_UPDATE, date("Y-m-d H:i"));
 
             // Exclude done jobs
             $killed = [];
             $t = $jobs;
+            $running_jobs_total = 0;
+            $to_recompute = [];
+            $rerun_success = [];
+
             foreach($t as $key => $job)
             {
+                // Check, if some job was killed before execution
+                if($job->runtime === '00:00:00' && $job->is_finished())
+                {
+                    // Save the LAST known info about given ion
+                    $to_recompute[$job->id_ion] = $job;
+                    continue;
+                }
+
+                if(isset($to_recompute[$job->id_ion]))
+                {
+                    unset($to_recompute[$job->id_ion]);
+                }
+
                 if($job->is_killed())
                 {
                     $killed[] = $job;
@@ -1028,7 +1132,37 @@ class SchedulerController extends Controller
                 {
                     unset($jobs[$key]);
                 }
+                else if($job->is_running())
+                {
+                    $running_jobs_total++;
+                }
             }
+
+            // Set ions to recomputation
+            foreach($to_recompute as $ion_id => $job)
+            {
+                $ion = new Fragment_ionized($ion_id);
+                if(!$ion->id)
+                {
+                    continue;
+                }
+
+                // Set ion to recompute
+                if($job->job_type == Metacentrum_job::TYPE_OPTIMIZATION)
+                {
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_SDF_CREATED;
+                    $ion->save();
+                }
+                else if($job->job_type == Metacentrum_job::TYPE_COSMO)
+                {
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_DONE;
+                    $ion->save();
+                }
+            }
+
+            // Update info
+            Config::set(Configs::COSMO_TOTAL_RUNNING, $running_jobs_total);
+            Config::set(Configs::COSMO_LAST_UPDATE, date("Y-m-d H:i"));
 
             // Run all killed again if can
             $to_run_again = array
@@ -1037,7 +1171,6 @@ class SchedulerController extends Controller
                 80 => [],
                 120 => []
             );
-            $to_run_again_cosmo = array();
             foreach($killed as $job)
             {
                 $ion = $job->get_db_ion();
@@ -1050,20 +1183,37 @@ class SchedulerController extends Controller
                 
                 if($job->job_type == Metacentrum_job::TYPE_COSMO)
                 {
-                    $db_run->status = Run_cosmo::STATUS_ERROR;
-                    $db_run->save();
+                    // Todo: Run again with bigger walltime
+                    // Metacentrum::run_remote_cosmo(
+                    //     $db_run->id_fragment,
+                    //     $ion->id,
+                    //     $db_run->id_membrane,
+                    //     $db_run->temperature,
+                    //     $db_run->get_script_method(),
+                    //     False,
+                    //     $queue
+                    // );
+
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_KILLED;
+                    $ion->save();
                     continue;
                 }
 
-                $to_run_again_cosmo[] = $db_run;
+                foreach(array_keys($to_run_again) as $hours)
+                {
+                    if(!isset($to_run_again[$hours][$db_run->id_fragment]))
+                    {
+                        $to_run_again[$hours][$db_run->id_fragment] = [];
+                    }
+                }
 
                 if($job->max_runtime == '20:00:00')
                 {
-                    $to_run_again[40][] = $ion->id;
+                    $to_run_again[40][$db_run->id_fragment][] = $ion->id;
                 }
                 elseif($job->max_runtime == '40:00:00')
                 {
-                    $to_run_again[80][] = $ion->id;
+                    $to_run_again[80][$db_run->id_fragment][] = $ion->id;
                 }
                 elseif($job->max_runtime == '120:00:00')
                 {
@@ -1072,7 +1222,7 @@ class SchedulerController extends Controller
                 }
                 else
                 {
-                    $to_run_again[120][] = $ion->id;
+                    $to_run_again[120][$db_run->id_fragment][] = $ion->id;
                 }
             }
 
@@ -1089,15 +1239,192 @@ class SchedulerController extends Controller
                 unset($to_run_again[120]);
             }
 
-            foreach($to_run_again as $hours => $ion_ids)
+            foreach($to_run_again as $hours => $A)
             {
-                $metacentrum->run_failed_cosmo($to_run_again_cosmo, $ion_ids, $host, $username, $password, $queue, $hours);
+                foreach($A as $id_fragment => $ids_ions)
+                {
+                    foreach($ids_ions as $id_ion)
+                    {
+                        $response = Metacentrum::optimize_sdf($username, $password, $id_fragment, $id_ion, True, $queue, $hours);
+                        if($response !== false)
+                        {
+                            $ion = new Fragment_ionized($id_ion);
+                            if($response->running_total > 0)
+                            {
+                                $rerun_success[] = $ion->id;
+                                $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING;
+                                $ion->save();
+                                $running_jobs_total += $response->running_new;
+                            }
+                            else if($response->hasResult > 0)
+                            {
+                                $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_DONE;
+                                $ion->save();
+                            }
+                            // Set cosmo run states
+                            $crs = Run_cosmo::instance()->where(array
+                            (
+                                'id_fragment' => $id_fragment,
+                                'status'      => Run_cosmo::STATUS_OK,
+                                'state <'     => Run_cosmo::STATE_COSMO_RUNNING
+                            ))->get_all();
+
+                            foreach($crs as $cr)
+                            {
+                                $cr->state = Run_cosmo::STATE_OPTIMIZATION_RUNNING;
+                                $cr->next_remote_check = date("Y-m-d H:i:s", strtotime("+$hours hours"));
+                                $cr->save();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check, which ions are still running and which are (not) optimized already
+            $to_check = Db::instance()->queryAll(
+                "SELECT DISTINCT fi.id_fragment, fi.id as id_ion
+                    FROM run_cosmo rn
+                    JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag = ? OR fi.cosmo_flag = ?)
+                    WHERE rn.status = ? AND next_remote_check <= ?
+                    LIMIT 100"
+            , array(
+                Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING,
+                Fragment_ionized::COSMO_F_OPTIMIZE_ERR_PARTIAL,
+                Run_cosmo::STATUS_OK,
+                date("Y-m-d H:i:s")
+            ));
+
+            foreach($to_check as $cosmo_run)
+            {
+                $files_status = $metacentrum->get_optimization_status($username, $password, $cosmo_run->id_fragment, $cosmo_run->id_ion);
+
+                $crs = Run_cosmo::instance()->where('id_fragment', $cosmo_run->id_fragment)->get_all();
+
+                if($files_status === false)
+                {
+                    $this->print('Cannot get optimization status for conf/ion: ' . $cosmo_run->id_fragment . '/' . $cosmo_run->id_ion);
+                    $cosmo_run->next_remote_check = date("Y-m-d H:i:s", strtotime("+5 hours"));
+                    $cosmo_run->save();
+                    continue;
+                }
+
+                $files_status = (array)$files_status;
+                $path = $f->prepare_conformer_folder($cosmo_run->id_fragment, $cosmo_run->id_ion);
+                $local_files = array_filter(scandir($path), function($file) { return preg_match('/\.sdf$/', $file); });
+
+                if(!count($local_files) || !count($files_status))
+                {
+                    foreach($crs as $cr)
+                    {
+                        $cr->forceRun = 1;
+                        $cr->save();
+                    }
+                    continue;
+                }
+
+                $is_running = false;
+                $failed = 0;
+                $checked = 0;
+
+                foreach($local_files as $l_file)
+                {
+                    $l_name = str_replace('.sdf', '', $l_file);
+
+                    if(!isset($files_status[$l_name]))
+                    {
+                        continue;
+                    }
+
+                    $checked++;
+
+                    if($files_status[$l_name]->isRunning)
+                    {
+                        // Check, if it is true
+                        foreach($raw_jobs as $remote_job)
+                        {
+                            if($l_name == $remote_job->get_name_without_prefix())
+                            {
+                                if($remote_job->is_running() || in_array($remote_job->get_db_ion()->id, $rerun_success))
+                                {
+                                    $is_running = true;
+                                    break 2;
+                                }
+                            }
+                        }
+                        $failed++;
+                        break;
+                    }
+
+                    if(!$files_status[$l_name]->isDone && $files_status[$l_name]->hasHistory)
+                    {
+                        $failed++;
+                    }
+                }
+
+                $ion = new Fragment_ionized($cosmo_run->id_ion);
+                
+                if($is_running)
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING;
+                elseif(!$failed)
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_DONE;
+                elseif($failed == $checked)
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE;
+                else
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_ERR_PARTIAL;
+                $ion->save();
+
+                foreach($crs as $cr)
+                {
+                    $cr->next_remote_check = date("Y-m-d H:i:s", strtotime("+10 hours"));
+                    $cr->save();
+                }
+            }
+
+            // Set Job state, if all ions are running
+            $to_check = Db::instance()->queryAll(
+                "SELECT DISTINCT rn.id
+                    FROM run_cosmo rn
+                    LEFT JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND fi.cosmo_flag < ?
+                    WHERE rn.status = ? AND rn.state < ? AND fi.id IS NULL
+                ", array(
+                    Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING,
+                    Run_cosmo::STATUS_OK,
+                    Run_cosmo::STATE_OPTIMIZATION_RUNNING
+                )
+            );
+
+            foreach($to_check as $cosmo_run)
+            {
+                $cr = new Run_cosmo($cosmo_run->id);
+                $cr->state = Run_cosmo::STATE_OPTIMIZATION_RUNNING;
+                $cr->save();
+            }
+
+            // Check, if some RUNs has only error IONs
+            $error_runs = Db::instance()->queryAll(
+                "SELECT DISTINCT rn.id
+                    FROM run_cosmo rn
+                    LEFT JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag NOT IN (?,?,?) OR fi.cosmo_flag IS NULL)
+                    WHERE fi.id IS NULL
+                    LIMIT 100"
+            , array(
+                Fragment_ionized::COSMO_F_SDF_ERROR,
+                Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE,
+                Fragment_ionized::COSMO_F_KILLED
+            ));
+
+            foreach($error_runs as $er)
+            {
+                $l = new Run_cosmo($er->id);
+                $l->status = Run_cosmo::STATUS_ERROR;
+                $l->save();
             }
 
             // stop if queue is full
             if($running_jobs_total >= $max_metacentrum_queue_items)
             {
-                throw new MmdbException('Maximum jobs in queue.');
+                $this->print('Maximum jobs in queue.');
+                return;
             }
 
             $remaining_jobs = $max_metacentrum_queue_items - $running_jobs_total;
@@ -1126,18 +1453,19 @@ class SchedulerController extends Controller
                 }
 
                 // Prefere COSMO RUNs
-                $candidates = Db::instance()->queryAll(
+                $toRunCosmo = Db::instance()->queryAll(
                     "SELECT t.*, COUNT(t.id) as total_ions
                     FROM (
                         SELECT rn.*
                         FROM run_cosmo rn
-                        JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag != ? OR fi.cosmo_flag IS NULL)
-                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ? AND next_remote_check <= ?
+                        JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag >= ? AND fi.cosmo_flag <= ?)
+                        WHERE rn.state = ? AND rn.status = ? AND method = ? AND temperature = ? AND id_membrane = ? AND next_remote_check <= ?
                         LIMIT ?) as t
                     GROUP BY t.id
                     ORDER BY priority DESC, method DESC, last_update ASC"
                 , array(
-                    Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE,
+                    Fragment_ionized::COSMO_F_OPTIMIZE_ERR_PARTIAL,
+                    Fragment_ionized::COSMO_F_OPTIMIZE_DONE,
                     Run_cosmo::STATE_OPTIMIZATION_RUNNING,
                     Run_cosmo::STATUS_OK,
                     $setting['method'],
@@ -1145,134 +1473,295 @@ class SchedulerController extends Controller
                     $setting['id_membrane'],
                     date("Y-m-d H:i:s"),
                     $remaining_jobs
-                ), FALSE);
+                ));
 
-                foreach($candidates as $c)
+                foreach($toRunCosmo as $cr)
                 {
-                    $remaining_jobs -= $c['total_ions'];
+                    $c_run = new Run_cosmo($cr->id);
+                    $ions = Fragment_ionized::instance()->where('id_fragment', $c_run->id_fragment)->get_all();
+
+                    // Run on remote server
+                    $all_running = count($ions) > 0;
+                    $all_downloaded = count($ions) > 0;
+                    foreach($ions as $ion)
+                    {
+                        // Check if results already exists
+                        if(in_array($cr->id, Run_cosmo::check_ion_results($ion)))
+                        {
+                            continue;
+                        }
+
+                        $all_downloaded = false;
+
+                        $response = Metacentrum::run_remote_cosmo(
+                            $username,
+                            $password,
+                            $c_run->id_fragment,
+                            $ion->id,
+                            $c_run->id_membrane,
+                            $c_run->temperature,
+                            $c_run->get_script_method(),
+                            False,
+                            Metacentrum::QUEUE_ELIXIR
+                        );
+
+                        if($response === false)
+                        {
+                            // Error occured
+                            $this->print('Error running COSMO on remote server for cosmo run ' . $c_run->id . ' and ion ' . $ion->id . '.');
+                            $all_running = false;
+                            continue;
+                        }
+
+                        // Error message from remote server
+                        if($response->status !== 'ok')
+                        {
+                            $all_running = false;
+                            if($response->status === 'waiting')
+                            {
+                                $this->print('Waiting for COSMO on remote server for cosmo run ' . $c_run->id . ' and ion ' . $ion->id . ':' . $response->message);
+                                $c_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+5 hours"));
+                                $c_run->save();
+                                continue;
+                            }
+                            else
+                            {
+                                $this->print('Unspecified error on remote server for cosmo run ' . $c_run->id . ' and ion ' . $ion->id . ':' . $response->message);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            // if (strpos($response->message, 'already exists') !== false)
+                            // {
+                            //     $ion->cosmo_flag = Fragment_ionized::COSMO_F_COSMO_DONE;
+                            //     $ion->save();
+                            // }
+                            // else
+                            // {
+                            if (strpos($response->message, 'submitted') !== false)
+                            {
+                                // New job submited, update counter
+                                $remaining_jobs--;
+                            }
+                            // $ion->cosmo_flag = Fragment_ionized::COSMO_F_COSMO_RUNNING;
+                            // $ion->save();
+
+                            $c_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+5 hours"));
+                            $c_run->save();
+                        }
+                        // }
+                    }
+
+                    if($all_downloaded)
+                    {
+                        $c_run->state = Run_cosmo::STATE_RESULT_DOWNLOADED;
+                        $c_run->status = Run_cosmo::STATUS_OK;
+                    }
+                    else if($all_running)
+                    {
+                        $c_run->state = Run_cosmo::STATE_COSMO_RUNNING;
+                        $c_run->status = Run_cosmo::STATUS_OK;
+                    }
+                   
+                    $c_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+5 hours"));
+                    $c_run->save();
                 }
 
-                // If remaining space, fill new optimization jobs
-                $c2 = Db::instance()->queryAll(
-                    "SELECT t.*, COUNT(t.id) as total_ions
+                if($remaining_jobs <= 0)
+                {
+                    return;
+                }
+
+                // If remaining space, fill in with a new optimization jobs
+                $toOpmitize = Db::instance()->queryAll(
+                    "SELECT t.*
                     FROM (
                         SELECT rn.*
                         FROM run_cosmo rn
-                        JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag != ? OR fi.cosmo_flag IS NULL)
-                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ? AND next_remote_check <= ?
+                        JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag = ? OR fi.cosmo_flag = ?)
+                        WHERE rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ? AND next_remote_check <= ?
                         LIMIT ?) as t
                     GROUP BY t.id
                     ORDER BY priority DESC, method DESC, last_update ASC"
                 , array(
-                    Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE,
-                    Run_cosmo::STATE_SDF_READY,
+                    Fragment_ionized::COSMO_F_SDF_UPLOADED,
+                    Fragment_ionized::COSMO_F_SDF_CREATED,
                     Run_cosmo::STATUS_OK,
                     $setting['method'],
                     $setting['temperature'],
                     $setting['id_membrane'],
                     date("Y-m-d H:i:s"),
                     $remaining_jobs
-                ),FALSE);
+                ));
 
-                $t = $c2;
-
-                foreach($c2 as $k => $c)
+                foreach($toOpmitize as $cr)
                 {
-                    if($remaining_jobs < 0)
+                    $c_run = new Run_cosmo($cr->id);
+                    $ions = Fragment_ionized::instance()->where('id_fragment', $c_run->id_fragment)->get_all();
+
+                    // Upload SDF files to remote server
+                    foreach($ions as $ion)
                     {
-                        unset($t[$k]);
+                        if($ion->cosmo_flag !== Fragment_ionized::COSMO_F_SDF_CREATED)
+                        {
+                            continue;
+                        }
+
+                        if(Metacentrum::upload_sdf($username, $password, $c_run->id_fragment, $ion->id))
+                        {
+                            $ion->cosmo_flag = Fragment_ionized::COSMO_F_SDF_UPLOADED;
+                            $ion->save();
+                        }
                     }
-                    $ion_states = Fragment_ionized::instance()->where('id_fragment', $c['id_fragment'])->get_all();
-                    $fileHelper = new File();
-                    foreach($ion_states as $ion)
+
+                    // Run optimization
+                    foreach($ions as $ion)
                     {
-                        $folder = $fileHelper->prepare_conformer_folder($c['id_fragment'],$ion->id);
-                        $folder_files = scandir($folder);
-                        $folder_files = array_filter($folder_files, function($a){return preg_match('/\.sdf$/', $a);});
-                        $remaining_jobs -= count($folder_files);
+                        // Only prepared IONs
+                        if($ion->cosmo_flag !== Fragment_ionized::COSMO_F_SDF_UPLOADED)
+                        {
+                            continue;
+                        }
+
+                        $response = Metacentrum::optimize_sdf(
+                            $username, 
+                            $password, 
+                            $c_run->id_fragment, 
+                            $ion->id, 
+                            $c_run->forceRun == 2, 
+                            Metacentrum::QUEUE_ELIXIR);
+                        
+                        if($response !== false)
+                        {
+                            if($response->running_total > 0)
+                            {
+                                $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING;
+                                $ion->save();
+
+                                $c_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+20 hours"));
+                                $c_run->save();
+
+                                $remaining_jobs -= $response->running_new;
+                            }
+                            else if($response->hasResult > 0)
+                            {
+                                $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_DONE;
+                                $ion->save();
+                            }
+                        }
+                        else
+                        {
+                            print('Cannot run optimization for fragment/ion: ' . $c_run->id_fragment . '/' . $ion->id . "\n");
+                        }
                     }
+
+                    $c_run->forceRun = NULL;
+                    $c_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+20 hours"));
+                    $c_run->save();
                 }
 
-                $candidates = array_merge($candidates, $t);
-
-                $candidates = array_merge($candidates, Db::instance()->queryAll(
-                    "SELECT t.*, COUNT(t.id) as total_ions
-                    FROM (
-                        SELECT rn.*
-                        FROM run_cosmo rn
-                        JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag != ? OR fi.cosmo_flag IS NULL)
-                        WHERE rn.state = ? AND rn.status = ? AND method LIKE ? AND temperature LIKE ? AND id_membrane = ? AND next_remote_check <= ?
-                        LIMIT ?) as t
-                    GROUP BY t.id
-                    ORDER BY priority DESC, method DESC, last_update ASC"
+                // Download COSMO results
+                $toDownload = Db::instance()->queryAll(
+                "SELECT DISTINCT rn.*
+                    FROM run_cosmo rn
+                    LEFT JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND fi.cosmo_flag NOT IN (?,?,?)
+                    WHERE rn.state = ? AND rn.status = ? AND method = ? AND temperature LIKE ? AND id_membrane = ?
+                        AND rn.next_remote_check <= ?
+                    ORDER BY priority DESC, method DESC, last_update ASC
+                    LIMIT ?"
                 , array(
+                    Fragment_ionized::COSMO_F_SDF_ERROR,
                     Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE,
+                    Fragment_ionized::COSMO_F_KILLED,
                     Run_cosmo::STATE_COSMO_RUNNING,
                     Run_cosmo::STATUS_OK,
                     $setting['method'],
                     $setting['temperature'],
                     $setting['id_membrane'],
-                    date("Y-m-d H:i:s"),
-                    max($remaining_jobs, 50)
-                ), FALSE));
+                    date('Y-m-d H:i:s'),
+                    100
+                ));
 
-                // Add all without ions to recompute
-                $candidates = array_merge($candidates, Db::instance()->queryAll(
-                    "   SELECT rn.*
-                        FROM run_cosmo rn
-                        LEFT JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment
-                        WHERE fi.id IS NULL
-                    "
-                ,array(), FALSE));
-
-                $t = $candidates;
-                $candidates = [];
-
-                foreach ($t as $c)
+                foreach($toDownload as $cr)
                 {
-                    $cddt = new Run_cosmo($c['id']);
-                    $cddt->last_update = date('Y-m-d H:i:s');
-                    $cddt->save();
-                    $candidates[] = $cddt;
-                }
+                    $c_run = new Run_cosmo($cr->id);
+                    $ions = Fragment_ionized::instance()->where('id_fragment', $c_run->id_fragment)->get_all();
 
-                $metacentrum->run_cosmo($candidates, $host, $username, $password, $queue);
+                    $all_downloaded = True;
+
+                    foreach($ions as $ion)
+                    {
+                        // Check if results already exists
+                        if(in_array($cr->id, Run_cosmo::check_ion_results($ion)))
+                        {
+                            continue;
+                        }
+
+                        $file_content = Metacentrum::download_cosmo_results(
+                            $username,
+                            $password,
+                            $c_run->id_fragment, 
+                            $ion->id, 
+                            $c_run->id_membrane, 
+                            $c_run->temperature,
+                            $c_run->get_script_method());
+
+                        // Still waiting for results?
+                        if($file_content === FALSE)
+                        {
+                            // $ion->cosmo_flag = Fragment_ionized::COSMO_F_COSMO_RUNNING;
+                            // $ion->save();
+                            $all_downloaded = false;
+                            continue;
+                        }
+
+                        $file_model = new File();
+                        $path = $file_model->prepare_conformer_folder($c_run->id_fragment, $ion->id);
+                        $path .= 'COSMO/' . $c_run->get_result_folder_name();
+
+                        if(!file_exists($path) && !mkdir($path, 0777, true))
+                        {
+                            throw new MmdbException('Cannot create folder: ' . $path);
+                        }
+
+                        $tmp = fopen($path . "/remote_results.zip", "wb");
+                        fwrite($tmp, $file_content);
+                        fclose($tmp);
+
+                        //Unzip results
+                        $zip = new ZipArchive();
+
+                        if ($zip->open($path . "/remote_results.zip") === TRUE) 
+                        {
+                            $zip->extractTo($path . "/", "cosmo.xml");
+                            $zip->close();
+                        }
+                        else
+                        {
+                            throw new MmdbException("Cannot open zip file: " . $path . "/remote_results.zip");
+                        }
+
+                    }
+
+                    if($all_downloaded)
+                    {
+                        $c_run->state = Run_cosmo::STATE_RESULT_DOWNLOADED;
+                        $c_run->save();
+                    }
+                    else
+                    {
+                        // Wait before next run
+                        $c_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+10 hours"));
+                        $c_run->save();
+                    }
+                }
             }
         }
         catch(MmdbException $e)
         {
+            $e->log();
             $this->print($e->getMessage());
-        }
-
-        // Process final data
-        $toFinal = $cosmo->where(array
-            (
-                'state' => $cosmo::STATE_RESULT_DOWNLOADED,
-                'status'  => $cosmo::STATUS_OK
-            ))
-            ->order_by('priority DESC, status DESC, id', 'ASC')
-            ->limit(50)
-            ->get_all();
-
-        foreach($toFinal as $job)
-        {
-            $job->process_results();
-        }
-
-        // Save final data to the DB // TODO
-        // Process final data
-        $toSave = $cosmo->where(array
-            (
-                'state' => $cosmo::STATE_RESULT_PARSED,
-                'status'  => $cosmo::STATUS_OK
-            ))
-            ->order_by('priority DESC, id', 'ASC')
-            ->limit(50)
-            ->get_all();
-
-        foreach($toSave as $job)
-        {
-            $job->save_results();
         }
     }
 
@@ -1397,6 +1886,7 @@ class SchedulerController extends Controller
         }
         catch(MmdbException $e)
         {
+            $e->log();
             $this->run = $prev_run;
             $run->status = $run::STATE_ERROR;
             $run->id_exception = $e->getExceptionId();
@@ -2442,6 +2932,26 @@ class SchedulerController extends Controller
                             {
                                 $exists[$identifier] = 1;
                                 continue;
+                            }
+
+                            // Check, if exists from list and is not invalid
+                            $values = $val_identifiers->get_all_substance_values_by_type($s->id, $identifier);
+                            
+                            foreach($values as $id_o)
+                            {
+                                if($id_o->state === $val_identifiers::STATE_INVALID && $id_o->id_user != NULL)
+                                {
+                                    continue;
+                                }
+
+                                // Take the first one
+                                $exists[$identifier] = 1;
+
+                                // Set as active
+                                $id_o->state = $val_identifiers::STATE_VALIDATED;
+                                $id_o->active = $val_identifiers::ACTIVE;
+                                $id_o->save();
+                                break;
                             }
 
                             foreach($servers as $server_id)

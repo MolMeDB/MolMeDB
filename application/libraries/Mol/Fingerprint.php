@@ -9,7 +9,7 @@ class Mol_fingerprint
      */
     public static function is_valid_decoded($string)
     {
-        return ctype_digit($string) && !preg_match('/[2-9]+/', $string);
+        return ctype_digit($string ?? "") && !preg_match('/[2-9]+/', $string ?? "");
     }
 
     /**

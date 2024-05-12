@@ -148,6 +148,45 @@ class ApiMembranes extends ApiController
         return $result;
     }
 
+    /**
+     * Returns detail of membrane by id
+     * 
+     * @GET
+     * @PUBLIC
+     * 
+     * @param @required $id
+     * 
+     * @Path(/get/cosmo/<id:\d+>)
+     */
+    public function P_get_to_cosmo($id)
+    {
+        $membrane = new Membranes($id);
+
+        if(!$membrane->id)
+        {
+            ResponseBuilder::not_found();
+        }
+
+        $result = [
+            'id' => $membrane->id,
+            'name' => $membrane->idTag
+        ];
+
+        // Find file if exists
+        $target = MEDIA_ROOT . 'files/membranes/' . $membrane->id . '/cosmo/';
+
+        $files = array_filter(scandir($target), function($a) {return !preg_match("/^\./", $a);});
+
+        if(count($files) !== 1)
+        {
+            ResponseBuilder::not_found();
+        }
+
+        $result['file_content'] = file_get_contents($target . array_shift($files));
+
+        return $result;
+    }
+
      ////////////////////////////////////////////////////////////////////////////////
 
     ################################################################################

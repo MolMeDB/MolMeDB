@@ -22,6 +22,11 @@ class MmdbException extends Exception
     private $error_id;
 
     /**
+     * @var Exception
+     */
+    private $previous;
+
+    /**
      * Constructor
      * 
      * @param string $message
@@ -32,27 +37,57 @@ class MmdbException extends Exception
     function __construct($message="", $printable="Error occured during processing your request. Please, try again.", $code = 0, $previous = NULL)
     {
         $this->printable_message = $printable;
+        $this->previous = $previous;
         parent::__construct($message, (int)$code, $previous);
 
-        // Log an error, if has corresponding priority
-        if($this->level > ERROR_LVL_BASIC)
+        // // Log an error, if has corresponding priority
+        // if($this->level > ERROR_LVL_BASIC)
+        // {
+        //     $ex = $previous ? $previous : $this;
+
+        //     if(System_config::$db_connected)s
+        //     {
+        //         $e = new Exceptions($this->error_id);
+
+        //         $e->status = Exceptions::STATUS_NEW;
+        //         $e->level = $this->level;
+        //         $e->code = (int)$ex->getCode();
+        //         $e->file = $ex->getFile();
+        //         $e->line = $ex->getLine();
+        //         $e->trace = json_encode(debug_backtrace());
+        //         $e->message = $ex->getMessage();
+        //         $e->id_user = session::user_id();
+
+        //         $e->save();
+        //         $this->error_id = $e->id;
+        //     }
+        // }
+    }
+
+    /**
+     * Logs error to DB
+     */
+    function log()
+    {
+        $ex = $this->previous ? $this->previous : $this;
+
+        if(System_config::$db_connected)
         {
-            $ex = $previous ? $previous : $this;
+            $e = new Exceptions($this->error_id);
 
-            if(System_config::$db_connected)
+            $e->status = Exceptions::STATUS_NEW;
+            $e->level = $this->level;
+            $e->code = (int)$ex->getCode();
+            $e->file = $ex->getFile();
+            $e->line = $ex->getLine();
+            $e->trace = json_encode(debug_backtrace());
+            $e->message = $ex->getMessage();
+            $e->id_user = session::user_id();
+
+            $e->save();
+
+            if(!$this->error_id)
             {
-                $e = new Exceptions($this->error_id);
-
-                $e->status = Exceptions::STATUS_NEW;
-                $e->level = $this->level;
-                $e->code = (int)$ex->getCode();
-                $e->file = $ex->getFile();
-                $e->line = $ex->getLine();
-                $e->trace = json_encode(debug_backtrace());
-                $e->message = $ex->getMessage();
-                $e->id_user = session::user_id();
-
-                $e->save();
                 $this->error_id = $e->id;
             }
         }

@@ -570,7 +570,7 @@ class Substances extends Db
             GROUP BY id
         ', array($substance->id, $db_limit, $substance->id, $db_limit, $substance->id, $db_limit));
 
-        $temp->ids = trim($temp->ids, ',');
+        $temp->ids = trim($temp->ids ?? "", ',');
 
         if(!$temp->ids)
         {
@@ -592,7 +592,7 @@ class Substances extends Db
             GROUP BY id
         ");
 
-        $temp->ids = trim($temp->ids, ',');
+        $temp->ids = trim($temp->ids ?? "", ',');
 
         $t = $t . ',' . $temp->ids;
         $t = preg_replace('/\,+$/', '', $t);

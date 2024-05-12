@@ -1,7 +1,7 @@
 <?php
 
 /** HOLDS INFO ABOUT DB VERSION */
-define('DB_VERSION', 'molmedb~alpha_1.25');
+define('DB_VERSION', 'molmedb~alpha_1.26');
 
 // JS/CSS version
 define("JS_VERSION", "3.8");

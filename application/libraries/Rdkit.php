@@ -12,7 +12,7 @@ class Rdkit extends Identifier_loader
     /** Holds connection 
      * @var Http_request
     */
-    private static $client;
+    protected static $client;
 
     /** Holds info about last used identifier type */
     public $last_identifier = null;
@@ -242,7 +242,7 @@ class Rdkit extends Identifier_loader
      * @return object
      * @throws MmDbException
      */
-    function get_ionization_states($smiles, $limit = 10)
+    function get_ionization_states($smiles, $limit = 10, $ignore_multicharge = TRUE)
     {
         if(!self::$STATUS || !$smiles)
         {
@@ -272,7 +272,7 @@ class Rdkit extends Identifier_loader
                 // check all charges and filter variants with lowest charge
                 if(property_exists($response, 'molecules'))
                 {
-                    if(count($response->molecules) > 4)
+                    if($ignore_multicharge && count($response->molecules) > 4)
                     {
                         $result['molecules'] = array();  
 
@@ -296,7 +296,7 @@ class Rdkit extends Identifier_loader
                         );
                     }
 
-                    usort($candidates, function($a, $b){ return intval($a['charge']) < intval($b['charge']); });
+                    usort($candidates, function($a, $b){ return intval($a['charge']) < intval($b['charge']) ? 1 : -1; });
 
                     $total = 0;
                     foreach($candidates as $c)
@@ -335,7 +335,7 @@ class Rdkit extends Identifier_loader
 
         $this->last_identifier = Validator_identifiers::ID_SMILES;
 
-        $uri = 'cosmo/conformers';
+        $uri = 'conformers/toCosmo';
         $method = Http_request::METHOD_GET;
         $params = array
         (
@@ -696,5 +696,4 @@ class Rdkit extends Identifier_loader
             return false;
         }
     }
-
 }

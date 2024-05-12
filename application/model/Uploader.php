@@ -139,7 +139,7 @@ class Uploader extends Db
 					$record->server = NULL;
 					$record->id_user = session::user_id();
 					$record->state = Validator_identifiers::STATE_VALIDATED;
-					$record->active = Validator_identifiers::INACTIVE;
+					$record->active = Validator_identifiers::ACTIVE;
 					$record->id_dataset_passive = $dataset_id;
 					$record->flag = NULL;
 

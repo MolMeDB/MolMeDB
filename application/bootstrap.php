@@ -111,8 +111,16 @@ catch(Exception $e)
 $req_write_permissions = array
 (
     MEDIA_ROOT,
-    MEDIA_ROOT . 'files'
+    MEDIA_ROOT . 'files',
+    SYS_ROOT . 'hash'
 );
+
+// Create hash system folder if not exists
+// Create if not exists
+if(!file_exists(SYS_ROOT . 'hash'))
+{
+    mkdir(SYS_ROOT . 'hash', 0711);
+}
 
 foreach($req_write_permissions as $f)
 {

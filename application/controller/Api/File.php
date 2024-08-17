@@ -3,7 +3,7 @@
 /**
  * 
  */
-class ApiFile
+class ApiFile extends ApiController
 {
     /**
 	 * Return file content for given URL

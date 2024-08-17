@@ -90,7 +90,7 @@ class EuropePMC
         }  
         catch(Exception $e)
         {
-            throw new Exception('Europe PMC server error.');
+            throw new MmdbException('Europe PMC server error. ' . $e->getMessage(), 'Europe PMC server error. ' . $e->getMessage());
         }
     }
 

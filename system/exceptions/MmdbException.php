@@ -74,6 +74,7 @@ class MmdbException extends Exception
         if(System_config::$db_connected)
         {
             $e = new Exceptions($this->error_id);
+            $m = $ex->getMessage();
 
             $e->status = Exceptions::STATUS_NEW;
             $e->level = $this->level;
@@ -81,7 +82,7 @@ class MmdbException extends Exception
             $e->file = $ex->getFile();
             $e->line = $ex->getLine();
             $e->trace = json_encode(debug_backtrace());
-            $e->message = $ex->getMessage();
+            $e->message = (!$m || $m == "") && method_exists($ex, 'getPrintable') ? $ex->getPrintable() : $m;
             $e->id_user = session::user_id();
 
             $e->save();

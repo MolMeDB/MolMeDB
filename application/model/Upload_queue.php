@@ -323,17 +323,17 @@ class Upload_queue extends Db
 
             if(!$setting->delimiter)
             {
-                throw new MmdbException('Invalid queue setting. Cannot find file delimiter.');
+                throw new MmdbException('Invalid queue setting. Cannot find file delimiter.', 'Invalid queue setting. Cannot find file delimiter.');
             }
 
             if(!$setting->attributes)
             {
-                throw new MmdbException('Invalid queue setting. Cannot find attributes order.');
+                throw new MmdbException('Invalid queue setting. Cannot find attributes order.', 'Invalid queue setting. Cannot find attributes order.');
             }
 
             if(!file_exists($this->file->path))
             {
-                throw new MmdbException('Invalid queue setting. Cannot find target file - try to re-upload it.');
+                throw new MmdbException('Invalid queue setting. Cannot find target file - try to re-upload it.', 'Invalid queue setting. Cannot find target file - try to re-upload it.');
             }
 
             $file = new File($this->file->path);
@@ -344,6 +344,8 @@ class Upload_queue extends Db
             // Remove header
             array_shift($file_content);
 
+            $report = new Upload_report();
+            $line = 1;
             // process data
             $values = [];
             foreach($file_content as $row)
@@ -352,17 +354,29 @@ class Upload_queue extends Db
 
                 foreach($attrs as $key => $attr)
                 {
-                    $new[$attr] = Upload_validator::get_attr_val($attr, $row[$key]);
+                    try
+                    {
+                        $new[$attr] = Upload_validator::get_attr_val($attr, $row[$key]);
+                    }
+                    catch(MmdbException $e)
+                    {
+                        $report->add($line, $e->getMessage());
+                    }
                 }
 
                 $values[] = $new;
+            }
+
+            // Occured some errors?
+            if (!$report->is_empty()) 
+            {
+                throw new MmdbException('Some lines[' . $report->count() . '] weren\'t saved.', 'Some lines[' . $report->count() . '] weren\'t saved.<br/><a href="/' . $report->get_report() . '">Download report</a>');
             }
 
             $line = 1;
             $no_error_lines = 0;
 
             // Make upload report
-            $report = new Upload_report();
             $uploader = new Uploader();
             $interaction_model = new Transporters();
 
@@ -449,11 +463,17 @@ class Upload_queue extends Db
             $this->state = self::STATE_DONE;
             Db::commitTransaction();
         }
+        catch(MmdbException $e)
+        {
+            Db::rollbackTransaction();
+            $e->log();
+            throw $e;
+        }
         catch(Exception $e)
         {
             Db::rollbackTransaction();
             $this->state = self::STATE_ERROR;
-            throw new MmdbException($e->getMessage(),'', $e->getCode(), $e) ;
+            throw new MmdbException($e->getMessage(),'Error occured during processing your request. Please, try again.', $e->getCode(), $e) ;
         }
 
         $this->run_info = json_encode($msg);

@@ -83,7 +83,7 @@ class Alert
     {
         if($message instanceof MmdbException)
         {
-            $message = $message->getPrintable();
+            $message = $message->getPrintable() ?? $message->getMessage();
         }
         elseif($message instanceof Exception)
         {

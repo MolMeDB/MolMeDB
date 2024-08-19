@@ -389,6 +389,23 @@ class UploadController extends Controller
     }
 
     /**
+     * 
+     */
+    public function run_info($id)
+    {
+        $ri = new Upload_queue($id);
+
+        if(!$ri->id)
+        {
+            echo '';
+            die;
+        }
+
+        echo json_encode(json_decode($ri->run_info), JSON_PRETTY_PRINT);
+        die;
+    }
+
+    /**
      * Dataset uploader
      */
     public function dataset()
@@ -418,7 +435,7 @@ class UploadController extends Controller
                     }
                     else
                     {
-                        throw new MmdbException('Invalid form type.');
+                        throw new MmdbException('Invalid form type.', 'Invalid form type.');
                     }
                 }
                 catch (MmdbException $ex)
@@ -525,12 +542,17 @@ class UploadController extends Controller
             $q->start();
             $this->alert->success('Dataset was successfully uploaded.');
         }
+        catch(MmdbException $e)
+        {
+            $e->log();
+            $this->alert->error($e);
+        }
         catch(Exception $e)
         {
             $this->alert->error($e);
         }
 
-        $this->alert->success('Job [ID: ' . $q->id . '] was done.');
+        $this->alert->warning('Job [ID: ' . $q->id . '] was done.');
         $this->redirect('upload/dataset');
     }
 
@@ -552,7 +574,7 @@ class UploadController extends Controller
             $this->redirect('upload/dataset');
         }
 
-        if($q->state !== $q::STATE_CANCELED)
+        if($q->state !== $q::STATE_CANCELED && $q->state !== $q::STATE_ERROR)
         {
             $this->alert->error('Cannot requeue non-canceled process.');
             $this->redirect('upload/dataset');
@@ -588,12 +610,12 @@ class UploadController extends Controller
 
             if(!$file_object->id)
             {
-                throw new MmdbException('Invalid file id.');
+                throw new MmdbException('Invalid file id.', "Invalid file id.");
             }
 
             if(!file_exists($file_object->path))
             {
-                throw new MmdbException('File not found on server. Please, reupload the file.');
+                throw new MmdbException('File not found on server. Please, reupload the file.', "File not found on server. Please, reupload the file.");
             }
 
             $queue = new Upload_queue();
@@ -645,7 +667,7 @@ class UploadController extends Controller
 
                 if(!in_array($a, $valid_attrs))
                 {
-                    throw new MmdbException("Invalid attribute '$a'. Please, contact your administrator.");
+                    throw new MmdbException("Invalid attribute '$a'. Please, contact your administrator.", "Invalid attribute '$a'. Please, contact your administrator.");
                 }
 
                 $attrs[$order] = $a;
@@ -700,7 +722,8 @@ class UploadController extends Controller
         catch (MmdbException $ex)
         {
             Db::rollbackTransaction();
-            throw new MmdbException($ex);
+            $ex->log();
+            throw $ex;
         }
     }
 

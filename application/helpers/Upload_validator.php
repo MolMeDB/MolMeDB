@@ -495,15 +495,15 @@ class Upload_validator
                 // Not exists? Add new record to DB
                 $ref = new Publications();
                 
-                $ref->doi = $ext['doi'];
-                $ref->pmid = $ext['pmid'];
-                $ref->title = $ext['title'];
-                $ref->authors = $ext['authors'];
-                $ref->journal = $ext['journal'];
-                $ref->issue = $ext['issue'];
-                $ref->volume = $ext['volume'];
-                $ref->year = $ext['year'];
-                $ref->page = $ext['pages'];
+                $ref->doi = $ext['doi'] && $ext['doi'] != "" ? $ext['doi'] : null;
+                $ref->pmid = $ext['pmid'] && $ext['pmid'] != "" ? $ext['pmid'] : null;
+                $ref->title = $ext['title'] && $ext['title'] != "" ? $ext['title'] : null;
+                $ref->authors = $ext['authors'] && $ext['authors'] != "" ? $ext['authors'] : null;
+                $ref->journal = $ext['journal'] && $ext['journal'] != "" ? $ext['journal'] : null;
+                $ref->issue = $ext['issue'] && $ext['issue'] != "" ? $ext['issue'] : null;
+                $ref->volume = $ext['volume'] && $ext['volume'] != "" ? $ext['volume'] : null;
+                $ref->year = $ext['year'] && $ext['year'] != "" ? $ext['year'] : null;
+                $ref->page = $ext['pages'] && $ext['pages'] != "" ? $ext['pages'] : null;
                 $ref->publicated_date = $pub_timestamp ? date('Y-m-d', $pub_timestamp) : NULL;
                 $ref->citation = $ref->make_citation();
 

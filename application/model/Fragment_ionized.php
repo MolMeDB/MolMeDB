@@ -64,6 +64,26 @@ class Fragment_ionized extends Db
     }
 
     /**
+     * Checks, if SDF files exists
+     * 
+     * @return boolean
+     */
+    public function sdf_exists()
+    {
+        if(!$this->id)
+        {
+            throw new MmdbException("Invalid ion instance.");
+        }
+
+        $f = new File();
+
+        $path = $f->prepare_conformer_folder($this->id_fragment, $this->id);
+        $local_files = array_filter(scandir($path), function($file) { return preg_match('/\.sdf$/', $file); });
+
+        return count($local_files) > 0;
+    }
+
+    /**
      * Returns all SMILES of ionized molecule
      * - If not exists in DB, saves also new records
      * 

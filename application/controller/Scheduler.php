@@ -748,12 +748,25 @@ class SchedulerController extends Controller
 
         // Finally, save data to DB
         $to_save = Run_cosmo::instance()
-            ->where('state', Run_cosmo::STATE_RESULT_PARSED)
+            ->where(array
+            (
+                'state' => Run_cosmo::STATE_RESULT_PARSED,
+                'next_remote_check <=' => date('Y-m-d H:i:s')
+            ))
+            ->limit(500)
             ->get_all();
+
+        $notify_admins = [];
         
         foreach($to_save as $run)
         {
-            $run->save_results();
+            $response = $run->save_results();
+            if(count($response))
+            {
+                $notify_admins += $response;
+                $run->next_remote_check = date('Y-m-d H:i:s', strtotime('+1 day'));
+                $run->save();
+            }
         }
 
         // If states are not empty
@@ -763,17 +776,38 @@ class SchedulerController extends Controller
             count($new_states[Run_cosmo::STATE_RESULT_DOWNLOADED]) || 
             count($new_states[Run_cosmo::STATE_RESULT_PARSED]) || 
             count($new_states[Run_cosmo::STATE_RESULT_DB_STORED]) || 
-            count($new_states['errors'])
+            count($new_states['errors']) || 
+            count($notify_admins)
         )
-            $this->send_email_to_admins("<p>Dear administrator,</p>
-<p>scheduler run `check_cosmo_results` was executed. Stats (set new states: [Run_cosmo_ids]):" .
-"<br />Pending: " . implode(',', $new_states[Run_cosmo::STATE_PENDING]) .
-"<br />Ionized: " . implode(',', $new_states[Run_cosmo::STATE_IONIZED]) .
-"<br />Running cosmo: " . implode(',', $new_states[Run_cosmo::STATE_COSMO_RUNNING]) .
-"<br />Results downloaded: " . implode(',', $new_states[Run_cosmo::STATE_RESULT_DOWNLOADED]) .
-"<br />Results parsed: " . implode(',', $new_states[Run_cosmo::STATE_RESULT_PARSED]) .
-"<br />Error occued during processing following IDs: " . implode(',', $new_states['errors']) .
-"</p><p>MolMeDB Team</p>", "MolMeDB: Scheduler run");
+        {
+            $text = "<p>Dear administrator,</p>
+            <p>scheduler run `check_cosmo_results` was executed. Stats (set new states: [Run_cosmo_ids]):" .
+            "<br />Pending: " . implode(',', $new_states[Run_cosmo::STATE_PENDING]) .
+            "<br />Ionized: " . implode(',', $new_states[Run_cosmo::STATE_IONIZED]) .
+            "<br />Running cosmo: " . implode(',', $new_states[Run_cosmo::STATE_COSMO_RUNNING]) .
+            "<br />Results downloaded: " . implode(',', $new_states[Run_cosmo::STATE_RESULT_DOWNLOADED]) .
+            "<br />Results parsed: " . implode(',', $new_states[Run_cosmo::STATE_RESULT_PARSED]) .
+            "<br />Error occued during processing following IDs: " . implode(',', $new_states['errors']);
+
+            if(count($notify_admins))
+            {
+                $text .= "<br/><br/> The following is information about the number of newly saved cosmo results:";
+
+                foreach($notify_admins as $id_ion => $data)
+                {
+                    $text .=   'LogK values are different for substance/cosmo_run/id_fragment/id_ion: ' . $data['substance']->identifier . '/' . 
+                        $data['cosmo_run']->id . '/' . 
+                        $data['cosmo_run']->id_fragment . '/' . 
+                        $data['ion']->id . 
+                        ' with (old/new) values [LogK, LogPerm]: ' . $data['LogK_old'] . '/' . $data['LogK_new'] . 
+                        ', ' . $data['LogPerm_old'] . '/' . $data['LogPerm_new'];
+                }
+            }
+
+            $text .= "</p><p>MolMeDB Team</p>";
+
+            $this->send_email_to_admins($text, "MolMeDB: Scheduler run");
+        }
     }
 
     /**
@@ -1108,16 +1142,17 @@ class SchedulerController extends Controller
             $running_jobs_total = 0;
             $to_recompute = [];
             $rerun_success = [];
+            $running_ion_ids = [];
 
             foreach($t as $key => $job)
             {
                 // Check, if some job was killed before execution
-                if($job->runtime === '00:00:00' && $job->is_finished())
-                {
-                    // Save the LAST known info about given ion
-                    $to_recompute[$job->id_ion] = $job;
-                    continue;
-                }
+                // if($job->runtime === '00:00:00' && $job->is_finished())
+                // {
+                //     // Save the LAST known info about given ion
+                //     $to_recompute[$job->id_ion] = $job;
+                //     continue;
+                // }
 
                 if(isset($to_recompute[$job->id_ion]))
                 {
@@ -1132,9 +1167,10 @@ class SchedulerController extends Controller
                 {
                     unset($jobs[$key]);
                 }
-                else if($job->is_running())
+                else if($job->is_running() || $job->is_queued())
                 {
                     $running_jobs_total++;
+                    $running_ion_ids[] = $job->id_ion;
                 }
             }
 
@@ -1154,7 +1190,7 @@ class SchedulerController extends Controller
                     $ion->save();
                 }
                 else if($job->job_type == Metacentrum_job::TYPE_COSMO)
-                {
+                { 
                     $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_DONE;
                     $ion->save();
                 }
@@ -1180,7 +1216,7 @@ class SchedulerController extends Controller
                 {
                     continue;
                 }
-                
+
                 if($job->job_type == Metacentrum_job::TYPE_COSMO)
                 {
                     // Todo: Run again with bigger walltime
@@ -1249,6 +1285,8 @@ class SchedulerController extends Controller
                         if($response !== false)
                         {
                             $ion = new Fragment_ionized($id_ion);
+                            $running_ion_ids[] = $id_ion;
+
                             if($response->running_total > 0)
                             {
                                 $rerun_success[] = $ion->id;
@@ -1284,14 +1322,15 @@ class SchedulerController extends Controller
             $to_check = Db::instance()->queryAll(
                 "SELECT DISTINCT fi.id_fragment, fi.id as id_ion
                     FROM run_cosmo rn
-                    JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag = ? OR fi.cosmo_flag = ?)
+                    JOIN fragments_ionized fi ON fi.id_fragment = rn.id_fragment AND (fi.cosmo_flag = ? OR fi.cosmo_flag = ? OR fi.cosmo_flag IS NULL)
                     WHERE rn.status = ? AND next_remote_check <= ?
-                    LIMIT 100"
+                    LIMIT ?"
             , array(
                 Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING,
                 Fragment_ionized::COSMO_F_OPTIMIZE_ERR_PARTIAL,
                 Run_cosmo::STATUS_OK,
-                date("Y-m-d H:i:s")
+                date("Y-m-d H:i:s"),
+                $running_jobs_total < 30 ? 10 : 30
             ));
 
             foreach($to_check as $cosmo_run)
@@ -1325,6 +1364,7 @@ class SchedulerController extends Controller
                 $is_running = false;
                 $failed = 0;
                 $checked = 0;
+                $done = 0;
 
                 foreach($local_files as $l_file)
                 {
@@ -1344,7 +1384,7 @@ class SchedulerController extends Controller
                         {
                             if($l_name == $remote_job->get_name_without_prefix())
                             {
-                                if($remote_job->is_running() || in_array($remote_job->get_db_ion()->id, $rerun_success))
+                                if($remote_job->is_running() || $remote_job->is_queued() || in_array($remote_job->get_db_ion()->id, $rerun_success))
                                 {
                                     $is_running = true;
                                     break 2;
@@ -1359,18 +1399,25 @@ class SchedulerController extends Controller
                     {
                         $failed++;
                     }
+                    else if($files_status[$l_name]->isDone)
+                    {
+                        $done++;
+                    }
                 }
 
                 $ion = new Fragment_ionized($cosmo_run->id_ion);
                 
-                if($is_running)
+                if(!$is_running && $done <= count($files_status)/2)
+                    $ion->cosmo_flag = Fragment_ionized::COSMO_F_SDF_CREATED;
+                else if($is_running)
                     $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING;
-                elseif(!$failed)
+                elseif($done == $checked)
                     $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_DONE;
                 elseif($failed == $checked)
                     $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_ERR_COMLETE;
                 else
                     $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_ERR_PARTIAL;
+
                 $ion->save();
 
                 foreach($crs as $cr)
@@ -1419,6 +1466,9 @@ class SchedulerController extends Controller
                 $l->status = Run_cosmo::STATUS_ERROR;
                 $l->save();
             }
+
+            Config::set(Configs::COSMO_TOTAL_RUNNING, $running_jobs_total);
+            Config::set(Configs::COSMO_LAST_UPDATE, date("Y-m-d H:i"));
 
             // stop if queue is full
             if($running_jobs_total >= $max_metacentrum_queue_items)
@@ -1477,6 +1527,11 @@ class SchedulerController extends Controller
 
                 foreach($toRunCosmo as $cr)
                 {
+                    if($remaining_jobs < 1)
+                    {
+                        break;
+                    }
+
                     $c_run = new Run_cosmo($cr->id);
                     $ions = Fragment_ionized::instance()->where('id_fragment', $c_run->id_fragment)->get_all();
 
@@ -1485,8 +1540,24 @@ class SchedulerController extends Controller
                     $all_downloaded = count($ions) > 0;
                     foreach($ions as $ion)
                     {
-                        // Check if results already exists
+                        // Is ion ready?
+                        if(!$ion->sdf_exists())
+                        {
+                            $ion->cosmo_flag = NULL;
+                            $ion->save();
+                            $c_run->state = Run_cosmo::STATE_PENDING;
+                            $c_run->save();
+                            continue 2;
+                        }
+
+                        // Check if results already exists 
                         if(in_array($cr->id, Run_cosmo::check_ion_results($ion)))
+                        {
+                            continue;
+                        }
+
+                        // Check if ion computation is currently running
+                        if(in_array($ion->id, $running_ion_ids))
                         {
                             continue;
                         }
@@ -1512,6 +1583,8 @@ class SchedulerController extends Controller
                             $all_running = false;
                             continue;
                         }
+
+                        $running_ion_ids[] = $ion->id;
 
                         // Error message from remote server
                         if($response->status !== 'ok')
@@ -1568,10 +1641,8 @@ class SchedulerController extends Controller
                     $c_run->save();
                 }
 
-                if($remaining_jobs <= 0)
-                {
-                    return;
-                }
+                Config::set(Configs::COSMO_TOTAL_RUNNING, $max_metacentrum_queue_items - $remaining_jobs);
+                Config::set(Configs::COSMO_LAST_UPDATE, date("Y-m-d H:i"));
 
                 // If remaining space, fill in with a new optimization jobs
                 $toOpmitize = Db::instance()->queryAll(
@@ -1597,13 +1668,28 @@ class SchedulerController extends Controller
 
                 foreach($toOpmitize as $cr)
                 {
+                    if($remaining_jobs < 1)
+                    {
+                        break;
+                    }
+
                     $c_run = new Run_cosmo($cr->id);
                     $ions = Fragment_ionized::instance()->where('id_fragment', $c_run->id_fragment)->get_all();
 
                     // Upload SDF files to remote server
                     foreach($ions as $ion)
                     {
-                        if($ion->cosmo_flag !== Fragment_ionized::COSMO_F_SDF_CREATED)
+                        // Is ion ready?
+                        if(!$ion->sdf_exists())
+                        {
+                            $ion->cosmo_flag = NULL;
+                            $ion->save();
+                            $c_run->state = Run_cosmo::STATE_PENDING;
+                            $c_run->save();
+                            continue 2;
+                        }
+
+                        if($ion->cosmo_flag !== Fragment_ionized::COSMO_F_SDF_CREATED && $ion->cosmo_flag !== null)
                         {
                             continue;
                         }
@@ -1615,12 +1701,26 @@ class SchedulerController extends Controller
                         }
                     }
 
+                    $skipped = false;
+
                     // Run optimization
                     foreach($ions as $ion)
                     {
                         // Only prepared IONs
                         if($ion->cosmo_flag !== Fragment_ionized::COSMO_F_SDF_UPLOADED)
                         {
+                            continue;
+                        }
+
+                        if($remaining_jobs < 1)
+                        {
+                            $skipped = true;
+                            break;
+                        }
+
+                        if(in_array($ion->id, $running_ion_ids))
+                        {
+                            $skipped = true;
                             continue;
                         }
 
@@ -1634,6 +1734,8 @@ class SchedulerController extends Controller
                         
                         if($response !== false)
                         {
+                            $running_ion_ids[] = $ion->id;
+
                             if($response->running_total > 0)
                             {
                                 $ion->cosmo_flag = Fragment_ionized::COSMO_F_OPTIMIZE_RUNNING;
@@ -1653,13 +1755,20 @@ class SchedulerController extends Controller
                         else
                         {
                             print('Cannot run optimization for fragment/ion: ' . $c_run->id_fragment . '/' . $ion->id . "\n");
+                            continue 2;
                         }
                     }
 
-                    $c_run->forceRun = NULL;
-                    $c_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+20 hours"));
-                    $c_run->save();
+                    if(!$skipped)
+                    {
+                        $c_run->forceRun = NULL;
+                        $c_run->next_remote_check = date('Y-m-d H:i:s', strtotime("+20 hours"));
+                        $c_run->save();
+                    }
                 }
+
+                Config::set(Configs::COSMO_TOTAL_RUNNING, $max_metacentrum_queue_items - $remaining_jobs);
+                Config::set(Configs::COSMO_LAST_UPDATE, date("Y-m-d H:i"));
 
                 // Download COSMO results
                 $toDownload = Db::instance()->queryAll(
@@ -1694,6 +1803,12 @@ class SchedulerController extends Controller
                     {
                         // Check if results already exists
                         if(in_array($cr->id, Run_cosmo::check_ion_results($ion)))
+                        {
+                            continue;
+                        }
+
+                        // Check if some computation is still running
+                        if(in_array($ion->id, $running_ion_ids))
                         {
                             continue;
                         }

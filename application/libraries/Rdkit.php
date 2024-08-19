@@ -261,7 +261,7 @@ class Rdkit extends Identifier_loader
 
         try
         {
-            $response = self::$client->request($uri, $method, $params);
+            $response = self::$client->request($uri, $method, $params, False, 60);
 
             if(is_object($response) || is_array($response))
             {

@@ -84,15 +84,15 @@ class Metacentrum extends Rdkit
             throw new MmdbException('Invalid queue.');
         }
 
-        $server = self::$queue_servers[$queue];
+        // $server = self::$queue_servers[$queue];
 
         $uri = 'cosmo/runningJobs';
         $method = Http_request::METHOD_GET;
         $params = array
         (
-            'server' => $server,
+            // 'server' => $server,
             'include_finished' => $include_finished ? 1 : 0,
-            'ignoreSFTP'    => 1
+            // 'ignoreSFTP'    => 1
         );
 
         self::$client->set_credentials($username, $password);
@@ -108,6 +108,13 @@ class Metacentrum extends Rdkit
                 foreach($response->jobs as $job)
                 {
                     $new = new Metacentrum_job($job);
+
+                    if(($new->is_running() || $new->is_queued()) && isset($jobs[$new->get_name_without_prefix()]) && 
+                        ($jobs[$new->get_name_without_prefix()]->is_running() || $jobs[$new->get_name_without_prefix()]->is_queued()))
+                    {
+                        throw new MmdbException('Error! Two jobs with the same name "' . $new->get_name_without_prefix() . '" are running!');
+                    }
+
                     // Keep only last occurance of job
                     $jobs[$new->get_name_without_prefix()] = $new; 
                 }
@@ -117,7 +124,7 @@ class Metacentrum extends Rdkit
         }
         catch(Exception $e)
         {
-            throw new MmdbException('Cannot get job list.', 'Cannot get job list.', 0, $e);
+            throw new MmdbException($e->getMessage(), 'Cannot get job list.', 0, $e);
         }
 
         return null;
@@ -770,6 +777,7 @@ class Metacentrum extends Rdkit
     /**
      * Runs cosmo on metacentrum and download results
      * 
+     * @deprecated
      * @param Run_cosmo[] $cosmo_runs
      */
     public static function run_failed_cosmo($cosmo_runs, $ion_ids, $host, $username, $password, $queue, $limit = 20)
@@ -1192,9 +1200,9 @@ class Metacentrum_job
         $this->queue      = isset($data["queue"]) ? $data["queue"] : null;
         $this->cpu        = isset($data["Resource_List.ncpus"]) ? $data["Resource_List.ncpus"] : null;
         $this->ram        = isset($data["Resource_List.mem"]) ? $data["Resource_List.mem"] : null;
-        $this->max_runtime= isset($data["Resource_List.walltime"]) ? $data["Resource_List.walltime"] : null;
+        $this->max_runtime= isset($data["Resource_List.walltime"]) ? preg_replace("/[^\d:]/", "", $data["Resource_List.walltime"]) : null;
         $this->state      = isset($data["job_state"]) ? $data["job_state"] : null;
-        $this->runtime    = isset($data["resources_used.walltime"]) ? $data["resources_used.walltime"] : null;
+        $this->runtime    = isset($data["resources_used.walltime"]) ? preg_replace("/[^\d:]/", "", $data["resources_used.walltime"]) : null;
 
         if(strpos($this->job_name ?? "", 'MMDB_C_OPT') !== FALSE)
         {

@@ -434,7 +434,7 @@ class Run_cosmo extends Db
             {
                 $index = array_search($d, $data->energyDistance);
 
-                if($index === false)
+                if($index === false || !isset($data->energyValues[$index]))
                 {
                     $chart_data[$key]->$yk = null;
                 }
@@ -554,6 +554,8 @@ class Run_cosmo extends Db
 
         return $this->get_script_method() . '_' . str_replace('/','_',str_replace(' ', '-',$this->membrane->idTag)) . '_' . $temp;
     }
+
+    static function in_range($a, $b) {return abs($a-$b) <= 0.5;}
 
     /**
      * Save results to the DB
@@ -689,6 +691,8 @@ class Run_cosmo extends Db
             $g_charges[$q][] = $smiles;
         }
 
+        $notify_admins = [];
+
         foreach($ions as $ion)
         {
             $ion_charge = $this->fragment->get_charge($ion->smiles);
@@ -705,7 +709,7 @@ class Run_cosmo extends Db
                     $this->state = self::STATE_RESULT_DOWNLOADED;
                     $this->save();
                     Db::commitTransaction();
-                    return;
+                    return [];
                 }
 
                 $results = $ion_results[$this->id];
@@ -729,24 +733,20 @@ class Run_cosmo extends Db
                 if($interaction->id)
                 {
                     // Check if values are the same
-                    if($results->logK !== null && $interaction->LogK !== null && $interaction->LogK != $results->logK)
+                    if(($results->logK !== null && $interaction->LogK !== null && !self::in_range($interaction->LogK,$results->logK)) || 
+                        ($results->logPerm !== null && $interaction->LogPerm !== null && !self::in_range($interaction->LogPerm, $results->logPerm)))
                     {
                         // Two different non-null values? Notify admins
-                        $sch = new SchedulerController();
-                        $sch->send_email_to_admins(
-                            'Cosmo: LogK values are different in interaction/cosmo_run: ' . $interaction->id . '/' . $this->id . ' with values: ' . $interaction->LogK . '/' . $results->logK,
-                            'Cosmo: Error while saving cosmo interaction');
-                        Db::commitTransaction();
-                        continue;
-                    }
-                    if($results->logPerm !== null && $interaction->LogPerm !== null && $interaction->LogPerm != $results->logPerm)
-                    {
-                        // Two different non-null values? Notify admins
-                        $sch = new SchedulerController();
-                        $sch->send_email_to_admins(
-                            'Cosmo: LogPerm values are different in interaction/cosmo_run: ' . $interaction->id . '/' . $this->id . ' with values: ' . $interaction->LogPerm . '/' . $results->logPerm,
-                            'Cosmo: Error while saving cosmo interaction');
-                        Db::commitTransaction();
+                        $notify_admins[$ion->id] = array
+                        (
+                            'substance' => $interaction->substance,
+                            'LogK_old'  => $interaction->LogK,
+                            'LogK_new'  => $results->logK,
+                            'LogPerm_old'=> $interaction->LogPerm,
+                            'LogPerm_new'=> $results->logPerm,
+                            'ion'       => $ion,
+                            'cosmo_run' => $this
+                        );
                         continue;
                     }
 
@@ -780,24 +780,20 @@ class Run_cosmo extends Db
 
                 if($interaction->id && !(isset($g_charges[$ion_charge]) && count($g_charges[$ion_charge]) > 1))
                 {
-                    if($results->logK !== null && $interaction->LogK !== null && $interaction->LogK != $results->logK)
+                    if(($results->logK !== null && $interaction->LogK !== null && !self::in_range($interaction->LogK,$results->logK)) || 
+                        ($results->logPerm !== null && $interaction->LogPerm !== null && !self::in_range($interaction->LogPerm, $results->logPerm)))
                     {
                         // Two different non-null values? Notify admins
-                        $sch = new SchedulerController();
-                        $sch->send_email_to_admins(
-                            'Cosmo: LogK values are different in interaction/cosmo_run: ' . $interaction->id . '/' . $this->id . ' with values: ' . $interaction->LogK . '/' . $results->logK,
-                            'Cosmo: Error while saving cosmo interaction');
-                        Db::commitTransaction();
-                        continue;
-                    }
-                    if($results->logPerm !== null && $interaction->LogPerm !== null && $interaction->LogPerm != $results->logPerm)
-                    {
-                        // Two different non-null values? Notify admins
-                        $sch = new SchedulerController();
-                        $sch->send_email_to_admins(
-                            'Cosmo: LogPerm values are different in interaction/cosmo_run: ' . $interaction->id . '/' . $this->id . ' with values: ' . $interaction->LogPerm . '/' . $results->logPerm,
-                            'Cosmo: Error while saving cosmo interaction');
-                        Db::commitTransaction();
+                        $notify_admins[$ion->id] = array
+                        (
+                            'substance' => $interaction->substance,
+                            'LogK_old'  => $interaction->LogK,
+                            'LogK_new'  => $results->logK,
+                            'LogPerm_old'=> $interaction->LogPerm,
+                            'LogPerm_new'=> $results->logPerm,
+                            'ion'       => $ion,
+                            'cosmo_run' => $this
+                        );
                         continue;
                     }
 
@@ -878,6 +874,8 @@ class Run_cosmo extends Db
             $this->state = Run_cosmo::STATE_RESULT_DB_STORED;
             $this->save();
         }
+
+        return $notify_admins;
     }
 
     /**

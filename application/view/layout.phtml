@@ -96,7 +96,7 @@
                         <div class="breadcrumbs">
                             <?= $breadcrumbs ?>
                         </div>
-                        <?php $controller->view->render(TRUE); ?>
+                        <?php $controller->view && $controller->view->render(TRUE); ?>
                         <div class="feedback" id="feedback">
                             <div class="feedback-title" id="feedback-title">
                                 <div>Data downloader (<label id="downloader-fb-total">...</label>)</div>

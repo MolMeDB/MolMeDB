@@ -529,12 +529,12 @@ class Statistics extends Db
             (
                 SELECT s.id, MAX(i.id) iid, MAX(t.id) tid
                 FROM substances s 
-                JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ?
+                JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ? AND i.visibility = ?
                 LEFT JOIN transporters t ON t.id_substance = s.id
                 GROUP BY s.id
             ) as tab
             WHERE tab.iid IS NOT NULL AND tab.tid IS NULL
-        ', array($pubchem_membrane->id, $pubchem_method->id))->count;
+        ', array($pubchem_membrane->id, $pubchem_method->id, Interactions::VISIBLE))->count;
 
         $total_subs_active_interactions = $this->queryOne('
             SELECT COUNT(*) as count
@@ -544,10 +544,11 @@ class Statistics extends Db
                 FROM substances s 
                 LEFT JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ?
                 JOIN transporters t ON t.id_substance = s.id
+                JOIN transporter_datasets td ON td.id = t.id_dataset AND td.visibility = ?
                 GROUP BY s.id
             ) as tab
             WHERE tab.iid IS NULL AND tab.tid IS NOT NULL
-        ', array($pubchem_membrane->id, $pubchem_method->id))->count;
+        ', array($pubchem_membrane->id, $pubchem_method->id, Transporter_datasets::VISIBLE))->count;
 
         $total_subs_active_passive_interactions = $this->queryOne('
             SELECT COUNT(*) as count
@@ -767,13 +768,13 @@ class Statistics extends Db
                 i.LogK, i.LogK_acc, i.LogPerm, i.LogPerm_acc, i.theta, i.theta_acc, i.abs_wl, i.abs_wl_acc, i.fluo_wl, i.fluo_wl_acc, i.QY, i.QY_acc, i.lt, i.lt_acc,
                 p1.citation as primary_reference, p2.citation as secondary_reference
             FROM substances s 
-            JOIN interaction i ON i.id_substance = s.id
+            JOIN interaction i ON i.id_substance = s.id AND i.visibility = ?
             JOIN membranes mem ON mem.id = i.id_membrane
             JOIN methods met ON met.id = i.id_method
             JOIN datasets d ON d.id = i.id_dataset
             LEFT JOIN publications p1 ON p1.id = i.id_reference
             LEFT JOIN publications p2 ON p2.id = d.id_publication
-        ', array(), FALSE);
+        ', array(Interactions::VISIBLE), FALSE);
 
         $trans_data = $substanceModel->queryAll('
             SELECT s.name, s.identifier, s.SMILES, s.inchikey, s.MW, s.LogP, s.pubchem, s.drugbank, s.pdb, s.chEMBL,
@@ -782,10 +783,10 @@ class Statistics extends Db
             FROM substances s 
             JOIN transporters t ON t.id_substance = s.id
             JOIN transporter_targets tt ON tt.id = t.id_target
-            JOIN transporter_datasets td ON td.id = t.id_dataset
+            JOIN transporter_datasets td ON td.id = t.id_dataset AND td.visibility = ?
             LEFT JOIN publications p1 ON p1.id = t.id_reference
             LEFT JOIN publications p2 ON p2.id = td.id_reference
-        ',array(), FALSE);
+        ',array(Transporter_datasets::VISIBLE), FALSE);
 
         $substances = $substanceModel
             ->select_list('identifier, name, SMILES, inchikey, LogP, MW, pubchem, pdb, chEMBL, drugbank')
@@ -839,14 +840,14 @@ class Statistics extends Db
                     i.LogK, i.LogK_acc, i.LogPerm, i.LogPerm_acc, i.theta, i.theta_acc, i.abs_wl, i.abs_wl_acc, i.fluo_wl, i.fluo_wl_acc, i.QY, i.QY_acc, i.lt, i.lt_acc,
                     i.id as iid, p1.citation as primary_reference, p2.citation as secondary_reference
                 FROM substances s 
-                JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ?
+                JOIN interaction i ON i.id_substance = s.id AND i.id_membrane != ? AND i.id_method != ? AND i.visibility = ?
                 JOIN membranes mem ON mem.id = i.id_membrane
                 JOIN methods met ON met.id = i.id_method
                 JOIN datasets d ON d.id = i.id_dataset
                 LEFT JOIN publications p1 ON p1.id = i.id_reference
                 LEFT JOIN publications p2 ON p2.id = d.id_publication
             ) as tab
-        ', array($pubchem_membrane->id, $pubchem_method->id))->as_array();
+        ', array($pubchem_membrane->id, $pubchem_method->id, Interactions::VISIBLE))->as_array();
 
         $active_interactions = $this->queryAll('
             SELECT s.name, s.identifier, s.SMILES, s.inchikey, s.MW, s.LogP, s.pubchem, s.drugbank, s.pdb, s.chEMBL,
@@ -855,10 +856,10 @@ class Statistics extends Db
             FROM substances s 
             JOIN transporters t ON t.id_substance = s.id
             JOIN transporter_targets tt ON tt.id = t.id_target
-            JOIN transporter_datasets td ON td.id = t.id_dataset
+            JOIN transporter_datasets td ON td.id = t.id_dataset AND td.visibility = ?
             LEFT JOIN publications p1 ON p1.id = t.id_reference
             LEFT JOIN publications p2 ON p2.id = td.id_reference
-        ')->as_array();
+        ', array(Transporter_datasets::VISIBLE))->as_array();
 
         $paths = array
         (

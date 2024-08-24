@@ -49,6 +49,7 @@ class SchedulerController extends Controller
     static $accessible = array
     (
         'run', 
+        'update_stats'
         // 'run_cosmo',
         // 'validate_substance_identifiers'
     //    'notify_computed_datasets',

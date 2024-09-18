@@ -233,17 +233,16 @@ class Fragments extends Db
             ))
             ->get_one();
 
-        if($r->id)
-            return new Substances($r && $r->id ? $r->id_substance : NULL);
+        return new Substances($r && $r->id ? $r->id_substance : NULL);
 
-        // Try to find directly over identifier
-        $t = Validator_identifiers::instance()->where(array
-        (
-            'value' => $this->smiles,
-            'state' => Validator_identifiers::STATE_VALIDATED
-        ))->get_one();
+        // // Try to find directly over identifier
+        // $t = Validator_identifiers::instance()->where(array
+        // (
+        //     'value' => $this->smiles,
+        //     'state' => Validator_identifiers::STATE_VALIDATED
+        // ))->get_one();
 
-        return new Substances($t->id_substance);
+        // return new Substances($t->id_substance);
     }
 
     /**

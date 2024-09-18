@@ -205,7 +205,7 @@ class BrowseController extends Controller
         }
         catch(Exception $e)
         {
-            $this->addMessageError($e->getMessage());
+            $this->alert->error($e->getMessage());
             $this->redirect('browse/sets');
         }
 

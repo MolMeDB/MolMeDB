@@ -14,6 +14,9 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
 
     protected $keys = [];
 
+    private $abandoned_classes = [];
+    private $link_data = [];
+
     protected $max_pos;
 
     private $debug = false;
@@ -57,14 +60,169 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
         $this->keys = array_keys(is_array($this->data) ? $this->data : []);
         $this->max_pos = count($this->keys);
 
-        $this->get_links();
+        $this->prepare_links();
+    }
+
+    /**
+     * Returns object link from HasOne property
+     * 
+     * @param string $key
+     * 
+     * @return null|Iterable_Object
+     */
+    protected function get_has_one_link($var)
+    {
+        if(!isset($this->link_data['has_one']) || !is_array($this->link_data['has_one']))
+        {
+            return null;
+        }
+        
+        $arr_settings = array_filter($this->link_data['has_one'], 
+        function($a) {
+            return is_array($a) && isset($a['var']) && isset($a['class']);
+        });
+        
+        foreach($arr_settings as $key => $set)
+        {
+            if($set['var'] !== $var)
+            {
+                continue;
+            }
+            
+            $class_name = $set['class'];
+            
+            if(class_exists($class_name) && $this->$key)
+                return new $class_name($this->$key);
+        }
+        
+        $key = "id_$var";
+
+        if(in_array($key, $this->link_data['has_one']))
+        {
+            $class_name = ucwords($var . 's');
+
+            if(class_exists($class_name) && $this->$key)
+                return new $class_name($this->$key);
+        }
+    }
+
+    /**
+     * Returns object link from HasMany property
+     * 
+     * @param string $key
+     * 
+     * @return null|Iterable_Object
+     */
+    protected function get_has_many_link($var)
+    {
+        if(!isset($this->link_data['has_many']) || !is_array($this->link_data['has_many']))
+        {
+            return null;
+        }
+
+        $values = $this->link_data['has_many'];
+        
+        foreach($values as $table => $vals)
+        {
+            // IS STRUCTURE VALID ?
+            if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
+                !isset($vals['own']))
+            {
+                continue;
+            }
+
+            $class_name = $vals['class'];
+            $new_key = $vals['var'];
+            $own_key = $vals['own'];
+
+            if($new_key !== $var)
+            {
+                continue;
+            }
+
+            // Not valid input, set value to NULL
+            if (!class_exists($class_name) || !$this->id || in_array($class_name, $this->abandoned_classes)) 
+            {
+                return null;
+            } 
+
+            $new_class = new $class_name();
+            return $new_class->where($own_key, $this->id)->get_all();
+        }
+    }
+
+    /**
+     * Returns object link from has_many_and_belongs_to property
+     * 
+     * @param string $key
+     * 
+     * @return null|Iterable_Object
+     */
+    protected function get_has_many_and_belongs_to_link($var)
+    {
+        if(!isset($this->link_data['has_many_and_belongs_to']) || !is_array($this->link_data['has_many_and_belongs_to']))
+        {
+            return null;
+        }
+        
+        $db = new Db();
+        $values = $this->link_data['has_many_and_belongs_to'];
+        
+        foreach($values as $table => $vals)
+        {
+            $keys = array_keys($vals);
+            // IS STRUCTURE VALID ?
+            if(!is_array($vals) || count($vals) != 2 || !is_array($vals[$keys[0]]) || 
+                !isset($vals[$keys[0]]['var']) || !isset($vals[$keys[0]]['class']))
+            {
+                continue;
+            }
+
+            $remote_data = $vals[$keys[0]];
+            $remote_key = $keys[0];
+            $local_key = $vals[0];
+
+            if($remote_data['var'] !== $var)
+            {
+                continue;
+            }
+
+            $remote_class_name = $remote_data['class'];
+            $remote_var = $remote_data['var'];
+
+            // Not valid input, set value to NULL
+            if (!class_exists($remote_class_name) || !$this->id || in_array($remote_class_name, $this->abandoned_classes)) 
+            {
+                continue;
+            } 
+            
+            // Get data from M:N table
+            $rows = $db->queryAll("
+                SELECT DISTINCT $remote_key as id
+                FROM $table
+                WHERE $local_key = '$this->id'
+            ");
+
+            $ids = [];
+
+            foreach($rows as $r)
+            {
+                $ids[] = $r->id;
+            }
+
+            $new_class = new $remote_class_name();
+            if(!empty($ids))
+                return $new_class->in('id', $ids)->get_all();
+            else
+                return [];
+        }
     }
 
     /**
      * Get links to other tables
      * 
      */
-    private function get_links()
+    private function prepare_links()
     {
         $db = new Db();
         $r = new ReflectionClass($this);
@@ -98,7 +256,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
                 $abandoned_classes[] = get_class($ob);
             }
             
-            $abandoned_classes = array_unique($abandoned_classes);
+            $this->abandoned_classes = array_unique($abandoned_classes);
         }
 
         foreach($props as $p)
@@ -111,128 +269,7 @@ class Iterable_object implements ArrayAccess, Iterator, Countable
 
             $attr = $p->name;
 
-            $data[$attr] = $this->$attr;
-        }
-
-        // process data
-        foreach($data as $type => $values)
-        {
-            // HAS ONE parsing
-            if($type == $this->valid_link_types[self::T_HAS_ONE])
-            {
-                foreach($values as $key => $vals)
-                {
-                    if(is_array($vals))
-                    {
-                        // IS STRUCTURE VALID ?
-                        if(!isset($vals['var']) || !isset($vals['class']))
-                        {
-                            $this->$key = NULL;
-                            continue;
-                        }
-
-                        $class_name = $vals['class'];
-                        $new_key = $vals['var'];
-                        $k = $key;
-                    }
-                    else // Is set only value
-                    {
-                        $val = $vals;
-                        $key = $val;
-
-                        $new_key = preg_replace('/^\s*id_/', '', $val);
-                        $k = 'id_' . $new_key;
-
-                        $class_name = ucwords($new_key . 's');
-                    }
-                    
-                    // Not valid input, set value to NULL
-                    if (!class_exists($class_name) || !$this->$k || in_array($class_name, $abandoned_classes)) 
-                    {
-                        $this->$new_key = NULL;
-                    } 
-                    else 
-                    {
-                        $this->$new_key = new $class_name($this->$k);
-                    }
-                
-                }
-            }
-            // HAS MANY AND BELONGS TO parsing
-            else if($type == $this->valid_link_types[self::T_HAS_MANY_AND_BELONGS_TO])
-            {
-                foreach($values as $table => $vals)
-                {
-                    $keys = array_keys($vals);
-                    // IS STRUCTURE VALID ?
-                    if(!is_array($vals) || count($vals) != 2 || !is_array($vals[$keys[0]]) || 
-                        !isset($vals[$keys[0]]['var']) || !isset($vals[$keys[0]]['class']))
-                    {
-                        continue;
-                    }
-
-                    $remote_data = $vals[$keys[0]];
-                    $remote_key = $keys[0];
-                    $local_key = $vals[0];
-
-                    $remote_class_name = $remote_data['class'];
-                    $remote_var = $remote_data['var'];
-
-                    // Not valid input, set value to NULL
-                    if (!class_exists($remote_class_name) || !$this->id || in_array($remote_class_name, $abandoned_classes)) 
-                    {
-                        $this->$remote_var = NULL;
-                        continue;
-                    } 
-                    
-                    // Get data from M:N table
-                    $rows = $db->queryAll("
-                        SELECT DISTINCT $remote_key as id
-                        FROM $table
-                        WHERE $local_key = '$this->id'
-                    ");
-
-                    $ids = [];
-
-                    foreach($rows as $r)
-                    {
-                        $ids[] = $r->id;
-                    }
-
-                    $new_class = new $remote_class_name();
-                    if(!empty($ids))
-                        $this->$remote_var = $new_class->in('id', $ids)->get_all();
-                    else
-                        $this->$remote_var = [];
-                }
-            }
-            // HAS MANY parsing
-            else if($type == $this->valid_link_types[self::T_HAS_MANY])
-            {
-                foreach($values as $table => $vals)
-                {
-                    // IS STRUCTURE VALID ?
-                    if(!is_array($vals) || !isset($vals['var']) || !isset($vals['class']) || 
-                        !isset($vals['own']))
-                    {
-                        continue;
-                    }
-
-                    $class_name = $vals['class'];
-                    $new_key = $vals['var'];
-                    $own_key = $vals['own'];
-
-                    // Not valid input, set value to NULL
-                    if (!class_exists($class_name) || !$this->id || in_array($class_name, $abandoned_classes)) 
-                    {
-                        $this->$new_key = NULL;
-                        continue;
-                    } 
-
-                    $new_class = new $class_name();
-                    $this->$new_key = $new_class->where($own_key, $this->id)->get_all();
-                }
-            }
+            $this->link_data[$attr] = $this->$attr;
         }
     }
 

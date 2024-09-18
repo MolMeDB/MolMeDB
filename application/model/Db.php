@@ -52,6 +52,33 @@ class Db extends Iterable_object
         }
     }
 
+    public function __get($key)
+    {
+        if(is_array($this->data) && array_key_exists($key, $this->data))
+        {
+            return $this->data[$key];
+        }
+
+        $v = null;
+
+        if(property_exists($this, 'has_one') && !empty($this->has_one))
+        {
+            $v = $this->get_has_one_link($key);
+        }
+
+        if(!$v && property_exists($this, 'has_many_and_belongs_to') && !empty($this->has_many_and_belongs_to))
+        {
+            $v = $this->get_has_many_and_belongs_to_link($key);
+        }
+
+        if(!$v && property_exists($this, 'has_many') && !empty($this->has_many))
+        {
+            $v = $this->get_has_many_link($key);
+        }
+
+        return $v;
+    }
+
     /**
      * Returns instance of called class
      * 

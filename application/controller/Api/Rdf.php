@@ -305,7 +305,7 @@ class ApiRdf extends ApiController
     public function interaction_print($suffix, $type)
     {
         $suffix = $this->format_parameter($suffix);
-        
+
         $accept_type = HeaderParser::get_accept_type_by_enum($type);
 
         if(!$accept_type)
@@ -313,7 +313,7 @@ class ApiRdf extends ApiController
             ResponseBuilder::bad_request('Invalid accept type parameter.');
         }
 
-        $uri = Url::rdf_domain() . "interaction/" . $suffix;
+        $uri = Url::rdf_domain(true) . "interaction/" . $suffix;
 
         if($accept_type == HeaderParser::HTML)
         {

@@ -360,6 +360,41 @@ class ApiRdf extends ApiController
     }
 
 
+
+    /**
+     * Returns ...
+     * 
+     * @GET
+     * @param @required $suffix - Substance identifier
+     * 
+     * @Path(/transporter/<suffix:^target\d+\w*$>)
+     */
+    public function target($suffix=NULL)
+    {
+        $item_arr = explode('_',$suffix);
+        $id = preg_replace("/^target/", "", $item_arr[0]);
+
+        //Check item id
+        $membrane = new Transporter_targets($id);
+
+        if(!$membrane->id)
+        {
+            ResponseBuilder::not_found('Requested target not found.');
+        }
+
+        // Get requested type
+        $accept_type = $this->get_preffered_accept_from_list(self::$method_allowed_types);
+        $accept_type_enum = HeaderParser::get_enum_accept_type($accept_type);
+
+        if(!$accept_type || !$accept_type_enum)
+        {
+            ResponseBuilder::bad_request('Invalid accept type header.');
+        }
+
+        // Redirect by type
+        ResponseBuilder::see_other(Url::rdf_domain() . 'transporter/' . $suffix . '/' . $accept_type_enum);
+    }
+
     /**
      * Returns ...
      * 
@@ -367,7 +402,7 @@ class ApiRdf extends ApiController
      * @param @required $suffix - Substance identifier
      * @param @reqiured $type
      * 
-     * @Path(/transporter/<suffix:^\w*tra[0-9]+>/<type:\w+>)
+     * @Path(/transporter/<suffix:^(target\d+\w*|\w*tra[0-9]+)$>/<type:\w+>)
      */
     public function transporter_print($suffix, $type)
     {

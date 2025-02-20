@@ -326,7 +326,7 @@ class Rdf extends SparqllibBase
 			{
 				$ns = preg_replace('/\/+$/', '', $ns);
 				$end = substr($prefix, strlen($ns)+1);
-				return $sc . $end . ($suffix ? '#' . $suffix : '');
+				return $sc . $end . ($suffix ? $suffix : '');
 			}
 		}
 		

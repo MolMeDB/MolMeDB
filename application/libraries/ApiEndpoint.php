@@ -34,7 +34,14 @@ class ApiEndpoint
         $this->requested_path = $request->requested_endpoint;
         $this->request = $request;
 
-        $this->requested_path = array_map('trim', array_map('strtolower', $this->requested_path));
+        if($this->requested_path[0] == 'rdf')
+        {
+            $this->requested_path = array_map('trim', $this->requested_path);
+        }
+        else
+        {
+            $this->requested_path = array_map('trim', array_map('strtolower', $this->requested_path));
+        }
         
         //Checking if valid method and endpoint are used
         if(!$this->requested_path || count($this->requested_path) < 2)

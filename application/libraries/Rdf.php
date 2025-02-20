@@ -302,7 +302,8 @@ class Rdf extends SparqllibBase
 			"rdf.ncbi.nlm.nih.gov/pubchem/compound" => "pubchem:",
 			"rdf.ebi.ac.uk/resource/chembl/molecule" => "ebi:",
 			"purl.uniprot.org/uniprot/" => "uniprot:",
-			"ebi.ac.uk/efo/" => "efo:"
+			"ebi.ac.uk/efo/" => "efo:",
+			"edamontology.org/" => "edam:"
 		);
 
 		$prefix = $uri;

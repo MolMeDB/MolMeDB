@@ -96,7 +96,7 @@ class ApiRdf extends ApiController
      */
     public function compound_print($id, $type)
     {
-        $suffix = $this->format_parameter($id);
+        $suffix = $id;
 
         // Check if compound exists
         $substance = Substances::instance()->where('identifier', $suffix)->get_one();
@@ -152,7 +152,7 @@ class ApiRdf extends ApiController
         if(!$accept_type || !$accept_type_enum)
         {
             ResponseBuilder::bad_request('Invalid accept type header.');
-        }
+        } 
 
         // Redirect by type
         ResponseBuilder::see_other(Url::rdf_domain() . 'substance/' . $suffix . '/' . $accept_type_enum);
@@ -169,8 +169,6 @@ class ApiRdf extends ApiController
      */
     public function substance_print($suffix, $type)
     {
-        $suffix = $this->format_parameter($suffix);
-        
         $accept_type = HeaderParser::get_accept_type_by_enum($type);
 
         if(!$accept_type)
@@ -304,8 +302,6 @@ class ApiRdf extends ApiController
      */
     public function interaction_print($suffix, $type)
     {
-        $suffix = $this->format_parameter($suffix);
-
         $accept_type = HeaderParser::get_accept_type_by_enum($type);
 
         if(!$accept_type)
@@ -405,9 +401,7 @@ class ApiRdf extends ApiController
      * @Path(/transporter/<suffix:^(target\d+\w*|\w*tra[0-9]+)$>/<type:\w+>)
      */
     public function transporter_print($suffix, $type)
-    {
-        $suffix = $this->format_parameter($suffix);
-        
+    {        
         $accept_type = HeaderParser::get_accept_type_by_enum($type);
 
         if(!$accept_type)
@@ -471,8 +465,6 @@ class ApiRdf extends ApiController
      */
     public function reference_print($suffix, $type)
     {
-        $suffix = $this->format_parameter($suffix);
-        
         $accept_type = HeaderParser::get_accept_type_by_enum($type);
 
         if(!$accept_type)
@@ -490,33 +482,6 @@ class ApiRdf extends ApiController
         {
             $this->responses[$accept_type] = $uri;
         }
-    }
-
-
-    /**
-     * Changes parameter to final format
-     * 
-     * @param string $param
-     * 
-     * @return string
-     */
-    private function format_parameter($param)
-    {
-        if(preg_match('/^MM[0-9]+/i', $param))
-        {
-            $param = preg_replace('/^MM/i', 'MM', $param);
-        }
-
-        if(preg_match('/^MM[0-9]+_(.*)/', $param, $matches))
-        {
-            if(count($matches) == 2)
-            {
-                $t = strtolower($matches[1]);
-                $param = preg_replace('/^(MM[0-9]+_)(.*)/', "$1".$t, $param);
-            }
-        }
-
-        return $param;
     }
 
 

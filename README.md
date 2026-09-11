@@ -1,6 +1,15 @@
 # MolMeDB-api
 MolMeDB is open-source...
 
+## License & Citation
+- **Code** (this repository): [MIT License](LICENSE).
+- **Data** served via the API and exports: [CC BY 4.0](LICENSE-DATA.md).
+- **How to cite**: see [CITATION.cff](CITATION.cff), or:
+
+  > Juračka J., Šrejber M., Melíková M., Bazgier V., Berka K.: MolMeDB: Molecules on Membranes Database. Database, Volume 2019, 2019, baz078, https://doi.org/10.1093/database/baz078
+
+- The same information is available machine-readably at `GET /api/public/v1/about`.
+
 ## How to run
 This repository is fully prepared for easy setup using Docker. Before starting, copy the appropriate docker-compose file as follows.
 

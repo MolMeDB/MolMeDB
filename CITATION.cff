@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use MolMeDB, please cite the article below. The dataset itself is licensed under CC BY 4.0 — see LICENSE-DATA.md."
+title: "MolMeDB: Molecules on Membranes Database"
+type: dataset
+license: CC-BY-4.0
+repository-code: "https://github.com/MolMeDB/MolMeDB"
+url: "https://molmedb.upol.cz"
+contact:
+  - email: admin@molmedb.cz
+    name: "MolMeDB Team"
+authors:
+  - family-names: Juračka
+    given-names: J.
+  - family-names: Šrejber
+    given-names: M.
+  - family-names: Melíková
+    given-names: M.
+  - family-names: Bazgier
+    given-names: V.
+  - family-names: Berka
+    given-names: K.
+identifiers:
+  - type: doi
+    value: 10.1093/database/baz078
+    description: "Peer-reviewed article describing MolMeDB"
+preferred-citation:
+  type: article
+  title: "MolMeDB: Molecules on Membranes Database"
+  journal: Database
+  volume: "2019"
+  year: 2019
+  doi: 10.1093/database/baz078
+  authors:
+    - family-names: Juračka
+      given-names: J.
+    - family-names: Šrejber
+      given-names: M.
+    - family-names: Melíková
+      given-names: M.
+    - family-names: Bazgier
+      given-names: V.
+    - family-names: Berka
+      given-names: K.

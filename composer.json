@@ -23,6 +23,7 @@
         "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-backup": "^10.2",
         "spatie/laravel-permission": "^7.3",
+        "spatie/laravel-sitemap": "^8.2",
         "symfony/filesystem": "^7.2",
         "tucker-eric/eloquentfilter": "^3.6"
     },

@@ -4,6 +4,9 @@
 /public/hot
 /public/download
 /public/storage
+/public/sitemap.xml
+/public/sitemap-pages.xml
+/public/sitemap-structures-*.xml
 /storage/*.key
 /storage/pail
 /vendor

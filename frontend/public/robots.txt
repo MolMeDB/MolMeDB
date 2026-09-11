@@ -6,3 +6,5 @@ Disallow: /api/
 Disallow: /lab/
 Disallow: /account/
 Disallow: /downloader/
+
+Sitemap: https://admin.molmedb.upol.cz/sitemap.xml

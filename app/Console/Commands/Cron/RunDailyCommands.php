@@ -7,6 +7,7 @@ use App\Console\Commands\CleanupExpiredDownloadFiles;
 use App\Console\Commands\Database\BackupDb;
 use App\Console\Commands\Database\BackupDbIdsm;
 use App\Console\Commands\Database\BackupDbPredictions;
+use App\Console\Commands\GenerateSitemap;
 use App\Console\Commands\UpdateExportFiles;
 use App\Console\Commands\UpdateStatistics;
 use App\Enums\PermissionEnums;
@@ -65,6 +66,11 @@ class RunDailyCommands extends Command
             [
                 'name' => UpdateExportFiles::class,
                 'label' => 'Update export files',
+                'parameters' => [],
+            ],
+            [
+                'name' => GenerateSitemap::class,
+                'label' => 'Generate sitemap',
                 'parameters' => [],
             ],
             [

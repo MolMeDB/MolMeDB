@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Resources\MolMeDBOverviewResource;
 use App\Mcp\Tools\GetMembraneTool;
 use App\Mcp\Tools\GetMethodTool;
 use App\Mcp\Tools\GetProteinInteractionsTool;
@@ -9,6 +10,7 @@ use App\Mcp\Tools\GetProteinTool;
 use App\Mcp\Tools\GetPublicationTool;
 use App\Mcp\Tools\GetStructureInteractionsTool;
 use App\Mcp\Tools\GetStructureTool;
+use App\Mcp\Tools\ListCategoriesTool;
 use App\Mcp\Tools\SearchMembranesTool;
 use App\Mcp\Tools\SearchMethodsTool;
 use App\Mcp\Tools\SearchProteinsTool;
@@ -40,12 +42,13 @@ class MolMeDBServer extends Server
         GetProteinInteractionsTool::class,
         SearchPublicationsTool::class,
         GetPublicationTool::class,
+        ListCategoriesTool::class,
     ];
 
     /**
      * @var array<int, class-string<\Laravel\Mcp\Server\Resource>>
      */
     protected array $resources = [
-        //
+        MolMeDBOverviewResource::class,
     ];
 }

@@ -6,4 +6,3 @@ Disallow: /api/
 Disallow: /lab/
 Disallow: /account/
 Disallow: /downloader/
-Disallow: /mol/

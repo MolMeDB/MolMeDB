@@ -29,6 +29,12 @@ return [
 
     'routes' => [
 
+        'about' => [
+            'description' => 'Machine-readable description of MolMeDB as a dataset: license, citation, contact and identifier scheme.',
+            'query' => [],
+            'example' => '/about',
+        ],
+
         'membranes' => [
             'description' => 'List membranes, optionally filtered by name/category.',
             'query' => [

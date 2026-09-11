@@ -2,6 +2,9 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\GetStructureInteractionsTool;
+use App\Mcp\Tools\GetStructureTool;
+use App\Mcp\Tools\SearchStructuresTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -16,7 +19,9 @@ class MolMeDBServer extends Server
      * @var array<int, class-string<\Laravel\Mcp\Server\Tool>>
      */
     protected array $tools = [
-        //
+        SearchStructuresTool::class,
+        GetStructureTool::class,
+        GetStructureInteractionsTool::class,
     ];
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Public\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\JsonLd\DatasetJsonLdMapper;
 use Illuminate\Http\Request;
 
 /**
@@ -15,6 +16,10 @@ class AboutController extends Controller
 {
     public function index(Request $request)
     {
+        if ($request->attributes->get('response_format') === 'jsonld') {
+            return response()->json(app(DatasetJsonLdMapper::class)->map());
+        }
+
         return response()->json([
             'data' => [
                 'name' => config('fair.dataset_name'),

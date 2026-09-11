@@ -12,6 +12,9 @@ use Symfony\Component\HttpFoundation\Response;
  *  - Accept explicitly mentioning `text/html` (a browser navigating to the
  *    URL) -> the interactive "try it" explorer page for the matched route,
  *    instead of calling the controller at all.
+ *  - Accept explicitly mentioning `application/ld+json` -> flag the request
+ *    so resources can return a schema.org/Bioschemas JSON-LD representation
+ *    instead of the plain flat one, then fall through to the controller.
  *  - Anything else (missing, `*\/*`, `application/json`, ...) -> the normal
  *    JSON endpoint response, same as before.
  */
@@ -27,6 +30,10 @@ class NegotiatePublicApiFormat
 
         if (str_contains($accept, 'text/html')) {
             return $this->renderExplorer($request);
+        }
+
+        if (str_contains($accept, 'application/ld+json')) {
+            $request->attributes->set('response_format', 'jsonld');
         }
 
         $request->headers->set('Accept', 'application/json');

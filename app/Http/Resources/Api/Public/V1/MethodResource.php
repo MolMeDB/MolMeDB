@@ -15,6 +15,9 @@ class MethodResource extends JsonResource
             'abbreviation' => $this->abbreviation,
             'description' => $this->description,
             'categories' => $this->whenLoaded('categories', fn () => CategoryResource::collection($this->categories)),
+            'url' => url("/api/public/v1/methods/{$this->id}"),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

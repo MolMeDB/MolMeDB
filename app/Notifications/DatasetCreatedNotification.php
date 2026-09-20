@@ -86,14 +86,5 @@ class DatasetCreatedNotification extends Notification implements ShouldQueue
             'dataset_id' => $this->datasetId,
             ])
             ->options(['TTL' => 1000]);
-            // ->data(['id' => $notification->id])
-            // ->badge()
-            // ->dir()
-            // ->image()
-            // ->lang()
-            // ->renotify()
-            // ->requireInteraction()
-            // ->tag()
-            // ->vibrate()
     }
 }

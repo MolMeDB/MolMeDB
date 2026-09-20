@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { subscribeToPush } from "@/lib/api/frontend/pushNotifications";
-import { debugAuth } from "@/lib/api/frontend/pushNotifications";
 
 function urlBase64ToUint8Array(base64String: string) {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -40,7 +39,6 @@ export default function PushNotifications() {
             await navigator.serviceWorker.ready;
 
             console.log("Service worker ready:", registration);
-            // console.log("DEBUG AUTH:", await debugAuth());
 
             const existingSubscription =
                 await registration.pushManager.getSubscription();

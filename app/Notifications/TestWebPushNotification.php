@@ -21,14 +21,5 @@ class TestWebPushNotification extends Notification
             ->icon('/assets/icons/web-app-manifest-192x192.png')
             ->action('Test', 'test')
             ->options(['TTL' => 1000]);
-            // ->data(['id' => $notification->id])
-            // ->badge()
-            // ->dir()
-            // ->image()
-            // ->lang()
-            // ->renotify()
-            // ->requireInteraction()
-            // ->tag()
-            // ->vibrate()
     }
 }

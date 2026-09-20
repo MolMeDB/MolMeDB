@@ -15,15 +15,6 @@ use Illuminate\Support\Facades\Route;
 
 require __DIR__ . '/../modules/References/EuropePMC/Routes/api.php';
 
-Route::get('/api/debug-auth', function (Request $request) {
-    return response()->json([
-        'session_id' => $request->session()->getId(),
-        'authenticated' => auth()->check(),
-        'user' => $request->user(),
-        'cookies' => $request->cookies->all(),
-    ]);
-});
-
 Route::middleware('auth:sanctum')
     ->group(function () {
         Route::get('/user', function (Request $request) {

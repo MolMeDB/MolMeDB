@@ -9,30 +9,46 @@ const XSRF_KEY = process.env.COOKIES_BACKEND_XSRF_KEY as string;
 const SESSION_KEY = process.env.COOKIES_BACKEND_SESSION_KEY as string;
 
 async function updateCookies(res: Response) {
-  const cookies = res.headers.get("set-cookie") || "";
+  const setCookie = res.headers.get("set-cookie") || "";
 
-  const match = cookies?.toString().match(/XSRF-TOKEN=[^\%;]+/);
-  const matchSession = cookies?.toString().match(/pokusnice_session=[^;]+/);
+  const xsrfMatch = setCookie.match(
+    new RegExp(`${XSRF_KEY}=([^;]+)`)
+  );
 
-  if (!match || !matchSession) {
-    console.error("No match in set-cookies response"); // TODO
-    // console.log("SET-COOKIES", cookies?.toString());
-    // console.log(res.headers.getSetCookie());
+  const sessionMatch = setCookie.match(
+    new RegExp(`${SESSION_KEY}=([^;]+)`)
+  );
+
+  if (!xsrfMatch || !sessionMatch) {
+    console.error("No match in set-cookies response");
+    console.error("Expected XSRF cookie:", XSRF_KEY);
+    console.error("Expected session cookie:", SESSION_KEY);
+    console.error("Set-Cookie:", setCookie);
+
     return {};
   }
 
-  const SESSION = matchSession[0].split("=")[1];
-  const XSRF_TOKEN = match[0].split("=")[1];
+  const XSRF_TOKEN = decodeURIComponent(xsrfMatch[1]);
+  const SESSION = sessionMatch[1];
 
-  // console.log("Setting new cookies");
-
-  // console.log("XSRF_TOKEN", XSRF_TOKEN);
-  // console.log("SESSION", SESSION);
-
-  // Set new cookies
   const cookiesStore = await Cookies();
-  cookiesStore.set(XSRF_KEY, XSRF_TOKEN, DEFAULT_COOKIES_CONFIG);
-  cookiesStore.set(SESSION_KEY, SESSION, DEFAULT_COOKIES_CONFIG);
+
+  cookiesStore.set(
+    XSRF_KEY,
+    XSRF_TOKEN,
+    DEFAULT_COOKIES_CONFIG
+  );
+
+  cookiesStore.set(
+    SESSION_KEY,
+    SESSION,
+    DEFAULT_COOKIES_CONFIG
+  );
+
+  return {
+    xsrf: XSRF_TOKEN,
+    session: SESSION,
+  };
 }
 
 async function refreshCSRF() {
@@ -52,10 +68,11 @@ async function _post(uri: string, data = {}, method = "POST") {
   const XSRF_TOKEN = cks.get(XSRF_KEY)?.value as string;
 
   // console.log("POST", uri);
-  // console.log("COOK", SESSION);
-  // console.log("COOK2", XSRF_TOKEN);
-
-  console.log("POST", baseUrl + uri, data);
+  // console.log("SESSION KEY:", SESSION);
+  // console.log("SESSION exists:", !!SESSION);
+  // console.log("XSRF_TOKEN exists:", !!XSRF_TOKEN);
+  // console.log("POST", baseUrl + uri, data);
+  // console.log("ALL NEXT COOKIES:", cks.getAll());
 
   // Přidáme credentials a X-XSRF-TOKEN
   const result = await fetch(`${baseUrl}${uri}`, {
@@ -179,8 +196,8 @@ async function _get(
   data:
     | string
     | {
-        [key: string]: Set<string | number>;
-      } = {},
+      [key: string]: Set<string | number>;
+    } = {},
   signal?: AbortSignal
 ) {
   const cks = await Cookies();
@@ -224,7 +241,7 @@ async function _get(
     return false;
   }
 
-  await updateCookies(result);
+  // await updateCookies(result);
 
   return result;
 }
@@ -234,8 +251,8 @@ export async function get(
   data:
     | string
     | {
-        [key: string]: Set<string | number>;
-      } = {},
+      [key: string]: Set<string | number>;
+    } = {},
   signal?: AbortSignal
 ) {
   "use server";

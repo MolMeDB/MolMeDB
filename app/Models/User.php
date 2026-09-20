@@ -18,12 +18,14 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Spatie\Activitylog\Traits\CausesActivity;
 use Spatie\Permission\Traits\HasRoles;
+use NotificationChannels\WebPush\HasPushSubscriptions;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements MustVerifyEmail, FilamentUser, HasName, HasAvatar
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
-    use HasRoles, CausesActivity;
+    use HasRoles, CausesActivity, HasPushSubscriptions;
 
     /**
      * The attributes that are mass assignable.
@@ -67,9 +69,15 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser, Has
 
     public function getFilamentAvatarUrl(): ?string
     {
-        if(!$this->name) return null;
+        if (!$this->name)
+            return null;
 
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->name);
+    }
+
+    public function notificationPreferences(): HasMany
+    {
+        return $this->hasMany(NotificationPreference::class);
     }
 
     /**
@@ -102,7 +110,7 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser, Has
     {
         // Return email address only...
         return $this->email;
- 
+
         // Return email address and name...
         return [$this->email => $this->name];
     }
@@ -110,12 +118,12 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser, Has
     /**
      * Returns identifiers added by current user
      */
-    public function identifiers() : MorphMany
+    public function identifiers(): MorphMany
     {
         return $this->morphMany(Identifier::class, 'source');
     }
 
-    public function name() : ?string
+    public function name(): ?string
     {
         return $this->name;
     }
@@ -125,7 +133,7 @@ class User extends Authenticatable implements MustVerifyEmail, FilamentUser, Has
         return $this->name . " ($this->email)";
     }
 
-    public function logs() : MorphMany
+    public function logs(): MorphMany
     {
         return $this->actions();
     }

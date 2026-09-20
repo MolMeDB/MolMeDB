@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Config extends Model
 {
@@ -21,6 +22,10 @@ class Config extends Model
 
     public static function get($key, $default = null)
     {
+        if (!Schema::hasTable('configs')) {
+            return $default;
+        }
+
         return static::where('key', $key)->value('value') ?? $default;
     }
 

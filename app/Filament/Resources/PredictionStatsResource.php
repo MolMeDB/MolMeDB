@@ -69,18 +69,7 @@ class PredictionStatsResource extends Resource
                     Infolists\Components\TextEntry::make('live_charts')
                         ->hiddenLabel()
                         ->state(fn (PredictionStat $record): string => view('filament.prediction-stats.live-stats-chart', [
-                            'charts' => [
-                                [
-                                    'title' => 'Queue (waiting)',
-                                    'caption' => 'queued',
-                                    'values' => $record->payload['queue'] ?? [],
-                                ],
-                                [
-                                    'title' => 'Running now',
-                                    'caption' => 'running',
-                                    'values' => self::runningCountsByStep($record->payload['running'] ?? []),
-                                ],
-                            ],
+                            'charts' => self::liveCharts($record),
                         ])->render())
                         ->html()
                         ->columnSpanFull(),
@@ -177,6 +166,27 @@ class PredictionStatsResource extends Resource
     public static function getRelations(): array
     {
         return [];
+    }
+
+    /**
+     * Queue and running-now charts of a snapshot, for the live-stats-chart view.
+     *
+     * @return array<int, array{title: string, caption: string, values: array<string, int>}>
+     */
+    public static function liveCharts(?PredictionStat $record): array
+    {
+        return [
+            [
+                'title' => 'Queue (waiting)',
+                'caption' => 'queued',
+                'values' => $record?->payload['queue'] ?? [],
+            ],
+            [
+                'title' => 'Running now',
+                'caption' => 'running',
+                'values' => self::runningCountsByStep($record?->payload['running'] ?? []),
+            ],
+        ];
     }
 
     /**

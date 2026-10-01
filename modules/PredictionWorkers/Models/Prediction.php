@@ -762,13 +762,16 @@ class Prediction extends PredictionBaseModel
             return 0;
         }
 
-        $download = $this->downloadRemotePredictionCosmoArchive($client);
+        $download = filled($this->remote_calculation_id)
+            ? $this->remotePredictionClient($client)->downloadArtifact((string) $this->remote_calculation_id, RemotePredictionArtifact::COSMO)
+            : $this->downloadRemotePredictionCosmoArchive($client);
 
         return $this->storeCosmoFiles($this->cosmoFilesFromDownload($download), 'remote prediction service');
     }
 
     /**
      * Store conformer COSMO files into the folder of the stored prediction result (next to cosmo.xml).
+     * Only adds files: an existing file with the same name is kept when identical, otherwise nothing is stored.
      *
      * @param  array<string, string>  $cosmoFiles  filename => contents
      */
@@ -776,8 +779,22 @@ class Prediction extends PredictionBaseModel
     {
         [$diskName, $folder] = $this->cosmoFilesLocation();
         $disk = Storage::disk($diskName);
+        $existingFiles = array_flip(array_map('basename', $disk->files($folder)));
+        $missingFiles = [];
 
         foreach ($cosmoFiles as $filename => $contents) {
+            if (! isset($existingFiles[$filename])) {
+                $missingFiles[$filename] = $contents;
+
+                continue;
+            }
+
+            if (md5((string) $disk->get("{$folder}/{$filename}")) !== md5($contents)) {
+                throw new RuntimeException("COSMO file [{$diskName}:{$folder}/{$filename}] already exists with different contents.");
+            }
+        }
+
+        foreach ($missingFiles as $filename => $contents) {
             if (! $disk->put("{$folder}/{$filename}", $contents)) {
                 throw new RuntimeException("Unable to store COSMO file to [{$diskName}:{$folder}/{$filename}].");
             }

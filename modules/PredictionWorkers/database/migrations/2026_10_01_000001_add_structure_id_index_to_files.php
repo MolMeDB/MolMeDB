@@ -14,6 +14,10 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (DB::connection($this->connection)->getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::connection($this->connection)->statement(
             "CREATE INDEX IF NOT EXISTS files_structure_id_index ON files ((split_part(path, '/', 1)))"
         );
@@ -21,6 +25,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::connection($this->connection)->statement('DROP INDEX IF EXISTS files_structure_id_index');
+        if (DB::connection($this->connection)->getDriverName() === 'pgsql') {
+            DB::connection($this->connection)->statement('DROP INDEX IF EXISTS files_structure_id_index');
+        }
     }
 };

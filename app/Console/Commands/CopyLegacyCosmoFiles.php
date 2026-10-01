@@ -14,7 +14,8 @@ use Throwable;
 /**
  * One-off: the legacy prediction workflow kept the conformer COSMO files (.ccf) only on the old
  * MetaCentrum storage ({bucket}/{molecule_id}/{ion_id}/03-COSMO_INPUT/*.ccf). Legacy ions are
- * paired with prediction structures by SMILES using the ion map exported from the legacy database.
+ * paired with prediction structures by SMILES using the ion map exported from the legacy database,
+ * and every pairing is checked against the conformer path stored in the legacy cosmo.xml.
  */
 class CopyLegacyCosmoFiles extends Command
 {
@@ -27,7 +28,7 @@ class CopyLegacyCosmoFiles extends Command
         {--execute : Copy the files (without it only a dry run listing the files is made)}
         {--id=* : Only these prediction IDs}
         {--limit= : Process at most this many predictions}
-        {--source-root=/storage/brno3-cerit/home/xjur2k/.MolMeDB/COSMO : Legacy COSMO folder on the MetaCentrum storage}
+        {--source-root=/storage/brno12-cerit/home/xjur2k/.MolMeDB/COSMO : Legacy COSMO folder on the MetaCentrum storage}
         {--ion-map=database/legacy/cosmo_ions.csv : Legacy ion map (ion_id, fragment_id, smiles)}';
 
     /**
@@ -43,7 +44,8 @@ class CopyLegacyCosmoFiles extends Command
     public function handle(): int
     {
         $execute = (bool) $this->option('execute');
-        $ions = $this->loadIonMap(base_path((string) $this->option('ion-map')));
+        $ionMap = (string) $this->option('ion-map');
+        $ions = $this->loadIonMap(str_starts_with($ionMap, '/') ? $ionMap : base_path($ionMap));
         $source = $this->legacyDisk((string) $this->option('source-root'));
         $limit = $this->option('limit') !== null ? (int) $this->option('limit') : null;
 
@@ -124,14 +126,30 @@ class CopyLegacyCosmoFiles extends Command
             return ['status' => 'no_legacy_ion', 'ion_id' => null, 'files' => 0, 'bytes' => 0, 'message' => $prediction->predictionStructure?->canonical_smiles];
         }
 
-        $directory = $this->legacyIonDirectory($ion['fragment_id'], $ion['ion_id']).'/03-COSMO_INPUT';
+        $ionDirectory = $this->legacyIonDirectory($ion['fragment_id'], $ion['ion_id']);
+
+        // Independent check of the SMILES pairing: the legacy cosmo.xml names the conformer files it was computed from.
+        $resultDirectory = $this->legacyIonDirectoryFromResult($prediction);
+
+        if ($resultDirectory === null) {
+            return ['status' => 'unverified', 'ion_id' => $ion['ion_id'], 'files' => 0, 'bytes' => 0, 'message' => 'cosmo.xml does not reference legacy conformer files'];
+        }
+
+        if ($resultDirectory !== $ionDirectory) {
+            return ['status' => 'mapping_mismatch', 'ion_id' => $ion['ion_id'], 'files' => 0, 'bytes' => 0, 'message' => "SMILES pairing {$ionDirectory}, cosmo.xml {$resultDirectory}"];
+        }
+
+        $directory = "{$ionDirectory}/03-COSMO_INPUT";
 
         if (! $source->directoryExists($directory)) {
             return ['status' => 'no_ccf', 'ion_id' => $ion['ion_id'], 'files' => 0, 'bytes' => 0, 'message' => "{$directory} does not exist"];
         }
 
+        $filenamePrefix = "{$ion['fragment_id']}_{$ion['ion_id']}_";
         $files = collect($source->getDriver()->listContents($directory, false))
-            ->filter(fn (StorageAttributes $item): bool => $item->isFile() && strtolower(pathinfo($item->path(), PATHINFO_EXTENSION)) === 'ccf')
+            ->filter(fn (StorageAttributes $item): bool => $item->isFile()
+                && str_starts_with(basename($item->path()), $filenamePrefix)
+                && strtolower(pathinfo($item->path(), PATHINFO_EXTENSION)) === 'ccf')
             ->mapWithKeys(fn (StorageAttributes $item): array => [$item->path() => (int) $item->fileSize()])
             ->sortKeys(SORT_NATURAL)
             ->all();
@@ -155,6 +173,24 @@ class CopyLegacyCosmoFiles extends Command
         $prediction->storeCosmoFiles($contents, 'legacy MetaCentrum storage');
 
         return ['status' => 'copied', 'ion_id' => $ion['ion_id'], 'files' => count($files), 'bytes' => $bytes, 'message' => null];
+    }
+
+    /**
+     * The legacy cosmo.xml contains the absolute path of its conformers, e.g.
+     * ".../COSMO/1530000-1540000/1536225/6/03-COSMO_INPUT/1536225_6_0.ccf".
+     */
+    private function legacyIonDirectoryFromResult(Prediction $prediction): ?string
+    {
+        $resultFile = $prediction->predictionResult->file;
+        $xml = Storage::disk($resultFile->storage)->get($resultFile->path) ?? '';
+
+        if (! preg_match_all('#/COSMO/(\d+-\d+/\d+/\d+)/03-COSMO_INPUT/#', $xml, $matches)) {
+            return null;
+        }
+
+        $directories = array_unique($matches[1]);
+
+        return count($directories) === 1 ? reset($directories) : 'ambiguous: '.implode(', ', $directories);
     }
 
     /**

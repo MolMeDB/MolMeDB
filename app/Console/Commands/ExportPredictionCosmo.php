@@ -8,13 +8,13 @@ use App\Models\NotificationTemplate;
 use App\Services\NotificationService;
 use App\Services\RemoteShell;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
 use JsonSerializable;
 use Modules\PredictionWorkers\Models\Prediction;
 use Modules\PredictionWorkers\Models\PredictionFile;
 use RuntimeException;
 use Throwable;
-use ZipArchive;
 
 /**
  * Weekly export of finished predictions with their COSMO files for external use.
@@ -109,6 +109,8 @@ class ExportPredictionCosmo extends Command
     {
         $resultsFilesystem = $this->filesystem(Filesystem::TYPE_PREDICTIONS_STORAGE);
         $exportFilesystem = $this->filesystem(Filesystem::TYPE_PREDICTIONS_COSMO_EXPORT);
+        $isDryRun = (bool) $this->option('dry-run');
+        $limit = $this->option('limit') !== null ? (int) $this->option('limit') : null;
 
         $this->step = 'connecting to the backup server';
         $shell = RemoteShell::forFilesystem($exportFilesystem);
@@ -121,90 +123,119 @@ class ExportPredictionCosmo extends Command
         $exportRoot = RemoteShell::absoluteRoot($exportFilesystem);
         $date = now()->format('Y-m-d');
         $manifestName = "manifest_{$date}.csv";
-
-        $this->step = 'reading the previous manifest';
-        $previous = $this->option('rebuild') ? [] : $this->previousManifest($shell, $exportRoot);
-
-        $this->step = 'collecting finished predictions';
-        $ccfByFolder = $this->cosmoFilesByFolder($resultsFilesystem->systemName);
-        $rows = [];
         $work = "{$exportRoot}/.work/".now()->format('Ymd_His');
-        $workFiles = $this->option('dry-run') ? null : $this->openWorkFiles();
-        $counts = ['total' => 0, 'added' => 0, 'updated' => 0, 'unchanged' => 0, 'removed' => 0, 'skipped' => 0];
+        $workFiles = $this->openWorkFiles($manifestName);
 
-        $predictions = Prediction::query()
-            ->where('state', Prediction::STATE_FINISHED)
-            ->whereNotNull('result_id')
-            ->with(['predictionStructure.structure.parent', 'predictionMembrane', 'predictionResult.file'])
-            ->lazyById(500);
+        try {
+            $this->step = 'reading the previous manifest';
+            $previous = $this->option('rebuild') ? [] : $this->previousManifest($shell, $exportRoot, $workFiles['directory']);
 
-        if ($this->option('limit') !== null) {
-            $predictions = $predictions->take((int) $this->option('limit'));
+            $this->step = 'collecting finished predictions';
+            $counts = ['total' => 0, 'added' => 0, 'updated' => 0, 'unchanged' => 0, 'removed' => 0, 'skipped' => 0];
+            $exported = [];
+            $processed = 0;
+
+            $query = Prediction::query()
+                ->where('state', Prediction::STATE_FINISHED)
+                ->whereNotNull('result_id');
+
+            $bar = $this->output->createProgressBar(min($query->count(), $limit ?? PHP_INT_MAX));
+            $bar->start();
+
+            $query->with(['predictionStructure.structure.parent', 'predictionMembrane', 'predictionResult.file'])
+                ->chunkById(500, function ($predictions) use ($resultsFilesystem, $resultsRoot, $work, $isDryRun, $limit, $previous, $bar, &$workFiles, &$counts, &$exported, &$processed): bool {
+                    $ccfByFolder = $this->cosmoFilesForStructures($resultsFilesystem->systemName, $predictions->pluck('structure_id')->unique()->all());
+
+                    foreach ($predictions as $prediction) {
+                        if ($limit !== null && $processed >= $limit) {
+                            return false;
+                        }
+
+                        $processed++;
+                        $bar->advance();
+                        $resultFile = $prediction->predictionResult?->file;
+                        $folder = $resultFile ? dirname($resultFile->path) : null;
+                        $ccfFiles = $folder !== null ? ($ccfByFolder[$folder] ?? []) : [];
+
+                        if (! $resultFile || $resultFile->storage !== $resultsFilesystem->systemName || $ccfFiles === [] || ! preg_match(self::SAFE_NAME, basename($folder))) {
+                            $counts['skipped']++;
+
+                            continue;
+                        }
+
+                        $structureId = (int) $prediction->structure_id;
+                        $archive = intdiv($structureId, 1000).'/'.$structureId.'_'.basename($folder).'.zip';
+
+                        if (isset($exported[$archive])) {
+                            $counts['skipped']++;
+
+                            continue;
+                        }
+
+                        $molecule = $this->moleculeData($prediction, array_keys($ccfFiles));
+                        $fingerprint = md5(json_encode([$resultFile->hash ?: $resultFile->path, $ccfFiles, $molecule]));
+                        $previousRow = isset($previous[$archive]) ? explode("\t", $previous[$archive]) : null;
+                        $isUnchanged = $previousRow !== null && $previousRow[0] === $fingerprint;
+
+                        // logK/logPerm come from cosmo.xml, which is part of the fingerprint, so unchanged rows reuse them.
+                        $values = $isUnchanged
+                            ? ['logK' => $previousRow[1], 'logPerm' => $previousRow[2]]
+                            : $this->resultValues($prediction);
+
+                        if ($values === null) {
+                            $counts['skipped']++;
+
+                            continue;
+                        }
+
+                        $exported[$archive] = true;
+                        $counts[$isUnchanged ? 'unchanged' : ($previousRow === null ? 'added' : 'updated')]++;
+                        $this->writeManifestRow($workFiles['manifest'], array_merge($molecule, $values, [
+                            'archive' => "archives/{$archive}",
+                            'prediction_id' => $prediction->id,
+                            'ccf_count' => count($ccfFiles),
+                            'fingerprint' => $fingerprint,
+                        ]));
+
+                        if (! $isUnchanged && ! $isDryRun) {
+                            $files = ["{$resultsRoot}/{$resultFile->path}" => 'cosmo.xml']
+                                + collect($ccfFiles)->keys()->mapWithKeys(fn (string $name): array => ["{$resultsRoot}/{$folder}/{$name}" => $name])->all();
+                            $this->addJob($workFiles, $work, $archive, array_merge($molecule, $values), $files);
+                        }
+                    }
+
+                    return true;
+                });
+
+            $bar->finish();
+            $this->newLine(2);
+
+            // With --limit only a part of the predictions is seen, nothing can be considered removed.
+            if ($limit === null) {
+                foreach (array_keys($previous) as $archive) {
+                    if (! isset($exported[$archive])) {
+                        fwrite($workFiles['delete'], "{$archive}\n");
+                        $counts['removed']++;
+                    }
+                }
+            }
+
+            $counts['total'] = count($exported);
+            unset($previous, $exported);
+
+            if ($isDryRun) {
+                return ['date' => $date, 'export_path' => "{$exportRoot}/cosmo_export.zip", 'size' => 0, 'counts' => $counts];
+            }
+
+            $this->step = 'uploading the work files';
+            $this->line('Uploading the work files ('.number_format($workFiles['count']).' archives to build)...');
+            $this->uploadWorkFiles($shell, $work, $workFiles, $manifestName);
+        } finally {
+            $this->removeWorkFiles($workFiles);
         }
-
-        foreach ($predictions as $prediction) {
-            $resultFile = $prediction->predictionResult?->file;
-            $folder = $resultFile ? dirname($resultFile->path) : null;
-            $ccfFiles = $folder !== null ? ($ccfByFolder[$folder] ?? []) : [];
-
-            if (! $resultFile || $resultFile->storage !== $resultsFilesystem->systemName || $ccfFiles === [] || ! preg_match(self::SAFE_NAME, basename($folder))) {
-                $counts['skipped']++;
-
-                continue;
-            }
-
-            $structureId = (int) $prediction->structure_id;
-            $archive = intdiv($structureId, 1000).'/'.$structureId.'_'.basename($folder).'.zip';
-
-            if (isset($rows[$archive])) {
-                $counts['skipped']++;
-
-                continue;
-            }
-
-            $molecule = $this->moleculeData($prediction, array_keys($ccfFiles));
-            $fingerprint = md5(json_encode([$resultFile->hash ?: $resultFile->path, $ccfFiles, $molecule]));
-            $previousRow = $previous[$archive] ?? null;
-            $isUnchanged = $previousRow !== null && $previousRow['fingerprint'] === $fingerprint;
-
-            // logK/logPerm come from cosmo.xml, which is part of the fingerprint, so unchanged rows reuse them.
-            $values = $isUnchanged
-                ? ['logK' => $previousRow['logK'], 'logPerm' => $previousRow['logPerm']]
-                : $this->resultValues($prediction);
-
-            if ($values === null) {
-                $counts['skipped']++;
-
-                continue;
-            }
-
-            $counts[$isUnchanged ? 'unchanged' : ($previousRow === null ? 'added' : 'updated')]++;
-            $rows[$archive] = array_merge($molecule, $values, [
-                'archive' => "archives/{$archive}",
-                'prediction_id' => $prediction->id,
-                'ccf_count' => count($ccfFiles),
-                'fingerprint' => $fingerprint,
-            ]);
-
-            if (! $isUnchanged && $workFiles !== null) {
-                $files = ["{$resultsRoot}/{$resultFile->path}" => 'cosmo.xml']
-                    + collect($ccfFiles)->keys()->mapWithKeys(fn (string $name): array => ["{$resultsRoot}/{$folder}/{$name}" => $name])->all();
-                $this->addJob($workFiles, $work, $archive, array_merge($molecule, $values), $files);
-            }
-        }
-
-        $removed = $this->option('limit') !== null ? [] : array_values(array_diff(array_keys($previous), array_keys($rows)));
-        $counts['removed'] = count($removed);
-        $counts['total'] = count($rows);
-
-        if ($this->option('dry-run')) {
-            return ['date' => $date, 'export_path' => "{$exportRoot}/cosmo_export.zip", 'size' => 0, 'counts' => $counts];
-        }
-
-        $this->step = 'uploading the work files';
-        $this->uploadWorkFiles($shell, $work, $workFiles, $removed, $rows, $manifestName);
 
         $this->step = 'building the archives on the backup server';
+        $this->line('Building the archives on the backup server...');
         $shell->put("{$work}/build-cosmo-export.sh", (string) file_get_contents(resource_path('scripts/build-cosmo-export.sh')));
         $result = $shell->run(implode(' ', array_map('escapeshellarg', ['bash', "{$work}/build-cosmo-export.sh", $exportRoot, $work, $manifestName])));
         $shell->run('rm -rf -- '.escapeshellarg($work));
@@ -221,12 +252,12 @@ class ExportPredictionCosmo extends Command
     }
 
     /**
-     * Local temporary work files, filled while the predictions are processed so the job list
-     * never has to be held in memory.
+     * Local temporary work files, filled while the predictions are processed so that nothing
+     * proportional to the number of predictions has to be held in memory.
      *
-     * @return array{directory: string, jobs: resource, molecules: ZipArchive, count: int}
+     * @return array{directory: string, molecules: resource, jobs: resource, delete: resource, manifest: resource, count: int}
      */
-    private function openWorkFiles(): array
+    private function openWorkFiles(string $manifestName): array
     {
         $directory = sys_get_temp_dir().'/cosmo-export-'.getmypid().'-'.now()->format('Ymd_His');
 
@@ -234,25 +265,29 @@ class ExportPredictionCosmo extends Command
             throw new RuntimeException("Unable to create the local work directory [{$directory}].");
         }
 
-        $molecules = new ZipArchive;
+        $molecules = fopen("{$directory}/molecules.tar", 'w');
         $jobs = fopen("{$directory}/jobs.tsv", 'w');
+        $delete = fopen("{$directory}/delete.txt", 'w');
+        $manifest = fopen("{$directory}/{$manifestName}", 'w');
 
-        if ($jobs === false || $molecules->open("{$directory}/molecules.zip", ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        if ($molecules === false || $jobs === false || $delete === false || $manifest === false) {
             throw new RuntimeException('Unable to create the local work files.');
         }
 
-        return ['directory' => $directory, 'jobs' => $jobs, 'molecules' => $molecules, 'count' => 0];
+        fputcsv($manifest, self::MANIFEST_COLUMNS, ',', '"', '');
+
+        return ['directory' => $directory, 'molecules' => $molecules, 'jobs' => $jobs, 'delete' => $delete, 'manifest' => $manifest, 'count' => 0];
     }
 
     /**
-     * @param  array{directory: string, jobs: resource, molecules: ZipArchive, count: int}  $workFiles
+     * @param  array{directory: string, molecules: resource, jobs: resource, delete: resource, manifest: resource, count: int}  $workFiles
      * @param  array<string, mixed>  $molecule
      * @param  array<string, string>  $files  absolute source path => name in the archive
      */
     private function addJob(array &$workFiles, string $work, string $archive, array $molecule, array $files): void
     {
         $index = ++$workFiles['count'];
-        $workFiles['molecules']->addFromString("{$index}.json", json_encode($molecule, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION));
+        $this->writeTarEntry($workFiles['molecules'], "{$index}.json", (string) json_encode($molecule, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION));
         fwrite($workFiles['jobs'], "{$archive}\t{$work}/molecules/{$index}.json\tmolecule.json\n");
 
         foreach ($files as $source => $name) {
@@ -261,61 +296,91 @@ class ExportPredictionCosmo extends Command
     }
 
     /**
-     * @param  array{directory: string, jobs: resource, molecules: ZipArchive, count: int}  $workFiles
-     * @param  array<int, string>  $removed
-     * @param  array<string, array<string, mixed>>  $rows
+     * Appends one file to a ustar archive - written as a stream, so memory does not grow with the archive.
+     *
+     * @param  resource  $handle
      */
-    private function uploadWorkFiles(RemoteShell $shell, string $work, array $workFiles, array $removed, array $rows, string $manifestName): void
+    private function writeTarEntry($handle, string $name, string $contents): void
+    {
+        $header = str_pad($name, 100, "\0")
+            .sprintf('%07o', 0644)."\0"
+            .sprintf('%07o', 0)."\0"
+            .sprintf('%07o', 0)."\0"
+            .sprintf('%011o', strlen($contents))."\0"
+            .sprintf('%011o', time())."\0"
+            .str_repeat(' ', 8)
+            .'0'
+            .str_repeat("\0", 100)
+            ."ustar\0".'00'
+            .str_repeat("\0", 32 + 32 + 8 + 8 + 155);
+        $header = str_pad($header, 512, "\0");
+        $checksum = array_sum(array_map('ord', str_split($header)));
+        $header = substr_replace($header, sprintf('%06o', $checksum)."\0 ", 148, 8);
+
+        fwrite($handle, $header.$contents.str_repeat("\0", (512 - strlen($contents) % 512) % 512));
+    }
+
+    /**
+     * @param  resource  $handle
+     * @param  array<string, mixed>  $row
+     */
+    private function writeManifestRow($handle, array $row): void
+    {
+        $row['temperature'] = number_format((float) $row['temperature'], 1, '.', '');
+        fputcsv($handle, array_map(fn (string $column): mixed => $row[$column] ?? null, self::MANIFEST_COLUMNS), ',', '"', '');
+    }
+
+    /**
+     * @param  array{directory: string, molecules: resource, jobs: resource, delete: resource, manifest: resource, count: int}  $workFiles
+     */
+    private function uploadWorkFiles(RemoteShell $shell, string $work, array &$workFiles, string $manifestName): void
     {
         $directory = $workFiles['directory'];
+        $this->closeWorkFiles($workFiles);
 
-        try {
-            fclose($workFiles['jobs']);
-
-            // An archive without entries is not written at all - the build script skips an empty molecules.zip.
-            $workFiles['molecules']->close();
-
-            if (! file_exists("{$directory}/molecules.zip")) {
-                touch("{$directory}/molecules.zip");
-            }
-
-            file_put_contents("{$directory}/delete.txt", $removed === [] ? '' : implode("\n", $removed)."\n");
-            $this->writeManifest("{$directory}/{$manifestName}", $rows);
-
-            foreach (['molecules.zip', 'jobs.tsv', 'delete.txt', $manifestName] as $name) {
-                $shell->putFile("{$work}/{$name}", "{$directory}/{$name}");
-            }
-        } finally {
-            foreach (glob("{$directory}/*") ?: [] as $file) {
-                @unlink($file);
-            }
-
-            @rmdir($directory);
+        foreach (['molecules.tar', 'jobs.tsv', 'delete.txt', $manifestName] as $name) {
+            $shell->putFile("{$work}/{$name}", "{$directory}/{$name}");
         }
     }
 
     /**
-     * @param  array<string, array<string, mixed>>  $rows
+     * @param  array{directory: string, molecules: resource, jobs: resource, delete: resource, manifest: resource, count: int}  $workFiles
      */
-    private function writeManifest(string $path, array $rows): void
+    private function closeWorkFiles(array &$workFiles): void
     {
-        $handle = fopen($path, 'w') ?: throw new RuntimeException("Unable to write the manifest [{$path}].");
-        fputcsv($handle, self::MANIFEST_COLUMNS, ',', '"', '');
-
-        foreach ($rows as $row) {
-            $row['temperature'] = number_format((float) $row['temperature'], 1, '.', '');
-            fputcsv($handle, array_map(fn (string $column): mixed => $row[$column] ?? null, self::MANIFEST_COLUMNS), ',', '"', '');
+        if (is_resource($workFiles['molecules'])) {
+            // End of the tar archive: two empty blocks.
+            fwrite($workFiles['molecules'], str_repeat("\0", 1024));
         }
 
-        fclose($handle);
+        foreach (['molecules', 'jobs', 'delete', 'manifest'] as $key) {
+            if (is_resource($workFiles[$key])) {
+                fclose($workFiles[$key]);
+            }
+        }
     }
 
     /**
-     * Rows of the newest manifest keyed by archive path relative to archives/.
-     *
-     * @return array<string, array<string, string>>
+     * @param  array{directory: string, molecules: resource, jobs: resource, delete: resource, manifest: resource, count: int}  $workFiles
      */
-    private function previousManifest(RemoteShell $shell, string $exportRoot): array
+    private function removeWorkFiles(array &$workFiles): void
+    {
+        $this->closeWorkFiles($workFiles);
+
+        foreach (glob("{$workFiles['directory']}/*") ?: [] as $file) {
+            @unlink($file);
+        }
+
+        @rmdir($workFiles['directory']);
+    }
+
+    /**
+     * Newest manifest as archive (relative to archives/) => "fingerprint<TAB>logK<TAB>logPerm".
+     * Kept compact, it is the only per-archive data held in memory for the whole run.
+     *
+     * @return array<string, string>
+     */
+    private function previousManifest(RemoteShell $shell, string $exportRoot, string $localDirectory): array
     {
         $manifests = array_filter($shell->list("{$exportRoot}/manifests"), fn (string $name): bool => (bool) preg_match('/^manifest_\d{4}-\d{2}-\d{2}\.csv$/', $name));
 
@@ -324,35 +389,48 @@ class ExportPredictionCosmo extends Command
         }
 
         rsort($manifests);
-        $csv = $shell->get("{$exportRoot}/manifests/{$manifests[0]}") ?? '';
-        $lines = array_values(array_filter(explode("\n", $csv), fn (string $line): bool => $line !== ''));
-        $header = str_getcsv(array_shift($lines) ?? '', ',', '"', '');
+        $localPath = "{$localDirectory}/previous_manifest.csv";
+        $shell->getFile("{$exportRoot}/manifests/{$manifests[0]}", $localPath);
+
+        $handle = fopen($localPath, 'r') ?: throw new RuntimeException('Unable to read the previous manifest.');
+        $header = array_flip(fgetcsv($handle, escape: '') ?: []);
         $rows = [];
 
-        foreach ($lines as $line) {
-            $row = array_combine($header, str_getcsv($line, ',', '"', ''));
-            $rows[substr($row['archive'], strlen('archives/'))] = $row;
+        while (($row = fgetcsv($handle, escape: '')) !== false) {
+            if (! isset($row[$header['archive']])) {
+                continue;
+            }
+
+            $rows[substr($row[$header['archive']], strlen('archives/'))] = implode("\t", [
+                $row[$header['fingerprint']] ?? '',
+                $row[$header['logK']] ?? '',
+                $row[$header['logPerm']] ?? '',
+            ]);
         }
+
+        fclose($handle);
+        @unlink($localPath);
 
         return $rows;
     }
 
     /**
-     * COSMO conformer files grouped by their result folder, name => hash.
+     * COSMO conformer files of the given prediction structures grouped by their result folder, name => hash.
      *
+     * @param  array<int, int>  $structureIds
      * @return array<string, array<string, string>>
      */
-    private function cosmoFilesByFolder(string $diskName): array
+    private function cosmoFilesForStructures(string $diskName, array $structureIds): array
     {
         $files = [];
 
         PredictionFile::query()
             ->where('type', PredictionFile::TYPE_COSMO_CONFORMERS)
             ->where('storage', $diskName)
+            ->whereIn(DB::raw("split_part(path, '/', 1)"), array_map('strval', $structureIds))
             ->orderBy('path')
             ->toBase()
-            ->select(['path', 'hash'])
-            ->cursor()
+            ->get(['path', 'hash'])
             ->each(function (object $file) use (&$files): void {
                 $name = basename($file->path);
 

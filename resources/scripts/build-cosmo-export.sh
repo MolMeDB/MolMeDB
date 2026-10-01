@@ -4,7 +4,7 @@
 # `php artisan predictions:export-cosmo`, which prepares the work directory:
 #
 #   jobs.tsv       archive<TAB>source file<TAB>name in the archive (rows grouped by archive)
-#   molecules.zip  molecule.json files referenced from jobs.tsv as molecules/<n>.json
+#   molecules.tar  molecule.json files referenced from jobs.tsv as molecules/<n>.json
 #   delete.txt     archives (relative to archives/) that are no longer exported
 #   <manifest>     the new manifest
 #
@@ -22,7 +22,7 @@ case "$work" in
   *) echo "Work directory must be inside ${export_root}/.work" >&2; exit 2 ;;
 esac
 
-for required in zip unzip; do
+for required in zip tar; do
   command -v "$required" >/dev/null || { echo "Required command '${required}' not found." >&2; exit 127; }
 done
 
@@ -38,8 +38,9 @@ built=0
 deleted=0
 current=""
 
-if [[ -s "${work}/molecules.zip" ]]; then
-  unzip -q -o "${work}/molecules.zip" -d "${work}/molecules"
+if [[ -s "${work}/molecules.tar" ]]; then
+  mkdir -p "${work}/molecules"
+  tar -xf "${work}/molecules.tar" -C "${work}/molecules"
 fi
 
 flush_archive() {

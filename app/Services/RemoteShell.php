@@ -85,6 +85,13 @@ class RemoteShell
         return is_string($contents) ? $contents : null;
     }
 
+    public function getFile(string $remotePath, string $localPath): void
+    {
+        if ($this->connection->get($remotePath, $localPath) === false) {
+            throw new RuntimeException("Unable to download [{$remotePath}].");
+        }
+    }
+
     /**
      * @return array<int, string> file names in the directory, empty when it does not exist
      */

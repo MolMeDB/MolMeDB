@@ -22,7 +22,7 @@ case "$work" in
   *) echo "Work directory must be inside ${export_root}/.work" >&2; exit 2 ;;
 esac
 
-for required in python3 unzip; do
+for required in zip unzip; do
   command -v "$required" >/dev/null || { echo "Required command '${required}' not found." >&2; exit 127; }
 done
 
@@ -31,34 +31,6 @@ mkdir -p archives manifests
 
 # Leftovers of earlier interrupted runs.
 find "${export_root}/.work" -mindepth 1 -maxdepth 1 ! -path "$work" -exec rm -rf -- {} +
-
-# zip is not installed on the backup server, archives are written by python3's zipfile.
-# make_zip <archive> <deflate|store> <base directory> <entry>... where entry is a path
-# relative to the base directory, optionally "path=name in archive". Directories are added recursively.
-make_zip() {
-  python3 - "$@" <<'PY'
-import os
-import sys
-import zipfile
-
-archive, mode, base, *entries = sys.argv[1:]
-compression = zipfile.ZIP_DEFLATED if mode == "deflate" else zipfile.ZIP_STORED
-
-with zipfile.ZipFile(archive, "w", compression=compression, allowZip64=True) as target:
-    for entry in entries:
-        path, _, name = entry.partition("=")
-        source = os.path.join(base, path)
-        if os.path.isdir(source):
-            for root, directories, files in os.walk(source):
-                directories.sort()
-                for file_name in sorted(files):
-                    if not file_name.endswith(".tmp"):
-                        file_path = os.path.join(root, file_name)
-                        target.write(file_path, os.path.relpath(file_path, base))
-        else:
-            target.write(source, name or path)
-PY
-}
 
 archive_pattern='^[0-9]+/[0-9]+_[A-Za-z0-9_.,-]+\.zip$'
 stage="${work}/stage"
@@ -75,7 +47,7 @@ flush_archive() {
   local target="archives/${current}"
   mkdir -p "$(dirname "$target")"
   rm -f -- "${target}.tmp"
-  make_zip "${export_root}/${target}.tmp" deflate "$stage" $(cd "$stage" && ls)
+  (cd "$stage" && zip -q -X -j "${export_root}/${target}.tmp" ./*)
   mv -f -- "${target}.tmp" "$target"
   rm -rf -- "$stage"
   built=$((built + 1))
@@ -112,7 +84,10 @@ cp -- "${work}/${manifest}" "manifests/${manifest}"
 
 # Inner archives are already compressed, the dump only stores them.
 rm -f -- cosmo_export.zip.tmp
-make_zip cosmo_export.zip.tmp store "$export_root" "manifests/${manifest}=${manifest}" archives
+if find archives -type f -name '*.zip' -print -quit | grep -q .; then
+  zip -q -0 -r -D -X cosmo_export.zip.tmp archives -x '*.tmp'
+fi
+zip -q -0 -j -X cosmo_export.zip.tmp "manifests/${manifest}"
 mv -f -- cosmo_export.zip.tmp cosmo_export.zip
 
 # The work directory (it holds this script) is removed by the command after the script exits.

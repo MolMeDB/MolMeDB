@@ -7,7 +7,6 @@ use BackedEnum;
 use Filament\Actions;
 use Filament\Infolists;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Schema;
@@ -43,38 +42,49 @@ class PredictionStatsResource extends Resource
         return $schema->components([
 
             // ─── Snapshot meta ────────────────────────────────────────────────
-                    Section::make('Snapshot')
-                        ->schema([
-                            Infolists\Components\TextEntry::make('stats_date')
-                                ->label('Date')
-                                ->date()
-                                ->badge(),
-                            Infolists\Components\TextEntry::make('server_url')
-                                ->label('Server URL')
-                                ->copyable()
-                                ->columnSpan(2),
-                            Infolists\Components\TextEntry::make('fetched_at')
-                                ->label('Fetched')
-                                ->dateTime()
-                                ->since()
-                                ->dateTimeTooltip(),
-                            Infolists\Components\TextEntry::make('created_at')
-                                ->label('Created')
-                                ->dateTime(),
-                            Infolists\Components\TextEntry::make('updated_at')
-                                ->label('Updated')
-                                ->dateTime(),
-                    ])->columns(3),
-                    Section::make('Live stats')
-                        ->schema([
-                            Infolists\Components\TextEntry::make('queue_chart')
-                                ->label('')
-                                ->state(fn (PredictionStat $record): string => view('filament.prediction-stats.live-stats-chart', [
-                                    'queue' => $record->payload['queue'] ?? [],
-                                ])->render())
-                                ->html()
-                                ->columnSpanFull(),
-                        ]),
+            Section::make('Snapshot')
+                ->schema([
+                    Infolists\Components\TextEntry::make('stats_date')
+                        ->label('Date')
+                        ->date()
+                        ->badge(),
+                    Infolists\Components\TextEntry::make('server_url')
+                        ->label('Server URL')
+                        ->copyable()
+                        ->columnSpan(2),
+                    Infolists\Components\TextEntry::make('fetched_at')
+                        ->label('Fetched')
+                        ->dateTime()
+                        ->since()
+                        ->dateTimeTooltip(),
+                    Infolists\Components\TextEntry::make('created_at')
+                        ->label('Created')
+                        ->dateTime(),
+                    Infolists\Components\TextEntry::make('updated_at')
+                        ->label('Updated')
+                        ->dateTime(),
+                ])->columns(3),
+            Section::make('Live stats')
+                ->schema([
+                    Infolists\Components\TextEntry::make('live_charts')
+                        ->hiddenLabel()
+                        ->state(fn (PredictionStat $record): string => view('filament.prediction-stats.live-stats-chart', [
+                            'charts' => [
+                                [
+                                    'title' => 'Queue (waiting)',
+                                    'caption' => 'queued',
+                                    'values' => $record->payload['queue'] ?? [],
+                                ],
+                                [
+                                    'title' => 'Running now',
+                                    'caption' => 'running',
+                                    'values' => self::runningCountsByStep($record->payload['running'] ?? []),
+                                ],
+                            ],
+                        ])->render())
+                        ->html()
+                        ->columnSpanFull(),
+                ]),
             // ─── Period statistics ─────────────────────────────────────────────
             Section::make('Statistics by period')
                 ->schema([
@@ -167,6 +177,23 @@ class PredictionStatsResource extends Resource
     public static function getRelations(): array
     {
         return [];
+    }
+
+    /**
+     * Number of jobs running at the snapshot time, per pipeline step.
+     *
+     * @param  array{molecule_steps?: array<int, array{step: string}>, conformer_steps?: array<int, array{step: string}>, cosmo?: array<int, mixed>}  $running
+     * @return array<string, int>
+     */
+    private static function runningCountsByStep(array $running): array
+    {
+        $counts = array_count_values(array_merge(
+            array_column($running['molecule_steps'] ?? [], 'step'),
+            array_column($running['conformer_steps'] ?? [], 'step'),
+        ));
+        $counts['cosmo'] = count($running['cosmo'] ?? []);
+
+        return $counts;
     }
 
     public static function getPages(): array

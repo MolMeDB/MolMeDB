@@ -3,6 +3,16 @@
     $payload = $record->payload;
 
     $periods = ['day' => 'Today', 'week' => 'This week', 'month' => 'This month', 'year' => 'This year', 'total' => 'Total'];
+
+    // The predictor counts every period from the start of the calendar unit (weeks start on Monday)
+    // at the time the snapshot was fetched.
+    $fetchedAt    = ($record->fetched_at ?? now())->copy()->timezone(config('app.timezone'));
+    $periodStarts = [
+        'day'   => $fetchedAt->copy()->startOfDay(),
+        'week'  => $fetchedAt->copy()->startOfWeek(\Carbon\CarbonInterface::MONDAY),
+        'month' => $fetchedAt->copy()->startOfMonth(),
+        'year'  => $fetchedAt->copy()->startOfYear(),
+    ];
     $steps   = [
         'rdkit'                  => 'RDKit',
         'conformers'             => 'Conformers',
@@ -67,6 +77,11 @@
                         text-transform:uppercase; margin-bottom:.75rem; padding-bottom:.4rem;
                         border-bottom:1px solid #f3f4f6;">
                 {{ $pLabel }}
+                @isset ($periodStarts[$pKey])
+                    <span style="font-weight:400; color:#9ca3af; text-transform:none; letter-spacing:0; margin-left:.35rem;">
+                        {{ $pKey === 'day' ? $periodStarts[$pKey]->format('j M Y') : 'since '.$periodStarts[$pKey]->format('D j M Y') }}
+                    </span>
+                @endisset
             </div>
 
             <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:1rem;">
@@ -133,7 +148,7 @@
                                 @endif
                                 @if ($inProgress > 0)
                                     <div style="display:flex; justify-content:space-between; font-size:.65rem; color:#6b7280;">
-                                        <span>Running</span>
+                                        <span>Running now</span>
                                         <span style="font-weight:600; color:#f97316;" title="{{ $inProgress }}">{{ psFmtNumber($inProgress) }}</span>
                                     </div>
                                 @endif

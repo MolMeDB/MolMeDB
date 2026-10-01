@@ -69,6 +69,15 @@ class RemoteShell
         }
     }
 
+    public function putFile(string $remotePath, string $localPath): void
+    {
+        $this->connection->mkdir(dirname($remotePath), -1, true);
+
+        if (! $this->connection->put($remotePath, $localPath, SFTP::SOURCE_LOCAL_FILE)) {
+            throw new RuntimeException("Unable to upload [{$localPath}] to [{$remotePath}].");
+        }
+    }
+
     public function get(string $remotePath): ?string
     {
         $contents = $this->connection->get($remotePath);

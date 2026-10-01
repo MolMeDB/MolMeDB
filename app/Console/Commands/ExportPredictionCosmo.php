@@ -128,7 +128,8 @@ class ExportPredictionCosmo extends Command
         $this->step = 'collecting finished predictions';
         $ccfByFolder = $this->cosmoFilesByFolder($resultsFilesystem->systemName);
         $rows = [];
-        $jobs = [];
+        $work = "{$exportRoot}/.work/".now()->format('Ymd_His');
+        $workFiles = $this->option('dry-run') ? null : $this->openWorkFiles();
         $counts = ['total' => 0, 'added' => 0, 'updated' => 0, 'unchanged' => 0, 'removed' => 0, 'skipped' => 0];
 
         $predictions = Prediction::query()
@@ -185,12 +186,10 @@ class ExportPredictionCosmo extends Command
                 'fingerprint' => $fingerprint,
             ]);
 
-            if (! $isUnchanged) {
-                $jobs[$archive] = [
-                    'molecule' => array_merge($molecule, $values),
-                    'files' => ["{$resultsRoot}/{$resultFile->path}" => 'cosmo.xml']
-                        + collect($ccfFiles)->keys()->mapWithKeys(fn (string $name): array => ["{$resultsRoot}/{$folder}/{$name}" => $name])->all(),
-                ];
+            if (! $isUnchanged && $workFiles !== null) {
+                $files = ["{$resultsRoot}/{$resultFile->path}" => 'cosmo.xml']
+                    + collect($ccfFiles)->keys()->mapWithKeys(fn (string $name): array => ["{$resultsRoot}/{$folder}/{$name}" => $name])->all();
+                $this->addJob($workFiles, $work, $archive, array_merge($molecule, $values), $files);
             }
         }
 
@@ -203,8 +202,7 @@ class ExportPredictionCosmo extends Command
         }
 
         $this->step = 'uploading the work files';
-        $work = "{$exportRoot}/.work/".now()->format('Ymd_His');
-        $this->uploadWorkFiles($shell, $work, $jobs, $removed, $rows, $manifestName);
+        $this->uploadWorkFiles($shell, $work, $workFiles, $removed, $rows, $manifestName);
 
         $this->step = 'building the archives on the backup server';
         $shell->put("{$work}/build-cosmo-export.sh", (string) file_get_contents(resource_path('scripts/build-cosmo-export.sh')));
@@ -223,51 +221,85 @@ class ExportPredictionCosmo extends Command
     }
 
     /**
-     * @param  array<string, array{molecule: array<string, mixed>, files: array<string, string>}>  $jobs
+     * Local temporary work files, filled while the predictions are processed so the job list
+     * never has to be held in memory.
+     *
+     * @return array{directory: string, jobs: resource, molecules: ZipArchive, count: int}
+     */
+    private function openWorkFiles(): array
+    {
+        $directory = sys_get_temp_dir().'/cosmo-export-'.getmypid().'-'.now()->format('Ymd_His');
+
+        if (! @mkdir($directory, 0700, true) && ! is_dir($directory)) {
+            throw new RuntimeException("Unable to create the local work directory [{$directory}].");
+        }
+
+        $molecules = new ZipArchive;
+        $jobs = fopen("{$directory}/jobs.tsv", 'w');
+
+        if ($jobs === false || $molecules->open("{$directory}/molecules.zip", ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Unable to create the local work files.');
+        }
+
+        return ['directory' => $directory, 'jobs' => $jobs, 'molecules' => $molecules, 'count' => 0];
+    }
+
+    /**
+     * @param  array{directory: string, jobs: resource, molecules: ZipArchive, count: int}  $workFiles
+     * @param  array<string, mixed>  $molecule
+     * @param  array<string, string>  $files  absolute source path => name in the archive
+     */
+    private function addJob(array &$workFiles, string $work, string $archive, array $molecule, array $files): void
+    {
+        $index = ++$workFiles['count'];
+        $workFiles['molecules']->addFromString("{$index}.json", json_encode($molecule, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION));
+        fwrite($workFiles['jobs'], "{$archive}\t{$work}/molecules/{$index}.json\tmolecule.json\n");
+
+        foreach ($files as $source => $name) {
+            fwrite($workFiles['jobs'], "{$archive}\t{$source}\t{$name}\n");
+        }
+    }
+
+    /**
+     * @param  array{directory: string, jobs: resource, molecules: ZipArchive, count: int}  $workFiles
      * @param  array<int, string>  $removed
      * @param  array<string, array<string, mixed>>  $rows
      */
-    private function uploadWorkFiles(RemoteShell $shell, string $work, array $jobs, array $removed, array $rows, string $manifestName): void
+    private function uploadWorkFiles(RemoteShell $shell, string $work, array $workFiles, array $removed, array $rows, string $manifestName): void
     {
-        $moleculesPath = tempnam(sys_get_temp_dir(), 'cosmo-export-molecules-');
-        $zip = new ZipArchive;
-
-        if ($moleculesPath === false || $zip->open($moleculesPath, ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('Unable to create the molecules archive.');
-        }
-
-        $jobLines = [];
-        $index = 0;
-
-        foreach ($jobs as $archive => $job) {
-            $index++;
-            $zip->addFromString("{$index}.json", json_encode($job['molecule'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION));
-            $jobLines[] = "{$archive}\t{$work}/molecules/{$index}.json\tmolecule.json";
-
-            foreach ($job['files'] as $source => $name) {
-                $jobLines[] = "{$archive}\t{$source}\t{$name}";
-            }
-        }
-
-        $zip->close();
+        $directory = $workFiles['directory'];
 
         try {
-            $shell->put("{$work}/molecules.zip", $jobs === [] ? '' : (string) file_get_contents($moleculesPath));
-        } finally {
-            @unlink($moleculesPath);
-        }
+            fclose($workFiles['jobs']);
 
-        $shell->put("{$work}/jobs.tsv", $jobLines === [] ? '' : implode("\n", $jobLines)."\n");
-        $shell->put("{$work}/delete.txt", $removed === [] ? '' : implode("\n", $removed)."\n");
-        $shell->put("{$work}/{$manifestName}", $this->manifestCsv($rows));
+            // An archive without entries is not written at all - the build script skips an empty molecules.zip.
+            $workFiles['molecules']->close();
+
+            if (! file_exists("{$directory}/molecules.zip")) {
+                touch("{$directory}/molecules.zip");
+            }
+
+            file_put_contents("{$directory}/delete.txt", $removed === [] ? '' : implode("\n", $removed)."\n");
+            $this->writeManifest("{$directory}/{$manifestName}", $rows);
+
+            foreach (['molecules.zip', 'jobs.tsv', 'delete.txt', $manifestName] as $name) {
+                $shell->putFile("{$work}/{$name}", "{$directory}/{$name}");
+            }
+        } finally {
+            foreach (glob("{$directory}/*") ?: [] as $file) {
+                @unlink($file);
+            }
+
+            @rmdir($directory);
+        }
     }
 
     /**
      * @param  array<string, array<string, mixed>>  $rows
      */
-    private function manifestCsv(array $rows): string
+    private function writeManifest(string $path, array $rows): void
     {
-        $handle = fopen('php://temp', 'r+');
+        $handle = fopen($path, 'w') ?: throw new RuntimeException("Unable to write the manifest [{$path}].");
         fputcsv($handle, self::MANIFEST_COLUMNS, ',', '"', '');
 
         foreach ($rows as $row) {
@@ -275,11 +307,7 @@ class ExportPredictionCosmo extends Command
             fputcsv($handle, array_map(fn (string $column): mixed => $row[$column] ?? null, self::MANIFEST_COLUMNS), ',', '"', '');
         }
 
-        rewind($handle);
-        $csv = (string) stream_get_contents($handle);
         fclose($handle);
-
-        return $csv;
     }
 
     /**

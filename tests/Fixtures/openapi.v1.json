@@ -12,25 +12,6 @@
         }
     ],
     "paths": {
-        "/{any}": {
-            "options": {
-                "parameters": [
-                    {
-                        "name": "any",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No content"
-                    }
-                }
-            }
-        },
         "/about": {
             "get": {
                 "operationId": "about.index",

@@ -26,7 +26,7 @@ return [
     // document itself.
     'api_path' => [
         'include' => 'api/v1',
-        'exclude' => ['api/v1/docs', 'api/v1/openapi.json'],
+        'exclude' => ['api/v1/docs', 'api/v1/openapi.json', 'api/v1/{any}'],
     ],
 
     /*

@@ -98,7 +98,9 @@ test('about endpoint returns license, citation and identifier scheme as plain JS
         ->assertJsonPath('data.license.data.spdx', 'CC0-1.0')
         ->assertJsonPath('data.citation.doi', '10.1093/database/baz078')
         ->assertJsonPath('data.identifier_scheme.identifiers_org', 'https://identifiers.org/molmedb/{identifier}')
-        ->assertJsonPath('data.links.openapi', 'https://molmedb.upol.cz/api/v1/openapi.json');
+        ->assertJsonPath('data.links.openapi', 'https://molmedb.upol.cz/api/v1/openapi.json')
+        ->assertJsonPath('data.rdf.sparql_endpoint', 'https://idsm.elixir-czech.cz/sparql/endpoint/molmedb')
+        ->assertJsonPath('data.rdf.vocabulary', 'https://rdf.molmedb.upol.cz/vocabulary');
 });
 
 test('publication detail is served as a ScholarlyArticle identified by its DOI', function () {

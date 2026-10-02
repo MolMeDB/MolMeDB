@@ -66,7 +66,7 @@ class AppServiceProvider extends ServiceProvider
         // The global HandleCors middleware runs as the outermost layer and would
         // otherwise still attach config/cors.php's credentialed-frontend headers
         // (e.g. Access-Control-Allow-Credentials) on top of it — skip it entirely here.
-        HandleCors::skipWhen(fn (Request $request): bool => preg_match('#^api/v\d+(/|$)#', $request->path()) === 1);
+        HandleCors::skipWhen(fn (Request $request): bool => preg_match('#^api/(v\d+|rdf)(/|$)#', $request->path()) === 1);
 
         RateLimiter::for('remote-prediction-status', fn (): Limit => Limit::perMinute(
             max(1, (int) config('prediction-workers.remote.worker.max_status_requests_per_minute', 30)),

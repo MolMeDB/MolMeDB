@@ -40,6 +40,13 @@ class AboutController extends Controller
                     'resolver' => rtrim(config('fair.frontend_url'), '/').'/mol/{identifier}',
                     'identifiers_org' => 'https://identifiers.org/'.config('fair.identifiers_org_namespace').'/{identifier}',
                 ],
+                'rdf' => [
+                    'base' => config('fair.rdf.base_url'),
+                    'vocabulary' => config('fair.rdf.vocabulary_url'),
+                    'sparql_endpoint' => config('fair.rdf.sparql_endpoint'),
+                    'dump' => config('fair.rdf.dump_url'),
+                    'article' => config('fair.related_publications.0.url'),
+                ],
                 'links' => [
                     'openapi' => PublicApiUrl::to('openapi.json'),
                     'sitemap' => config('fair.frontend_url').'/sitemap.xml',

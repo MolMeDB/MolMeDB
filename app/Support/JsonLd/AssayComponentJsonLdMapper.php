@@ -50,10 +50,24 @@ class AssayComponentJsonLdMapper
             'additionalType' => $class,
             'name' => $name,
             'alternateName' => $abbreviation && $abbreviation !== $name ? $abbreviation : null,
-            'description' => $description ? trim(html_entity_decode(strip_tags($description))) ?: null : null,
+            'description' => $this->plainText($description),
             'url' => $landingPage,
             'mainEntityOfPage' => $landingPage,
             'isPartOf' => JsonLdContext::datasetReference(),
         ], fn ($value) => $value !== null);
+    }
+
+    /**
+     * Descriptions are stored as HTML; JSON-LD carries them as one line of plain text.
+     */
+    private function plainText(?string $html): ?string
+    {
+        if (! $html) {
+            return null;
+        }
+
+        $text = trim((string) preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags(str_replace('<', ' <', $html)), ENT_QUOTES | ENT_HTML5)));
+
+        return $text !== '' ? $text : null;
     }
 }

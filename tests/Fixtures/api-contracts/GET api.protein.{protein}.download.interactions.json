@@ -1,0 +1,6 @@
+{
+    "route": "GET api/protein/{protein}/download/interactions",
+    "status": 200,
+    "content_type": "text/plain",
+    "body": null
+}

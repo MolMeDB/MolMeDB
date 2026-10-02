@@ -1,0 +1,33 @@
+{
+    "route": "GET api/structure/{identifier}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "canonical_smiles": "string",
+            "charge": "number",
+            "id": "number",
+            "identifier": "string",
+            "identifiers": [
+                {
+                    "enum_state": "string",
+                    "enum_type": "string",
+                    "id": "number",
+                    "source": "null",
+                    "state": "number",
+                    "type": "number",
+                    "value": "string"
+                }
+            ],
+            "inchi": "string",
+            "inchikey": "string",
+            "logp": "number",
+            "molecular_weight": "number",
+            "name": "string",
+            "parent_identifier": "null",
+            "structure_2d_url": "string",
+            "structure_2d_url_big": "string",
+            "structure_3d_url": "string"
+        }
+    }
+}

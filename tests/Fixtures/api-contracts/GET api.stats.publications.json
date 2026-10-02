@@ -1,0 +1,31 @@
+{
+    "route": "GET api/stats/publications",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "byJournal": {
+                "items": [
+                    {
+                        "name": "string",
+                        "value1": "number",
+                        "value2": "number"
+                    }
+                ]
+            },
+            "byYear": {
+                "data": [
+                    {
+                        "date": "number",
+                        "value1": "number",
+                        "value2": "number"
+                    }
+                ]
+            },
+            "minPublishedYear": "number",
+            "total": {
+                "publications": "number"
+            }
+        }
+    }
+}

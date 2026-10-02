@@ -1,0 +1,106 @@
+{
+    "route": "GET api/lab/upload/track/{token}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "can_cancel": "boolean",
+            "can_configure": "boolean",
+            "can_enqueue": "boolean",
+            "can_reupload": "boolean",
+            "can_revert": "boolean",
+            "config": {
+                "admin_review_approved": "boolean",
+                "admin_review_approved_at": "string",
+                "admin_review_rejected_at": "string",
+                "admin_review_rejected_reason": "string",
+                "attributes": [
+                    "string"
+                ],
+                "detailed_validation_at": "string",
+                "detailed_validation_ok": "boolean",
+                "quick_validation_at": "string",
+                "quick_validation_ok": "boolean",
+                "separator": "string",
+                "skip_first_row": "number"
+            },
+            "created_at": "string",
+            "dataset": {
+                "enum_type": "string",
+                "id": "number",
+                "membrane": {
+                    "abbreviation": "string",
+                    "datasets": [
+                        {
+                            "created_at": "string",
+                            "enum_type": "string",
+                            "hash": "string",
+                            "mime": "string",
+                            "name": "string",
+                            "type": "number"
+                        }
+                    ],
+                    "description": "null",
+                    "id": "number",
+                    "name": "string"
+                },
+                "method": {
+                    "abbreviation": "string",
+                    "datasets": [
+                        {
+                            "created_at": "string",
+                            "enum_type": "string",
+                            "hash": "string",
+                            "mime": "string",
+                            "name": "string",
+                            "type": "number"
+                        }
+                    ],
+                    "description": "null",
+                    "id": "number",
+                    "name": "string"
+                },
+                "name": "string",
+                "type": "number"
+            },
+            "file": {
+                "created_at": "string",
+                "enum_type": "null",
+                "hash": "string",
+                "mime": "string",
+                "name": "string",
+                "type": "number"
+            },
+            "id": "number",
+            "last_message": "string",
+            "logs": [
+                {
+                    "context": "string",
+                    "message": "string",
+                    "payload": "null",
+                    "state": "number",
+                    "state_label": "string",
+                    "timestamp": "string",
+                    "type": "string",
+                    "user_id": "string"
+                }
+            ],
+            "processing_progress": {
+                "created_rows": "number",
+                "heartbeat_at": "string",
+                "mode": "string",
+                "next_line": "number",
+                "percent": "number",
+                "phase": "string",
+                "processed_rows": "number",
+                "skipped_rows": "number",
+                "total_rows": "number"
+            },
+            "secondary_publication": "null",
+            "state": "number",
+            "state_label": "string",
+            "state_phase": "string",
+            "updated_at": "string"
+        }
+    }
+}

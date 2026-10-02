@@ -1,0 +1,8 @@
+{
+    "route": "PUT api/notifications/preferences",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "message": "string"
+    }
+}

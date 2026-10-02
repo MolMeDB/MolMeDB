@@ -1,0 +1,13 @@
+{
+    "route": "GET api/structure/{identifier}/status",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "deleted_at": "null",
+            "identifier": "string",
+            "replaced_by": "string",
+            "status": "string"
+        }
+    }
+}

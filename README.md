@@ -108,6 +108,12 @@ tests/pgsql.sh --compact
 ```
 The script creates a separate `molmedb_testing` database in the development database container on the first run (the development database itself is not touched). Any `php artisan test` arguments can be passed, e.g. `tests/pgsql.sh --filter=PublicApi`.
 
+Every API endpoint has a recorded contract (status, content type and the shape of the JSON response) in `tests/Fixtures/api-contracts`, and the OpenAPI specification of the public API is recorded in `tests/Fixtures/openapi.v1.json`. When a test reports a changed contract on purpose, update the API consumers (frontend, API explorer in `config/api_explorer.php`) and re-record the contracts:
+```bash
+UPDATE_API_CONTRACTS=1 tests/pgsql.sh --compact --filter='Contract|Documentation'
+```
+A new endpoint needs a test calling `->assertApiContract('GET api/...')`, otherwise `ApiContractCoverageTest` fails.
+
 #### Running frontend
 All frontend files are placed in `./frontend` folder. To run the frontend for development purpose, go to the frontend folder 
 ```bash

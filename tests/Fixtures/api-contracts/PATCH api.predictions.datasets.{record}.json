@@ -1,0 +1,47 @@
+{
+    "route": "PATCH api/predictions/datasets/{record}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "comment": "string",
+            "created_at": "string",
+            "enum_state": "string",
+            "id": "number",
+            "membrane": {
+                "abbreviation": "string",
+                "id": "number",
+                "name": "string",
+                "remote_id": "number"
+            },
+            "method": "string",
+            "method_type": "string",
+            "overall_stats": {
+                "completed_percent": "number",
+                "progress_percent": "number",
+                "steps_done": "number",
+                "steps_total": "number"
+            },
+            "priority": "number",
+            "remote_method": "string",
+            "state": "number",
+            "stats": {
+                "done": "number",
+                "failed": "number",
+                "paused": "number",
+                "pending": "number",
+                "running": "number",
+                "total": "number"
+            },
+            "temperature": "number",
+            "token": "string",
+            "updated_at": "string",
+            "user": {
+                "email": "string",
+                "id": "number",
+                "name": "string"
+            },
+            "user_id": "number"
+        }
+    }
+}

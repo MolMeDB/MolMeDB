@@ -30,6 +30,7 @@ class PublicationJsonLdMapper
         return array_filter([
             '@context' => 'https://schema.org',
             '@type' => 'ScholarlyArticle',
+            '@id' => $publication->doi ? "https://doi.org/{$publication->doi}" : PublicApiUrl::to("publications/{$publication->id}"),
             'identifier' => $pmid ? "PMID:{$pmid}" : null,
             'name' => $publication->title,
             'headline' => $publication->title,

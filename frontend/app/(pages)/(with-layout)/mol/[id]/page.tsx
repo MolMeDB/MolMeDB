@@ -12,6 +12,7 @@ import CompoundActiveInteractions from "./section/interactionActive";
 import CompoundPassiveInteractions from "./section/interactionPassive";
 import IStructure from "@/lib/api/admin/interfaces/Structure";
 import { getJson } from "@/lib/api/admin";
+import { fetchPublicJsonLd, JsonLdScript } from "@/components/_core/JsonLd";
 
 export async function generateMetadata(props: {
   params: Promise<{ id: string }>;
@@ -33,38 +34,13 @@ export async function generateMetadata(props: {
   };
 }
 
-/**
- * Fetches the Bioschemas/schema.org JSON-LD representation of this structure
- * straight from the public API, rather than reimplementing the mapping in
- * TypeScript — the PHP mapper (App\Support\JsonLd\StructureJsonLdMapper)
- * stays the single source of truth for both representations.
- */
-async function getStructureJsonLd(identifier: string): Promise<object | null> {
-  try {
-    const res = await fetch(`${process.env.NEXT_BACKEND_URL}/api/v1/structures/${identifier}`, {
-      headers: { Accept: "application/ld+json" },
-      next: { revalidate: 3600 },
-    });
-
-    if (!res.ok) {
-      return null;
-    }
-
-    const json = await res.json();
-
-    return json?.data ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export default async function CompoundDetailPage(props: {
   params: Promise<{ id: string }>;
 }) {
   const id = (await props.params).id;
   const compound: IStructure = (await getJson(`/api/structure/${id}`, {}, { auth: false, revalidate: 3600 }))?.data
     ?.data;
-  const jsonLd = compound ? await getStructureJsonLd(compound.identifier) : null;
+  const jsonLd = compound ? await fetchPublicJsonLd(`structures/${compound.identifier}`) : null;
 
   if (!compound) {
     return (
@@ -92,12 +68,7 @@ export default async function CompoundDetailPage(props: {
 
   return (
     <>
-      {jsonLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
-        />
-      )}
+      <JsonLdScript data={jsonLd} />
       <DownloaderSuggestion
         category="molecule"
         id={compound.identifier}

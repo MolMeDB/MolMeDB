@@ -5,26 +5,20 @@ namespace App\Support\JsonLd;
 use App\Models\Identifier;
 use App\Models\Structure;
 use App\Support\ExternalIdentifierResolver;
-use App\Support\PublicApiUrl;
 
 /**
- * Maps a Structure to a schema.org/Bioschemas "MolecularEntity" JSON-LD
- * document (https://bioschemas.org/profiles/MolecularEntity). Chemistry
- * fields with no native schema.org property (SMILES, InChI, InChIKey) are
- * carried as `additionalProperty` PropertyValue pairs, the standard
- * Bioschemas pattern for this.
+ * Maps a Structure to a Bioschemas "MolecularEntity" JSON-LD document
+ * (https://bioschemas.org/profiles/MolecularEntity/0.5-RELEASE).
+ *
+ * The node @id is the identifiers.org IRI, the same one MolMeDB RDF uses for
+ * the substance, so JSON-LD and RDF describe the same resource.
  */
 class StructureJsonLdMapper
 {
+    public const PROFILE = 'https://bioschemas.org/profiles/MolecularEntity/0.5-RELEASE';
+
     public function map(Structure $structure): array
     {
-        $additionalProperties = array_filter([
-            $structure->canonical_smiles ? $this->property('SMILES', $structure->canonical_smiles) : null,
-            $structure->inchi ? $this->property('InChI', $structure->inchi) : null,
-            $structure->inchikey ? $this->property('InChIKey', $structure->inchikey) : null,
-            $structure->logp !== null ? $this->property('LogP', (string) $structure->logp) : null,
-        ]);
-
         $crossReferences = ($structure->relationLoaded('identifiers') ? $structure->identifiers : collect())
             ->whereIn('state', [Identifier::STATE_NEW, Identifier::STATE_VALIDATED, Identifier::STATE_ACTIVE])
             ->whereNotIn('type', [Identifier::TYPE_NAME, Identifier::TYPE_MOLMEDB])
@@ -34,26 +28,33 @@ class StructureJsonLdMapper
             ->values()
             ->all();
 
+        $landingPage = config('fair.frontend_url')."/mol/{$structure->identifier}";
+
         return array_filter([
-            '@context' => 'https://schema.org',
-            '@type' => ['MolecularEntity', 'ChemicalSubstance'],
+            '@context' => JsonLdContext::SCHEMA_ORG_WITH_DCT,
+            '@type' => 'MolecularEntity',
+            '@id' => ExternalIdentifierResolver::resolveMolMeDb($structure->identifier),
+            'dct:conformsTo' => ['@id' => self::PROFILE],
             'identifier' => $structure->identifier,
             'name' => $structure->name,
-            'molecularWeight' => $structure->molecular_weight,
-            'url' => PublicApiUrl::to("structures/{$structure->identifier}"),
-            'mainEntityOfPage' => rtrim(config('fair.frontend_url'), '/')."/mol/{$structure->identifier}",
+            'url' => $landingPage,
+            'mainEntityOfPage' => $landingPage,
+            'smiles' => $structure->canonical_smiles ? [$structure->canonical_smiles] : null,
+            'inChI' => $structure->inchi ?: null,
+            'inChIKey' => $structure->inchikey ?: null,
+            'molecularWeight' => $structure->molecular_weight !== null ? [
+                '@type' => 'QuantitativeValue',
+                'value' => (float) $structure->molecular_weight,
+                'unitText' => 'g/mol',
+            ] : null,
+            'additionalProperty' => $structure->logp !== null ? [[
+                '@type' => 'PropertyValue',
+                'name' => 'LogP',
+                'value' => (float) $structure->logp,
+            ]] : null,
             'sameAs' => $crossReferences ?: null,
-            'additionalProperty' => $additionalProperties ?: null,
+            'isPartOf' => JsonLdContext::datasetReference(),
             'license' => config('fair.data_license.url'),
         ], fn ($value) => $value !== null);
-    }
-
-    private function property(string $name, string $value): array
-    {
-        return [
-            '@type' => 'PropertyValue',
-            'name' => $name,
-            'value' => $value,
-        ];
     }
 }

@@ -38,7 +38,7 @@ class AboutController extends Controller
                     'pattern' => config('fair.identifier_pattern'),
                     'example' => config('fair.identifier_example'),
                     'resolver' => rtrim(config('fair.frontend_url'), '/').'/mol/{identifier}',
-                    'identifiers_org' => 'https://identifiers.org/'.config('fair.identifiers_org_namespace').':{identifier}',
+                    'identifiers_org' => 'https://identifiers.org/'.config('fair.identifiers_org_namespace').'/{identifier}',
                 ],
                 'links' => [
                     'openapi' => PublicApiUrl::to('openapi.json'),

@@ -45,10 +45,14 @@ class ExternalIdentifierResolver
         return "https://identifiers.org/uniprot:{$value}";
     }
 
+    /**
+     * The slash form (identifiers.org/molmedb/MM00040) is the IRI MolMeDB RDF
+     * uses for substances, so JSON-LD and RDF name the same resource.
+     */
     public static function resolveMolMeDb(string $identifier): string
     {
         $namespace = config('fair.identifiers_org_namespace');
 
-        return "https://identifiers.org/{$namespace}:{$identifier}";
+        return "https://identifiers.org/{$namespace}/{$identifier}";
     }
 }

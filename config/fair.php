@@ -44,6 +44,8 @@ return [
 
     'public_api_url' => rtrim(env('FAIR_PUBLIC_API_URL', rtrim(env('FAIR_SITE_URL', 'https://molmedb.upol.cz'), '/').'/api/v1'), '/'),
 
+    'sitemap_path' => env('FAIR_SITEMAP_PATH', storage_path('app/sitemaps')),
+
     'repository_url' => 'https://github.com/MolMeDB/MolMeDB',
 
     'publisher' => [

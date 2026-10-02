@@ -101,7 +101,9 @@ test('browsers get an HTML listing for resources without their own page', functi
 test('unknown RDF resources return 404', function () {
     fakeRdfSparqlEndpoint(exists: false);
 
-    $this->get('/api/rdf/interaction/int999999999', ['Accept' => 'text/turtle'])->assertNotFound();
+    $this->get('/api/rdf/interaction/int999999999', ['Accept' => 'text/turtle'])
+        ->assertNotFound()
+        ->assertHeader('Content-Type', 'text/plain; charset=UTF-8');
 });
 
 test('paths outside the RDF namespaces return 404 without querying the endpoint', function () {
@@ -115,7 +117,10 @@ test('paths outside the RDF namespaces return 404 without querying the endpoint'
 test('an unavailable SPARQL endpoint returns 503', function () {
     Http::fake(fn () => Http::response('down', 500));
 
-    $this->get('/api/rdf/interaction/int18095', ['Accept' => 'text/turtle'])->assertStatus(503);
+    $this->get('/api/rdf/interaction/int18095', ['Accept' => 'text/turtle'])
+        ->assertStatus(503)
+        ->assertHeader('Retry-After', '300')
+        ->assertHeader('Content-Type', 'text/plain; charset=UTF-8');
 });
 
 test('the vocabulary is served from the RDF storage', function () {

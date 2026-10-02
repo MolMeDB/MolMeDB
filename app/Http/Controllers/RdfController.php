@@ -49,7 +49,9 @@ class RdfController extends Controller
         $format = $this->negotiate($request);
 
         try {
-            abort_unless($sparql->describes($resource->iri()), 404);
+            if (! $sparql->describes($resource->iri())) {
+                return $this->plainError(404, "No RDF statements about {$resource->iri()}.");
+            }
 
             if ($format === 'html') {
                 $landingPage = $resource->landingPage();
@@ -75,7 +77,7 @@ class RdfController extends Controller
                 'Link' => $this->alternateLinks($resource),
             ]);
         } catch (RdfEndpointUnavailable) {
-            abort(503, 'The MolMeDB RDF SPARQL endpoint is temporarily unavailable.');
+            return $this->plainError(503, 'The MolMeDB RDF SPARQL endpoint is temporarily unavailable.', ['Retry-After' => '300']);
         }
     }
 
@@ -121,6 +123,16 @@ class RdfController extends Controller
         }
 
         return 'turtle';
+    }
+
+    /**
+     * Errors as plain text: RDF clients do not expect an HTML error page.
+     *
+     * @param  array<string, string>  $headers
+     */
+    private function plainError(int $status, string $message, array $headers = []): Response
+    {
+        return response($message."\n", $status, ['Content-Type' => 'text/plain; charset=UTF-8', ...$headers]);
     }
 
     private function alternateLinks(RdfResource $resource): string

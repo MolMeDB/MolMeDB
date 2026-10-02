@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api\Public\V1;
 
 use App\Models\ProteinIdentifier;
 use App\Support\ExternalIdentifierResolver;
+use App\Support\PublicApiUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,7 +21,7 @@ class ProteinResource extends JsonResource
                     ->whereIn('state', [ProteinIdentifier::STATE_NEW, ProteinIdentifier::STATE_VALIDATED])
                     ->values()
             )),
-            'url' => url("/api/public/v1/proteins/{$this->id}"),
+            'url' => PublicApiUrl::to("proteins/{$this->id}"),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

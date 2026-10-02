@@ -44,7 +44,7 @@ class NegotiatePublicApiFormat
     private function renderExplorer(Request $request): Response
     {
         $route = $request->route();
-        $uri = Str::after($route->uri(), 'api/public/v1/');
+        $uri = Str::after($route->uri(), 'api/v1/');
         $config = config("api_explorer.routes.$uri");
 
         if ($config === null) {
@@ -86,7 +86,7 @@ class NegotiatePublicApiFormat
             'exampleRequest' => $config['example'] ?? '/'.$uri,
             'isDownload' => $config['is_download'] ?? false,
             'maxResponseLines' => config('api_explorer.max_response_lines', 300),
-            'baseUrl' => rtrim($request->getSchemeAndHttpHost().'/api/public/v1', '/'),
+            'baseUrl' => rtrim($request->getSchemeAndHttpHost().'/api/v1', '/'),
         ]);
     }
 

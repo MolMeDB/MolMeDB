@@ -18,15 +18,15 @@ return [
      * Multiple includes or wildcards → server defaults to / and paths stay full (/api/users).
      * Override with `servers`, or use Scramble::registerApi() for separate bases.
      */
-    // Restricted to the open, unauthenticated public/v1 API — the internal
+    // Restricted to the open, unauthenticated public v1 API — the internal
     // Sanctum-authenticated surface (routes/api.php) is deliberately not a
     // FAIR/public contract and must never appear here. The docs UI/JSON
     // routes themselves live under this same prefix (see
     // AppServiceProvider::boot()) and must be excluded, or the spec would
     // document itself.
     'api_path' => [
-        'include' => 'api/public/v1',
-        'exclude' => ['api/public/v1/docs', 'api/public/v1/openapi.json'],
+        'include' => 'api/v1',
+        'exclude' => ['api/v1/docs', 'api/v1/openapi.json'],
     ],
 
     /*
@@ -38,7 +38,7 @@ return [
     /*
      * The path where your OpenAPI specification will be exported by
      * `artisan scramble:export` (unrelated to the live route registered in
-     * AppServiceProvider — see api/public/v1/openapi.json).
+     * AppServiceProvider — see api/v1/openapi.json).
      */
     'export_path' => 'openapi.json',
 
@@ -121,7 +121,9 @@ return [
      * ],
      * ```
      */
-    'servers' => null,
+    'servers' => [
+        'MolMeDB' => config('fair.public_api_url'),
+    ],
 
     /**
      * Determines how Scramble stores the descriptions of enum cases.

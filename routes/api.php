@@ -8,8 +8,8 @@ use App\Http\Controllers\InteractionPassiveController;
 use App\Http\Controllers\LabUploadController;
 use App\Http\Controllers\MembraneController;
 use App\Http\Controllers\MethodController;
-use App\Http\Controllers\PredictionsController;
 use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\PredictionsController;
 use App\Http\Controllers\ProteinController;
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\PushSubscriptionController;
@@ -29,7 +29,7 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 
 // Public, unauthenticated API — own rate limiter and CORS policy, not the
 // internal throttle:300,1 default group below.
-Route::prefix('public/v1')
+Route::prefix('v1')
     ->middleware(['public-cors', 'throttle:public-api', 'negotiate-public-api-format'])
     ->group(base_path('routes/public/v1.php'));
 

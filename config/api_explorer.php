@@ -8,8 +8,8 @@ return [
     |--------------------------------------------------------------------------
     |
     | Metadata used to render the interactive "try it" page for
-    | api/public/v1/* GET routes when a browser (not an API client) requests
-    | one of them. Keyed by the route URI with the "api/public/v1/" prefix
+    | api/v1/* GET routes when a browser (not an API client) requests
+    | one of them. Keyed by the route URI with the "api/v1/" prefix
     | stripped, e.g. "membranes/{membrane}/stats".
     |
     | Path parameters (the {membrane} part) don't need per-route metadata —

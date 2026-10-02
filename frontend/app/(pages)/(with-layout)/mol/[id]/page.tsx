@@ -41,7 +41,7 @@ export async function generateMetadata(props: {
  */
 async function getStructureJsonLd(identifier: string): Promise<object | null> {
   try {
-    const res = await fetch(`${process.env.NEXT_BACKEND_URL}/api/public/v1/structures/${identifier}`, {
+    const res = await fetch(`${process.env.NEXT_BACKEND_URL}/api/v1/structures/${identifier}`, {
       headers: { Accept: "application/ld+json" },
       next: { revalidate: 3600 },
     });

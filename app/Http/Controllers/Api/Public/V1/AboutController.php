@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Public\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\JsonLd\DatasetJsonLdMapper;
+use App\Support\PublicApiUrl;
 use Illuminate\Http\Request;
 
 /**
@@ -40,8 +41,8 @@ class AboutController extends Controller
                     'identifiers_org' => 'https://identifiers.org/'.config('fair.identifiers_org_namespace').':{identifier}',
                 ],
                 'links' => [
-                    'openapi' => url('/api/public/v1/openapi.json'),
-                    'sitemap' => url('/sitemap.xml'),
+                    'openapi' => PublicApiUrl::to('openapi.json'),
+                    'sitemap' => config('fair.frontend_url').'/sitemap.xml',
                 ],
             ],
         ]);

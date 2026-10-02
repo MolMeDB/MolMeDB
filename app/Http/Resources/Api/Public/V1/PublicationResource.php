@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\Public\V1;
 
 use App\Support\JsonLd\PublicationJsonLdMapper;
+use App\Support\PublicApiUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Modules\References\EuropePMC\Enums\Sources;
@@ -40,7 +41,7 @@ class PublicationResource extends JsonResource
             'issue' => $this->when($this->detailed, $this->issue),
             'page' => $this->when($this->detailed, $this->page),
             'authors' => $this->when($this->detailed, fn () => AuthorResource::collection($this->authors)),
-            'url' => url("/api/public/v1/publications/{$this->id}"),
+            'url' => PublicApiUrl::to("publications/{$this->id}"),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

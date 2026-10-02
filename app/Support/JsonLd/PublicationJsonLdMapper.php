@@ -3,6 +3,7 @@
 namespace App\Support\JsonLd;
 
 use App\Models\Publication;
+use App\Support\PublicApiUrl;
 use Modules\References\EuropePMC\Enums\Sources;
 
 /**
@@ -36,7 +37,7 @@ class PublicationJsonLdMapper
             'isPartOf' => $publication->journal ? ['@type' => 'Periodical', 'name' => $publication->journal] : null,
             'sameAs' => $publication->doi ? "https://doi.org/{$publication->doi}" : null,
             'author' => $authors ?: null,
-            'url' => url("/api/public/v1/publications/{$publication->id}"),
+            'url' => PublicApiUrl::to("publications/{$publication->id}"),
         ], fn ($value) => $value !== null);
     }
 }

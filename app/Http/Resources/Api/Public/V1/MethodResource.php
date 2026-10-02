@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\Public\V1;
 
+use App\Support\PublicApiUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,7 +16,7 @@ class MethodResource extends JsonResource
             'abbreviation' => $this->abbreviation,
             'description' => $this->description,
             'categories' => $this->whenLoaded('categories', fn () => CategoryResource::collection($this->categories)),
-            'url' => url("/api/public/v1/methods/{$this->id}"),
+            'url' => PublicApiUrl::to("methods/{$this->id}"),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

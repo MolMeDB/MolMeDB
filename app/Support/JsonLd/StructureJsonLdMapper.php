@@ -5,6 +5,7 @@ namespace App\Support\JsonLd;
 use App\Models\Identifier;
 use App\Models\Structure;
 use App\Support\ExternalIdentifierResolver;
+use App\Support\PublicApiUrl;
 
 /**
  * Maps a Structure to a schema.org/Bioschemas "MolecularEntity" JSON-LD
@@ -39,7 +40,7 @@ class StructureJsonLdMapper
             'identifier' => $structure->identifier,
             'name' => $structure->name,
             'molecularWeight' => $structure->molecular_weight,
-            'url' => url("/api/public/v1/structures/{$structure->identifier}"),
+            'url' => PublicApiUrl::to("structures/{$structure->identifier}"),
             'mainEntityOfPage' => rtrim(config('fair.frontend_url'), '/')."/mol/{$structure->identifier}",
             'sameAs' => $crossReferences ?: null,
             'additionalProperty' => $additionalProperties ?: null,

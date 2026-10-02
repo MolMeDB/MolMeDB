@@ -17,6 +17,7 @@
         "league/flysystem-sftp-v3": "^3.0",
         "livewire/livewire": "^4.0",
         "minishlink/web-push": "^11.0",
+        "phpseclib/phpseclib": "^3.0",
         "predis/predis": "^2.0",
         "pxlrbt/filament-activity-log": "^2.0",
         "solution-forest/filament-tree": "^4.0",

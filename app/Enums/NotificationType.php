@@ -40,6 +40,8 @@ enum NotificationType: string
     case SYSTEM_ADMIN_BACKUP_FAILED = 'system.admin.backup_failed';
     case SYSTEM_ADMIN_JOB_FAILED = 'system.admin.job_failed';
     case SYSTEM_ADMIN_NOTIFICATION_FAILURE = 'system.admin.notification_failure';
+    case SYSTEM_ADMIN_COSMO_EXPORT_FINISHED = 'system.admin.cosmo_export_finished';
+    case SYSTEM_ADMIN_COSMO_EXPORT_FAILED = 'system.admin.cosmo_export_failed';
 
     /**
      * @return array<self>
@@ -95,7 +97,9 @@ enum NotificationType: string
             self::FEEDBACK_ADMIN_NEW_SUBMISSION,
             self::SYSTEM_ADMIN_BACKUP_FAILED,
             self::SYSTEM_ADMIN_JOB_FAILED,
-            self::SYSTEM_ADMIN_NOTIFICATION_FAILURE => NotificationAudience::ADMIN,
+            self::SYSTEM_ADMIN_NOTIFICATION_FAILURE,
+            self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
+            self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED => NotificationAudience::ADMIN,
         };
     }
 
@@ -119,7 +123,9 @@ enum NotificationType: string
 
             self::SYSTEM_ADMIN_BACKUP_FAILED,
             self::SYSTEM_ADMIN_JOB_FAILED,
-            self::SYSTEM_ADMIN_NOTIFICATION_FAILURE => PermissionEnums::SYSTEM_MONITOR,
+            self::SYSTEM_ADMIN_NOTIFICATION_FAILURE,
+            self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
+            self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED => PermissionEnums::SYSTEM_MONITOR,
 
             default => null,
         };
@@ -155,6 +161,8 @@ enum NotificationType: string
             self::UPLOAD_RECEIVED,
             self::SYSTEM_ADMIN_BACKUP_FAILED,
             self::SYSTEM_ADMIN_NOTIFICATION_FAILURE,
+            self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
+            self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED,
             self::PREDICTION_ADMIN_REMOTE_SERVICE_DOWN,
             self::FEEDBACK_ADMIN_NEW_SUBMISSION => NotificationDeliveryMode::IMMEDIATE,
             default => NotificationDeliveryMode::BATCHED,
@@ -207,7 +215,9 @@ enum NotificationType: string
 
             self::SYSTEM_ADMIN_BACKUP_FAILED,
             self::SYSTEM_ADMIN_JOB_FAILED,
-            self::SYSTEM_ADMIN_NOTIFICATION_FAILURE => 'Administration – system health',
+            self::SYSTEM_ADMIN_NOTIFICATION_FAILURE,
+            self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
+            self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED => 'Administration – system health',
         };
     }
 

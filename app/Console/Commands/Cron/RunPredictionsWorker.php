@@ -295,6 +295,13 @@ class RunPredictionsWorker extends Command
                     $prediction->storeRemotePredictionResult($client);
                     $downloaded++;
 
+                    // A failed COSMO download does not invalidate the stored result, the prediction is only left out of the COSMO export.
+                    try {
+                        $prediction->storeRemotePredictionCosmoFiles($client);
+                    } catch (Throwable $throwable) {
+                        $this->warn("Prediction {$prediction->getKey()} COSMO files download failed: {$throwable->getMessage()}");
+                    }
+
                     // Track which datasets may now be complete
                     foreach ($prediction->predictionDatasets()->pluck('datasets.id') as $datasetId) {
                         $finishedDatasetIds[(int) $datasetId] = true;

@@ -118,15 +118,15 @@ class UpdateExportFiles extends Command
                 ->orderBy('interactions_passive.id')
                 ->select(
                     'interactions_passive.*',
-                    's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight', 's.inchikey',
+                    's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight as mw', 's.inchikey',
                     'mem.abbreviation as membrane',
                     'met.abbreviation as method',
                     'pdb.value as pdb',
                     'pubchem.value as pubchem',
                     'drugbank.value as drugbank',
                     'name.value as name',
-                    'pub.citation as primary_citation',
-                    'pub2.citation as secondary_citation')
+                    ...ExportToFile::publicationColumns('pub', 'primary'),
+                    ...ExportToFile::publicationColumns('pub2', 'secondary'))
                 ->cursor() as $interaction) {
                 $statebar->advance();
                 $export->writeRow($interaction);
@@ -212,15 +212,15 @@ class UpdateExportFiles extends Command
                 ->orderBy('interactions_passive.id')
                 ->select(
                     'interactions_passive.*',
-                    's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight', 's.inchikey',
+                    's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight as mw', 's.inchikey',
                     'mem.abbreviation as membrane',
                     'met.abbreviation as method',
                     'pdb.value as pdb',
                     'pubchem.value as pubchem',
                     'drugbank.value as drugbank',
                     'name.value as name',
-                    'pub.citation as primary_citation',
-                    'pub2.citation as secondary_citation')
+                    ...ExportToFile::publicationColumns('pub', 'primary'),
+                    ...ExportToFile::publicationColumns('pub2', 'secondary'))
                 ->cursor() as $interaction) {
                 $statebar->advance();
                 $export->writeRow($interaction);
@@ -308,15 +308,15 @@ class UpdateExportFiles extends Command
                 ->orderBy('interactions_passive.id')
                 ->select(
                     'interactions_passive.*',
-                    's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight', 's.inchikey',
+                    's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight as mw', 's.inchikey',
                     'mem.abbreviation as membrane',
                     'met.abbreviation as method',
                     'pdb.value as pdb',
                     'pubchem.value as pubchem',
                     'drugbank.value as drugbank',
                     'name.value as name',
-                    'pub.citation as primary_citation',
-                    'pub2.citation as secondary_citation')
+                    ...ExportToFile::publicationColumns('pub', 'primary'),
+                    ...ExportToFile::publicationColumns('pub2', 'secondary'))
                 ->cursor() as $interaction) {
                 $statebar->advance();
                 $export->writeRow($interaction);
@@ -393,13 +393,13 @@ class UpdateExportFiles extends Command
                 ->select(
                     'interactions_active.*',
                     'p.uniprot_id as protein',
-                    's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight', 's.inchikey',
+                    's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight as mw', 's.inchikey',
                     'pdb.value as pdb',
                     'pubchem.value as pubchem',
                     'drugbank.value as drugbank',
                     'name.value as name',
-                    'pub.citation as primary_citation',
-                    'pub2.citation as secondary_citation')
+                    ...ExportToFile::publicationColumns('pub', 'primary'),
+                    ...ExportToFile::publicationColumns('pub2', 'secondary'))
                 ->cursor() as $interaction) {
                 $statebar->advance();
                 $export->writeRow($interaction);

@@ -5,12 +5,14 @@ namespace App\Libraries\Export;
 use App\Models\Dataset;
 use App\Models\Filesystem;
 use App\Models\Identifier;
+use App\Models\Publication;
 use App\Models\Structure;
 use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Modules\References\EuropePMC\Enums\Sources;
 use stdClass;
 use Throwable;
 use ZipArchive;
@@ -148,14 +150,12 @@ class ExportToFile
                 throw new Exception('Header is not written to the target file.');
             }
 
-            $toWrite = '';
+            $toWrite = [];
             foreach ($this->header->items as $column) {
-                $toWrite .= $column->getValue($row).$separator;
+                $toWrite[] = $column->getValue($row);
             }
 
-            // Remove last character [;]
-            $toWrite = substr($toWrite, 0, -1);
-            fwrite($this->fileHandler, $toWrite.PHP_EOL);
+            fputcsv($this->fileHandler, $toWrite, $separator, '"', '\\');
         }
 
         return $this;
@@ -333,6 +333,40 @@ class ExportToFile
         ]);
     }
 
+    /**
+     * Citation, DOI and PubMed ID select columns for a joined publications alias.
+     *
+     * The PubMed ID is only filled in when the publication is identified by a
+     * PubMed/Medline identifier, mirroring Publication::getPmidAttribute().
+     *
+     * @return array<int, string|\Illuminate\Contracts\Database\Query\Expression>
+     */
+    public static function publicationColumns(string $alias, string $prefix): array
+    {
+        return [
+            $alias.'.citation as '.$prefix.'_citation',
+            $alias.'.doi as '.$prefix.'_doi',
+            DB::raw(
+                "CASE WHEN {$alias}.identifier_source = '".Sources::MED->value."'"
+                ." THEN {$alias}.identifier END as {$prefix}_pubmed_id"
+            ),
+        ];
+    }
+
+    /**
+     * Citation, DOI and PubMed ID row values for an already loaded publication.
+     *
+     * @return array<string, mixed>
+     */
+    public static function publicationFields(string $prefix, ?Publication $publication): array
+    {
+        return [
+            $prefix.'_citation' => $publication?->citation,
+            $prefix.'_doi' => $publication?->doi,
+            $prefix.'_pubmed_id' => $publication?->pmid,
+        ];
+    }
+
     public static function prepareIdentifierQuery($identifier = Identifier::TYPE_NAME): Builder
     {
         return DB::table(
@@ -429,8 +463,8 @@ class ExportToFile
                 'pubchem.value as pubchem',
                 'drugbank.value as drugbank',
                 'name.value as name',
-                'pub.citation as primary_citation',
-                'pub2.citation as secondary_citation',
+                ...self::publicationColumns('pub', 'primary'),
+                ...self::publicationColumns('pub2', 'secondary'),
             );
     }
 }

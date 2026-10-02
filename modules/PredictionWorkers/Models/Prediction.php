@@ -5,6 +5,7 @@ namespace Modules\PredictionWorkers\Models;
 use App\Models\Filesystem;
 use Carbon\CarbonInterface;
 use EloquentFilter\Filterable;
+use finfo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
@@ -748,6 +749,185 @@ class Prediction extends PredictionBaseModel
 
             return $result;
         });
+    }
+
+    /**
+     * Store the remote COSMO conformer files (.ccf) next to the stored prediction result.
+     * Returns the number of stored files, 0 when they are already stored.
+     */
+    public function storeRemotePredictionCosmoFiles(
+        ?RemotePredictionClient $client = null,
+    ): int {
+        if ($this->hasStoredCosmoFiles()) {
+            return 0;
+        }
+
+        $download = filled($this->remote_calculation_id)
+            ? $this->remotePredictionClient($client)->downloadArtifact((string) $this->remote_calculation_id, RemotePredictionArtifact::COSMO)
+            : $this->downloadRemotePredictionCosmoArchive($client);
+
+        return $this->storeCosmoFiles($this->cosmoFilesFromDownload($download), 'remote prediction service');
+    }
+
+    /**
+     * Store conformer COSMO files into the folder of the stored prediction result (next to cosmo.xml).
+     * Only adds files: an existing file with the same name is kept when identical, otherwise nothing is stored.
+     *
+     * @param  array<string, string>  $cosmoFiles  filename => contents
+     */
+    public function storeCosmoFiles(array $cosmoFiles, string $source): int
+    {
+        [$diskName, $folder] = $this->cosmoFilesLocation();
+        $disk = Storage::disk($diskName);
+        $existingFiles = array_flip(array_map('basename', $disk->files($folder)));
+        $missingFiles = [];
+
+        foreach ($cosmoFiles as $filename => $contents) {
+            if (! isset($existingFiles[$filename])) {
+                $missingFiles[$filename] = $contents;
+
+                continue;
+            }
+
+            if (md5((string) $disk->get("{$folder}/{$filename}")) !== md5($contents)) {
+                throw new RuntimeException("COSMO file [{$diskName}:{$folder}/{$filename}] already exists with different contents.");
+            }
+        }
+
+        foreach ($missingFiles as $filename => $contents) {
+            if (! $disk->put("{$folder}/{$filename}", $contents)) {
+                throw new RuntimeException("Unable to store COSMO file to [{$diskName}:{$folder}/{$filename}].");
+            }
+        }
+
+        DB::connection($this->getConnectionName())->transaction(function () use ($cosmoFiles, $diskName, $folder, $source): void {
+            $finfo = new finfo(FILEINFO_MIME_TYPE);
+
+            foreach ($cosmoFiles as $filename => $contents) {
+                PredictionFile::query()->create([
+                    'type' => PredictionFile::TYPE_COSMO_CONFORMERS,
+                    'name' => $filename,
+                    'mime' => $finfo->buffer($contents) ?: 'application/octet-stream',
+                    'hash' => md5($contents),
+                    'storage' => $diskName,
+                    'path' => "{$folder}/{$filename}",
+                ]);
+            }
+
+            $this->forceFill([
+                'logs' => $this->logsWithWorkerEvent('COSMO files stored.', [
+                    'source' => $source,
+                    'disk' => $diskName,
+                    'folder' => $folder,
+                    'files' => array_keys($cosmoFiles),
+                    'size' => array_sum(array_map('strlen', $cosmoFiles)),
+                ], 'COSMO DOWNLOAD'),
+            ])->save();
+        });
+
+        return count($cosmoFiles);
+    }
+
+    public function hasStoredCosmoFiles(): bool
+    {
+        [$diskName, $folder] = $this->cosmoFilesLocation();
+
+        return PredictionFile::query()
+            ->where('type', PredictionFile::TYPE_COSMO_CONFORMERS)
+            ->where('storage', $diskName)
+            ->where('path', 'like', addcslashes($folder, '\\%_').'/%')
+            ->exists();
+    }
+
+    /**
+     * Disk and folder of the stored result file - COSMO files are stored next to it.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function cosmoFilesLocation(): array
+    {
+        $resultFile = $this->predictionResult?->file;
+
+        if ((int) $this->state !== self::STATE_FINISHED || ! $resultFile) {
+            throw new RuntimeException("Prediction {$this->getKey()} has no finished result.");
+        }
+
+        return [$resultFile->storage, dirname($resultFile->path)];
+    }
+
+    /**
+     * Extract conformer COSMO files from the downloaded COSMO artifact. The remote service zips
+     * the whole calculation directory, conformer files are stored as conformers/cNNN/{molecule}_cNNN.ccf.
+     *
+     * @return array<string, string> filename => contents
+     */
+    private function cosmoFilesFromDownload(RemotePredictionFile $download): array
+    {
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'remote-prediction-cosmo-');
+
+        if ($temporaryPath === false || file_put_contents($temporaryPath, $download->contents) === false) {
+            throw new RuntimeException("Unable to buffer remote COSMO artifact for prediction {$this->getKey()}.");
+        }
+
+        $archive = new ZipArchive;
+        $isOpen = false;
+
+        try {
+            if ($archive->open($temporaryPath) !== true) {
+                throw new RuntimeException("Remote COSMO artifact for prediction {$this->getKey()} is not a valid zip archive.");
+            }
+
+            $isOpen = true;
+            $files = [];
+            $entryNames = [];
+
+            for ($index = 0; $index < $archive->numFiles; $index++) {
+                $entryName = (string) ($archive->statIndex($index)['name'] ?? '');
+                $entryNames[] = $entryName;
+
+                if (! in_array(strtolower(pathinfo($entryName, PATHINFO_EXTENSION)), ['ccf', 'cosmo'], true)) {
+                    continue;
+                }
+
+                $filename = $this->safeCosmoFilename(basename($entryName));
+
+                // Same file name in different archive folders - keep the folder in the name.
+                if (isset($files[$filename])) {
+                    $filename = $this->safeCosmoFilename(str_replace('/', '_', trim($entryName, '/')));
+                }
+
+                $contents = $archive->getFromIndex($index);
+
+                if (! is_string($contents)) {
+                    throw new RuntimeException("Unable to read [{$entryName}] from remote COSMO artifact for prediction {$this->getKey()}.");
+                }
+
+                $files[$filename] = $contents;
+            }
+
+            if ($files === []) {
+                throw new RuntimeException("Remote COSMO artifact for prediction {$this->getKey()} contains no .ccf/.cosmo files [".implode(', ', $entryNames).'].');
+            }
+
+            ksort($files, SORT_NATURAL);
+
+            return $files;
+        } finally {
+            if ($isOpen) {
+                $archive->close();
+            }
+
+            if (file_exists($temporaryPath)) {
+                unlink($temporaryPath);
+            }
+        }
+    }
+
+    private function safeCosmoFilename(string $filename): string
+    {
+        return Str::of(basename(trim($filename)))
+            ->replaceMatches('/[^A-Za-z0-9._-]/', '_')
+            ->toString();
     }
 
     /**

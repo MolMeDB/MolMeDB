@@ -57,9 +57,8 @@ class ExportStructureController extends Controller
                 'publication',
             ])
             ->lazyById(200, 'id') as $interaction) {
-            $secondaryCitation = $interaction->dataset?->publications
-                ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id)
-                ?->citation;
+            $secondaryPublication = $interaction->dataset?->publications
+                ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id);
 
             yield (object) array_merge($structureBase, [
                 'membrane' => $interaction->dataset?->membrane?->abbreviation,
@@ -78,9 +77,10 @@ class ExportStructureController extends Controller
                 'logk_accuracy' => $interaction->logk_accuracy,
                 'logperm' => $interaction->logperm,
                 'logperm_accuracy' => $interaction->logperm_accuracy,
-                'primary_citation' => $interaction->publication?->citation,
-                'secondary_citation' => $secondaryCitation,
-            ]);
+            ],
+                ExportToFile::publicationFields('primary', $interaction->publication),
+                ExportToFile::publicationFields('secondary', $secondaryPublication),
+            );
         }
     }
 
@@ -95,9 +95,8 @@ class ExportStructureController extends Controller
                 'protein',
             ])
             ->lazyById(200, 'id') as $interaction) {
-            $secondaryCitation = $interaction->dataset?->publications
-                ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id)
-                ?->citation;
+            $secondaryPublication = $interaction->dataset?->publications
+                ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id);
 
             yield (object) array_merge($structureBase, [
                 'protein' => $interaction->protein?->uniprot_id,
@@ -113,9 +112,10 @@ class ExportStructureController extends Controller
                 'ki_accuracy' => $interaction->ki_accuracy,
                 'ic50' => $interaction->ic50,
                 'ic50_accuracy' => $interaction->ic50_accuracy,
-                'primary_citation' => $interaction->publication?->citation,
-                'secondary_citation' => $secondaryCitation,
-            ]);
+            ],
+                ExportToFile::publicationFields('primary', $interaction->publication),
+                ExportToFile::publicationFields('secondary', $secondaryPublication),
+            );
         }
     }
 

@@ -210,9 +210,8 @@ class ProcessDownloadQueueExport implements ShouldQueue
         foreach ($query
             ->with(['dataset.membrane', 'dataset.method', 'dataset.publications', 'publication', 'structure'])
             ->lazyById(200, 'id') as $interaction) {
-            $secondaryCitation = $interaction->dataset?->publications
-                ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id)
-                ?->citation;
+            $secondaryPublication = $interaction->dataset?->publications
+                ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id);
 
             yield (object) array_merge($this->structureFields($interaction->structure), [
                 'membrane' => $interaction->dataset?->membrane?->abbreviation,
@@ -231,9 +230,10 @@ class ProcessDownloadQueueExport implements ShouldQueue
                 'logk_accuracy' => $interaction->logk_accuracy,
                 'logperm' => $interaction->logperm,
                 'logperm_accuracy' => $interaction->logperm_accuracy,
-                'primary_citation' => $interaction->publication?->citation,
-                'secondary_citation' => $secondaryCitation,
-            ]);
+            ],
+                ExportToFile::publicationFields('primary', $interaction->publication),
+                ExportToFile::publicationFields('secondary', $secondaryPublication),
+            );
         }
     }
 
@@ -245,9 +245,8 @@ class ProcessDownloadQueueExport implements ShouldQueue
         foreach ($query
             ->with(['dataset.publications', 'publication', 'protein', 'structure'])
             ->lazyById(200, 'id') as $interaction) {
-            $secondaryCitation = $interaction->dataset?->publications
-                ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id)
-                ?->citation;
+            $secondaryPublication = $interaction->dataset?->publications
+                ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id);
 
             yield (object) array_merge($this->structureFields($interaction->structure), [
                 'protein' => $interaction->protein?->uniprot_id,
@@ -263,9 +262,10 @@ class ProcessDownloadQueueExport implements ShouldQueue
                 'ki_accuracy' => $interaction->ki_accuracy,
                 'ic50' => $interaction->ic50,
                 'ic50_accuracy' => $interaction->ic50_accuracy,
-                'primary_citation' => $interaction->publication?->citation,
-                'secondary_citation' => $secondaryCitation,
-            ]);
+            ],
+                ExportToFile::publicationFields('primary', $interaction->publication),
+                ExportToFile::publicationFields('secondary', $secondaryPublication),
+            );
         }
     }
 

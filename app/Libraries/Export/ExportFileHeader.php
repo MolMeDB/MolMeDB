@@ -65,8 +65,12 @@ class ExportFileHeader
             ExportFileColumn::make($prefix.'logk_accuracy', '+/- LogK'),
             ExportFileColumn::make($prefix.'logperm', 'LogPerm'),
             ExportFileColumn::make($prefix.'logperm_accuracy', '+/- LogPerm'),
-            ExportFileColumn::make($prefix.'primary_citation', 'Primary referece'),
-            ExportFileColumn::make($prefix.'secondary_citation', 'Secondary referece'),
+            ExportFileColumn::make($prefix.'primary_citation', 'Primary reference'),
+            ExportFileColumn::make($prefix.'primary_doi', 'Primary reference DOI'),
+            ExportFileColumn::make($prefix.'primary_pubmed_id', 'Primary reference PubMed ID'),
+            ExportFileColumn::make($prefix.'secondary_citation', 'Secondary reference'),
+            ExportFileColumn::make($prefix.'secondary_doi', 'Secondary reference DOI'),
+            ExportFileColumn::make($prefix.'secondary_pubmed_id', 'Secondary reference PubMed ID'),
         ];
 
         return $this;
@@ -91,8 +95,12 @@ class ExportFileHeader
             ExportFileColumn::make($prefix.'ki_accuracy', '+/- Ki'),
             ExportFileColumn::make($prefix.'ic50', 'IC50'),
             ExportFileColumn::make($prefix.'ic50_accuracy', '+/- IC50'),
-            ExportFileColumn::make($prefix.'primary_citation', 'Primary referece'),
-            ExportFileColumn::make($prefix.'secondary_citation', 'Secondary referece'),
+            ExportFileColumn::make($prefix.'primary_citation', 'Primary reference'),
+            ExportFileColumn::make($prefix.'primary_doi', 'Primary reference DOI'),
+            ExportFileColumn::make($prefix.'primary_pubmed_id', 'Primary reference PubMed ID'),
+            ExportFileColumn::make($prefix.'secondary_citation', 'Secondary reference'),
+            ExportFileColumn::make($prefix.'secondary_doi', 'Secondary reference DOI'),
+            ExportFileColumn::make($prefix.'secondary_pubmed_id', 'Secondary reference PubMed ID'),
         ];
 
         return $this;

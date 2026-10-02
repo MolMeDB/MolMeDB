@@ -54,9 +54,27 @@ jobs:
       - name: Determine changed PHP files
         id: changed
         run: |
+          # Release PR (develop -> main): the cumulative diff is effectively the
+          # whole repository, and every commit in it already passed this same
+          # gate when it was pushed to develop. Re-running it here would only
+          # re-report the pre-existing findings this job exists to stay out of.
+          if [ "${{ github.event_name }}" = "pull_request" ] \
+             && [ "${{ github.base_ref }}" = "main" ] \
+             && [ "${{ github.head_ref }}" = "develop" ]; then
+            echo "Release PR (develop -> main) — already gated on every push to develop. Skipping Pint."
+            echo "files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            # A PR is checked out as the merge commit, whose parent IS the base
+            # branch tip, so diffing straight against that tip also drags in
+            # every commit that landed on the base branch after this one forked.
+            # The merge base is the real "what does this branch change" line.
+            BASE_SHA=$(git merge-base "${{ github.event.pull_request.base.sha }}" "$HEAD_SHA" 2>/dev/null || true)
           else
+            HEAD_SHA="${{ github.sha }}"
             BASE_SHA="${{ github.event.before }}"
           fi
 
@@ -66,7 +84,7 @@ jobs:
             exit 0
           fi
 
-          FILES=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "${{ github.sha }}" -- '*.php' | tr '\n' ' ')
+          FILES=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" -- '*.php' | tr '\n' ' ')
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
       - name: Run Pint on changed files

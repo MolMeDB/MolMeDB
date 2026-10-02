@@ -8,7 +8,11 @@ use App\Http\Resources\Api\Public\V1\InteractionActiveResource;
 use App\Http\Resources\Api\Public\V1\InteractionPassiveResource;
 use App\Http\Resources\Api\Public\V1\StructureResource;
 use App\Models\Structure;
+use App\Services\Structures\StructureIdentifierStatus;
+use App\Support\PublicApiUrl;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Read-only, unauthenticated public API. Deliberately not sharing code with
@@ -82,12 +86,37 @@ class StructureController extends Controller
         return InteractionActiveResource::collection($interactions);
     }
 
+    /**
+     * Identifiers are persistent: a merged one redirects (301) to the same
+     * endpoint of the structure it was merged into, a removed one answers 410
+     * with what is still known about it.
+     */
     private function findStructure(string $identifier): Structure
     {
-        $structure = Structure::where('identifier', $identifier)->first();
+        $status = StructureIdentifierStatus::of($identifier);
 
-        abort_unless($structure?->id, 404, 'Structure not found.');
+        if ($status->status === StructureIdentifierStatus::ACTIVE) {
+            return $status->structure;
+        }
 
-        return $structure;
+        if ($status->status === StructureIdentifierStatus::MERGED) {
+            $path = Str::after(request()->path(), 'api/v1/');
+            $target = preg_replace('#^structures/[^/]+#', 'structures/'.$status->replacedBy(), $path);
+            $query = request()->getQueryString();
+
+            throw new HttpResponseException(response()->json([
+                'message' => "Structure {$identifier} was merged into {$status->replacedBy()}.",
+                'data' => $status->toArray(),
+            ], 301, ['Location' => PublicApiUrl::to($target).($query ? "?{$query}" : '')]));
+        }
+
+        if ($status->status === StructureIdentifierStatus::DELETED) {
+            throw new HttpResponseException(response()->json([
+                'message' => "Structure {$identifier} was removed from MolMeDB.",
+                'data' => $status->toArray(),
+            ], 410));
+        }
+
+        abort(404, 'Structure not found.');
     }
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 import SimpleSiteHeader from "@/components/_core/layout/SimpleSiteHeader";
 import SiteContent from "@/components/_core/layout/SiteContent";
 import SiteFooter from "@/components/_core/layout/SiteFooter";
@@ -43,6 +44,17 @@ export default async function CompoundDetailPage(props: {
   const jsonLd = compound ? await fetchPublicJsonLd(`structures/${compound.identifier}`) : null;
 
   if (!compound) {
+    // Identifiers are persistent: a merged one leads to the structure it was
+    // merged into, a removed one says so instead of "not found".
+    const status = (await getJson(`/api/structure/${encodeURIComponent(id)}/status`, {}, { auth: false, revalidate: 3600 }))
+      ?.data?.data;
+
+    if (status?.status === "merged" && status.replaced_by) {
+      permanentRedirect(`/mol/${status.replaced_by}`);
+    }
+
+    const isDeleted = status?.status === "deleted";
+
     return (
       <>
         <SimpleSiteHeader>
@@ -50,9 +62,11 @@ export default async function CompoundDetailPage(props: {
             <div className="flex flex-row items-center justify-start gap-6 lg:gap-8">
               <SiMoleculer className="text-3xl xl:text-4xl" />
               <div className="flex flex-col justify-center gap-2 lg:gap-1">
-                <h1 className="text-2xl md:text-3xl font-bold">Not found</h1>
+                <h1 className="text-2xl md:text-3xl font-bold">{isDeleted ? "Removed" : "Not found"}</h1>
                 <div className="flex flex-row gap-4 items-center">
-                  Cannot find compound with id {id}
+                  {isDeleted
+                    ? `Compound ${id} was removed from MolMeDB.`
+                    : `Cannot find compound with id ${id}`}
                 </div>
               </div>
             </div>

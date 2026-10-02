@@ -63,7 +63,7 @@ class UploadQueueExternalLookupCache
 
     private function remember(string $namespace, string $input, callable $callback): mixed
     {
-        $payload = Cache::memo('redis')->remember(
+        $payload = Cache::memo(config('cache.upload_lookup_store'))->remember(
             $this->key($namespace, $input),
             self::TTL_SECONDS,
             fn (): array => ['value' => $callback()],

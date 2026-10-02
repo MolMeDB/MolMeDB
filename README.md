@@ -101,6 +101,13 @@ If everything went well, the application will be available at http://localhost:8
 
 And that’s it!
 
+#### Running tests
+Tests run against PostgreSQL with the Bingo extension, the same way as in the Backend CI job. With the development database container running, use
+```bash
+tests/pgsql.sh --compact
+```
+The script creates a separate `molmedb_testing` database in the development database container on the first run (the development database itself is not touched). Any `php artisan test` arguments can be passed, e.g. `tests/pgsql.sh --filter=PublicApi`.
+
 #### Running frontend
 All frontend files are placed in `./frontend` folder. To run the frontend for development purpose, go to the frontend folder 
 ```bash

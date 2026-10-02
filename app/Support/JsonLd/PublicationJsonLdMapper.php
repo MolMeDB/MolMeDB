@@ -36,9 +36,9 @@ class PublicationJsonLdMapper
             'headline' => $publication->title,
             'datePublished' => $publication->year ? (string) $publication->year : null,
             'isPartOf' => $publication->journal ? ['@type' => 'Periodical', 'name' => $publication->journal] : null,
-            'sameAs' => $publication->doi ? "https://doi.org/{$publication->doi}" : null,
+            'sameAs' => JsonLdContext::rdfIri("reference/ref{$publication->id}"),
             'author' => $authors ?: null,
-            'url' => PublicApiUrl::to("publications/{$publication->id}"),
+            'url' => config('fair.frontend_url')."/publication/{$publication->id}",
         ], fn ($value) => $value !== null);
     }
 }

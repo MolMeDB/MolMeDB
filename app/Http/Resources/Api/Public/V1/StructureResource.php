@@ -40,7 +40,7 @@ class StructureResource extends JsonResource
                     ->values()
             )),
             'url' => PublicApiUrl::to("structures/{$this->identifier}"),
-            'landing_page' => rtrim(config('fair.frontend_url'), '/')."/mol/{$this->identifier}",
+            'landing_page' => config('fair.frontend_url')."/mol/{$this->identifier}",
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

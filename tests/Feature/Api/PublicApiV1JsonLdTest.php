@@ -3,6 +3,7 @@
 require_once __DIR__.'/api_test_helpers.php';
 
 use App\Models\Identifier;
+use App\Models\ProteinIdentifier;
 
 function getJsonLd(string $uri)
 {
@@ -111,5 +112,67 @@ test('publication detail is served as a ScholarlyArticle identified by its DOI',
     $response->assertOk()->assertHeader('Content-Type', 'application/ld+json');
 
     expect($response->json('@type'))->toBe('ScholarlyArticle')
-        ->and($response->json('@id'))->toBe('https://doi.org/10.1016/j.ejps.2003.10.009');
+        ->and($response->json('@id'))->toBe('https://doi.org/10.1016/j.ejps.2003.10.009')
+        ->and($response->json('sameAs'))->toBe("https://rdf.molmedb.upol.cz/reference/ref{$publication->id}")
+        ->and($response->json('url'))->toBe("https://molmedb.upol.cz/publication/{$publication->id}");
+});
+
+test('membrane detail uses its MolMeDB RDF IRI and membrane model class', function () {
+    $membrane = createApiMembrane(['name' => 'Egg PC mixture', 'abbreviation' => 'EggPC', 'description' => '<p>Egg <strong>PC</strong> &amp; more</p>']);
+
+    $response = getJsonLd("/api/v1/membranes/{$membrane->id}");
+
+    $response->assertOk()->assertHeader('Content-Type', 'application/ld+json');
+
+    expect($response->json('@id'))->toBe("https://rdf.molmedb.upol.cz/interaction/membrane{$membrane->id}")
+        ->and($response->json('additionalType'))->toBe('https://rdf.molmedb.upol.cz/vocabulary#MembraneModel')
+        ->and($response->json('alternateName'))->toBe('EggPC')
+        ->and($response->json('description'))->toBe('Egg PC & more')
+        ->and($response->json('url'))->toBe("https://molmedb.upol.cz/membrane/{$membrane->id}");
+});
+
+test('method detail uses its MolMeDB RDF IRI and the BAO assay method class', function () {
+    $method = createApiMethod();
+
+    $response = getJsonLd("/api/v1/methods/{$method->id}");
+
+    $response->assertOk();
+
+    expect($response->json('@id'))->toBe("https://rdf.molmedb.upol.cz/interaction/method{$method->id}")
+        ->and($response->json('additionalType'))->toBe('http://www.bioassayontology.org/bao#BAO_0002753')
+        ->and($response->json('url'))->toBe("https://molmedb.upol.cz/method/{$method->id}");
+});
+
+test('protein detail is a Bioschemas Protein linked to UniProt', function () {
+    $protein = createApiProtein(['uniprot_id' => 'O15244']);
+
+    ProteinIdentifier::create([
+        'protein_id' => $protein->id,
+        'value' => 'SLC22A2',
+        'type' => ProteinIdentifier::TYPE_NAME,
+        'state' => ProteinIdentifier::STATE_VALIDATED,
+    ]);
+
+    $response = getJsonLd("/api/v1/proteins/{$protein->id}");
+
+    $response->assertOk();
+
+    expect($response->json('@type'))->toBe('Protein')
+        ->and($response->json('@id'))->toBe("https://rdf.molmedb.upol.cz/transporter/target{$protein->id}")
+        ->and($response->json('name'))->toBe('SLC22A2')
+        ->and($response->json('identifier'))->toBe('O15244')
+        ->and($response->json('sameAs'))->toBe('https://identifiers.org/uniprot:O15244')
+        ->and($response->json('url'))->toBe("https://molmedb.upol.cz/protein/{$protein->id}");
+});
+
+test('plain JSON resources link their landing pages', function () {
+    $membrane = createApiMembrane();
+    $method = createApiMethod();
+    $protein = createApiProtein();
+    $publication = createApiPublication();
+
+    $this->getJson("/api/v1/membranes/{$membrane->id}")->assertJsonPath('data.landing_page', "https://molmedb.upol.cz/membrane/{$membrane->id}");
+    $this->getJson("/api/v1/methods/{$method->id}")->assertJsonPath('data.landing_page', "https://molmedb.upol.cz/method/{$method->id}");
+    $this->getJson("/api/v1/proteins/{$protein->id}")->assertJsonPath('data.landing_page', "https://molmedb.upol.cz/protein/{$protein->id}");
+    $this->getJson("/api/v1/publications/{$publication->id}")->assertJsonPath('data.landing_page', "https://molmedb.upol.cz/publication/{$publication->id}");
 });

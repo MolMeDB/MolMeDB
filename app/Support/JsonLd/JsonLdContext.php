@@ -16,6 +16,14 @@ class JsonLdContext
     ];
 
     /**
+     * IRI of a resource in the MolMeDB RDF namespace, e.g. interaction/membrane13.
+     */
+    public static function rdfIri(string $path): string
+    {
+        return rtrim((string) config('fair.rdf.base_url'), '/').'/'.ltrim($path, '/');
+    }
+
+    /**
      * Short reference to the whole MolMeDB dataset, for `isPartOf`.
      *
      * @return array{'@type': string, '@id': string, name: string}

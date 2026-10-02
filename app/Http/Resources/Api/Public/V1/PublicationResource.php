@@ -42,6 +42,7 @@ class PublicationResource extends JsonResource
             'page' => $this->when($this->detailed, $this->page),
             'authors' => $this->when($this->detailed, fn () => AuthorResource::collection($this->authors)),
             'url' => PublicApiUrl::to("publications/{$this->id}"),
+            'landing_page' => config('fair.frontend_url')."/publication/{$this->id}",
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

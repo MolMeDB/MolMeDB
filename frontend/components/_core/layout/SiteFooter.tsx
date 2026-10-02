@@ -69,15 +69,16 @@ export default function SiteFooter() {
           <div className="flex flex-col w-full xl:w-1/3 xl:w-[330px] gap-2">
             <h3 className="text-lg font-bold">Financial Support</h3>
             <ul className="list-disc pl-6 text-sm">
+              <li>GAČR 24-11986S</li>
               <li>
-                GAČR 17-2112S (Principal investigator: prof. RNDr. Karel Berka,
+                GAČR 17-21122S (Principal investigator: prof. RNDr. Karel Berka,
                 Ph.D.)
               </li>
               <li>
-                Palacky University Olomouc (projects IGA_PrF_2018_032 and
-                IGA_2019_031)
+                Palacky University Olomouc (projects IGA_PrF_2026_002,
+                IGA_2019_031 and IGA_PrF_2018_032)
               </li>
-              <li>ELIXIR-CZ (projects LM2015047 and LM2018131)</li>
+              <li>ELIXIR-CZ (projects LM2023055, LM2018131 and LM2015047)</li>
             </ul>
             <div className="flex flex-row justify-end gap-4 mt-4">
               <Image

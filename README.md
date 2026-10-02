@@ -96,7 +96,7 @@ composer run dev
 ```
 
 If everything went well, the application will be available at http://localhost:8000. The database seeding will create an admin user with the following credentials
-- email: admin@molmedb.cz
+- email: molmedb@upol.cz
 - password: admin
 
 And that’s it!

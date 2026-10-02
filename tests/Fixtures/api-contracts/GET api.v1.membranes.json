@@ -1,0 +1,42 @@
+{
+    "route": "GET api/v1/membranes",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "abbreviation": "string",
+                "created_at": "string",
+                "description": "string",
+                "id": "number",
+                "landing_page": "string",
+                "name": "string",
+                "updated_at": "string",
+                "url": "string"
+            }
+        ],
+        "links": {
+            "first": "string",
+            "last": "string",
+            "next": "null",
+            "prev": "null"
+        },
+        "meta": {
+            "current_page": "number",
+            "from": "number",
+            "last_page": "number",
+            "links": [
+                {
+                    "active": "boolean",
+                    "label": "string",
+                    "page": "null|number",
+                    "url": "null|string"
+                }
+            ],
+            "path": "string",
+            "per_page": "number",
+            "to": "number",
+            "total": "number"
+        }
+    }
+}

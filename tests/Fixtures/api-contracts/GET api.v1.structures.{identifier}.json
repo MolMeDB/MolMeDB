@@ -1,0 +1,27 @@
+{
+    "route": "GET api/v1/structures/{identifier}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "canonical_smiles": "string",
+            "created_at": "string",
+            "identifier": "string",
+            "identifiers": [
+                {
+                    "type": "string",
+                    "uri": "string",
+                    "value": "string"
+                }
+            ],
+            "inchi": "string",
+            "inchikey": "string",
+            "landing_page": "string",
+            "logp": "number",
+            "molecular_weight": "number",
+            "name": "string",
+            "updated_at": "string",
+            "url": "string"
+        }
+    }
+}

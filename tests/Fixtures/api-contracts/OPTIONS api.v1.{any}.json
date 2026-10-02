@@ -1,0 +1,6 @@
+{
+    "route": "OPTIONS api/v1/{any}",
+    "status": 204,
+    "content_type": "",
+    "body": null
+}

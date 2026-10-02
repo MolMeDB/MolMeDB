@@ -1,0 +1,57 @@
+{
+    "route": "GET api/v1/structures/{identifier}/interactions/active",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "charge": "string",
+                "ec50": "number",
+                "ec50_accuracy": "number",
+                "ic50": "number",
+                "ic50_accuracy": "number",
+                "ki": "number",
+                "ki_accuracy": "number",
+                "km": "number",
+                "km_accuracy": "number",
+                "note": "string",
+                "ph": "number",
+                "primary_reference": {
+                    "citation": "string",
+                    "id": "number",
+                    "pmid": "string"
+                },
+                "protein": "string",
+                "secondary_reference": {
+                    "citation": "string",
+                    "id": "number",
+                    "pmid": "string"
+                },
+                "temperature": "number"
+            }
+        ],
+        "links": {
+            "first": "string",
+            "last": "string",
+            "next": "null",
+            "prev": "null"
+        },
+        "meta": {
+            "current_page": "number",
+            "from": "number",
+            "last_page": "number",
+            "links": [
+                {
+                    "active": "boolean",
+                    "label": "string",
+                    "page": "null|number",
+                    "url": "null|string"
+                }
+            ],
+            "path": "string",
+            "per_page": "number",
+            "to": "number",
+            "total": "number"
+        }
+    }
+}

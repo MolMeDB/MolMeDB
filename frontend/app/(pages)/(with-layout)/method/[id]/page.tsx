@@ -5,6 +5,7 @@ import { getJson } from "@/lib/api/admin";
 import { IMethodStats } from "@/lib/api/admin/interfaces/Method";
 import { fetchPublicJsonLd } from "@/components/_core/JsonLd";
 import EntityLanding from "@/components/landing/EntityLanding";
+import ClientOnly from "@/components/_core/ClientOnly";
 import SectionDetail from "../../browse/methods/section/Detail";
 import { PUBLIC_API_URL, RDF_BASE_URL } from "@/lib/publicUrls";
 
@@ -56,7 +57,9 @@ export default async function MethodPage(props: { params: Promise<{ id: string }
       browseHref={`/browse/methods?id=${method.id}`}
       jsonLd={await fetchPublicJsonLd(`methods/${method.id}`)}
     >
-      <SectionDetail methodId={String(method.id)} />
+      <ClientOnly>
+        <SectionDetail methodId={String(method.id)} scrollIntoView={false} />
+      </ClientOnly>
     </EntityLanding>
   );
 }

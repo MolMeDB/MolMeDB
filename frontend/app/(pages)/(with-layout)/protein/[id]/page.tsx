@@ -5,6 +5,7 @@ import { getJson } from "@/lib/api/admin";
 import { IProteinStats } from "@/lib/api/admin/interfaces/Protein";
 import { fetchPublicJsonLd } from "@/components/_core/JsonLd";
 import EntityLanding from "@/components/landing/EntityLanding";
+import ClientOnly from "@/components/_core/ClientOnly";
 import SectionDetail from "../../browse/proteins/section/Detail";
 import { PUBLIC_API_URL, RDF_BASE_URL } from "@/lib/publicUrls";
 
@@ -62,7 +63,9 @@ export default async function ProteinPage(props: { params: Promise<{ id: string 
       browseHref={`/browse/proteins?id=${protein.id}`}
       jsonLd={await fetchPublicJsonLd(`proteins/${protein.id}`)}
     >
-      <SectionDetail proteinId={String(protein.id)} />
+      <ClientOnly>
+        <SectionDetail proteinId={String(protein.id)} scrollIntoView={false} />
+      </ClientOnly>
     </EntityLanding>
   );
 }

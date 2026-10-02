@@ -5,6 +5,7 @@ import { getJson } from "@/lib/api/admin";
 import { IMembraneStats } from "@/lib/api/admin/interfaces/Membrane";
 import { fetchPublicJsonLd } from "@/components/_core/JsonLd";
 import EntityLanding from "@/components/landing/EntityLanding";
+import ClientOnly from "@/components/_core/ClientOnly";
 import SectionDetail from "../../browse/membranes/section/Detail";
 import { PUBLIC_API_URL, RDF_BASE_URL } from "@/lib/publicUrls";
 
@@ -56,7 +57,9 @@ export default async function MembranePage(props: { params: Promise<{ id: string
       browseHref={`/browse/membranes?id=${membrane.id}`}
       jsonLd={await fetchPublicJsonLd(`membranes/${membrane.id}`)}
     >
-      <SectionDetail membraneId={String(membrane.id)} />
+      <ClientOnly>
+        <SectionDetail membraneId={String(membrane.id)} scrollIntoView={false} />
+      </ClientOnly>
     </EntityLanding>
   );
 }

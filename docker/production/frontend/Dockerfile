@@ -32,6 +32,12 @@ COPY . .
 ARG JWT_SECRET
 ENV JWT_SECRET=$JWT_SECRET
 
+# NEXT_PUBLIC_* values are inlined into the client bundle by `next build`, so
+# they must be present at build time — env_file/environment in compose only
+# reach the running container, which is too late for client components.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.

@@ -6,9 +6,13 @@ use App\Models\Category;
 use App\Models\Dataset;
 use App\Models\Identifier;
 use App\Models\Protein;
+use App\Models\ProteinIdentifier;
 use App\Models\Publication;
 use App\Models\Structure;
 use App\Models\UploadQueue;
+use App\Rules\UploadFile\ActiveInteractions\ColumnInteractionType;
+use App\Rules\UploadFile\ActiveInteractions\ColumnProteinName;
+use App\Rules\UploadFile\ActiveInteractions\ColumnTarget;
 use Modules\References\EuropePMC\Enums\Sources;
 use RuntimeException;
 
@@ -34,6 +38,15 @@ class UploadQueueInteractionPayloadBuilder
      * @var array<string, int|null>
      */
     private array $proteinResolutionCache = [];
+
+    /**
+     * Protein names already present in the database, keyed by "protein_id|lowercased name".
+     *
+     * @var array<string, true>
+     */
+    private array $knownProteinNames = [];
+
+    private ?ColumnInteractionType $interactionTypeColumn = null;
 
     /**
      * @var array<string, int|null>
@@ -70,14 +83,14 @@ class UploadQueueInteractionPayloadBuilder
         $payload = [
             'dataset_id' => $record->dataset_id,
             'structure_id' => $this->resolveStructureId($row, $record, $createMissingRecords),
-            'protein_id' => $this->resolveProteinId($row, $createMissingRecords),
+            'protein_id' => $this->resolveProteinId($row, $record, $createMissingRecords),
             'publication_id' => $this->resolvePublicationId($record, $row, $createMissingRecords),
             ...$this->interactionValues($row, $this->columns->commonValueColumns()),
             ...$this->interactionValues($row, $this->columns->interactionValueColumns($record)),
         ];
 
         if ($createMissingRecords) {
-            $payload['category_id'] = $this->defaultActiveCategoryId();
+            $payload['category_id'] = $this->resolveActiveCategoryId($row);
         }
 
         return $payload;
@@ -222,29 +235,94 @@ class UploadQueueInteractionPayloadBuilder
     /**
      * @param  array<string, string>  $row
      */
-    private function resolveProteinId(array $row, bool $createMissingProtein): ?int
+    private function resolveProteinId(array $row, UploadQueue $record, bool $createMissingProtein): ?int
     {
-        $target = trim($row['active_target'] ?? '');
+        $target = trim($row[ColumnTarget::$key] ?? '');
         if ($target === '') {
             throw new RuntimeException('Unable to resolve protein: target column is empty.');
         }
 
         $cacheKey = mb_strtolower($target).'|'.($createMissingProtein ? '1' : '0');
-        if (array_key_exists($cacheKey, $this->proteinResolutionCache)) {
-            return $this->proteinResolutionCache[$cacheKey];
+        if (! array_key_exists($cacheKey, $this->proteinResolutionCache)) {
+            $protein = Protein::withTrashed()
+                ->whereRaw('LOWER(uniprot_id) = ?', [mb_strtolower($target)])
+                ->first();
+
+            if (! $protein && $createMissingProtein) {
+                $protein = Protein::create([
+                    'uniprot_id' => $target,
+                ]);
+            }
+
+            $this->proteinResolutionCache[$cacheKey] = $protein ? (int) $protein->id : null;
         }
 
-        $protein = Protein::withTrashed()
-            ->whereRaw('LOWER(uniprot_id) = ?', [mb_strtolower($target)])
-            ->first();
+        $proteinId = $this->proteinResolutionCache[$cacheKey];
 
-        if (! $protein && $createMissingProtein) {
-            $protein = Protein::create([
-                'uniprot_id' => $target,
+        // Names are added per row, not per resolved protein: one file may list several names for the same target.
+        if ($proteinId !== null && $createMissingProtein) {
+            $this->addProteinName($proteinId, trim($row[ColumnProteinName::$key] ?? ''), $record);
+        }
+
+        return $proteinId;
+    }
+
+    /**
+     * Adds the name to the protein unless the protein already has it. Existing names are never overwritten.
+     */
+    private function addProteinName(int $proteinId, string $name, UploadQueue $record): void
+    {
+        if ($name === '') {
+            return;
+        }
+
+        $cacheKey = $proteinId.'|'.mb_strtolower($name);
+        if (isset($this->knownProteinNames[$cacheKey])) {
+            return;
+        }
+
+        $exists = ProteinIdentifier::query()
+            ->where('protein_id', $proteinId)
+            ->where('type', ProteinIdentifier::TYPE_NAME)
+            ->whereRaw('LOWER(value) = ?', [mb_strtolower($name)])
+            ->exists();
+
+        if (! $exists) {
+            ProteinIdentifier::create([
+                'protein_id' => $proteinId,
+                'value' => $name,
+                'type' => ProteinIdentifier::TYPE_NAME,
+                'state' => ProteinIdentifier::STATE_NEW,
+                'source_id' => $record->dataset_id,
+                'source_type' => Dataset::class,
             ]);
         }
 
-        return $this->proteinResolutionCache[$cacheKey] = $protein ? (int) $protein->id : null;
+        $this->knownProteinNames[$cacheKey] = true;
+    }
+
+    /**
+     * @param  array<string, string>  $row
+     */
+    private function resolveActiveCategoryId(array $row): int
+    {
+        $type = trim($row[ColumnInteractionType::$key] ?? '');
+
+        if ($type !== '') {
+            $categoryId = $this->interactionTypeColumn()->categoryId($type);
+            if ($categoryId !== null) {
+                return $categoryId;
+            }
+
+            throw new RuntimeException("Unable to resolve interaction type: $type.");
+        }
+
+        return $this->defaultActiveCategoryId();
+    }
+
+    private function interactionTypeColumn(): ColumnInteractionType
+    {
+        return $this->interactionTypeColumn ??= ColumnInteractionType::make();
     }
 
     private function defaultActiveCategoryId(): int

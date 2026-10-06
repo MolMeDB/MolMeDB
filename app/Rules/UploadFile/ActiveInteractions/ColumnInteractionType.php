@@ -10,7 +10,7 @@ class ColumnInteractionType implements ColumnTypeInterface
 {
     public static string $key = 'interaction_type';
 
-    public static string $label = 'Type';
+    public static string $label = 'Interaction type';
 
     /**
      * @var array<string, int>|null

@@ -6,9 +6,11 @@ use App\Models\Category;
 use App\Models\Dataset;
 use App\Models\Identifier;
 use App\Models\Protein;
+use App\Models\ProteinIdentifier;
 use App\Models\Publication;
 use App\Models\Structure;
 use App\Models\UploadQueue;
+use App\Rules\UploadFile\ActiveInteractions\ColumnInteractionType;
 use Modules\References\EuropePMC\Enums\Sources;
 use RuntimeException;
 
@@ -34,6 +36,8 @@ class UploadQueueInteractionPayloadBuilder
      * @var array<string, int|null>
      */
     private array $proteinResolutionCache = [];
+
+    private ?ColumnInteractionType $interactionTypeColumn = null;
 
     /**
      * @var array<string, int|null>
@@ -77,7 +81,7 @@ class UploadQueueInteractionPayloadBuilder
         ];
 
         if ($createMissingRecords) {
-            $payload['category_id'] = $this->defaultActiveCategoryId();
+            $payload['category_id'] = $this->resolveActiveCategoryId($row);
         }
 
         return $payload;
@@ -244,7 +248,60 @@ class UploadQueueInteractionPayloadBuilder
             ]);
         }
 
+        if ($protein && $createMissingProtein) {
+            $this->addProteinName($protein, trim($row['protein_name'] ?? ''));
+        }
+
         return $this->proteinResolutionCache[$cacheKey] = $protein ? (int) $protein->id : null;
+    }
+
+    /**
+     * Adds the name to the protein unless the protein already has it. Existing names are never overwritten.
+     */
+    private function addProteinName(Protein $protein, string $name): void
+    {
+        if ($name === '') {
+            return;
+        }
+
+        $exists = ProteinIdentifier::query()
+            ->where('protein_id', $protein->id)
+            ->where('type', ProteinIdentifier::TYPE_NAME)
+            ->whereRaw('LOWER(value) = ?', [mb_strtolower($name)])
+            ->exists();
+
+        if (! $exists) {
+            ProteinIdentifier::create([
+                'protein_id' => $protein->id,
+                'value' => $name,
+                'type' => ProteinIdentifier::TYPE_NAME,
+                'state' => ProteinIdentifier::STATE_NEW,
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<string, string>  $row
+     */
+    private function resolveActiveCategoryId(array $row): int
+    {
+        $type = trim($row[ColumnInteractionType::$key] ?? '');
+
+        if ($type !== '') {
+            $categoryId = $this->interactionTypeColumn()->categoryId($type);
+            if ($categoryId !== null) {
+                return $categoryId;
+            }
+
+            throw new RuntimeException("Unable to resolve interaction type: $type.");
+        }
+
+        return $this->defaultActiveCategoryId();
+    }
+
+    private function interactionTypeColumn(): ColumnInteractionType
+    {
+        return $this->interactionTypeColumn ??= ColumnInteractionType::make();
     }
 
     private function defaultActiveCategoryId(): int

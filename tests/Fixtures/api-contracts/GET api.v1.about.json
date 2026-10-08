@@ -1,0 +1,51 @@
+{
+    "route": "GET api/v1/about",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "citation": {
+                "doi": "string",
+                "text": "string",
+                "url": "string"
+            },
+            "contact": "string",
+            "description": "string",
+            "identifier_scheme": {
+                "example": "string",
+                "identifiers_org": "string",
+                "pattern": "string",
+                "resolver": "string"
+            },
+            "license": {
+                "code": {
+                    "document": "string",
+                    "name": "string",
+                    "spdx": "string",
+                    "url": "string"
+                },
+                "data": {
+                    "document": "string",
+                    "name": "string",
+                    "spdx": "string",
+                    "url": "string"
+                }
+            },
+            "links": {
+                "openapi": "string",
+                "sitemap": "string"
+            },
+            "name": "string",
+            "rdf": {
+                "article": "string",
+                "base": "string",
+                "dump": "string",
+                "sparql_endpoint": "string",
+                "vocabulary": "string"
+            },
+            "repository": "string",
+            "url": "string",
+            "version": "string"
+        }
+    }
+}

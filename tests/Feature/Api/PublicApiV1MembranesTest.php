@@ -9,7 +9,7 @@ test('membranes index returns paginated membranes', function () {
     createApiMembrane(['name' => 'DOPC bilayer', 'abbreviation' => 'DOPC']);
     createApiMembrane(['name' => 'DOPS bilayer', 'abbreviation' => 'DOPS']);
 
-    $this->getJson('/api/public/v1/membranes')
+    $this->getJson('/api/v1/membranes')
         ->assertOk()
         ->assertJsonCount(2, 'data')
         ->assertJsonStructure([
@@ -23,7 +23,7 @@ test('membranes index filters by free-text query', function () {
     createApiMembrane(['name' => 'DOPC bilayer', 'abbreviation' => 'DOPC']);
     createApiMembrane(['name' => 'DOPS bilayer', 'abbreviation' => 'DOPS']);
 
-    $this->getJson('/api/public/v1/membranes?query=DOPS')
+    $this->getJson('/api/v1/membranes?query=DOPS')
         ->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.abbreviation', 'DOPS');
@@ -36,14 +36,14 @@ test('membranes index filters by category_id', function () {
     $inCategory = createApiMembrane(['name' => 'In category', 'abbreviation' => 'INC'], $category);
     createApiMembrane(['name' => 'Not in category', 'abbreviation' => 'NIC'], $otherCategory);
 
-    $this->getJson("/api/public/v1/membranes?category_id={$category->id}")
+    $this->getJson("/api/v1/membranes?category_id={$category->id}")
         ->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.id', $inCategory->id);
 });
 
 test('membranes index clamps per_page to 100', function () {
-    $this->getJson('/api/public/v1/membranes?per_page=500')
+    $this->getJson('/api/v1/membranes?per_page=500')
         ->assertOk()
         ->assertJsonPath('meta.per_page', 100);
 });
@@ -52,7 +52,7 @@ test('membranes show returns a single membrane with its categories', function ()
     $category = createApiRootCategory(Category::TYPE_MEMBRANE, 'Lipid bilayers');
     $membrane = createApiMembrane([], $category);
 
-    $this->getJson("/api/public/v1/membranes/{$membrane->id}")
+    $this->getJson("/api/v1/membranes/{$membrane->id}")
         ->assertOk()
         ->assertJsonPath('data.id', $membrane->id)
         ->assertJsonPath('data.categories.0.id', $category->id)
@@ -60,7 +60,7 @@ test('membranes show returns a single membrane with its categories', function ()
 });
 
 test('membranes show returns 404 for an unknown membrane', function () {
-    $this->getJson('/api/public/v1/membranes/999999')
+    $this->getJson('/api/v1/membranes/999999')
         ->assertNotFound();
 });
 
@@ -69,7 +69,7 @@ test('membranes stats returns aggregate counts', function () {
     createApiPassiveInteraction(['dataset' => createApiDataset(['membrane' => $membrane])]);
     createApiPassiveInteraction(['dataset' => createApiDataset(['membrane' => $membrane])]);
 
-    $this->getJson("/api/public/v1/membranes/{$membrane->id}/stats")
+    $this->getJson("/api/v1/membranes/{$membrane->id}/stats")
         ->assertOk()
         ->assertJsonPath('data.membrane.id', $membrane->id)
         ->assertJsonPath('data.total.interactions_passive', 2)
@@ -81,7 +81,7 @@ test('membranes categories returns the full category tree with items', function 
     $child = createApiChildCategory($root, 'Phosphatidylcholines');
     $membrane = createApiMembrane([], $child);
 
-    $this->getJson('/api/public/v1/membranes/categories')
+    $this->getJson('/api/v1/membranes/categories')
         ->assertOk()
         ->assertJsonPath('data.0.id', $root->id)
         ->assertJsonPath('data.0.children.0.id', $child->id)
@@ -95,7 +95,7 @@ test('membrane interactions downloads the latest export file', function () {
     // A plain ->get() defaults to a browser-like Accept header (includes
     // text/html), which would route into the explorer page instead of
     // calling the controller — force JSON/binary negotiation explicitly.
-    $response = $this->getJson("/api/public/v1/membranes/{$membrane->id}/interactions");
+    $response = $this->getJson("/api/v1/membranes/{$membrane->id}/interactions");
 
     $response->assertOk();
     expect($response->streamedContent())->toBe('membrane export contents');
@@ -104,6 +104,6 @@ test('membrane interactions downloads the latest export file', function () {
 test('membrane interactions returns 404 when no export exists yet', function () {
     $membrane = createApiMembrane();
 
-    $this->getJson("/api/public/v1/membranes/{$membrane->id}/interactions")
+    $this->getJson("/api/v1/membranes/{$membrane->id}/interactions")
         ->assertNotFound();
 });

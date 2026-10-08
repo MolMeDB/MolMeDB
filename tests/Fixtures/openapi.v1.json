@@ -1,0 +1,2063 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "MolMeDB: Molecules on Membranes Database",
+        "version": "1.0.0",
+        "description": "A database of molecules, membranes and their interactions (permeability, partitioning, binding), curated for membrane-transport research."
+    },
+    "servers": [
+        {
+            "url": "https://molmedb.upol.cz/api/v1",
+            "description": "MolMeDB"
+        }
+    ],
+    "paths": {
+        "/about": {
+            "get": {
+                "operationId": "about.index",
+                "tags": [
+                    "About"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": {
+                                                            "type": "string"
+                                                        },
+                                                        "version": {
+                                                            "type": "string"
+                                                        },
+                                                        "url": {
+                                                            "type": "string"
+                                                        },
+                                                        "repository": {
+                                                            "type": "string"
+                                                        },
+                                                        "contact": {
+                                                            "type": "string"
+                                                        },
+                                                        "license": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "data": {
+                                                                    "type": "string"
+                                                                },
+                                                                "code": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "data",
+                                                                "code"
+                                                            ]
+                                                        },
+                                                        "citation": {
+                                                            "type": "string"
+                                                        },
+                                                        "identifier_scheme": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "pattern": {
+                                                                    "type": "string"
+                                                                },
+                                                                "example": {
+                                                                    "type": "string"
+                                                                },
+                                                                "resolver": {
+                                                                    "type": "string"
+                                                                },
+                                                                "identifiers_org": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "pattern",
+                                                                "example",
+                                                                "resolver",
+                                                                "identifiers_org"
+                                                            ]
+                                                        },
+                                                        "rdf": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "base": {
+                                                                    "type": "string"
+                                                                },
+                                                                "vocabulary": {
+                                                                    "type": "string"
+                                                                },
+                                                                "sparql_endpoint": {
+                                                                    "type": "string"
+                                                                },
+                                                                "dump": {
+                                                                    "type": "string"
+                                                                },
+                                                                "article": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "base",
+                                                                "vocabulary",
+                                                                "sparql_endpoint",
+                                                                "dump",
+                                                                "article"
+                                                            ]
+                                                        },
+                                                        "links": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "openapi": {
+                                                                    "type": "string"
+                                                                },
+                                                                "sitemap": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "openapi",
+                                                                "sitemap"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "name",
+                                                        "description",
+                                                        "version",
+                                                        "url",
+                                                        "repository",
+                                                        "contact",
+                                                        "license",
+                                                        "citation",
+                                                        "identifier_scheme",
+                                                        "rdf",
+                                                        "links"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "data"
+                                            ]
+                                        },
+                                        {
+                                            "type": "string"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/membranes": {
+            "get": {
+                "operationId": "membrane.index",
+                "tags": [
+                    "Membrane"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `MembraneResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/MembraneResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/membranes/categories": {
+            "get": {
+                "operationId": "membrane.categories",
+                "tags": [
+                    "Membrane"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CategoryTreeCollection`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CategoryTreeCollection"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/membranes/{membrane}": {
+            "get": {
+                "operationId": "membrane.show",
+                "tags": [
+                    "Membrane"
+                ],
+                "parameters": [
+                    {
+                        "name": "membrane",
+                        "in": "path",
+                        "required": true,
+                        "description": "The membrane ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`MembraneResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/MembraneResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/membranes/{membrane}/stats": {
+            "get": {
+                "operationId": "membrane.stats",
+                "tags": [
+                    "Membrane"
+                ],
+                "parameters": [
+                    {
+                        "name": "membrane",
+                        "in": "path",
+                        "required": true,
+                        "description": "The membrane ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "membrane": {
+                                                    "$ref": "#/components/schemas/MembraneResource"
+                                                },
+                                                "total": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "interactions_passive": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "structures": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "interactions_passive",
+                                                        "structures"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "membrane",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/membranes/{membrane}/interactions": {
+            "get": {
+                "operationId": "membrane.interactions",
+                "tags": [
+                    "Membrane"
+                ],
+                "parameters": [
+                    {
+                        "name": "membrane",
+                        "in": "path",
+                        "required": true,
+                        "description": "The membrane ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Transfer-Encoding": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chunked"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/methods": {
+            "get": {
+                "operationId": "method.index",
+                "tags": [
+                    "Method"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `MethodResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/MethodResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/methods/categories": {
+            "get": {
+                "operationId": "method.categories",
+                "tags": [
+                    "Method"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CategoryTreeCollection`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CategoryTreeCollection"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/methods/{method}": {
+            "get": {
+                "operationId": "method.show",
+                "tags": [
+                    "Method"
+                ],
+                "parameters": [
+                    {
+                        "name": "method",
+                        "in": "path",
+                        "required": true,
+                        "description": "The method ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`MethodResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/MethodResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/methods/{method}/stats": {
+            "get": {
+                "operationId": "method.stats",
+                "tags": [
+                    "Method"
+                ],
+                "parameters": [
+                    {
+                        "name": "method",
+                        "in": "path",
+                        "required": true,
+                        "description": "The method ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "method": {
+                                                    "$ref": "#/components/schemas/MethodResource"
+                                                },
+                                                "total": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "interactions_passive": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "interactions_active": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "structures": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "interactions_passive",
+                                                        "interactions_active",
+                                                        "structures"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "method",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/methods/{method}/interactions": {
+            "get": {
+                "operationId": "method.interactions",
+                "tags": [
+                    "Method"
+                ],
+                "parameters": [
+                    {
+                        "name": "method",
+                        "in": "path",
+                        "required": true,
+                        "description": "The method ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Transfer-Encoding": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chunked"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/proteins": {
+            "get": {
+                "operationId": "protein.index",
+                "tags": [
+                    "Protein"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ProteinResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ProteinResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/proteins/categories": {
+            "get": {
+                "operationId": "protein.categories",
+                "tags": [
+                    "Protein"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CategoryTreeCollection`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CategoryTreeCollection"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/proteins/{protein}": {
+            "get": {
+                "operationId": "protein.show",
+                "tags": [
+                    "Protein"
+                ],
+                "parameters": [
+                    {
+                        "name": "protein",
+                        "in": "path",
+                        "required": true,
+                        "description": "The protein ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ProteinResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ProteinResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/proteins/{protein}/stats": {
+            "get": {
+                "operationId": "protein.stats",
+                "tags": [
+                    "Protein"
+                ],
+                "parameters": [
+                    {
+                        "name": "protein",
+                        "in": "path",
+                        "required": true,
+                        "description": "The protein ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "protein": {
+                                                    "$ref": "#/components/schemas/ProteinResource"
+                                                },
+                                                "total": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "interactions_active": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "structures": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "interactions_active",
+                                                        "structures"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "protein",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/proteins/{protein}/interactions": {
+            "get": {
+                "operationId": "protein.interactions",
+                "tags": [
+                    "Protein"
+                ],
+                "parameters": [
+                    {
+                        "name": "protein",
+                        "in": "path",
+                        "required": true,
+                        "description": "The protein ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated set of `InteractionActiveResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InteractionActiveResource"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first",
+                                                "last",
+                                                "prev",
+                                                "next"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "links",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "links",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/publications": {
+            "get": {
+                "operationId": "publication.index",
+                "tags": [
+                    "Publication"
+                ],
+                "parameters": [
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `PublicationResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PublicationResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/publications/{publication}": {
+            "get": {
+                "operationId": "publication.show",
+                "tags": [
+                    "Publication"
+                ],
+                "parameters": [
+                    {
+                        "name": "publication",
+                        "in": "path",
+                        "required": true,
+                        "description": "The publication ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`PublicationResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/PublicationResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/publications/{publication}/stats": {
+            "get": {
+                "operationId": "publication.stats",
+                "tags": [
+                    "Publication"
+                ],
+                "parameters": [
+                    {
+                        "name": "publication",
+                        "in": "path",
+                        "required": true,
+                        "description": "The publication ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "publication": {
+                                                    "$ref": "#/components/schemas/PublicationResource"
+                                                },
+                                                "total": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "interactions_passive": {
+                                                            "type": "string"
+                                                        },
+                                                        "interactions_active": {
+                                                            "type": "string"
+                                                        },
+                                                        "membranes": {
+                                                            "type": "string"
+                                                        },
+                                                        "methods": {
+                                                            "type": "string"
+                                                        },
+                                                        "datasets": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "interactions_passive",
+                                                        "interactions_active",
+                                                        "membranes",
+                                                        "methods",
+                                                        "datasets"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "publication",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/publications/{publication}/interactions/passive": {
+            "get": {
+                "operationId": "publication.interactionsPassive",
+                "tags": [
+                    "Publication"
+                ],
+                "parameters": [
+                    {
+                        "name": "publication",
+                        "in": "path",
+                        "required": true,
+                        "description": "The publication ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Transfer-Encoding": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chunked"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/publications/{publication}/interactions/active": {
+            "get": {
+                "operationId": "publication.interactionsActive",
+                "tags": [
+                    "Publication"
+                ],
+                "parameters": [
+                    {
+                        "name": "publication",
+                        "in": "path",
+                        "required": true,
+                        "description": "The publication ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Transfer-Encoding": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chunked"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/structures/{identifier}/stats": {
+            "get": {
+                "operationId": "structure.stats",
+                "tags": [
+                    "Structure"
+                ],
+                "parameters": [
+                    {
+                        "name": "identifier",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "structure": {
+                                                    "$ref": "#/components/schemas/StructureResource"
+                                                },
+                                                "total": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "interactions_passive": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "interactions_active": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "interactions_passive",
+                                                        "interactions_active"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "structure",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/structures/{identifier}/interactions/passive": {
+            "get": {
+                "operationId": "structure.interactionsPassive",
+                "tags": [
+                    "Structure"
+                ],
+                "parameters": [
+                    {
+                        "name": "identifier",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated set of `InteractionPassiveResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InteractionPassiveResource"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first",
+                                                "last",
+                                                "prev",
+                                                "next"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "links",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "links",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/structures/{identifier}/interactions/active": {
+            "get": {
+                "operationId": "structure.interactionsActive",
+                "tags": [
+                    "Structure"
+                ],
+                "parameters": [
+                    {
+                        "name": "identifier",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated set of `InteractionActiveResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InteractionActiveResource"
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first",
+                                                "last",
+                                                "prev",
+                                                "next"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "links",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "links",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/structures/{identifier}": {
+            "get": {
+                "operationId": "structure.show",
+                "tags": [
+                    "Structure"
+                ],
+                "parameters": [
+                    {
+                        "name": "identifier",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`StructureResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/StructureResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/structures": {
+            "get": {
+                "operationId": "structure.index",
+                "tags": [
+                    "Structure"
+                ],
+                "parameters": [
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 4000
+                        }
+                    },
+                    {
+                        "name": "smiles",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 4000
+                        }
+                    },
+                    {
+                        "name": "substructure",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 4000
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `StructureResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/StructureResource"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "CategoryTreeCollection": {
+                "type": "array",
+                "items": {},
+                "title": "CategoryTreeCollection"
+            },
+            "EntityReferenceResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "abbreviation": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "abbreviation"
+                ],
+                "title": "EntityReferenceResource"
+            },
+            "InteractionActiveResource": {
+                "type": "object",
+                "properties": {
+                    "protein": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "temperature": {
+                        "type": "string"
+                    },
+                    "ph": {
+                        "type": "string"
+                    },
+                    "charge": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "km": {
+                        "type": "string"
+                    },
+                    "km_accuracy": {
+                        "type": "string"
+                    },
+                    "ec50": {
+                        "type": "string"
+                    },
+                    "ec50_accuracy": {
+                        "type": "string"
+                    },
+                    "ki": {
+                        "type": "string"
+                    },
+                    "ki_accuracy": {
+                        "type": "string"
+                    },
+                    "ic50": {
+                        "type": "string"
+                    },
+                    "ic50_accuracy": {
+                        "type": "string"
+                    },
+                    "primary_reference": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PublicationReferenceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "secondary_reference": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PublicationReferenceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "protein",
+                    "temperature",
+                    "ph",
+                    "charge",
+                    "note",
+                    "km",
+                    "km_accuracy",
+                    "ec50",
+                    "ec50_accuracy",
+                    "ki",
+                    "ki_accuracy",
+                    "ic50",
+                    "ic50_accuracy",
+                    "primary_reference",
+                    "secondary_reference"
+                ],
+                "title": "InteractionActiveResource"
+            },
+            "InteractionPassiveResource": {
+                "type": "object",
+                "properties": {
+                    "membrane": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EntityReferenceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "method": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EntityReferenceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "temperature": {
+                        "type": "string"
+                    },
+                    "ph": {
+                        "type": "string"
+                    },
+                    "charge": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "x_min": {
+                        "type": "string"
+                    },
+                    "x_min_accuracy": {
+                        "type": "string"
+                    },
+                    "gpen": {
+                        "type": "string"
+                    },
+                    "gpen_accuracy": {
+                        "type": "string"
+                    },
+                    "gwat": {
+                        "type": "string"
+                    },
+                    "gwat_accuracy": {
+                        "type": "string"
+                    },
+                    "logk": {
+                        "type": "string"
+                    },
+                    "logk_accuracy": {
+                        "type": "string"
+                    },
+                    "logperm": {
+                        "type": "string"
+                    },
+                    "logperm_accuracy": {
+                        "type": "string"
+                    },
+                    "primary_reference": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PublicationReferenceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "secondary_reference": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PublicationReferenceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "membrane",
+                    "method",
+                    "temperature",
+                    "ph",
+                    "charge",
+                    "note",
+                    "x_min",
+                    "x_min_accuracy",
+                    "gpen",
+                    "gpen_accuracy",
+                    "gwat",
+                    "gwat_accuracy",
+                    "logk",
+                    "logk_accuracy",
+                    "logperm",
+                    "logperm_accuracy",
+                    "primary_reference",
+                    "secondary_reference"
+                ],
+                "title": "InteractionPassiveResource"
+            },
+            "MembraneResource": {
+                "type": "array",
+                "items": {},
+                "title": "MembraneResource"
+            },
+            "MethodResource": {
+                "type": "array",
+                "items": {},
+                "title": "MethodResource"
+            },
+            "ProteinResource": {
+                "type": "array",
+                "items": {},
+                "title": "ProteinResource"
+            },
+            "PublicationReferenceResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "pmid": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "citation": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "pmid",
+                    "citation"
+                ],
+                "title": "PublicationReferenceResource"
+            },
+            "PublicationResource": {
+                "type": "array",
+                "items": {},
+                "title": "PublicationResource"
+            },
+            "StructureResource": {
+                "type": "array",
+                "items": {},
+                "title": "StructureResource"
+            }
+        },
+        "responses": {
+            "ModelNotFoundException": {
+                "description": "Not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ValidationException": {
+                "description": "Validation error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Errors overview."
+                                },
+                                "errors": {
+                                    "type": "object",
+                                    "description": "A detailed description of each field that failed validation.",
+                                    "additionalProperties": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "required": [
+                                "message",
+                                "errors"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

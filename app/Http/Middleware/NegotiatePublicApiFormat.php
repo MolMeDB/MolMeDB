@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,6 +13,9 @@ use Symfony\Component\HttpFoundation\Response;
  *  - Accept explicitly mentioning `text/html` (a browser navigating to the
  *    URL) -> the interactive "try it" explorer page for the matched route,
  *    instead of calling the controller at all.
+ *  - Accept explicitly mentioning `application/ld+json` -> flag the request
+ *    so resources can return a schema.org/Bioschemas JSON-LD representation
+ *    instead of the plain flat one, then fall through to the controller.
  *  - Anything else (missing, `*\/*`, `application/json`, ...) -> the normal
  *    JSON endpoint response, same as before.
  */
@@ -29,15 +33,72 @@ class NegotiatePublicApiFormat
             return $this->renderExplorer($request);
         }
 
+        if (str_contains($accept, 'application/ld+json')) {
+            $request->attributes->set('response_format', 'jsonld');
+        }
+
         $request->headers->set('Accept', 'application/json');
 
-        return $next($request);
+        $response = $next($request);
+
+        if ($request->attributes->get('response_format') === 'jsonld' && $response instanceof JsonResponse) {
+            $this->toJsonLdDocument($response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * API resources wrap their payload in {"data": ...}, which is not a valid
+     * JSON-LD document. Unwrap it: a single node is returned as is, a page of
+     * nodes as an @graph, with pagination moved to Link headers. Endpoints
+     * without a JSON-LD representation keep their plain JSON response.
+     */
+    private function toJsonLdDocument(JsonResponse $response): void
+    {
+        $payload = $response->getData(true);
+        $data = is_array($payload) && array_key_exists('data', $payload) ? $payload['data'] : $payload;
+
+        if (! is_array($data)) {
+            return;
+        }
+
+        if (array_is_list($data)) {
+            if ($data !== [] && ! isset($data[0]['@context'])) {
+                return;
+            }
+
+            $context = $data[0]['@context'] ?? 'https://schema.org';
+            $document = [
+                '@context' => $context,
+                '@graph' => array_map(fn (array $node): array => array_diff_key($node, ['@context' => true]), $data),
+            ];
+        } elseif (isset($data['@context'])) {
+            $document = $data;
+        } else {
+            return;
+        }
+
+        $links = [];
+
+        foreach (['next', 'prev', 'first', 'last'] as $relation) {
+            if (! empty($payload['links'][$relation])) {
+                $links[] = "<{$payload['links'][$relation]}>; rel=\"{$relation}\"";
+            }
+        }
+
+        $response->setData($document);
+        $response->headers->set('Content-Type', 'application/ld+json');
+
+        if ($links !== []) {
+            $response->headers->set('Link', implode(', ', $links));
+        }
     }
 
     private function renderExplorer(Request $request): Response
     {
         $route = $request->route();
-        $uri = Str::after($route->uri(), 'api/public/v1/');
+        $uri = Str::after($route->uri(), 'api/v1/');
         $config = config("api_explorer.routes.$uri");
 
         if ($config === null) {
@@ -79,7 +140,7 @@ class NegotiatePublicApiFormat
             'exampleRequest' => $config['example'] ?? '/'.$uri,
             'isDownload' => $config['is_download'] ?? false,
             'maxResponseLines' => config('api_explorer.max_response_lines', 300),
-            'baseUrl' => rtrim($request->getSchemeAndHttpHost().'/api/public/v1', '/'),
+            'baseUrl' => rtrim($request->getSchemeAndHttpHost().'/api/v1', '/'),
         ]);
     }
 

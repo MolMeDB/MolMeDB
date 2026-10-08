@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Public\V1\AboutController;
 use App\Http\Controllers\Api\Public\V1\MembraneController;
 use App\Http\Controllers\Api\Public\V1\MethodController;
 use App\Http\Controllers\Api\Public\V1\ProteinController;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Route;
 // reach our own PublicApiCors middleware instead of Laravel's implicit
 // "Allow: GET,HEAD" 405-avoidance response, which carries no CORS headers.
 Route::options('{any}', fn () => response()->noContent())->where('any', '.*');
+
+Route::get('/about', [AboutController::class, 'index']);
 
 Route::prefix('membranes')
     ->controller(MembraneController::class)

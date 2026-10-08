@@ -68,16 +68,34 @@ export default function SiteFooter() {
           <Divider />
           <div className="flex flex-col w-full xl:w-1/3 xl:w-[330px] gap-2">
             <h3 className="text-lg font-bold">Financial Support</h3>
-            <ul className="list-disc pl-6 text-sm">
+            <ul className="list-disc pl-6 text-sm flex flex-col gap-1">
               <li>
-                GAČR 17-2112S (Principal investigator: prof. RNDr. Karel Berka,
-                Ph.D.)
+                MolMeDB interoperability with UniProt and SwissLipids – MEYS
+                Czech-Swiss project ELIXIR-IMPACT 8K0208 (2026–2028)
               </li>
               <li>
-                Palacky University Olomouc (projects IGA_PrF_2018_032 and
-                IGA_2019_031)
+                MolMeDB support by the ELIXIR CZ infrastructure – MEYS
+                LM2023055 (2023–2026) and LM2018131 (2020–2022)
               </li>
-              <li>ELIXIR-CZ (projects LM2015047 and LM2018131)</li>
+              <li>
+                MembOn – Membrane Ontology for Integration of Data-related Web
+                Services – ELIXIR Staff Exchange (2024)
+              </li>
+              <li>
+                MolMeDB interoperability update – RDF model draft – ELIXIR CZ
+                internal project (2023)
+              </li>
+              <li>
+                FunGIM – Effects of Functional Groups on Interactions with
+                Membranes – UP DSGC-2021-0060 within OP RDE project
+                CZ.02.2.69/0.0/0.0/19_073/0016713 (2022)
+              </li>
+              <li>MolMeDB establishment – GAČR 17-21122S (2017–2020)</li>
+              <li>
+                Database curation – Palacký University Olomouc IGA_PrF_2026_002,
+                IGA_PrF_2025_003, IGA_PrF_2024_017, IGA_PrF_2023_018 and
+                IGA_PrF_2019_031
+              </li>
             </ul>
             <div className="flex flex-row justify-end gap-4 mt-4">
               <Image

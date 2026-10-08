@@ -3,7 +3,9 @@
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\PermissionRegistrar;
+use Tests\Support\ApiContract;
 use Tests\TestCase;
 
 /*
@@ -22,6 +24,14 @@ use Tests\TestCase;
 // module tests targeted by ->in(...) — a bare beforeEach()/afterEach() at
 // this file's top level does not compose with an explicit ->in(...) target
 // set; it silently never fires for the files matched here.
+// $response->assertApiContract('GET api/v1/structures/{identifier}') — see Tests\Support\ApiContract.
+TestResponse::macro('assertApiContract', function (string $route): TestResponse {
+    /** @var TestResponse $this */
+    ApiContract::assert($this, $route);
+
+    return $this;
+});
+
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->beforeEach(function () {

@@ -1,0 +1,48 @@
+{
+    "route": "GET api/stats",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "plots": {
+                "databasesBar": {
+                    "items": [
+                        {
+                            "name": "string",
+                            "value1": "number",
+                            "value2": "number"
+                        }
+                    ]
+                },
+                "interactionsLine": {
+                    "data": [
+                        {
+                            "date": "string",
+                            "value1": "number",
+                            "value2": "number"
+                        }
+                    ]
+                },
+                "proteinsBar": {
+                    "items": [
+                        {
+                            "name": "string",
+                            "value1": "number",
+                            "value2": "number"
+                        }
+                    ]
+                }
+            },
+            "total": {
+                "interactions": {
+                    "active": "number",
+                    "passive": "number"
+                },
+                "membranes": "number",
+                "methods": "number",
+                "proteins": "number",
+                "structures": "number"
+            }
+        }
+    }
+}

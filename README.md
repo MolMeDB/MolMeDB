@@ -1,6 +1,15 @@
 # MolMeDB-api
 MolMeDB is open-source...
 
+## License & Citation
+- **Code** (this repository): [MIT License](LICENSE).
+- **Data** served via the API and exports: [CC BY 4.0](LICENSE-DATA.md).
+- **How to cite**: see [CITATION.cff](CITATION.cff), or:
+
+  > Juračka J., Šrejber M., Melíková M., Bazgier V., Berka K.: MolMeDB: Molecules on Membranes Database. Database, Volume 2019, 2019, baz078, https://doi.org/10.1093/database/baz078
+
+- The same information is available machine-readably at `GET /api/public/v1/about`.
+
 ## How to run
 This repository is fully prepared for easy setup using Docker. Before starting, copy the appropriate docker-compose file as follows.
 
@@ -87,10 +96,23 @@ composer run dev
 ```
 
 If everything went well, the application will be available at http://localhost:8000. The database seeding will create an admin user with the following credentials
-- email: admin@molmedb.cz
+- email: molmedb@upol.cz
 - password: admin
 
 And that’s it!
+
+#### Running tests
+Tests run against PostgreSQL with the Bingo extension, the same way as in the Backend CI job. With the development database container running, use
+```bash
+tests/pgsql.sh --compact
+```
+The script creates a separate `molmedb_testing` database in the development database container on the first run (the development database itself is not touched). Any `php artisan test` arguments can be passed, e.g. `tests/pgsql.sh --filter=PublicApi`.
+
+Every API endpoint has a recorded contract (status, content type and the shape of the JSON response) in `tests/Fixtures/api-contracts`, and the OpenAPI specification of the public API is recorded in `tests/Fixtures/openapi.v1.json`. When a test reports a changed contract on purpose, update the API consumers (frontend, API explorer in `config/api_explorer.php`) and re-record the contracts:
+```bash
+UPDATE_API_CONTRACTS=1 tests/pgsql.sh --compact --filter='Contract|Documentation'
+```
+A new endpoint needs a test calling `->assertApiContract('GET api/...')`, otherwise `ApiContractCoverageTest` fails.
 
 #### Running frontend
 All frontend files are placed in `./frontend` folder. To run the frontend for development purpose, go to the frontend folder 

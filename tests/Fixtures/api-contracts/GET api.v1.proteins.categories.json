@@ -1,0 +1,27 @@
+{
+    "route": "GET api/v1/proteins/categories",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "children": [
+                    {
+                        "children": [],
+                        "id": "number",
+                        "items": [
+                            {
+                                "id": "number",
+                                "uniprot_id": "string"
+                            }
+                        ],
+                        "title": "string"
+                    }
+                ],
+                "id": "number",
+                "items": [],
+                "title": "string"
+            }
+        ]
+    }
+}

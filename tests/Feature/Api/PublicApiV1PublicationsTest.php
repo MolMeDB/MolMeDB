@@ -9,7 +9,7 @@ test('publications index returns paginated publications', function () {
     createApiPublication(['title' => 'Example publication one']);
     createApiPublication(['title' => 'Example publication two']);
 
-    $this->getJson('/api/public/v1/publications')
+    $this->getJson('/api/v1/publications')
         ->assertOk()
         ->assertJsonCount(2, 'data')
         ->assertJsonStructure([
@@ -22,7 +22,7 @@ test('publications index returns paginated publications', function () {
 test('publications index does not include detail-only fields', function () {
     createApiPublication();
 
-    $response = $this->getJson('/api/public/v1/publications');
+    $response = $this->getJson('/api/v1/publications');
 
     $response->assertOk();
     expect($response->json('data.0'))->not->toHaveKeys(['journal', 'volume', 'issue', 'page', 'authors']);
@@ -32,7 +32,7 @@ test('publications index filters by free-text query', function () {
     createApiPublication(['title' => 'Caffeine metabolism']);
     createApiPublication(['title' => 'Unrelated topic']);
 
-    $this->getJson('/api/public/v1/publications?query=Caffeine')
+    $this->getJson('/api/v1/publications?query=Caffeine')
         ->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.title', 'Caffeine metabolism');
@@ -48,7 +48,7 @@ test('publications show returns full detail including authors', function () {
     $author = Author::factory()->create(['first_name' => 'Jane', 'last_name' => 'Doe', 'full_name' => 'Jane Doe']);
     $publication->authors()->attach($author->id);
 
-    $this->getJson("/api/public/v1/publications/{$publication->id}")
+    $this->getJson("/api/v1/publications/{$publication->id}")
         ->assertOk()
         ->assertJsonPath('data.id', $publication->id)
         ->assertJsonPath('data.journal', 'Journal of Examples')
@@ -57,7 +57,7 @@ test('publications show returns full detail including authors', function () {
 });
 
 test('publications show returns 404 for an unknown publication', function () {
-    $this->getJson('/api/public/v1/publications/999999')
+    $this->getJson('/api/v1/publications/999999')
         ->assertNotFound();
 });
 
@@ -66,7 +66,7 @@ test('publications stats returns aggregate counts', function () {
     createApiPassiveInteraction(['publication' => $publication]);
     createApiActiveInteraction(['publication' => $publication]);
 
-    $this->getJson("/api/public/v1/publications/{$publication->id}/stats")
+    $this->getJson("/api/v1/publications/{$publication->id}/stats")
         ->assertOk()
         ->assertJsonPath('data.publication.id', $publication->id)
         ->assertJsonPath('data.total.interactions_passive', 1)
@@ -80,7 +80,7 @@ test('publication passive interactions downloads the latest export file', functi
     // A plain ->get() defaults to a browser-like Accept header (includes
     // text/html), which would route into the explorer page instead of
     // calling the controller — force JSON/binary negotiation explicitly.
-    $response = $this->getJson("/api/public/v1/publications/{$publication->id}/interactions/passive");
+    $response = $this->getJson("/api/v1/publications/{$publication->id}/interactions/passive");
 
     $response->assertOk();
     expect($response->streamedContent())->toBe('passive export contents');
@@ -90,7 +90,7 @@ test('publication active interactions downloads the latest export file', functio
     $publication = createApiPublication();
     createApiExportFile($publication, File::TYPE_EXPORT_INTERACTIONS_ACTIVE_PUBLICATION, 'active export contents');
 
-    $response = $this->getJson("/api/public/v1/publications/{$publication->id}/interactions/active");
+    $response = $this->getJson("/api/v1/publications/{$publication->id}/interactions/active");
 
     $response->assertOk();
     expect($response->streamedContent())->toBe('active export contents');
@@ -99,6 +99,6 @@ test('publication active interactions downloads the latest export file', functio
 test('publication interactions returns 404 when no export exists yet', function () {
     $publication = createApiPublication();
 
-    $this->getJson("/api/public/v1/publications/{$publication->id}/interactions/passive")
+    $this->getJson("/api/v1/publications/{$publication->id}/interactions/passive")
         ->assertNotFound();
 });

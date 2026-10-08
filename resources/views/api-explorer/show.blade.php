@@ -198,6 +198,12 @@
         <pre>GET {{ $baseUrl }}{{ $exampleRequest }}</pre>
     </section>
 
+    <p class="description">
+        Full API reference: <a href="{{ $baseUrl }}/docs">OpenAPI docs</a>
+        &middot; <a href="{{ $baseUrl }}/openapi.json">openapi.json</a>
+        &middot; <a href="{{ $baseUrl }}/about">/about</a> (license &amp; citation)
+    </p>
+
 </div>
 
 <script>

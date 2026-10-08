@@ -1,0 +1,23 @@
+{
+    "route": "GET api/method/{method}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "abbreviation": "string",
+            "datasets": [
+                {
+                    "created_at": "string",
+                    "enum_type": "string",
+                    "hash": "string",
+                    "mime": "string",
+                    "name": "string",
+                    "type": "number"
+                }
+            ],
+            "description": "string",
+            "id": "number",
+            "name": "string"
+        }
+    }
+}

@@ -17,7 +17,11 @@ import { MdCloudDownload } from "react-icons/md";
 import DOMPurify from "dompurify";
 import MethodModalContent from "./components/modalContent";
 
-export default function SectionDetail(props: { methodId: string }) {
+export default function SectionDetail(props: {
+  methodId: string;
+  /** Scroll the detail into view once loaded (the browser page lists it under a chart). */
+  scrollIntoView?: boolean;
+}) {
   const [data, setData] = useState<IMethod | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const detailSectionRef = useRef<HTMLDivElement>(null);
@@ -55,11 +59,13 @@ export default function SectionDetail(props: { methodId: string }) {
         }
 
         setData(d.data?.data);
-        scrollToElement();
+        if (props.scrollIntoView ?? true) {
+          scrollToElement();
+        }
         setIsLoading(false);
       }
     );
-  }, [props.methodId]);
+  }, [props.methodId, props.scrollIntoView]);
 
   return (
     <div ref={detailSectionRef} className="min-h-64 w-full">

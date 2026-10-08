@@ -1,0 +1,13 @@
+{
+    "route": "POST api/structure/predictions/validate",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "duplicates_removed": "number",
+            "smiles": [
+                "string"
+            ]
+        }
+    }
+}

@@ -1,0 +1,30 @@
+{
+    "route": "GET api/v1/publications/{publication}/stats",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "publication": {
+                "citation": "string",
+                "created_at": "string",
+                "doi": "string",
+                "doi_url": "string",
+                "id": "number",
+                "landing_page": "string",
+                "pmid": "string",
+                "pmid_url": "string",
+                "title": "string",
+                "updated_at": "string",
+                "url": "string",
+                "year": "number"
+            },
+            "total": {
+                "datasets": "number",
+                "interactions_active": "number",
+                "interactions_passive": "number",
+                "membranes": "number",
+                "methods": "number"
+            }
+        }
+    }
+}

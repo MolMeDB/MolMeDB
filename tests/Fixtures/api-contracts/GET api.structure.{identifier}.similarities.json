@@ -1,0 +1,26 @@
+{
+    "route": "GET api/structure/{identifier}/similarities",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "related_structures": [
+            {
+                "canonical_smiles": "string",
+                "charge": "number",
+                "id": "number",
+                "identifier": "string",
+                "identifiers": [],
+                "inchi": "string",
+                "inchikey": "string",
+                "logp": "number",
+                "molecular_weight": "number",
+                "name": "null",
+                "parent_identifier": "string",
+                "structure_2d_url": "string",
+                "structure_2d_url_big": "string",
+                "structure_3d_url": "string"
+            }
+        ],
+        "similar_structures": []
+    }
+}

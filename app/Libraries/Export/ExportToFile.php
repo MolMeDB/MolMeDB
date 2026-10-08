@@ -246,6 +246,7 @@ class ExportToFile
                 if (! $zip->addFile(self::$storage->path($this->fullFilePath), basename($this->fullFilePath))) {
                     trigger_error('Failed to add file to zip.', E_USER_WARNING);
                 }
+                ExportLicenseFiles::addTo($zip, basename($this->fullFilePath).' (semicolon separated)');
                 $zip->close();
             } else {
                 trigger_error('Failed to create zip archive.', E_USER_WARNING);
@@ -330,6 +331,7 @@ class ExportToFile
             fclose($output);
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
+            'Link' => ExportLicenseFiles::linkHeader(),
         ]);
     }
 

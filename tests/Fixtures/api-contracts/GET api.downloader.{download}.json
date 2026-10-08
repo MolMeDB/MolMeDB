@@ -1,0 +1,22 @@
+{
+    "route": "GET api/downloader/{download}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "error_message": "null",
+            "expired": "boolean",
+            "expires_at": "string",
+            "progress": {
+                "percent": "number",
+                "processed": "number",
+                "run_token": "string",
+                "total": "number",
+                "updated_at": "string"
+            },
+            "restarted": "boolean",
+            "state": "string",
+            "uuid": "string"
+        }
+    }
+}

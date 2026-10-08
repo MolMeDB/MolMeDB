@@ -1,0 +1,10 @@
+{
+    "route": "POST api/predictions/by-token",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "dataset_id": "number"
+        }
+    }
+}

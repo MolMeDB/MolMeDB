@@ -24,6 +24,10 @@ if [ "${1:-}" = "php-fpm" ]; then
 
     php artisan migrate --force
 
+    # Publish the documentation articles kept in resources/docs. A failure
+    # leaves the previous version online and must not stop the application.
+    php artisan docs:sync || echo "Documentation sync failed, the previous articles stay published." >&2
+
     php artisan config:clear && php artisan cache:clear && php artisan route:clear && php artisan view:clear && php artisan optimize:clear
 
     php artisan storage:link --silent

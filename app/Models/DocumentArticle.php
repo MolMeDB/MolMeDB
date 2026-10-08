@@ -15,6 +15,7 @@ class DocumentArticle extends Model
     {
         return [
             'is_published' => 'boolean',
+            'synced_from_source' => 'boolean',
         ];
     }
 
@@ -33,6 +34,25 @@ class DocumentArticle extends Model
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('is_published', true);
+    }
+
+    /**
+     * Published from a file in resources/docs (see `php artisan docs:sync`),
+     * not edited in the administration.
+     */
+    public function isManaged(): bool
+    {
+        return $this->synced_from_source && $this->source !== null;
+    }
+
+    /**
+     * The source file in the repository, for the administration.
+     */
+    public function sourceUrl(): ?string
+    {
+        return $this->source === null
+            ? null
+            : rtrim((string) config('documentation.source_url'), '/').'/'.$this->source;
     }
 
     public function fullSlug(): string

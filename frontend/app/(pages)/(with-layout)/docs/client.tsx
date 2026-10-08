@@ -682,6 +682,10 @@ function getTableTextBreakParts(text: string): string[] {
   return breakableText.split("\u200B").filter((part) => part !== "");
 }
 
+// Code blocks shown as they are, without highlighting (e.g. shell commands
+// in the articles generated from resources/docs).
+const PLAIN_CODE_LANGUAGES = new Set(["text", "bash", "shell", "http"]);
+
 function highlightCodeBlocks(parsedDocument: Document): void {
   const explicitBlocks = Array.from(
     parsedDocument.querySelectorAll("pre.docs-code-block"),
@@ -693,6 +697,12 @@ function highlightCodeBlocks(parsedDocument: Document): void {
 
   codeBlocks.forEach((block) => {
     const language = detectCodeLanguage(block);
+
+    // Plain blocks keep their own language as the label.
+    if (language === "text") {
+      return;
+    }
+
     block.setAttribute("data-language", language);
 
     const codeElement = block.querySelector("code");
@@ -718,6 +728,10 @@ function detectCodeLanguage(block: Element): string {
     .toLowerCase();
   if (fromData === "sparql" || fromData === "sql" || fromData === "json") {
     return fromData;
+  }
+
+  if (PLAIN_CODE_LANGUAGES.has(fromData)) {
+    return "text";
   }
 
   const className = block.getAttribute("class") ?? "";

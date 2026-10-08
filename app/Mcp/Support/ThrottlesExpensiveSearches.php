@@ -13,9 +13,14 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 trait ThrottlesExpensiveSearches
 {
-    protected function passesThrottle(string $search, ?string $ip, int $perMinute, int $perHour): bool
+    /**
+     * @param  string  $search  a key of config('public_api.rate_limits'), e.g. "similarity"
+     */
+    protected function passesThrottle(string $search, ?string $ip): bool
     {
         $key = "mcp-public-api-{$search}:".($ip ?? 'unknown');
+        $perMinute = config("public_api.rate_limits.{$search}.per_minute");
+        $perHour = config("public_api.rate_limits.{$search}.per_hour");
 
         if (RateLimiter::tooManyAttempts("{$key}:minute", $perMinute) || RateLimiter::tooManyAttempts("{$key}:hour", $perHour)) {
             return false;

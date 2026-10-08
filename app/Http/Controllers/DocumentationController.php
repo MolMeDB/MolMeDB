@@ -62,7 +62,8 @@ class DocumentationController extends Controller
                 'title' => $article->title,
                 'slug' => $article->slug,
                 'path' => $article->fullSlug(),
-                'content' => RichContentRenderer::make($article->content)
+                // Articles from resources/docs are stored rendered (docs:sync).
+                'content' => $article->isManaged() ? $article->content : RichContentRenderer::make($article->content)
                     ->fileAttachmentsDisk('public')
                     ->fileAttachmentsVisibility('public')
                     ->customBlocks([

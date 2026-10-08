@@ -184,7 +184,7 @@ class PredictionsController extends Controller
     public function validateSmiles(Request $request, PredictionSmilesCanonicalizer $canonicalizer): JsonResponse
     {
         $validated = $request->validate([
-            'smiles' => ['required', 'array', 'min:1', 'max:100'],
+            'smiles' => ['required', 'array', 'min:1', 'max:'.StorePredictionDatasetRequest::MAX_MOLECULES],
             'smiles.*' => ['string', 'max:4000'],
         ]);
 

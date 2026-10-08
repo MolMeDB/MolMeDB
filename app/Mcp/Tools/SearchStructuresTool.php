@@ -57,8 +57,7 @@ class SearchStructuresTool extends Tool
 
         $hasSubstructure = filled($validated['substructure'] ?? null);
 
-        // The same limits as RateLimiter::for('public-api-substructure') of the REST API.
-        if ($hasSubstructure && ! $this->passesThrottle('substructure', $httpRequest->ip(), perMinute: 6, perHour: 30)) {
+        if ($hasSubstructure && ! $this->passesThrottle('substructure', $httpRequest->ip())) {
             return Response::error('Substructure search rate limit exceeded. Try again later.');
         }
 

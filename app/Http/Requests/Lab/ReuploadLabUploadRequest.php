@@ -18,8 +18,8 @@ class ReuploadLabUploadRequest extends FormRequest
             'file' => [
                 'required',
                 'file',
-                'max:20480',
-                'mimes:csv,txt,tsv,xls,xlsx,json',
+                'max:'.StoreLabUploadRequest::MAX_FILE_KILOBYTES,
+                'mimes:'.implode(',', StoreLabUploadRequest::FILE_EXTENSIONS),
                 new FileUniqueByHash,
             ],
         ];

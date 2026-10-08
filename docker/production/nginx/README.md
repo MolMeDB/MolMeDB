@@ -151,7 +151,7 @@ curl -sI https://molmedb.upol.cz/api/v1/about | grep -i x-ratelimit-remaining
 
 - **502 Bad Gateway or 504 Gateway Timeout** comes from nginx when a service behind it is down. Check `docker compose ps` and `docker compose logs web frontend app`. Upstreams are resolved per request, so nginx starts and keeps running without them.
 - **The API answers 429 to everybody** when the client's address is lost and all requests share one. Apache must pass `X-Forwarded-For` (it does by default) and connect to `127.0.0.1:8443`. nginx and Laravel trust only private addresses as proxies (`set_real_ip_from` in `nginx.conf`, `trustProxies` in `bootstrap/app.php`).
-- **Links of the API point to `http://` or to `127.0.0.1`** when `ProxyPreserveHost On` or `X-Forwarded-Proto` is missing in Apache.
+- **Links of the API point to `http://` or to `127.0.0.1`** when `ProxyPreserveHost On` or `X-Forwarded-Proto` is missing in Apache. Laravel does not read `X-Forwarded-Proto` itself here: PHP gets the client's address, not a trusted proxy (the `real_ip` settings in `nginx.conf`), so nginx turns the header into `HTTPS=on` (`$fastcgi_https`).
 - **MCP clients hang** when a response is buffered or compressed on the way. Check the `/api/v1/mcp` rules in Apache and `fastcgi_buffering off` in `snippets/shared-locations.conf`.
 - **Images of structures are missing** when `CDK_DEPICT_URL` is not the admin domain, or the `cdkdepict` service is down.
 

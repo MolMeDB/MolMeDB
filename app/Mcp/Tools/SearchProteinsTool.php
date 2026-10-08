@@ -10,6 +10,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
@@ -17,6 +18,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 /**
  * Mirrors GET /api/v1/proteins (ProteinController::index).
  */
+#[Name('search-proteins')]
 #[Description('Search/list MolMeDB protein targets by UniProt id/identifier text and/or category.')]
 #[IsReadOnly]
 #[IsIdempotent]
@@ -57,7 +59,7 @@ class SearchProteinsTool extends Tool
             'query' => $schema->string()
                 ->description('Free-text search across UniProt id and other protein identifiers.'),
             'category_id' => $schema->integer()
-                ->description('Restrict to proteins in this category (see list-categories-tool).'),
+                ->description('Restrict to proteins in this category (see list-categories).'),
             'per_page' => $schema->integer()
                 ->description('Results per page (1-100, default 20).'),
             'page' => $schema->integer()

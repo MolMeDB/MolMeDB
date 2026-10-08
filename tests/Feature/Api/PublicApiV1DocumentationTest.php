@@ -25,7 +25,8 @@ function documentedPublicApiRoutes(): array
     return collect(Router::getRoutes()->getRoutes())
         ->filter(fn (Route $route): bool => in_array('GET', $route->methods(), true) && str_starts_with($route->uri(), 'api/v1/'))
         ->map(fn (Route $route): string => substr($route->uri(), strlen('api/v1/')))
-        ->reject(fn (string $uri): bool => in_array($uri, ['docs', 'openapi.json'], true))
+        // The MCP server is described by its own tool list, not by the explorer or OpenAPI.
+        ->reject(fn (string $uri): bool => in_array($uri, ['docs', 'openapi.json', 'mcp'], true))
         ->sort()
         ->values()
         ->all();

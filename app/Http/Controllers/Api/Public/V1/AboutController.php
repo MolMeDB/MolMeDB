@@ -49,6 +49,7 @@ class AboutController extends Controller
                 ],
                 'links' => [
                     'openapi' => PublicApiUrl::to('openapi.json'),
+                    'mcp' => PublicApiUrl::to('mcp'),
                     'sitemap' => config('fair.frontend_url').'/sitemap.xml',
                 ],
             ],

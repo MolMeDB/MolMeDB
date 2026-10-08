@@ -13,6 +13,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
@@ -23,6 +24,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
  * exclusion, same substructure-search cost tradeoff (simple pagination,
  * extra rate limit).
  */
+#[Name('search-structures')]
 #[Description('Search MolMeDB molecular structures by free text (identifier/name), exact SMILES match, or substructure search (Bingo/Postgres). Excludes structures still pending curation (no public identifier yet).')]
 #[IsReadOnly]
 #[IsIdempotent]

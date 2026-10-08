@@ -87,6 +87,7 @@ test('about endpoint describes the dataset as a Bioschemas Dataset', function ()
         ->and(collect($document['citation'])->pluck('@id'))->toContain('https://doi.org/10.1093/database/baz078', 'https://doi.org/10.1186/s13321-026-01208-3')
         ->and(collect($document['distribution'])->pluck('contentUrl'))->toContain(
             'https://molmedb.upol.cz/api/v1',
+            'https://molmedb.upol.cz/api/v1/mcp',
             'https://doi.org/10.5281/zenodo.18632779',
             'https://idsm.elixir-czech.cz/sparql/endpoint/molmedb',
         );
@@ -100,6 +101,7 @@ test('about endpoint returns license, citation and identifier scheme as plain JS
         ->assertJsonPath('data.citation.doi', '10.1093/database/baz078')
         ->assertJsonPath('data.identifier_scheme.identifiers_org', 'https://identifiers.org/molmedb/{identifier}')
         ->assertJsonPath('data.links.openapi', 'https://molmedb.upol.cz/api/v1/openapi.json')
+        ->assertJsonPath('data.links.mcp', 'https://molmedb.upol.cz/api/v1/mcp')
         ->assertJsonPath('data.rdf.sparql_endpoint', 'https://idsm.elixir-czech.cz/sparql/endpoint/molmedb')
         ->assertJsonPath('data.rdf.vocabulary', 'https://rdf.molmedb.upol.cz/vocabulary');
 });

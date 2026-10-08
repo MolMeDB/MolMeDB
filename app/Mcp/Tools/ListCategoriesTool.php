@@ -9,6 +9,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
@@ -16,6 +17,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 /**
  * Mirrors GET /api/v1/{membranes,methods,proteins}/categories.
  */
+#[Name('list-categories')]
 #[Description('Get the category tree for membranes, methods, or proteins — use category ids from here as the category_id argument on the matching search tool.')]
 #[IsReadOnly]
 #[IsIdempotent]

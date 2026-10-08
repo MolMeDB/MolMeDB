@@ -9,6 +9,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
@@ -17,6 +18,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
  * Mirrors GET /api/v1/methods/{id} + its stats endpoint
  * (MethodController::show/stats) combined into one call.
  */
+#[Name('get-method')]
 #[Description('Get detail (including categories and interaction/structure counts) for one MolMeDB method by id.')]
 #[IsReadOnly]
 #[IsIdempotent]

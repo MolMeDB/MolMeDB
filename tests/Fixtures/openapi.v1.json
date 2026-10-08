@@ -123,12 +123,16 @@
                                                                 "openapi": {
                                                                     "type": "string"
                                                                 },
+                                                                "mcp": {
+                                                                    "type": "string"
+                                                                },
                                                                 "sitemap": {
                                                                     "type": "string"
                                                                 }
                                                             },
                                                             "required": [
                                                                 "openapi",
+                                                                "mcp",
                                                                 "sitemap"
                                                             ]
                                                         }

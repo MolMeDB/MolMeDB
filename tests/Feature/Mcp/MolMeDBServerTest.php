@@ -79,6 +79,30 @@ test('every MCP tool registered on the server has a contract call', function () 
         ->toBe(collect($registered)->sort()->values()->all());
 });
 
+test('the server is served under the public API and lists its tools by name', function () {
+    $session = $this->postJson('/api/v1/mcp', [
+        'jsonrpc' => '2.0',
+        'id' => 1,
+        'method' => 'initialize',
+        'params' => ['protocolVersion' => '2025-06-18', 'capabilities' => [], 'clientInfo' => ['name' => 'test', 'version' => '1']],
+    ])->assertOk()->headers->get('MCP-Session-Id');
+
+    $tools = $this->postJson('/api/v1/mcp', ['jsonrpc' => '2.0', 'id' => 2, 'method' => 'tools/list'], ['MCP-Session-Id' => $session])
+        ->assertOk()
+        ->json('result.tools.*.name');
+
+    expect($tools)->toEqualCanonicalizing([
+        'search-structures', 'get-structure', 'get-structure-interactions',
+        'search-membranes', 'get-membrane', 'search-methods', 'get-method',
+        'search-proteins', 'get-protein', 'get-protein-interactions',
+        'search-publications', 'get-publication', 'list-categories',
+    ]);
+});
+
+test('the MCP transport answers GET and DELETE with 405', function (string $method) {
+    $this->call($method, '/api/v1/mcp')->assertStatus(405)->assertHeader('Allow', 'POST');
+})->with(['GET', 'DELETE']);
+
 test('unknown records are reported as tool errors', function (string $tool, array $arguments) {
     MolMeDBServer::tool($tool, $arguments)->assertHasErrors();
 })->with([

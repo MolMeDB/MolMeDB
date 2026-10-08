@@ -9,6 +9,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
@@ -17,6 +18,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
  * Mirrors GET /api/v1/publications/{id} + its stats endpoint
  * (PublicationController::show/stats) combined into one call.
  */
+#[Name('get-publication')]
 #[Description('Get full detail (journal/volume/authors, plus interaction/membrane/method/dataset counts) for one MolMeDB publication by id.')]
 #[IsReadOnly]
 #[IsIdempotent]

@@ -10,6 +10,7 @@ use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
+use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
@@ -17,6 +18,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 /**
  * Mirrors GET /api/v1/publications (PublicationController::index).
  */
+#[Name('search-publications')]
 #[Description('Search/list MolMeDB publications by citation/title/DOI text, or by exact id using "id:<n>".')]
 #[IsReadOnly]
 #[IsIdempotent]

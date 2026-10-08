@@ -1,0 +1,23 @@
+{
+    "structured_content": {
+        "data": [
+            {
+                "canonical_smiles": "string",
+                "created_at": "string",
+                "identifier": "string",
+                "landing_page": "string",
+                "logp": "number",
+                "molecular_weight": "number",
+                "name": "null",
+                "similarity": "number",
+                "updated_at": "string",
+                "url": "string"
+            }
+        ],
+        "meta": {
+            "has_more": "boolean",
+            "page": "number",
+            "per_page": "number"
+        }
+    }
+}

@@ -4,6 +4,7 @@ namespace App\Mcp\Tools;
 
 use App\Http\Resources\Api\Public\V1\StructureResource;
 use App\Models\Structure;
+use App\Services\Interactions\PublicInteractionQuery;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -19,7 +20,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
  * (StructureController::show/stats) combined into one call.
  */
 #[Name('get-structure')]
-#[Description('Get full detail (including identifiers and interaction counts) for one MolMeDB structure by its public identifier.')]
+#[Description('Get full detail of one MolMeDB structure by its public identifier: cross-references (PubChem, ChEMBL, ChEBI, DrugBank, PDB), InChIKey, its parent molecule and forms (ionization states or stereoisomers), links to its 2D depiction and 3D molfile, and its numbers of interactions.')]
 #[IsReadOnly]
 #[IsIdempotent]
 class GetStructureTool extends Tool
@@ -41,8 +42,8 @@ class GetStructureTool extends Tool
         return Response::structured([
             'structure' => StructureResource::make($structure)->withDetails()->resolve(),
             'total' => [
-                'interactions_passive' => $structure->interactionsPassive()->count(),
-                'interactions_active' => $structure->interactionsActive()->count(),
+                'interactions_passive' => PublicInteractionQuery::total(PublicInteractionQuery::passive(['structure' => $structure->identifier])),
+                'interactions_active' => PublicInteractionQuery::total(PublicInteractionQuery::active(['structure' => $structure->identifier])),
             ],
         ]);
     }

@@ -59,6 +59,21 @@ class MolMeDBOverviewResource extends Resource
 
             Structures without a public `identifier` yet are pending curation and are
             excluded from search results and can't be looked up directly.
+
+            Recommended workflow:
+            1. Find the structure: search-structures by name (query), SMILES, InChIKey,
+               PubChem/ChEMBL/ChEBI/DrugBank/PDB id, or several MolMeDB identifiers at once.
+            2. Get its interactions: search-interactions with type "passive" or "active"
+               and structure=<identifier>. Narrow them with filters: membrane and method
+               ids (search-membranes, search-methods), protein id or UniProt id
+               (search-proteins), publication, temperature/pH ranges, charge,
+               with_value and value ranges (e.g. logperm_min). The same filters list
+               data across the whole database without a structure.
+            3. Details: get-structure (forms, parent, cross-references), get-interaction,
+               get-structure-molfile (3D structure).
+            4. No data for a molecule? find-similar-structures lists measured analogues.
+
+            Results are paginated: follow meta.has_more with the page argument.
             TEXT);
     }
 }

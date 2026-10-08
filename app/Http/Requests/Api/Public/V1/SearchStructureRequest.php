@@ -60,20 +60,28 @@ class SearchStructureRequest extends FormRequest
             return;
         }
 
-        $identifiers = self::identifierList((string) $this->input('identifiers'));
+        $error = self::identifierListError((string) $this->input('identifiers'));
+
+        if ($error !== null) {
+            $validator->errors()->add('identifiers', $error);
+        }
+    }
+
+    /**
+     * Why a list of identifiers is not valid, or null when it is.
+     */
+    public static function identifierListError(string $identifiers): ?string
+    {
+        $identifiers = self::identifierList($identifiers);
         $pattern = '/'.config('fair.identifier_pattern').'/i';
 
         if (count($identifiers) > self::MAX_IDENTIFIERS) {
-            $validator->errors()->add('identifiers', 'At most '.self::MAX_IDENTIFIERS.' identifiers can be requested at once.');
-
-            return;
+            return 'At most '.self::MAX_IDENTIFIERS.' identifiers can be requested at once.';
         }
 
         $invalid = array_filter($identifiers, fn (string $identifier): bool => preg_match($pattern, $identifier) !== 1);
 
-        if ($invalid !== []) {
-            $validator->errors()->add('identifiers', 'Invalid identifiers: '.implode(', ', $invalid).'.');
-        }
+        return $invalid === [] ? null : 'Invalid identifiers: '.implode(', ', $invalid).'.';
     }
 
     /**

@@ -222,3 +222,74 @@ test('structure molfile answers 422 when RDKit cannot generate it', function () 
     $this->getJson('/api/v1/structures/MM99999/molfile')->assertNotFound();
     resetApiRouteRdkitState();
 });
+
+/**
+ * A structure with one cross-reference.
+ */
+function structureWithIdentifier(string $identifier, int $type, string $value, int $state = Identifier::STATE_NEW): App\Models\Structure
+{
+    $structure = createApiStructure(['identifier' => $identifier]);
+    Identifier::create(['structure_id' => $structure->id, 'type' => $type, 'value' => $value, 'state' => $state]);
+
+    return $structure;
+}
+
+test('structures are found by their exact InChIKey', function () {
+    createApiStructure(['identifier' => 'MM00040', 'inchikey' => 'RYYVLZVUVIJVGH-UHFFFAOYSA-N']);
+    createApiStructure(['identifier' => 'MM00041', 'inchikey' => 'RYYVLZVUVIJVGH-UHFFFAOYSA-O']);
+
+    $this->getJson('/api/v1/structures?inchikey=ryyvlzvuvijvgh-uhfffaoysa-n')
+        ->assertOk()
+        ->assertJsonPath('data.*.identifier', ['MM00040']);
+});
+
+test('structures are found by an external identifier of a public state', function (string $query, int $type, string $value, int $state, array $expected) {
+    structureWithIdentifier('MM00040', $type, $value, $state);
+    structureWithIdentifier('MM00041', $type, '999', Identifier::STATE_NEW);
+
+    $this->getJson("/api/v1/structures?{$query}")
+        ->assertOk()
+        ->assertJsonPath('data.*.identifier', $expected);
+})->with([
+    'PubChem' => ['pubchem=2519', Identifier::TYPE_PUBCHEM, '2519', Identifier::STATE_NEW, ['MM00040']],
+    'PubChem of the 2022 import (state 0)' => ['pubchem=2519', Identifier::TYPE_PUBCHEM, '2519', 0, ['MM00040']],
+    'invalid PubChem' => ['pubchem=2519', Identifier::TYPE_PUBCHEM, '2519', Identifier::STATE_INVALID, []],
+    'ChEMBL' => ['chembl=chembl113', Identifier::TYPE_CHEMBL, 'CHEMBL113', Identifier::STATE_NEW, ['MM00040']],
+    'ChEBI stored with prefix' => ['chebi=27732', Identifier::TYPE_CHEBI, 'CHEBI:27732', Identifier::STATE_NEW, ['MM00040']],
+    'ChEBI stored without prefix' => ['chebi=CHEBI:27732', Identifier::TYPE_CHEBI, '27732', Identifier::STATE_NEW, ['MM00040']],
+    'DrugBank' => ['drugbank=DB00201', Identifier::TYPE_DRUGBANK, 'DB00201', Identifier::STATE_NEW, ['MM00040']],
+    'PDB ligand' => ['pdb=CFF', Identifier::TYPE_PDB, 'CFF', Identifier::STATE_NEW, ['MM00040']],
+]);
+
+test('several structures are fetched at once by their identifiers', function () {
+    createApiStructure(['identifier' => 'MM00040']);
+    createApiStructure(['identifier' => 'MM00041']);
+    createApiStructure(['identifier' => 'MM00042']);
+
+    $this->getJson('/api/v1/structures?identifiers=MM00042, MM00040,MM99999')
+        ->assertOk()
+        ->assertJsonPath('data.*.identifier', ['MM00040', 'MM00042']);
+});
+
+test('invalid structure searches are rejected', function (string $query, string $field) {
+    $this->getJson("/api/v1/structures?{$query}")->assertUnprocessable()->assertJsonValidationErrors($field);
+})->with([
+    'InChIKey' => ['inchikey=caffeine', 'inchikey'],
+    'PubChem' => ['pubchem=CID2519', 'pubchem'],
+    'DrugBank' => ['drugbank=2519', 'drugbank'],
+    'identifier' => ['identifiers=MM00040,caffeine', 'identifiers'],
+    'too many identifiers' => ['identifiers='.implode(',', array_map(fn (int $i): string => sprintf('MM%05d', $i), range(1, 101))), 'identifiers'],
+]);
+
+test('structure detail lists public cross-references and marks unverified ones', function () {
+    $structure = structureWithIdentifier('MM00040', Identifier::TYPE_PUBCHEM, '2519', 0);
+    Identifier::create(['structure_id' => $structure->id, 'type' => Identifier::TYPE_DRUGBANK, 'value' => 'DB00201', 'state' => Identifier::STATE_VALIDATED]);
+    Identifier::create(['structure_id' => $structure->id, 'type' => Identifier::TYPE_CHEMBL, 'value' => 'CHEMBL1', 'state' => Identifier::STATE_INVALID]);
+
+    $identifiers = $this->getJson('/api/v1/structures/MM00040')->assertOk()->json('data.identifiers');
+
+    expect($identifiers)->toBe([
+        ['type' => 'pubchem', 'value' => '2519', 'uri' => 'https://identifiers.org/pubchem.compound:2519', 'verified' => false],
+        ['type' => 'drugbank', 'value' => 'DB00201', 'uri' => 'https://identifiers.org/drugbank:DB00201'],
+    ]);
+});

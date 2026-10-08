@@ -69,6 +69,18 @@ class Identifier extends Model
     const STATE_ACTIVE = 4;
 
     const STATE_OBSOLETE = 5;
+
+    /**
+     * States of identifiers that are not public: invalid ones and obsolete
+     * (merged) MolMeDB identifiers. Rows of the 2022 import have state 0,
+     * which has no constant, and are public as on the website.
+     */
+    const NON_PUBLIC_STATES = [self::STATE_INVALID, self::STATE_OBSOLETE];
+
+    /**
+     * States of identifiers confirmed against their source.
+     */
+    const VERIFIED_STATES = [self::STATE_VALIDATED, self::STATE_ACTIVE];
     // const STATE_NEW = IdentifierValidation::STATE_NEW;
     // const STATE_VALIDATED = IdentifierValidation::STATE_VALIDATED;
     // const STATE_INVALID = IdentifierValidation::STATE_INVALID;

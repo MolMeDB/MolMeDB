@@ -20,7 +20,7 @@ class StructureJsonLdMapper
     public function map(Structure $structure): array
     {
         $crossReferences = ($structure->relationLoaded('identifiers') ? $structure->identifiers : collect())
-            ->whereIn('state', [Identifier::STATE_NEW, Identifier::STATE_VALIDATED, Identifier::STATE_ACTIVE])
+            ->whereNotIn('state', Identifier::NON_PUBLIC_STATES)
             ->whereNotIn('type', [Identifier::TYPE_NAME, Identifier::TYPE_MOLMEDB])
             ->map(fn (Identifier $identifier) => ExternalIdentifierResolver::resolve($identifier->type, $identifier->value))
             ->filter()

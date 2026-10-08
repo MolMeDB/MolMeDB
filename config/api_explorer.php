@@ -188,11 +188,18 @@ return [
         ],
 
         'structures' => [
-            'description' => 'Search structures by name, exact structure (SMILES) or substructure. Substructure search has its own, stricter rate limit.',
+            'description' => 'Search structures by name, exact structure (SMILES), substructure, InChIKey or an external identifier, or fetch up to 100 of them by identifier. Substructure search has its own, stricter rate limit.',
             'query' => [
                 'query' => ['required' => false, 'example' => 'caffeine', 'description' => 'Free-text search over name and cross-referenced identifiers.'],
                 'smiles' => ['required' => false, 'example' => '', 'description' => 'Exact structure match (chemical structure, not text).'],
                 'substructure' => ['required' => false, 'example' => '', 'description' => 'Find structures containing this SMILES as a substructure.'],
+                'inchikey' => ['required' => false, 'example' => '', 'description' => 'Exact InChIKey, e.g. RYYVLZVUVIJVGH-UHFFFAOYSA-N.'],
+                'pubchem' => ['required' => false, 'example' => '', 'description' => 'PubChem CID, e.g. 2519.'],
+                'chembl' => ['required' => false, 'example' => '', 'description' => 'ChEMBL id, e.g. CHEMBL113.'],
+                'chebi' => ['required' => false, 'example' => '', 'description' => 'ChEBI id, with or without the prefix, e.g. CHEBI:27732.'],
+                'drugbank' => ['required' => false, 'example' => '', 'description' => 'DrugBank id, e.g. DB00201.'],
+                'pdb' => ['required' => false, 'example' => '', 'description' => 'PDB ligand (chemical component) code, e.g. CFF.'],
+                'identifiers' => ['required' => false, 'example' => '', 'description' => 'Comma-separated MolMeDB identifiers (at most 100), e.g. MM00040,MM00045.'],
                 'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 100).'],
             ],
             'example' => '/structures?query=caffeine',

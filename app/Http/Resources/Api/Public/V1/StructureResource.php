@@ -42,7 +42,7 @@ class StructureResource extends JsonResource
             'charge' => $this->when($this->detailed, $this->charge),
             'identifiers' => $this->when($this->detailed, fn () => StructureIdentifierResource::collection(
                 $this->identifiers
-                    ->whereIn('state', [Identifier::STATE_NEW, Identifier::STATE_VALIDATED, Identifier::STATE_ACTIVE])
+                    ->whereNotIn('state', Identifier::NON_PUBLIC_STATES)
                     ->whereNotIn('type', [Identifier::TYPE_NAME, Identifier::TYPE_MOLMEDB])
                     ->values()
             )),

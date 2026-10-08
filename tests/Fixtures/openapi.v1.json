@@ -5104,6 +5104,83 @@
                         }
                     },
                     {
+                        "name": "inchikey",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^[A-Z]{14}-[A-Z]{10}-[A-Z]$"
+                        }
+                    },
+                    {
+                        "name": "pubchem",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^\\d{1,12}$"
+                        }
+                    },
+                    {
+                        "name": "chembl",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^CHEMBL\\d{1,12}$"
+                        }
+                    },
+                    {
+                        "name": "chebi",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^(CHEBI:)?\\d{1,12}$"
+                        }
+                    },
+                    {
+                        "name": "drugbank",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^DB\\d{5,6}$"
+                        }
+                    },
+                    {
+                        "name": "pdb",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^[A-Z0-9]{1,5}$"
+                        }
+                    },
+                    {
+                        "name": "identifiers",
+                        "in": "query",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 2000
+                        }
+                    },
+                    {
                         "name": "per_page",
                         "in": "query",
                         "schema": {

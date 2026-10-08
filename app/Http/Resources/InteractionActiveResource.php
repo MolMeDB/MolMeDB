@@ -14,8 +14,8 @@ class InteractionActiveResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return array
-        (
+        return
+        [
             'id' => $this->id,
             'dataset' => DatasetResource::make($this->dataset),
             'structure_id' => $this->structure_id,
@@ -31,16 +31,18 @@ class InteractionActiveResource extends JsonResource
                 'ic50' => $this->getAccuracyValue('ic50'),
             ],
             'primary_reference' => PublicationResource::make($this->publication)->ignoreStats(),
-            'secondary_reference' => PublicationResource::make($this->dataset->publication)->ignoreStats(),
-        );  
+            // The reference of the whole dataset (Dataset has no single "publication" relation).
+            'secondary_reference' => PublicationResource::make($this->dataset?->publications?->first())->ignoreStats(),
+        ];
     }
 
     private function getAccuracyValue(string $key)
     {
-        $acc_key = $key . '_accuracy';
+        $acc_key = $key.'_accuracy';
+
         return [
             'value' => $this->$key,
-            'accuracy' => $this->$acc_key
+            'accuracy' => $this->$acc_key,
         ];
     }
 }

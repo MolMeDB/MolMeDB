@@ -15,6 +15,29 @@ use Illuminate\Http\Request;
  */
 class AboutController extends Controller
 {
+    /**
+     * Units and meaning of the measured values of interactions.
+     *
+     * @var array<string, array<string, array{unit: string, description: string}>>
+     */
+    public const UNITS = [
+        'interactions_passive' => [
+            'x_min' => ['unit' => 'nm', 'description' => 'Position of the free energy minimum across the membrane.'],
+            'gpen' => ['unit' => 'kcal/mol', 'description' => 'Free energy barrier of membrane penetration.'],
+            'gwat' => ['unit' => 'kcal/mol', 'description' => 'Free energy in the minimum relative to water.'],
+            'logk' => ['unit' => 'log10(membrane/water)', 'description' => 'Membrane/water partition coefficient.'],
+            'logperm' => ['unit' => 'log10(cm/s)', 'description' => 'Membrane permeability coefficient.'],
+            'temperature' => ['unit' => '°C', 'description' => 'Temperature of the measurement or calculation.'],
+        ],
+        'interactions_active' => [
+            'km' => ['unit' => '-log10(M)', 'description' => 'pKm, Michaelis constant of transport.'],
+            'ec50' => ['unit' => '-log10(M)', 'description' => 'pEC50, half maximal effective concentration.'],
+            'ki' => ['unit' => '-log10(M)', 'description' => 'pKi, inhibition constant.'],
+            'ic50' => ['unit' => '-log10(M)', 'description' => 'pIC50, half maximal inhibitory concentration.'],
+            'temperature' => ['unit' => '°C', 'description' => 'Temperature of the measurement.'],
+        ],
+    ];
+
     public function index(Request $request)
     {
         if ($request->attributes->get('response_format') === 'jsonld') {
@@ -47,6 +70,7 @@ class AboutController extends Controller
                     'dump' => config('fair.rdf.dump_url'),
                     'article' => config('fair.related_publications.0.url'),
                 ],
+                'units' => self::UNITS,
                 'links' => [
                     'openapi' => PublicApiUrl::to('openapi.json'),
                     'mcp' => PublicApiUrl::to('mcp'),

@@ -6,6 +6,7 @@ use App\Http\Resources\Api\Public\V1\InteractionActiveResource;
 use App\Http\Resources\Api\Public\V1\InteractionPassiveResource;
 use App\Mcp\Support\PaginatesFilteredResults;
 use App\Models\Structure;
+use App\Services\Interactions\PublicInteractionQuery;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -47,13 +48,11 @@ class GetStructureInteractionsTool extends Tool
         $perPage = $this->clampPerPage($validated['per_page'] ?? null);
         $page = $this->clampPage($validated['page'] ?? null);
 
-        $paginator = $validated['type'] === 'passive'
-            ? $structure->interactionsPassive()
-                ->with(['dataset.membrane', 'dataset.method', 'dataset.publications', 'publication'])
-                ->paginate($perPage, ['*'], 'page', $page)
-            : $structure->interactionsActive()
-                ->with(['protein', 'dataset.publications', 'publication'])
-                ->paginate($perPage, ['*'], 'page', $page);
+        $query = $validated['type'] === 'passive'
+            ? PublicInteractionQuery::passive(['structure' => $structure->identifier])
+            : PublicInteractionQuery::active(['structure' => $structure->identifier]);
+
+        $paginator = PublicInteractionQuery::paginate($query, $perPage, $page);
 
         $resourceClass = $validated['type'] === 'passive'
             ? InteractionPassiveResource::class

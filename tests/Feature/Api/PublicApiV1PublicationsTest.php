@@ -80,7 +80,7 @@ test('publication passive interactions downloads the latest export file', functi
     // A plain ->get() defaults to a browser-like Accept header (includes
     // text/html), which would route into the explorer page instead of
     // calling the controller — force JSON/binary negotiation explicitly.
-    $response = $this->getJson("/api/v1/publications/{$publication->id}/interactions/passive");
+    $response = $this->getJson("/api/v1/publications/{$publication->id}/interactions/passive/export");
 
     $response->assertOk();
     expect($response->streamedContent())->toBe('passive export contents');
@@ -90,7 +90,7 @@ test('publication active interactions downloads the latest export file', functio
     $publication = createApiPublication();
     createApiExportFile($publication, File::TYPE_EXPORT_INTERACTIONS_ACTIVE_PUBLICATION, 'active export contents');
 
-    $response = $this->getJson("/api/v1/publications/{$publication->id}/interactions/active");
+    $response = $this->getJson("/api/v1/publications/{$publication->id}/interactions/active/export");
 
     $response->assertOk();
     expect($response->streamedContent())->toBe('active export contents');
@@ -99,6 +99,6 @@ test('publication active interactions downloads the latest export file', functio
 test('publication interactions returns 404 when no export exists yet', function () {
     $publication = createApiPublication();
 
-    $this->getJson("/api/v1/publications/{$publication->id}/interactions/passive")
+    $this->getJson("/api/v1/publications/{$publication->id}/interactions/passive/export")
         ->assertNotFound();
 });

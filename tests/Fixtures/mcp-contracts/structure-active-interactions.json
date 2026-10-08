@@ -7,6 +7,7 @@
                 "ec50_accuracy": "number",
                 "ic50": "number",
                 "ic50_accuracy": "number",
+                "id": "number",
                 "ki": "number",
                 "ki_accuracy": "number",
                 "km": "number",
@@ -18,13 +19,26 @@
                     "id": "number",
                     "pmid": "string"
                 },
-                "protein": "string",
+                "protein": {
+                    "id": "number",
+                    "name": "string",
+                    "uniprot_id": "string",
+                    "url": "string"
+                },
+                "rdf": "string",
                 "secondary_reference": {
                     "citation": "string",
                     "id": "number",
                     "pmid": "string"
                 },
-                "temperature": "number"
+                "structure": {
+                    "identifier": "string",
+                    "name": "string",
+                    "url": "string"
+                },
+                "temperature": "number",
+                "type": "string",
+                "url": "string"
             }
         ],
         "meta": {

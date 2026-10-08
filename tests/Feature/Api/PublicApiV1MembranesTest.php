@@ -95,7 +95,7 @@ test('membrane interactions downloads the latest export file', function () {
     // A plain ->get() defaults to a browser-like Accept header (includes
     // text/html), which would route into the explorer page instead of
     // calling the controller — force JSON/binary negotiation explicitly.
-    $response = $this->getJson("/api/v1/membranes/{$membrane->id}/interactions");
+    $response = $this->getJson("/api/v1/membranes/{$membrane->id}/interactions/export");
 
     $response->assertOk();
     expect($response->streamedContent())->toBe('membrane export contents');
@@ -104,6 +104,6 @@ test('membrane interactions downloads the latest export file', function () {
 test('membrane interactions returns 404 when no export exists yet', function () {
     $membrane = createApiMembrane();
 
-    $this->getJson("/api/v1/membranes/{$membrane->id}/interactions")
+    $this->getJson("/api/v1/membranes/{$membrane->id}/interactions/export")
         ->assertNotFound();
 });

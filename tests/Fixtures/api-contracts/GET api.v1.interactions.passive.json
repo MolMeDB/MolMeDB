@@ -1,5 +1,5 @@
 {
-    "route": "GET api/v1/publications/{publication}/interactions/passive",
+    "route": "GET api/v1/interactions/passive",
     "status": 200,
     "content_type": "application/json",
     "body": {

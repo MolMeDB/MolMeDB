@@ -45,6 +45,56 @@
                 "vocabulary": "string"
             },
             "repository": "string",
+            "units": {
+                "interactions_active": {
+                    "ec50": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "ic50": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "ki": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "km": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "temperature": {
+                        "description": "string",
+                        "unit": "string"
+                    }
+                },
+                "interactions_passive": {
+                    "gpen": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "gwat": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "logk": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "logperm": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "temperature": {
+                        "description": "string",
+                        "unit": "string"
+                    },
+                    "x_min": {
+                        "description": "string",
+                        "unit": "string"
+                    }
+                }
+            },
             "url": "string",
             "version": "string"
         }

@@ -32,7 +32,7 @@ test('public API downloads link their license and citation', function () {
     $membrane = createApiMembrane();
     createApiExportFile($membrane, File::TYPE_EXPORT_INTERACTIONS_MEMBRANE, 'membrane export contents');
 
-    $link = $this->getJson("/api/v1/membranes/{$membrane->id}/interactions")
+    $link = $this->getJson("/api/v1/membranes/{$membrane->id}/interactions/export")
         ->assertOk()
         ->headers->get('Link');
 

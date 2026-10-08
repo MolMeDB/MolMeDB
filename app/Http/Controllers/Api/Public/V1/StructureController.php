@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Api\Public\V1;
 
+use App\Http\Controllers\Api\Public\V1\Concerns\ListsInteractions;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Public\V1\SearchActiveInteractionsRequest;
+use App\Http\Requests\Api\Public\V1\SearchPassiveInteractionsRequest;
 use App\Http\Requests\Api\Public\V1\SearchStructureRequest;
-use App\Http\Resources\Api\Public\V1\InteractionActiveResource;
-use App\Http\Resources\Api\Public\V1\InteractionPassiveResource;
 use App\Http\Resources\Api\Public\V1\StructureResource;
 use App\Models\Structure;
+use App\Services\Interactions\PublicInteractionQuery;
 use App\Services\Structures\StructureIdentifierStatus;
 use App\Support\PublicApiUrl;
 use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 /**
@@ -21,6 +22,8 @@ use Illuminate\Support\Str;
  */
 class StructureController extends Controller
 {
+    use ListsInteractions;
+
     public function index(SearchStructureRequest $request)
     {
         $filters = $request->filters();
@@ -53,37 +56,25 @@ class StructureController extends Controller
             'data' => [
                 'structure' => StructureResource::make($structure),
                 'total' => [
-                    'interactions_passive' => $structure->interactionsPassive()->count(),
-                    'interactions_active' => $structure->interactionsActive()->count(),
+                    'interactions_passive' => PublicInteractionQuery::total(PublicInteractionQuery::passive(['structure' => $structure->identifier])),
+                    'interactions_active' => PublicInteractionQuery::total(PublicInteractionQuery::active(['structure' => $structure->identifier])),
                 ],
             ],
         ]);
     }
 
-    public function interactionsPassive(string $identifier, Request $request)
+    public function interactionsPassive(string $identifier, SearchPassiveInteractionsRequest $request)
     {
         $structure = $this->findStructure($identifier);
 
-        $perPage = min(max($request->integer('per_page', 20), 1), 100);
-
-        $interactions = $structure->interactionsPassive()
-            ->with(['dataset.membrane', 'dataset.method', 'dataset.publications', 'publication'])
-            ->paginate($perPage);
-
-        return InteractionPassiveResource::collection($interactions);
+        return $this->passiveInteractions($request, ['structure' => $structure->identifier]);
     }
 
-    public function interactionsActive(string $identifier, Request $request)
+    public function interactionsActive(string $identifier, SearchActiveInteractionsRequest $request)
     {
         $structure = $this->findStructure($identifier);
 
-        $perPage = min(max($request->integer('per_page', 20), 1), 100);
-
-        $interactions = $structure->interactionsActive()
-            ->with(['protein', 'dataset.publications', 'publication'])
-            ->paginate($perPage);
-
-        return InteractionActiveResource::collection($interactions);
+        return $this->activeInteractions($request, ['structure' => $structure->identifier]);
     }
 
     /**

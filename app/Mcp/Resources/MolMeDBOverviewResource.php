@@ -38,15 +38,19 @@ class MolMeDBOverviewResource extends Resource
               (or "in-house calculations" for internally computed values).
 
             Passive interaction fields (structure <-> membrane, via a method):
-            - x_min: position of minimum free energy across the membrane (relative units).
-            - gpen: free energy of membrane penetration (kcal/mol).
-            - gwat: free energy of solvation in water (kcal/mol).
-            - logk: logarithm of the membrane/water partition coefficient.
-            - logperm: logarithm of membrane permeability.
+            - x_min: position of the free energy minimum across the membrane (nm).
+            - gpen: free energy barrier of membrane penetration (kcal/mol).
+            - gwat: free energy in the minimum relative to water (kcal/mol).
+            - logk: membrane/water partition coefficient, log10 of the ratio.
+            - logperm: membrane permeability coefficient, log10 of cm/s.
+            - temperature in °C; charge of the measured form as text ("0", "+1", "-1").
             - Each `_accuracy` field is the reported error/uncertainty for that value.
 
             Active interaction fields (structure <-> protein transporter):
-            - km, ec50, ki, ic50: standard pharmacological binding/inhibition constants.
+            - km, ec50, ki, ic50: pKm, pEC50, pKi and pIC50, i.e. -log10 of the
+              concentration in mol/L (higher value = stronger effect).
+            - type: kind of the interaction, e.g. "Substrate", "Inhibitor",
+              "Non-substrate", "Non-inhibitor".
 
             Every interaction carries a `primary_reference` (the publication it came
             from) and, when applicable, a `secondary_reference` (a related publication

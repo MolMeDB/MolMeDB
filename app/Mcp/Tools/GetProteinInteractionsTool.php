@@ -5,6 +5,7 @@ namespace App\Mcp\Tools;
 use App\Http\Resources\Api\Public\V1\InteractionActiveResource;
 use App\Mcp\Support\PaginatesFilteredResults;
 use App\Models\Protein;
+use App\Services\Interactions\PublicInteractionQuery;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -41,14 +42,11 @@ class GetProteinInteractionsTool extends Tool
             return Response::error('Protein not found.');
         }
 
-        $paginator = $protein->interactionsActive()
-            ->with(['protein', 'dataset.publications', 'publication'])
-            ->paginate(
-                $this->clampPerPage($validated['per_page'] ?? null),
-                ['*'],
-                'page',
-                $this->clampPage($validated['page'] ?? null),
-            );
+        $paginator = PublicInteractionQuery::paginate(
+            PublicInteractionQuery::active(['protein' => $protein->id]),
+            $this->clampPerPage($validated['per_page'] ?? null),
+            $this->clampPage($validated['page'] ?? null),
+        );
 
         return Response::structured($this->paginatorToResult($paginator, InteractionActiveResource::class));
     }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Public\V1\AboutController;
+use App\Http\Controllers\Api\Public\V1\InteractionController;
 use App\Http\Controllers\Api\Public\V1\MembraneController;
 use App\Http\Controllers\Api\Public\V1\MethodController;
 use App\Http\Controllers\Api\Public\V1\ProteinController;
@@ -24,6 +25,7 @@ Route::prefix('membranes')
         Route::get('/{membrane}', 'show');
         Route::get('/{membrane}/stats', 'stats');
         Route::get('/{membrane}/interactions', 'interactions');
+        Route::get('/{membrane}/interactions/export', 'export');
     });
 
 Route::prefix('methods')
@@ -34,6 +36,16 @@ Route::prefix('methods')
         Route::get('/{method}', 'show');
         Route::get('/{method}/stats', 'stats');
         Route::get('/{method}/interactions', 'interactions');
+        Route::get('/{method}/interactions/export', 'export');
+    });
+
+Route::prefix('interactions')
+    ->controller(InteractionController::class)
+    ->group(function () {
+        Route::get('/passive', 'indexPassive');
+        Route::get('/passive/{interaction}', 'showPassive')->whereNumber('interaction');
+        Route::get('/active', 'indexActive');
+        Route::get('/active/{interaction}', 'showActive')->whereNumber('interaction');
     });
 
 Route::prefix('structures')
@@ -54,6 +66,8 @@ Route::prefix('publications')
         Route::get('/{publication}/stats', 'stats');
         Route::get('/{publication}/interactions/passive', 'interactionsPassive');
         Route::get('/{publication}/interactions/active', 'interactionsActive');
+        Route::get('/{publication}/interactions/passive/export', 'exportPassive');
+        Route::get('/{publication}/interactions/active/export', 'exportActive');
     });
 
 Route::prefix('proteins')

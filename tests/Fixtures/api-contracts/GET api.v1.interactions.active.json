@@ -1,5 +1,8 @@
 {
-    "structured_content": {
+    "route": "GET api/v1/interactions/active",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
         "data": [
             {
                 "charge": "string",
@@ -41,11 +44,27 @@
                 "url": "string"
             }
         ],
+        "links": {
+            "first": "string",
+            "last": "string",
+            "next": "null",
+            "prev": "null"
+        },
         "meta": {
-            "has_more": "boolean",
+            "current_page": "number",
+            "from": "number",
             "last_page": "number",
-            "page": "number",
+            "links": [
+                {
+                    "active": "boolean",
+                    "label": "string",
+                    "page": "null|number",
+                    "url": "null|string"
+                }
+            ],
+            "path": "string",
             "per_page": "number",
+            "to": "number",
             "total": "number"
         }
     }

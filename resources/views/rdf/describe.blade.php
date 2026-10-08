@@ -51,6 +51,7 @@
         body { margin: 0; padding: 2rem 1rem; font-family: system-ui, sans-serif; color: var(--fg); background: var(--bg); }
         main { max-width: 960px; margin: 0 auto; }
         h1 { font-size: 1.25rem; word-break: break-all; margin: 0 0 .25rem; }
+        h2 { font-size: 1rem; margin: 2rem 0 .5rem; }
         p { color: var(--muted); margin: 0 0 1.5rem; font-size: .9rem; }
         table { width: 100%; border-collapse: collapse; font-size: .9rem; }
         th, td { text-align: left; vertical-align: top; padding: .5rem; border-bottom: 1px solid var(--line); word-break: break-word; }
@@ -72,31 +73,39 @@
         or query it at the <a href="{{ config('fair.rdf.sparql_endpoint') }}">SPARQL endpoint</a>.
     </p>
 
-    <table>
-        <thead>
-            <tr><th>Predicate</th><th>Object</th></tr>
-        </thead>
-        <tbody>
-            @foreach ($statements as $statement)
-                <tr>
-                    <td><a href="{{ $statement['predicate'] }}">{{ $compact($statement['predicate']) }}</a></td>
-                    <td>
-                        @if ($statement['object_type'] === 'uri')
-                            <a href="{{ $statement['object'] }}">{{ $compact($statement['object']) }}</a>
-                            @if ($statement['label'])
-                                <span class="label">({{ $statement['label'] }})</span>
+    @foreach (['outgoing' => ['Statements about this resource', 'Predicate', 'Object'], 'incoming' => ['Statements pointing to this resource', 'Subject', 'Predicate']] as $direction => [$caption, $first, $second])
+        @php $listing = $statements[$direction]; @endphp
+        <h2>{{ $caption }}</h2>
+        @if ($listing['rows'] === [])
+            <p>None.</p>
+        @else
+            <table>
+                <thead>
+                    <tr><th>{{ $first }}</th><th>{{ $second }}</th></tr>
+                </thead>
+                <tbody>
+                    @foreach ($listing['rows'] as $row)
+                        @php
+                            $predicate = '<a href="'.e($row['predicate']).'">'.e($compact($row['predicate'])).'</a>';
+                            $other = $row['type'] === 'uri'
+                                ? '<a href="'.e($row['value']).'">'.e($compact($row['value'])).'</a>'.($row['label'] ? ' <span class="label">('.e($row['label']).')</span>' : '')
+                                : e($row['value']).($row['datatype'] ? ' <span class="datatype">^^'.e($compact($row['datatype'])).'</span>' : '');
+                        @endphp
+                        <tr>
+                            @if ($direction === 'outgoing')
+                                <td>{!! $predicate !!}</td><td>{!! $other !!}</td>
+                            @else
+                                <td>{!! $other !!}</td><td>{!! $predicate !!}</td>
                             @endif
-                        @else
-                            {{ $statement['object'] }}
-                            @if ($statement['datatype'])
-                                <span class="datatype">^^{{ $compact($statement['datatype']) }}</span>
-                            @endif
-                        @endif
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            @if ($listing['truncated'])
+                <p>Only the first {{ $limit }} statements are listed; download the RDF or use the SPARQL endpoint for the rest.</p>
+            @endif
+        @endif
+    @endforeach
 
     <footer>
         Data: {{ config('fair.data_license.name') }} ·

@@ -66,6 +66,7 @@ class RdfController extends Controller
                     ->view('rdf.describe', [
                         'iri' => $resource->iri(),
                         'statements' => $sparql->statements($resource->iri()),
+                        'limit' => RdfSparqlClient::LISTING_LIMIT,
                         'formats' => self::FORMATS,
                     ])
                     ->header('Vary', 'Accept');

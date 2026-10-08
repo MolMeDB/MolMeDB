@@ -24,8 +24,30 @@ class StructureSmilesCanonicalizer
     {
         $smiles = trim($smiles);
 
+        return $this->canonical($smiles) ?? $smiles;
+    }
+
+    /**
+     * The RDKit canonical form of a substructure query, or the query as given
+     * when RDKit is not available or cannot read it.
+     *
+     * RDKit writes the hydrogen of an aromatic nitrogen ([nH]) to keep the
+     * SMILES valid, but in a Bingo query it requires that hydrogen: uracil
+     * would no longer match N-methyluracil, while a plain N of the Kekulé form
+     * leaves it free. The hydrogen is therefore left out of the query.
+     */
+    public function substructureQueryOrOriginal(string $smiles): string
+    {
+        $smiles = trim($smiles);
+        $canonical = $this->canonical($smiles);
+
+        return $canonical === null ? $smiles : str_replace('[nH]', 'n', $canonical);
+    }
+
+    private function canonical(string $smiles): ?string
+    {
         if ($smiles === '') {
-            return $smiles;
+            return null;
         }
 
         $key = 'structure-search:canonical-smiles:'.hash('sha256', $smiles);
@@ -38,7 +60,7 @@ class StructureSmilesCanonicalizer
         $canonical = (new Rdkit)->canonize_smiles($smiles);
 
         if (! is_string($canonical) || trim($canonical) === '') {
-            return $smiles;
+            return null;
         }
 
         Cache::put($key, trim($canonical), self::TTL_SECONDS);

@@ -41,7 +41,7 @@ class StructureFilter extends ModelFilter
             return $this;
         }
 
-        return $this->containingSubstructure($smiles);
+        return $this->containingSubstructure(app(StructureSmilesCanonicalizer::class)->substructureQueryOrOriginal($smiles));
     }
 
     public function inchikey(string $inchikey): void

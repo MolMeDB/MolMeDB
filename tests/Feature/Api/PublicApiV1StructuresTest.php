@@ -103,6 +103,27 @@ test('structures index finds substructure matches', function () {
         ->assertJsonPath('data.0.identifier', 'MM0001');
 });
 
+test('structures index finds substructure matches of a Kekulé SMILES in molecules stored as aromatic', function () {
+    // The RDKit form of uracil is aromatic and writes its N-H as [nH]; in a
+    // Bingo query that would require the hydrogen, so N-substituted uracils
+    // (and caffeine) must still match, as they do for the Kekulé form.
+    config()->set('services.rdkit.url', 'https://rdkit.test');
+    Http::fake([
+        'https://rdkit.test/test' => Http::response([]),
+        'https://rdkit.test/structure/canonize*' => Http::response(['data' => 'O=c1cc[nH]c(=O)[nH]1']),
+    ]);
+    createApiStructure(['identifier' => 'MM0001', 'canonical_smiles' => 'O=c1cc[nH]c(=O)[nH]1']);
+    createApiStructure(['identifier' => 'MM0002', 'canonical_smiles' => 'Cn1ccc(=O)[nH]c1=O']);
+    createApiStructure(['identifier' => 'MM0003', 'canonical_smiles' => 'Cn1c(=O)c2c(ncn2C)n(C)c1=O']);
+    createApiStructure(['identifier' => 'MM0004', 'canonical_smiles' => 'c1cc[nH]c1']);
+
+    $response = $this->getJson('/api/v1/structures?substructure='.urlencode('O=C1NC(=O)C=CN1'))
+        ->assertOk();
+
+    expect(collect($response->json('data'))->pluck('identifier')->sort()->values()->all())
+        ->toBe(['MM0001', 'MM0002', 'MM0003']);
+});
+
 test('structures index rejects per_page above 100', function () {
     // Unlike Membrane/Method/Protein/Publication (which silently clamp),
     // SearchStructureRequest validates per_page directly and rejects it.

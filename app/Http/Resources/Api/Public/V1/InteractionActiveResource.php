@@ -26,7 +26,7 @@ class InteractionActiveResource extends JsonResource
             'rdf' => JsonLdContext::rdfIri("transporter/tra{$this->id}"),
             'structure' => StructureReferenceResource::make($this->structure),
             'protein' => $this->protein ? ProteinReferenceResource::make($this->protein) : null,
-            /** Type of the interaction with the transporter, e.g. "Substrate", "Inhibitor", "Non-substrate". */
+            /** Type of the interaction with the transporter, e.g. "Substrate" (pKm or pEC50 ≥ 5), "Non-substrate" (< 5), "Inhibitor" (pKi or pIC50 ≥ 5), "Non-inhibitor" (< 5). */
             'type' => $this->category?->title,
             /**
              * Temperature [°C].
@@ -40,7 +40,7 @@ class InteractionActiveResource extends JsonResource
             'charge' => $this->charge,
             'note' => $this->note,
             /**
-             * pKm, the Michaelis constant as −log10 of mol/L.
+             * pKm, the negative decimal logarithm of the Michaelis constant Km [M].
              *
              * @var float|null
              */
@@ -48,7 +48,7 @@ class InteractionActiveResource extends JsonResource
             /** @var float|null */
             'km_accuracy' => $this->km_accuracy,
             /**
-             * pEC50, the half maximal effective concentration as −log10 of mol/L.
+             * pEC50, the negative decimal logarithm of the half maximal effective concentration EC50 [M].
              *
              * @var float|null
              */
@@ -56,7 +56,7 @@ class InteractionActiveResource extends JsonResource
             /** @var float|null */
             'ec50_accuracy' => $this->ec50_accuracy,
             /**
-             * pKi, the inhibition constant as −log10 of mol/L.
+             * pKi, the negative decimal logarithm of the inhibition constant Ki [M].
              *
              * @var float|null
              */
@@ -64,7 +64,7 @@ class InteractionActiveResource extends JsonResource
             /** @var float|null */
             'ki_accuracy' => $this->ki_accuracy,
             /**
-             * pIC50, the half maximal inhibitory concentration as −log10 of mol/L.
+             * pIC50, the negative decimal logarithm of the half maximal inhibitory concentration IC50 [M].
              *
              * @var float|null
              */

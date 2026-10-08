@@ -39,7 +39,7 @@ class InteractionPassiveResource extends JsonResource
             'charge' => $this->charge,
             'note' => $this->note,
             /**
-             * Position of the free energy minimum across the membrane [nm].
+             * Xmin, the drug position with minimum energy in the membrane [nm].
              *
              * @var float|null
              */
@@ -47,7 +47,7 @@ class InteractionPassiveResource extends JsonResource
             /** @var float|null */
             'x_min_accuracy' => $this->x_min_accuracy,
             /**
-             * Free energy barrier of membrane penetration [kcal/mol].
+             * ΔGpen, the penetration barrier [kcal/mol].
              *
              * @var float|null
              */
@@ -55,7 +55,7 @@ class InteractionPassiveResource extends JsonResource
             /** @var float|null */
             'gpen_accuracy' => $this->gpen_accuracy,
             /**
-             * Free energy in the minimum relative to water [kcal/mol].
+             * ΔGwat, the affinity towards the membrane [kcal/mol].
              *
              * @var float|null
              */
@@ -63,7 +63,7 @@ class InteractionPassiveResource extends JsonResource
             /** @var float|null */
             'gwat_accuracy' => $this->gwat_accuracy,
             /**
-             * Partition coefficient, log10 of the membrane/water ratio.
+             * LogK, the logarithm of the membrane-water partition coefficient [mol_m/mol_w].
              *
              * @var float|null
              */
@@ -71,7 +71,7 @@ class InteractionPassiveResource extends JsonResource
             /** @var float|null */
             'logk_accuracy' => $this->logk_accuracy,
             /**
-             * Permeability coefficient, log10 of cm/s.
+             * LogPerm, the logarithm of the permeability coefficient [cm/s].
              *
              * @var float|null
              */

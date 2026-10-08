@@ -38,19 +38,20 @@ class MolMeDBOverviewResource extends Resource
               (or "in-house calculations" for internally computed values).
 
             Passive interaction fields (structure <-> membrane, via a method):
-            - x_min: position of the free energy minimum across the membrane (nm).
-            - gpen: free energy barrier of membrane penetration (kcal/mol).
-            - gwat: free energy in the minimum relative to water (kcal/mol).
-            - logk: membrane/water partition coefficient, log10 of the ratio.
-            - logperm: membrane permeability coefficient, log10 of cm/s.
+            - x_min: Xmin, the drug position with minimum energy in the membrane (nm).
+            - gpen: ΔGpen, the penetration barrier (kcal/mol).
+            - gwat: ΔGwat, the affinity towards the membrane (kcal/mol).
+            - logk: LogK, logarithm of the membrane-water partition coefficient (mol_m/mol_w).
+            - logperm: LogPerm, logarithm of the permeability coefficient (cm/s).
             - temperature in °C; charge of the measured form as text ("0", "+1", "-1").
             - Each `_accuracy` field is the reported error/uncertainty for that value.
 
             Active interaction fields (structure <-> protein transporter):
-            - km, ec50, ki, ic50: pKm, pEC50, pKi and pIC50, i.e. -log10 of the
-              concentration in mol/L (higher value = stronger effect).
-            - type: kind of the interaction, e.g. "Substrate", "Inhibitor",
-              "Non-substrate", "Non-inhibitor".
+            - km, ec50, ki, ic50: pKm, pEC50, pKi and pIC50, the negative decimal
+              logarithms of Km, EC50, Ki and IC50 in mol/L (higher = stronger effect).
+            - type: kind of the interaction: "Substrate" (pKm or pEC50 >= 5),
+              "Non-substrate" (< 5), "Inhibitor" (pKi or pIC50 >= 5),
+              "Non-inhibitor" (< 5), and their combinations.
 
             Every interaction carries a `primary_reference` (the publication it came
             from) and, when applicable, a `secondary_reference` (a related publication

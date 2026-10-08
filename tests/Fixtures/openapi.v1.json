@@ -132,7 +132,7 @@
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "Position of the free energy minimum across the membrane."
+                                                                                    "const": "Xmin, the drug position with minimum energy in the membrane."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -149,7 +149,7 @@
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "Free energy barrier of membrane penetration."
+                                                                                    "const": "ΔGpen, the penetration barrier."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -166,7 +166,7 @@
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "Free energy in the minimum relative to water."
+                                                                                    "const": "ΔGwat, the affinity towards the membrane."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -179,11 +179,11 @@
                                                                             "properties": {
                                                                                 "unit": {
                                                                                     "type": "string",
-                                                                                    "const": "log10(membrane/water)"
+                                                                                    "const": "log10(mol_m/mol_w)"
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "Membrane/water partition coefficient."
+                                                                                    "const": "LogK, the logarithm of the membrane-water partition coefficient."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -200,7 +200,7 @@
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "Membrane permeability coefficient."
+                                                                                    "const": "LogPerm, the logarithm of the permeability coefficient."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -247,7 +247,7 @@
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "pKm, Michaelis constant of transport."
+                                                                                    "const": "pKm, the negative decimal logarithm of the Michaelis constant Km."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -264,7 +264,7 @@
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "pEC50, half maximal effective concentration."
+                                                                                    "const": "pEC50, the negative decimal logarithm of the half maximal effective concentration."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -281,7 +281,7 @@
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "pKi, inhibition constant."
+                                                                                    "const": "pKi, the negative decimal logarithm of the inhibition constant Ki."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -298,7 +298,7 @@
                                                                                 },
                                                                                 "description": {
                                                                                     "type": "string",
-                                                                                    "const": "pIC50, half maximal inhibitory concentration."
+                                                                                    "const": "pIC50, the negative decimal logarithm of the half maximal inhibitory concentration."
                                                                                 }
                                                                             },
                                                                             "required": [
@@ -5140,7 +5140,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "Type of the interaction with the transporter, e.g. \"Substrate\", \"Inhibitor\", \"Non-substrate\"."
+                        "description": "Type of the interaction with the transporter, e.g. \"Substrate\" (pKm or pEC50 ≥ 5), \"Non-substrate\" (< 5), \"Inhibitor\" (pKi or pIC50 ≥ 5), \"Non-inhibitor\" (< 5)."
                     },
                     "temperature": {
                         "type": [
@@ -5167,7 +5167,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "pKm, the Michaelis constant as −log10 of mol/L."
+                        "description": "pKm, the negative decimal logarithm of the Michaelis constant Km [M]."
                     },
                     "km_accuracy": {
                         "type": [
@@ -5180,7 +5180,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "pEC50, the half maximal effective concentration as −log10 of mol/L."
+                        "description": "pEC50, the negative decimal logarithm of the half maximal effective concentration EC50 [M]."
                     },
                     "ec50_accuracy": {
                         "type": [
@@ -5193,7 +5193,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "pKi, the inhibition constant as −log10 of mol/L."
+                        "description": "pKi, the negative decimal logarithm of the inhibition constant Ki [M]."
                     },
                     "ki_accuracy": {
                         "type": [
@@ -5206,7 +5206,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "pIC50, the half maximal inhibitory concentration as −log10 of mol/L."
+                        "description": "pIC50, the negative decimal logarithm of the half maximal inhibitory concentration IC50 [M]."
                     },
                     "ic50_accuracy": {
                         "type": [
@@ -5322,7 +5322,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "Position of the free energy minimum across the membrane [nm]."
+                        "description": "Xmin, the drug position with minimum energy in the membrane [nm]."
                     },
                     "x_min_accuracy": {
                         "type": [
@@ -5335,7 +5335,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "Free energy barrier of membrane penetration [kcal/mol]."
+                        "description": "ΔGpen, the penetration barrier [kcal/mol]."
                     },
                     "gpen_accuracy": {
                         "type": [
@@ -5348,7 +5348,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "Free energy in the minimum relative to water [kcal/mol]."
+                        "description": "ΔGwat, the affinity towards the membrane [kcal/mol]."
                     },
                     "gwat_accuracy": {
                         "type": [
@@ -5361,7 +5361,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "Partition coefficient, log10 of the membrane/water ratio."
+                        "description": "LogK, the logarithm of the membrane-water partition coefficient [mol_m/mol_w]."
                     },
                     "logk_accuracy": {
                         "type": [
@@ -5374,7 +5374,7 @@
                             "number",
                             "null"
                         ],
-                        "description": "Permeability coefficient, log10 of cm/s."
+                        "description": "LogPerm, the logarithm of the permeability coefficient [cm/s]."
                     },
                     "logperm_accuracy": {
                         "type": [

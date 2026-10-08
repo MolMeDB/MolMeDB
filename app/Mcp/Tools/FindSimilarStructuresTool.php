@@ -44,8 +44,7 @@ class FindSimilarStructuresTool extends Tool
             return Response::error('Structure not found.');
         }
 
-        // The same limits as RateLimiter::for('public-api-similarity') of the REST API.
-        if (! $this->passesThrottle('similarity', $httpRequest->ip(), perMinute: 10, perHour: 60)) {
+        if (! $this->passesThrottle('similarity', $httpRequest->ip())) {
             return Response::error('Similarity search rate limit exceeded. Try again later.');
         }
 

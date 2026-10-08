@@ -35,6 +35,15 @@ class DocumentArticle extends Model
         return $query->where('is_published', true);
     }
 
+    /**
+     * Generated from a file in resources/docs (see `php artisan docs:sync`),
+     * not edited in the administration.
+     */
+    public function isManaged(): bool
+    {
+        return $this->source !== null;
+    }
+
     public function fullSlug(): string
     {
         if ($this->parent?->slug) {

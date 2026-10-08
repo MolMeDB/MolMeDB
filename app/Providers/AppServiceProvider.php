@@ -80,8 +80,8 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('public-api', function (Request $request): array {
             return [
-                Limit::perMinute(60)->by('minute:'.$request->ip()),
-                Limit::perDay(5000)->by('day:'.$request->ip()),
+                Limit::perMinute(config('public_api.rate_limits.requests.per_minute'))->by('minute:'.$request->ip()),
+                Limit::perDay(config('public_api.rate_limits.requests.per_day'))->by('day:'.$request->ip()),
             ];
         });
 
@@ -94,8 +94,8 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return [
-                Limit::perMinute(6)->by('substructure-minute:'.$request->ip()),
-                Limit::perHour(30)->by('substructure-hour:'.$request->ip()),
+                Limit::perMinute(config('public_api.rate_limits.substructure.per_minute'))->by('substructure-minute:'.$request->ip()),
+                Limit::perHour(config('public_api.rate_limits.substructure.per_hour'))->by('substructure-hour:'.$request->ip()),
             ];
         });
 
@@ -103,8 +103,8 @@ class AppServiceProvider extends ServiceProvider
         // similarity search at the lowest threshold (0.7) scores up to
         // thousands of structures (~0.5 s on production data).
         RateLimiter::for('public-api-similarity', fn (Request $request): array => [
-            Limit::perMinute(10)->by('similarity-minute:'.$request->ip()),
-            Limit::perHour(60)->by('similarity-hour:'.$request->ip()),
+            Limit::perMinute(config('public_api.rate_limits.similarity.per_minute'))->by('similarity-minute:'.$request->ip()),
+            Limit::perHour(config('public_api.rate_limits.similarity.per_hour'))->by('similarity-hour:'.$request->ip()),
         ]);
 
         Event::listen(CommandFinished::class, RunPredictionsMigrationsAfterDefaultMigrate::class);

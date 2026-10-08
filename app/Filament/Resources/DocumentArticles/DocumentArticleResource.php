@@ -22,6 +22,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -46,7 +47,13 @@ class DocumentArticleResource extends Resource
     {
         return $schema
             ->components([
+                Callout::make('Generated from the repository')
+                    ->description(fn (?DocumentArticle $record): string => "This article is published from resources/docs/{$record?->source} by `php artisan docs:sync` on every deployment. Change it in the repository; edits made here would be overwritten.")
+                    ->warning()
+                    ->columnSpanFull()
+                    ->visible(fn (?DocumentArticle $record): bool => (bool) $record?->isManaged()),
                 Select::make('parent_id')
+                    ->disabled(fn (?DocumentArticle $record): bool => (bool) $record?->isManaged())
                     ->label('Parent article')
                     ->options(fn (?DocumentArticle $record) => DocumentArticle::query()
                         ->whereNull('parent_id')
@@ -65,6 +72,7 @@ class DocumentArticleResource extends Resource
                         }
                     }),
                 TextInput::make('title')
+                    ->disabled(fn (?DocumentArticle $record): bool => (bool) $record?->isManaged())
                     ->required()
                     ->maxLength(255)
                     ->live(onBlur: true)
@@ -74,6 +82,7 @@ class DocumentArticleResource extends Resource
                         }
                     }),
                 TextInput::make('slug')
+                    ->disabled(fn (?DocumentArticle $record): bool => (bool) $record?->isManaged())
                     ->required()
                     ->maxLength(255)
                     ->rule('alpha_dash')
@@ -93,6 +102,7 @@ class DocumentArticleResource extends Resource
                     ->default(true)
                     ->required(),
                 RichEditor::make('content')
+                    ->disabled(fn (?DocumentArticle $record): bool => (bool) $record?->isManaged())
                     ->columnSpanFull()
                     ->required()
                     ->toolbarButtons([
@@ -159,6 +169,11 @@ class DocumentArticleResource extends Resource
                     ->sortable(),
                 TextColumn::make('slug')
                     ->searchable(),
+                IconColumn::make('source')
+                    ->label('From repository')
+                    ->tooltip(fn (DocumentArticle $record): ?string => $record->source)
+                    ->boolean()
+                    ->getStateUsing(fn (DocumentArticle $record): bool => $record->isManaged()),
                 TextColumn::make('position')
                     ->sortable()
                     ->alignCenter(),

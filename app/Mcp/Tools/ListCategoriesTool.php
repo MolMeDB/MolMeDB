@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/{membranes,methods,proteins}/categories.
+ * Mirrors GET /api/v1/{membranes,methods,proteins}/categories.
  */
 #[Description('Get the category tree for membranes, methods, or proteins — use category ids from here as the category_id argument on the matching search tool.')]
 #[IsReadOnly]

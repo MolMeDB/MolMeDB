@@ -1,0 +1,38 @@
+{
+    "structured_content": {
+        "data": [
+            {
+                "charge": "string",
+                "ec50": "number",
+                "ec50_accuracy": "number",
+                "ic50": "number",
+                "ic50_accuracy": "number",
+                "ki": "number",
+                "ki_accuracy": "number",
+                "km": "number",
+                "km_accuracy": "number",
+                "note": "string",
+                "ph": "number",
+                "primary_reference": {
+                    "citation": "string",
+                    "id": "number",
+                    "pmid": "string"
+                },
+                "protein": "string",
+                "secondary_reference": {
+                    "citation": "string",
+                    "id": "number",
+                    "pmid": "string"
+                },
+                "temperature": "number"
+            }
+        ],
+        "meta": {
+            "has_more": "boolean",
+            "last_page": "number",
+            "page": "number",
+            "per_page": "number",
+            "total": "number"
+        }
+    }
+}

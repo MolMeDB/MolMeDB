@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/publications/{id} + its stats endpoint
+ * Mirrors GET /api/v1/publications/{id} + its stats endpoint
  * (PublicationController::show/stats) combined into one call.
  */
 #[Description('Get full detail (journal/volume/authors, plus interaction/membrane/method/dataset counts) for one MolMeDB publication by id.')]

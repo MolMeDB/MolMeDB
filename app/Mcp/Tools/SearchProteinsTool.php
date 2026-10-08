@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/proteins (ProteinController::index).
+ * Mirrors GET /api/v1/proteins (ProteinController::index).
  */
 #[Description('Search/list MolMeDB protein targets by UniProt id/identifier text and/or category.')]
 #[IsReadOnly]

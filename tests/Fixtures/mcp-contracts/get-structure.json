@@ -1,0 +1,28 @@
+{
+    "structured_content": {
+        "structure": {
+            "canonical_smiles": "string",
+            "created_at": "string",
+            "identifier": "string",
+            "identifiers": [
+                {
+                    "type": "string",
+                    "uri": "string",
+                    "value": "string"
+                }
+            ],
+            "inchi": "string",
+            "inchikey": "string",
+            "landing_page": "string",
+            "logp": "number",
+            "molecular_weight": "number",
+            "name": "string",
+            "updated_at": "string",
+            "url": "string"
+        },
+        "total": {
+            "interactions_active": "number",
+            "interactions_passive": "number"
+        }
+    }
+}

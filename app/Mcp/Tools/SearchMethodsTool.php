@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/methods (MethodController::index).
+ * Mirrors GET /api/v1/methods (MethodController::index).
  */
 #[Description('Search/list MolMeDB experimental/computational methods by name/abbreviation text and/or category.')]
 #[IsReadOnly]

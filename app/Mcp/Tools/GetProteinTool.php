@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/proteins/{id} + its stats endpoint
+ * Mirrors GET /api/v1/proteins/{id} + its stats endpoint
  * (ProteinController::show/stats) combined into one call.
  */
 #[Description('Get detail (including identifiers and interaction/structure counts) for one MolMeDB protein target by id.')]

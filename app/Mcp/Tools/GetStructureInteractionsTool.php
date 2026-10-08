@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/structures/{identifier}/interactions/{passive|active}
+ * Mirrors GET /api/v1/structures/{identifier}/interactions/{passive|active}
  * (StructureController::interactionsPassive/interactionsActive), unified
  * behind a `type` argument since both are already live-paginated JSON.
  */

@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/publications (PublicationController::index).
+ * Mirrors GET /api/v1/publications (PublicationController::index).
  */
 #[Description('Search/list MolMeDB publications by citation/title/DOI text, or by exact id using "id:<n>".')]
 #[IsReadOnly]

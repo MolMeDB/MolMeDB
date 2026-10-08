@@ -1,0 +1,24 @@
+{
+    "structured_content": {
+        "data": [
+            {
+                "children": [
+                    {
+                        "children": [],
+                        "id": "number",
+                        "items": [
+                            {
+                                "id": "number",
+                                "uniprot_id": "string"
+                            }
+                        ],
+                        "title": "string"
+                    }
+                ],
+                "id": "number",
+                "items": [],
+                "title": "string"
+            }
+        ]
+    }
+}

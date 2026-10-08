@@ -18,7 +18,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/structures (StructureController::index) —
+ * Mirrors GET /api/v1/structures (StructureController::index) —
  * same Structure::filter() + StructureFilter, same "no identifier yet"
  * exclusion, same substructure-search cost tradeoff (simple pagination,
  * extra rate limit).

@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/proteins/{id}/interactions
+ * Mirrors GET /api/v1/proteins/{id}/interactions
  * (ProteinController::interactions) — already live-paginated JSON.
  */
 #[Description('List the active membrane-interaction records recorded for one MolMeDB protein target.')]

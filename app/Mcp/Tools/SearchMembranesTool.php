@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/membranes (MembraneController::index).
+ * Mirrors GET /api/v1/membranes (MembraneController::index).
  */
 #[Description('Search/list MolMeDB membranes by name/abbreviation text and/or category.')]
 #[IsReadOnly]

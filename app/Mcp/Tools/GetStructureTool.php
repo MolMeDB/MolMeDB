@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/structures/{identifier} + its stats endpoint
+ * Mirrors GET /api/v1/structures/{identifier} + its stats endpoint
  * (StructureController::show/stats) combined into one call.
  */
 #[Description('Get full detail (including identifiers and interaction counts) for one MolMeDB structure by its public identifier.')]

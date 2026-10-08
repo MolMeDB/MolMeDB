@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 /**
- * Mirrors GET /api/public/v1/membranes/{id} + its stats endpoint
+ * Mirrors GET /api/v1/membranes/{id} + its stats endpoint
  * (MembraneController::show/stats) combined into one call.
  */
 #[Description('Get detail (including categories and interaction/structure counts) for one MolMeDB membrane by id.')]

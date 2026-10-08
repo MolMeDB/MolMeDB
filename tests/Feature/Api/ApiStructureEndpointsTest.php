@@ -38,7 +38,7 @@ test('structure mol 3d endpoint returns stored mol content', function () {
 
     $response->assertOk();
     expect($response->getContent())->toBe($molfile)
-        ->and($response->headers->get('content-type'))->toContain('chemical/x-mdl-sdfile');
+        ->and($response->headers->get('content-type'))->toContain('chemical/x-mdl-molfile');
 });
 
 test('structure mol 3d endpoint regenerates invalid stored mol content', function () {

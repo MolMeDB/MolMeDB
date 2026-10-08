@@ -52,6 +52,7 @@ Route::prefix('structures')
     ->controller(StructureController::class)
     ->group(function () {
         Route::get('/{identifier}/stats', 'stats');
+        Route::get('/{identifier}/molfile', 'molfile');
         Route::get('/{identifier}/interactions/passive', 'interactionsPassive');
         Route::get('/{identifier}/interactions/active', 'interactionsActive');
         Route::get('/{identifier}', 'show');

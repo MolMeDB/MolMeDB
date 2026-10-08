@@ -55,3 +55,20 @@ test('public API preflight requests keep their contract', function () {
         'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'GET',
     ])->assertApiContract('OPTIONS api/v1/{any}');
 });
+
+test('public API structure molfile keeps its contract', function () {
+    $world = seedApiContractWorld();
+    $world['structure']->update(['molfile_3d' => <<<'MOL'
+Caffeine
+  RDKit          3D
+
+  2  1  0  0  0  0  0  0  0  0999 V2000
+    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.2000    0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  0
+M  END
+MOL]);
+
+    $this->get('/api/v1/structures/MM00040/molfile', ['Accept' => '*/*'])
+        ->assertApiContract('GET api/v1/structures/{identifier}/molfile');
+});

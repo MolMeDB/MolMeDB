@@ -2,7 +2,16 @@
     "structured_content": {
         "structure": {
             "canonical_smiles": "string",
+            "charge": "number",
             "created_at": "string",
+            "depiction_url": "string",
+            "forms": [
+                {
+                    "identifier": "string",
+                    "name": "null",
+                    "url": "string"
+                }
+            ],
             "identifier": "string",
             "identifiers": [
                 {
@@ -16,7 +25,9 @@
             "landing_page": "string",
             "logp": "number",
             "molecular_weight": "number",
+            "molfile_url": "string",
             "name": "string",
+            "parent": "null",
             "updated_at": "string",
             "url": "string"
         },

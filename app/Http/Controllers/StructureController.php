@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateStructureRequest;
 use App\Http\Resources\StructureResource;
 use App\Models\Category;
 use App\Models\Structure;
+use App\Services\Structures\Structure3dMolfile;
 use App\Services\Structures\StructureIdentifierStatus;
 use Modules\Rdkit\Rdkit;
 
@@ -28,7 +29,7 @@ class StructureController extends Controller
         //
     }
 
-    public function mol3D(string $identifier)
+    public function mol3D(string $identifier, Structure3dMolfile $molfiles)
     {
         $structure = Structure::where('identifier', $identifier)->first();
 
@@ -38,72 +39,16 @@ class StructureController extends Controller
             ], 404);
         }
 
-        if ($this->isValidMolfile($structure->molfile_3d)) {
-            return response($structure->molfile_3d)
-                ->header('Content-Type', 'chemical/x-mdl-sdfile');
-        }
+        $molfile = $molfiles->of($structure);
 
-        if ($structure->molfile_3d !== null) {
-            $structure->molfile_3d = null;
-            $structure->save();
-        }
-
-        $rdkit = new Rdkit;
-
-        $molContent = $rdkit->get_3d_structure($structure->canonical_smiles);
-
-        if (! $this->isValidMolfile($molContent)) {
+        if ($molfile === null) {
             return response()->json([
                 'message' => '3D structure could not be generated.',
             ], 422);
         }
 
-        $structure->molfile_3d = $molContent;
-        $structure->save();
-
-        return response($molContent)
-            ->header('Content-Type', 'chemical/x-mdl-sdfile');
-    }
-
-    private function isValidMolfile(?string $molfile): bool
-    {
-        if (! $molfile || trim($molfile) === '') {
-            return false;
-        }
-
-        $lines = preg_split('/\R/', trim($molfile));
-
-        if (! is_array($lines) || count($lines) < 4) {
-            return false;
-        }
-
-        $endLineExists = collect($lines)->contains(fn (string $line): bool => trim($line) === 'M  END');
-
-        if (! $endLineExists) {
-            return false;
-        }
-
-        foreach ($lines as $index => $line) {
-            if (str_contains($line, 'V3000')) {
-                return collect($lines)->contains(fn (string $line): bool => str_contains($line, 'M  V30 BEGIN CTAB'))
-                    && collect($lines)->contains(fn (string $line): bool => str_contains($line, 'M  V30 END CTAB'));
-            }
-
-            if (! str_contains($line, 'V2000')) {
-                continue;
-            }
-
-            if (preg_match('/^\s*(\d+)\s+(\d+).*V2000/', $line, $matches) !== 1) {
-                return false;
-            }
-
-            $atomCount = (int) $matches[1];
-            $bondCount = (int) $matches[2];
-
-            return count($lines) >= $index + $atomCount + $bondCount + 2;
-        }
-
-        return false;
+        return response($molfile)
+            ->header('Content-Type', Structure3dMolfile::CONTENT_TYPE);
     }
 
     /**

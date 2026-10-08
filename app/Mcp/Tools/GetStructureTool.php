@@ -36,7 +36,7 @@ class GetStructureTool extends Tool
             return Response::error('Structure not found.');
         }
 
-        $structure->load('identifiers');
+        $structure->load(['identifiers', 'parent', 'children']);
 
         return Response::structured([
             'structure' => StructureResource::make($structure)->withDetails()->resolve(),

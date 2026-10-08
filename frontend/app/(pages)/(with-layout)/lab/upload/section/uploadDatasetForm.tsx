@@ -28,6 +28,7 @@ import {
 } from "react-icons/md";
 import { useHandle401 } from "@/lib/api/admin/redirections";
 import MyUploadsList from "./myUploads";
+import UploadFormatGuide from "./uploadFormatGuide";
 import UploadRecordPanel from "./uploadRecordPanel";
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
@@ -638,6 +639,8 @@ export default function UploadDatasetForm(props: {
           <SelectItem key="1">Passive interactions</SelectItem>
           <SelectItem key="2">Active interactions</SelectItem>
         </Select>
+
+        <UploadFormatGuide datasetType={datasetType} />
 
         <Input
           label="Dataset name (optional)"

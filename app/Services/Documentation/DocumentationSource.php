@@ -37,7 +37,7 @@ class DocumentationSource
      */
     public static function all(?string $directory = null): array
     {
-        $directory ??= resource_path('docs');
+        $directory ??= config('documentation.directory');
 
         $paths = collect(File::allFiles($directory))
             ->map(fn (SplFileInfo $file): string => $file->getRelativePathname())

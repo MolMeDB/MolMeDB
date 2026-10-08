@@ -697,11 +697,13 @@ function highlightCodeBlocks(parsedDocument: Document): void {
 
   codeBlocks.forEach((block) => {
     const language = detectCodeLanguage(block);
-    block.setAttribute("data-language", language);
 
+    // Plain blocks keep their own language as the label.
     if (language === "text") {
       return;
     }
+
+    block.setAttribute("data-language", language);
 
     const codeElement = block.querySelector("code");
     const source = codeElement?.textContent ?? block.textContent ?? "";

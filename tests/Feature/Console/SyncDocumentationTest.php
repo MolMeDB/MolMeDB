@@ -69,13 +69,37 @@ test('an article written in the administration is taken over and keeps its posit
 });
 
 test('an article whose source was removed is unpublished', function () {
-    $stale = DocumentArticle::create(['slug' => 'removed', 'title' => 'Removed', 'content' => '<p>Gone</p>', 'source' => 'removed.md.blade.php']);
+    $stale = DocumentArticle::create(['slug' => 'removed', 'title' => 'Removed', 'content' => '<p>Gone</p>', 'source' => 'removed.md.blade.php', 'synced_from_source' => true]);
     $written = DocumentArticle::create(['slug' => 'about', 'title' => 'About', 'content' => '<p>Kept</p>']);
 
     syncFixtureDocumentation();
 
     expect($stale->refresh()->is_published)->toBeFalse()
         ->and($written->refresh()->is_published)->toBeTrue();
+});
+
+test('an article switched to manual editing in the administration is left alone', function () {
+    syncFixtureDocumentation();
+    $guide = DocumentArticle::where('slug', 'guide')->firstOrFail();
+    $guide->update(['synced_from_source' => false, 'content' => '<p>Edited by hand</p>']);
+
+    $this->artisan('docs:sync', ['--directory' => base_path(DOCS_FIXTURES)])
+        ->expectsOutputToContain('skipped: edited in the administration')
+        ->assertSuccessful();
+
+    expect($guide->refresh())
+        ->content->toBe('<p>Edited by hand</p>')
+        ->source->toBe('guide.md.blade.php')
+        ->isManaged()->toBeFalse();
+});
+
+test('a source linked to an article elsewhere updates that article', function () {
+    $article = DocumentArticle::create(['slug' => 'handbook', 'title' => 'Handbook', 'content' => '<p>Old</p>', 'source' => 'guide.md.blade.php', 'synced_from_source' => true]);
+
+    syncFixtureDocumentation();
+
+    expect($article->refresh())->title->toBe('Guide')->slug->toBe('handbook')
+        ->and(DocumentArticle::where('slug', 'guide')->exists())->toBeFalse();
 });
 
 test('a dry run saves nothing', function () {

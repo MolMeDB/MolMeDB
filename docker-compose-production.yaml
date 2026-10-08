@@ -1,4 +1,8 @@
 services:
+  # The only entry point: routes every MolMeDB domain to the frontend,
+  # Laravel, CDK Depict or the RDF dereferencing, see
+  # docker/production/nginx/README.md. Plain HTTP, reachable only from the
+  # host, where the TLS proxy (Apache) passes all domains to it.
   web:
     image: molmedb-nginx
     build:
@@ -10,13 +14,17 @@ services:
     volumes:
       - ./storage:/var/www/storage
     tty: true
+    environment:
+      MOLMEDB_SITE_HOST: ${MOLMEDB_SITE_HOST:-molmedb.upol.cz}
+      MOLMEDB_ADMIN_HOST: ${MOLMEDB_ADMIN_HOST:-admin.molmedb.upol.cz}
+      MOLMEDB_RDF_HOST: ${MOLMEDB_RDF_HOST:-rdf.molmedb.upol.cz}
     ports:
-      - "8443:443"
+      - "127.0.0.1:8443:80"
     networks:
       - molmedb-network
     depends_on:
       app:
-        condition: service_healthy
+        condition: service_started
       storage-init:
         condition: service_completed_successfully
 
@@ -58,8 +66,8 @@ services:
     env_file:
       - .env
     environment:
-      # - APP_ENV=production
-      # - APP_DEBUG=false
+      - APP_ENV=production
+      - APP_DEBUG=false
       - DB_HOST=db
       - DB_PORT=5432
       - DB_PREDICTIONS_HOST=db-predictions
@@ -68,12 +76,6 @@ services:
       - REDIS_HOST=redis
     networks:
       - molmedb-network
-    healthcheck:
-      test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
     depends_on:
       db:
         condition: service_healthy
@@ -104,7 +106,7 @@ services:
       - molmedb-network
     depends_on:
       app:
-        condition: service_healthy
+        condition: service_started
       db:
         condition: service_healthy
       db-predictions:
@@ -141,7 +143,7 @@ services:
       - molmedb-network
     depends_on:
       app:
-        condition: service_healthy
+        condition: service_started
       db:
         condition: service_healthy
       db-predictions:
@@ -176,7 +178,7 @@ services:
       - molmedb-network
     depends_on:
       app:
-        condition: service_healthy
+        condition: service_started
       db:
         condition: service_healthy
       db-predictions:
@@ -189,26 +191,25 @@ services:
     command: ["php", "artisan", "queue:work", "--queue=predictions", "--sleep=5", "--tries=1", "--timeout=150", "--memory=256"]
     restart: unless-stopped
 
-  # frontend:
-  #   container_name: molmedb-frontend
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: ../../docker/production/frontend/Dockerfile
-  #   restart: unless-stopped
-  #   networks:
-  #     - molmedb-network
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     #if you???re using Windows, you may need to uncomment the next line - Sol from @Kobe E
-  #     # - WATCHPACK_POLLING=true
-  #     - NEXT_BACKEND_URL=http://web:443
-  #     - NODE_ENV=production
-  #   ports:
-  #     - 3000:3000
-  #   depends_on:
-  #     - app
-
+  # Served by the web service on the site domain, not published itself.
+  frontend:
+    container_name: molmedb-frontend
+    build:
+      context: ./frontend
+      dockerfile: ../docker/production/frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+    restart: unless-stopped
+    networks:
+      - molmedb-network
+    env_file:
+      - ./frontend/.env
+    environment:
+      - NEXT_BACKEND_URL=http://web
+      - NEXT_PUBLIC_BACKEND_URL=https://${MOLMEDB_ADMIN_HOST:-admin.molmedb.upol.cz}
+    depends_on:
+      app:
+        condition: service_started
 
   db:
     build: ./database/extensions/bingo
@@ -221,7 +222,7 @@ services:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     shm_size: '8gb'
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "${DB_USERNAME}", "-d", "${DB_DATABASE}" ]
@@ -244,7 +245,7 @@ services:
       POSTGRES_USER: ${DB_PREDICTIONS_USERNAME}
       POSTGRES_PASSWORD: ${DB_PREDICTIONS_PASSWORD}
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     shm_size: '8gb'
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "${DB_PREDICTIONS_USERNAME}", "-d", "${DB_PREDICTIONS_DATABASE}" ]
@@ -256,17 +257,6 @@ services:
     networks:
       - molmedb-network
 
-  adminer:
-    image: adminer
-    container_name: molmedb-adminer
-    restart: unless-stopped
-    ports: 
-      - "8080:8080"
-    depends_on:
-      - db
-    networks:
-      - molmedb-network
-
   redis:
     image: redis:alpine
     container_name: molmedb-redis
@@ -274,8 +264,6 @@ services:
     command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD}"
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-    ports:
-      - "6379:6379"
     volumes:
       - molmedb-redis:/data
     networks:
@@ -293,7 +281,7 @@ services:
       dockerfile: ./../../../docker/common/rdkit/Dockerfile
     container_name: rdkit
     ports:
-      - "9696:80"
+      - "127.0.0.1:9696:80"
     restart: unless-stopped
     networks:
       - molmedb-network
@@ -309,8 +297,9 @@ services:
     container_name: cdkdepict
     networks:
       - molmedb-network
+    # Public through the web service (/depict/), published for debugging only.
     ports:
-      - "1661:8080"
+      - "127.0.0.1:1661:8080"
     restart: unless-stopped    
 
 

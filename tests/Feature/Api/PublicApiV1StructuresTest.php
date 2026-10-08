@@ -6,6 +6,10 @@ use App\Models\Identifier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
+beforeEach(function () {
+    resetApiRouteRdkitState();
+});
+
 test('structures index returns paginated structures', function () {
     createApiStructure(['identifier' => 'MM0001', 'canonical_smiles' => 'CCO']);
     createApiStructure(['identifier' => 'MM0002', 'canonical_smiles' => 'CCN']);
@@ -61,6 +65,23 @@ test('structures index finds an exact structure match regardless of SMILES notat
     createApiStructure(['identifier' => 'MM0002', 'canonical_smiles' => 'CCN']);
 
     $this->getJson('/api/v1/structures?smiles=OCC')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.identifier', 'MM0001');
+});
+
+test('structures index finds a molecule stored as aromatic by its Kekulé SMILES', function () {
+    // RDKit, which canonicalizes the stored SMILES, perceives the rings of
+    // caffeine as aromatic; Bingo alone does not match the Kekulé form to it.
+    config()->set('services.rdkit.url', 'https://rdkit.test');
+    Http::fake([
+        'https://rdkit.test/test' => Http::response([]),
+        'https://rdkit.test/structure/canonize*' => Http::response(['data' => 'Cn1c(=O)c2c(ncn2C)n(C)c1=O']),
+    ]);
+    createApiStructure(['identifier' => 'MM0001', 'canonical_smiles' => 'Cn1c(=O)c2c(ncn2C)n(C)c1=O']);
+    createApiStructure(['identifier' => 'MM0002', 'canonical_smiles' => 'CCN']);
+
+    $this->getJson('/api/v1/structures?smiles='.urlencode('CN1C=NC2=C1C(=O)N(C(=O)N2C)C'))
         ->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.identifier', 'MM0001');

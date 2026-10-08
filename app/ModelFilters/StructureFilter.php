@@ -4,6 +4,7 @@ namespace App\ModelFilters;
 
 use App\Http\Requests\Api\Public\V1\SearchStructureRequest;
 use App\Models\Identifier;
+use App\Services\Structures\StructureSmilesCanonicalizer;
 use EloquentFilter\ModelFilter;
 
 class StructureFilter extends ModelFilter
@@ -29,7 +30,7 @@ class StructureFilter extends ModelFilter
             return $this;
         }
 
-        return $this->exactMolecule($smiles);
+        return $this->exactMolecule(app(StructureSmilesCanonicalizer::class)->canonicalOrOriginal($smiles));
     }
 
     public function substructure($smiles)

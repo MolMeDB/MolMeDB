@@ -1,0 +1,94 @@
+# Routing of the MolMeDB domains. The TLS proxy in front (Apache) passes
+# every domain unchanged to this nginx; the domain names come from the
+# environment (MOLMEDB_*_HOST, see docker-compose-production.yaml) and are
+# filled in by the nginx image on start. See README.md in this directory.
+
+# Website (Next.js frontend) with the public API under /api/v1. The rest of
+# /api belongs to the frontend's own route handlers.
+server {
+    listen 80;
+    server_name ${MOLMEDB_SITE_HOST};
+
+    set $php_upstream app:9000;
+    set $laravel_uri $request_uri;
+
+    include /etc/nginx/snippets/shared-locations.conf;
+
+    location / {
+        include /etc/nginx/snippets/frontend.conf;
+    }
+}
+
+# Administration and the API for the frontend (Laravel). Also the default
+# server: the frontend reaches the backend at http://web inside Docker.
+server {
+    listen 80 default_server;
+    server_name ${MOLMEDB_ADMIN_HOST};
+    root /var/www/public;
+    index index.php;
+    charset utf-8;
+
+    set $php_upstream app:9000;
+    set $laravel_uri $request_uri;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    include /etc/nginx/snippets/shared-locations.conf;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    # Cache public structure/mol API responses at Nginx level — PHP-FPM is hit
+    # only once per unique URL per hour, regardless of how many bots request it.
+    location ~ ^/api/(structure|mol)/ {
+        # Skip cache for authenticated users (session cookie present).
+        # Bots have no session cookie → served from cache.
+        # Logged-in users → always get fresh response from PHP-FPM.
+        fastcgi_cache_bypass $cookie_molmedb_session;
+        fastcgi_no_cache     $cookie_molmedb_session;
+
+        fastcgi_cache api_cache;
+        fastcgi_cache_valid 200 1h;
+        fastcgi_cache_valid 404 1m;
+        fastcgi_cache_use_stale error timeout updating http_500 http_503;
+        fastcgi_cache_background_update on;
+        fastcgi_cache_lock on;
+        fastcgi_ignore_headers Cache-Control Expires Set-Cookie;
+        add_header X-Cache-Status $upstream_cache_status;
+
+        include /etc/nginx/snippets/laravel.conf;
+    }
+
+    location ~ \.php$ {
+        include /etc/nginx/snippets/laravel.conf;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+
+# RDF IRIs (https://rdf.molmedb.upol.cz/interaction/int1157) are dereferenced
+# by Laravel under /api/rdf, keeping the IRI the client asked for.
+server {
+    listen 80;
+    server_name ${MOLMEDB_RDF_HOST};
+
+    set $php_upstream app:9000;
+    set $laravel_uri /api/rdf$request_uri;
+
+    location = / {
+        return 302 https://${MOLMEDB_SITE_HOST}/docs/rdf;
+    }
+
+    location / {
+        include /etc/nginx/snippets/laravel.conf;
+    }
+}

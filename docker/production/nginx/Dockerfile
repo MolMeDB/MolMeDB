@@ -4,10 +4,15 @@ FROM nginx:alpine AS production
 
 # Copy custom Nginx configuration
 # -----------------------------------------------------------
-# Replace the default Nginx configuration with our custom one
-# that is optimized for serving a Laravel application.
+# nginx.conf holds the shared settings; the server of every MolMeDB domain
+# is rendered from templates/ with the domain names from the environment
+# (MOLMEDB_*_HOST) by the image's entrypoint into /etc/nginx/conf.d.
+# See README.md in this directory.
 # -----------------------------------------------------------
 COPY ./docker/production/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ./docker/production/nginx/snippets /etc/nginx/snippets
+COPY ./docker/production/nginx/templates /etc/nginx/templates
+RUN rm -f /etc/nginx/conf.d/default.conf
 
 RUN mkdir -p /var/cache/nginx/fastcgi && chown -R nginx:nginx /var/cache/nginx
 
@@ -18,6 +23,6 @@ COPY public /var/www/public
 # Set the working directory to the public folder
 WORKDIR /var/www/public
 
-# Expose the port used by the production Compose stack and start Nginx.
-EXPOSE 443
+# Plain HTTP inside Docker; TLS is terminated by the proxy in front.
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

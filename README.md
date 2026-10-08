@@ -133,6 +133,9 @@ npm run dev
 ```
 and the frontend will be available on http://localhost:3000.
 
+### Production
+The production stack is started from `docker-compose-production.yaml`. Its nginx is the only entry point and routes all MolMeDB domains (website, administration, public API and MCP server, RDF IRIs, structure depictions). The web server on the host (Apache) only terminates TLS and passes every domain to it. How to set up the server, including Apache, and how to check the deployment is described in [docker/production/nginx/README.md](docker/production/nginx/README.md).
+
 > **Remember!** Always change the git branche before making any changes in the repository. Pushing changes to the `main` branch is restricted. 
 
 ---

@@ -18,7 +18,7 @@ const SUPPORT_ITEMS: string[] = [
   "Database curation – Palacký University Olomouc IGA_PrF_2026_002, IGA_PrF_2025_003, IGA_PrF_2024_017, IGA_PrF_2023_018 and IGA_PrF_2019_031",
 ];
 
-const VISIBLE_ITEMS_COUNT = 2;
+const VISIBLE_ITEMS_COUNT = 1;
 
 export default function FinancialSupportList() {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();

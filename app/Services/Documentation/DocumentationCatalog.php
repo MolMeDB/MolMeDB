@@ -10,6 +10,7 @@ use App\Http\Requests\Api\Public\V1\SimilarStructuresRequest;
 use App\Http\Requests\Lab\StoreLabUploadRequest;
 use App\Http\Requests\StorePredictionDatasetRequest;
 use App\Mcp\Servers\MolMeDBServer;
+use App\Models\Category;
 use App\Models\UploadQueue;
 use App\Services\UploadQueueColumnRegistry;
 use App\Support\PublicApiUrl;
@@ -141,6 +142,21 @@ class DocumentationCatalog
     {
         return collect(app(UploadQueueColumnRegistry::class)->validatorClasses($type))
             ->mapWithKeys(fn (string $class): array => [$class::$key => $class::$label])
+            ->all();
+    }
+
+    /**
+     * Types of active interactions (their categories), e.g. "Substrate".
+     *
+     * @return array<int, string>
+     */
+    public function activeInteractionTypes(): array
+    {
+        return Category::query()
+            ->where('type', Category::TYPE_ACTIVE_INTERACTION)
+            ->orderBy('order')
+            ->orderBy('title')
+            ->pluck('title')
             ->all();
     }
 

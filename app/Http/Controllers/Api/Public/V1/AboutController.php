@@ -15,6 +15,30 @@ use Illuminate\Http\Request;
  */
 class AboutController extends Controller
 {
+    /**
+     * Units and meaning of the measured values of interactions, as described
+     * in the MolMeDB documentation (About MolMeDB / What is stored in MolMeDB?).
+     *
+     * @var array<string, array<string, array{unit: string, description: string}>>
+     */
+    public const UNITS = [
+        'interactions_passive' => [
+            'x_min' => ['unit' => 'nm', 'description' => 'Xmin, the drug position with minimum energy in the membrane.'],
+            'gpen' => ['unit' => 'kcal/mol', 'description' => 'ΔGpen, the penetration barrier.'],
+            'gwat' => ['unit' => 'kcal/mol', 'description' => 'ΔGwat, the affinity towards the membrane.'],
+            'logk' => ['unit' => 'log10(mol_m/mol_w)', 'description' => 'LogK, the logarithm of the membrane-water partition coefficient.'],
+            'logperm' => ['unit' => 'log10(cm/s)', 'description' => 'LogPerm, the logarithm of the permeability coefficient.'],
+            'temperature' => ['unit' => '°C', 'description' => 'Temperature of the measurement or calculation.'],
+        ],
+        'interactions_active' => [
+            'km' => ['unit' => '-log10(M)', 'description' => 'pKm, the negative decimal logarithm of the Michaelis constant Km.'],
+            'ec50' => ['unit' => '-log10(M)', 'description' => 'pEC50, the negative decimal logarithm of the half maximal effective concentration.'],
+            'ki' => ['unit' => '-log10(M)', 'description' => 'pKi, the negative decimal logarithm of the inhibition constant Ki.'],
+            'ic50' => ['unit' => '-log10(M)', 'description' => 'pIC50, the negative decimal logarithm of the half maximal inhibitory concentration.'],
+            'temperature' => ['unit' => '°C', 'description' => 'Temperature of the measurement.'],
+        ],
+    ];
+
     public function index(Request $request)
     {
         if ($request->attributes->get('response_format') === 'jsonld') {
@@ -47,8 +71,10 @@ class AboutController extends Controller
                     'dump' => config('fair.rdf.dump_url'),
                     'article' => config('fair.related_publications.0.url'),
                 ],
+                'units' => self::UNITS,
                 'links' => [
                     'openapi' => PublicApiUrl::to('openapi.json'),
+                    'mcp' => PublicApiUrl::to('mcp'),
                     'sitemap' => config('fair.frontend_url').'/sitemap.xml',
                 ],
             ],

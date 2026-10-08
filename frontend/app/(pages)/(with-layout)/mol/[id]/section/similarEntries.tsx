@@ -38,26 +38,59 @@ export default function CompoundSimilarEntries(props: {
         timeout: 4500,
       });
     });
-  }, [props.compound.id]);
+  }, [props.compound.identifier]);
 
   return (
     <DetailSection title="Related entries" order={4}>
-      <div>
-        <div className="flex flex-row gap-4 overflow-x-scroll scroll whitespace-nowrap p-6 pb-12">
-          {relatedEntries.length ? (
-            relatedEntries.map((entry) => (
-              <Record key={entry.identifier} compound={entry} />
-            ))
-          ) : (
-            <div className="h-24 w-full flex flex-col justify-center items-center">
-              <label className="text-xl font-bold text-foreground-400 select-none">
-                No related entries found...
-              </label>
-            </div>
-          )}
-        </div>
+      <div className="flex flex-col gap-2">
+        <EntriesRow
+          title="Forms and parent"
+          entries={relatedEntries}
+          emptyText="No related entries found..."
+        />
+        <EntriesRow
+          title="Similar entries"
+          description="Tanimoto similarity of at least 0.8"
+          entries={similarEntries}
+          emptyText="No similar entries found..."
+        />
       </div>
     </DetailSection>
+  );
+}
+
+function EntriesRow(props: {
+  title: string;
+  description?: string;
+  entries: ISimilarStructure[];
+  emptyText: string;
+}) {
+  return (
+    <div className="flex flex-col">
+      <div className="flex flex-row items-baseline gap-3 px-6">
+        <h3 className="text-lg font-semibold text-foreground/80">
+          {props.title}
+        </h3>
+        {props.description && (
+          <span className="text-sm text-foreground/50">
+            {props.description}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-row gap-4 overflow-x-scroll scroll whitespace-nowrap p-6 pb-12">
+        {props.entries.length ? (
+          props.entries.map((entry) => (
+            <Record key={entry.identifier} compound={entry} />
+          ))
+        ) : (
+          <div className="h-24 w-full flex flex-col justify-center items-center">
+            <label className="text-xl font-bold text-foreground-400 select-none">
+              {props.emptyText}
+            </label>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -78,12 +111,14 @@ function Record(props: { compound: ISimilarStructure }) {
             </h3>
           </div>
           <div className="flex flex-col gap-1 mt-4 text-sm text-foreground/70">
-            <div className="flex flex-row items-center border-b-1 border-foreground/30">
-              <div className="w-1/2">Similarity</div>
-              <div className="w-1/2 text-right">
-                {props.compound.similarity?.tanimoto ?? "N/A"}
+            {props.compound.similarity && (
+              <div className="flex flex-row items-center border-b-1 border-foreground/30">
+                <div className="w-1/2">Similarity</div>
+                <div className="w-1/2 text-right">
+                  {props.compound.similarity.tanimoto}
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex flex-row items-center border-b-1 border-foreground/30">
               <div className="w-1/2">Molecular weight</div>
               <div className="w-1/2 text-right">

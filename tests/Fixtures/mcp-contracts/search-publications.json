@@ -1,0 +1,27 @@
+{
+    "structured_content": {
+        "data": [
+            {
+                "citation": "string",
+                "created_at": "string",
+                "doi": "string",
+                "doi_url": "string",
+                "id": "number",
+                "landing_page": "string",
+                "pmid": "string",
+                "pmid_url": "string",
+                "title": "string",
+                "updated_at": "string",
+                "url": "string",
+                "year": "number"
+            }
+        ],
+        "meta": {
+            "has_more": "boolean",
+            "last_page": "number",
+            "page": "number",
+            "per_page": "number",
+            "total": "number"
+        }
+    }
+}

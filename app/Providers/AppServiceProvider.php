@@ -99,6 +99,14 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        // Stacks on top of 'public-api' like the substructure limiter: a
+        // similarity search at the lowest threshold (0.7) scores up to
+        // thousands of structures (~0.5 s on production data).
+        RateLimiter::for('public-api-similarity', fn (Request $request): array => [
+            Limit::perMinute(10)->by('similarity-minute:'.$request->ip()),
+            Limit::perHour(60)->by('similarity-hour:'.$request->ip()),
+        ]);
+
         Event::listen(CommandFinished::class, RunPredictionsMigrationsAfterDefaultMigrate::class);
 
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {

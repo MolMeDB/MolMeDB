@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\Storage;
  */
 function seedApiContractWorld(): array
 {
+    // Depiction URLs are built from the configured CDK Depict host.
+    config()->set('services.cdk_depict_url', 'https://cdk-depict.test');
+
     $membraneRoot = createApiRootCategory(Category::TYPE_MEMBRANE, 'Membranes');
     $methodRoot = createApiRootCategory(Category::TYPE_METHOD, 'Methods');
     $proteinRoot = createApiRootCategory(Category::TYPE_PROTEIN, 'Proteins');

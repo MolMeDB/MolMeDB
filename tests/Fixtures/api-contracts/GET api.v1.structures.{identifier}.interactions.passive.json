@@ -10,6 +10,7 @@
                 "gpen_accuracy": "number",
                 "gwat": "number",
                 "gwat_accuracy": "number",
+                "id": "number",
                 "logk": "number",
                 "logk_accuracy": "number",
                 "logperm": "number",
@@ -31,12 +32,19 @@
                     "id": "number",
                     "pmid": "string"
                 },
+                "rdf": "string",
                 "secondary_reference": {
                     "citation": "string",
                     "id": "number",
                     "pmid": "string"
                 },
+                "structure": {
+                    "identifier": "string",
+                    "name": "string",
+                    "url": "string"
+                },
                 "temperature": "number",
+                "url": "string",
                 "x_min": "number",
                 "x_min_accuracy": "number"
             }

@@ -1,5 +1,63 @@
 <?php
 
+/*
+ * Filters shared by every interaction listing (see Search*InteractionsRequest).
+ */
+$rangeFilters = fn (array $columns): array => collect($columns)
+    ->flatMap(fn (string $description, string $column): array => [
+        "{$column}_min" => ['required' => false, 'example' => '', 'description' => "Minimum {$description}."],
+        "{$column}_max" => ['required' => false, 'example' => '', 'description' => "Maximum {$description}."],
+    ])
+    ->all();
+
+$sharedInteractionFilters = [
+    'structure' => ['required' => false, 'example' => '', 'description' => 'Structure identifier, e.g. MM00040.'],
+    'publication' => ['required' => false, 'example' => '', 'description' => 'Publication ID, as the primary reference or the reference of the dataset.'],
+    'charge' => ['required' => false, 'example' => '', 'description' => 'Charge of the measured form, e.g. 0, 1, -1 ("1" also matches "+1").'],
+];
+
+$passiveInteractionFilters = [
+    ...$sharedInteractionFilters,
+    'membrane' => ['required' => false, 'example' => '', 'description' => 'Membrane ID.'],
+    'method' => ['required' => false, 'example' => '', 'description' => 'Method ID.'],
+    'with_value' => ['required' => false, 'example' => '', 'description' => 'Only records with this value: logperm, logk, gpen, gwat or x_min.'],
+    ...$rangeFilters([
+        'temperature' => 'temperature [°C]',
+        'ph' => 'pH',
+        'logperm' => 'LogPerm [log10 cm/s]',
+        'logk' => 'LogK [log10 mol_m/mol_w]',
+        'gpen' => 'Gpen [kcal/mol]',
+        'gwat' => 'Gwat [kcal/mol]',
+        'x_min' => 'Xmin [nm]',
+    ]),
+    'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 100).'],
+];
+
+$activeInteractionFilters = [
+    ...$sharedInteractionFilters,
+    'protein' => ['required' => false, 'example' => '', 'description' => 'Protein ID.'],
+    'uniprot' => ['required' => false, 'example' => '', 'description' => 'UniProt ID of the protein, e.g. O15245.'],
+    'type' => ['required' => false, 'example' => '', 'description' => 'Interaction type, e.g. Substrate, Inhibitor, Non-substrate, Non-inhibitor.'],
+    'with_value' => ['required' => false, 'example' => '', 'description' => 'Only records with this value: km, ec50, ki or ic50.'],
+    ...$rangeFilters([
+        'temperature' => 'temperature [°C]',
+        'ph' => 'pH',
+        'km' => 'pKm [-log10 M]',
+        'ec50' => 'pEC50 [-log10 M]',
+        'ki' => 'pKi [-log10 M]',
+        'ic50' => 'pIC50 [-log10 M]',
+    ]),
+    'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 100).'],
+];
+
+/**
+ * Filters of a listing already narrowed to one entity (its own filter is fixed).
+ *
+ * @param  array<string, array<string, mixed>>  $filters
+ * @return array<string, array<string, mixed>>
+ */
+$without = fn (array $filters, string ...$keys): array => array_diff_key($filters, array_flip($keys));
+
 return [
 
     /*
@@ -25,6 +83,7 @@ return [
         'identifier' => ['label' => 'Structure identifier', 'example' => 'MM00040'],
         'publication' => ['label' => 'Publication ID', 'example' => '1262'],
         'protein' => ['label' => 'Protein ID', 'example' => '1'],
+        'interaction' => ['label' => 'Interaction ID', 'example' => '1157'],
     ],
 
     'routes' => [
@@ -60,9 +119,14 @@ return [
             'example' => '/membranes/15/stats',
         ],
         'membranes/{membrane}/interactions' => [
+            'description' => 'Paginated passive interactions measured on this membrane, with the same filters as /interactions/passive.',
+            'query' => $without($passiveInteractionFilters, 'membrane'),
+            'example' => '/membranes/15/interactions?with_value=logperm',
+        ],
+        'membranes/{membrane}/interactions/export' => [
             'description' => 'Downloads a .zip export of every passive interaction measured for this membrane (refreshed daily).',
             'query' => [],
-            'example' => '/membranes/15/interactions',
+            'example' => '/membranes/15/interactions/export',
             'is_download' => true,
         ],
 
@@ -91,18 +155,51 @@ return [
             'example' => '/methods/1/stats',
         ],
         'methods/{method}/interactions' => [
+            'description' => 'Paginated passive interactions measured with this method, with the same filters as /interactions/passive.',
+            'query' => $without($passiveInteractionFilters, 'method'),
+            'example' => '/methods/1/interactions?membrane=3',
+        ],
+        'methods/{method}/interactions/export' => [
             'description' => 'Downloads a .zip export of every passive interaction measured with this method (refreshed daily).',
             'query' => [],
-            'example' => '/methods/1/interactions',
+            'example' => '/methods/1/interactions/export',
             'is_download' => true,
         ],
 
+        'interactions/passive' => [
+            'description' => 'Paginated passive interactions (structure on a membrane, by a method) across the whole database, ordered by id. Units of the values are listed in /about.',
+            'query' => $passiveInteractionFilters,
+            'example' => '/interactions/passive?structure=MM00040&membrane=3&with_value=logk',
+        ],
+        'interactions/passive/{interaction}' => [
+            'description' => 'A single passive interaction.',
+            'query' => [],
+            'example' => '/interactions/passive/1157',
+        ],
+        'interactions/active' => [
+            'description' => 'Paginated active interactions (structure with a transporter protein) across the whole database, ordered by id. Units of the values are listed in /about.',
+            'query' => $activeInteractionFilters,
+            'example' => '/interactions/active?uniprot=O15245&type=Substrate',
+        ],
+        'interactions/active/{interaction}' => [
+            'description' => 'A single active interaction.',
+            'query' => [],
+            'example' => '/interactions/active/31496',
+        ],
+
         'structures' => [
-            'description' => 'Search structures by name, exact structure (SMILES) or substructure. Substructure search has its own, stricter rate limit.',
+            'description' => 'Search structures by name, exact structure (SMILES), substructure, InChIKey or an external identifier, or fetch up to 100 of them by identifier. Substructure search has its own, stricter rate limit.',
             'query' => [
                 'query' => ['required' => false, 'example' => 'caffeine', 'description' => 'Free-text search over name and cross-referenced identifiers.'],
                 'smiles' => ['required' => false, 'example' => '', 'description' => 'Exact structure match (chemical structure, not text).'],
                 'substructure' => ['required' => false, 'example' => '', 'description' => 'Find structures containing this SMILES as a substructure.'],
+                'inchikey' => ['required' => false, 'example' => '', 'description' => 'Exact InChIKey, e.g. RYYVLZVUVIJVGH-UHFFFAOYSA-N.'],
+                'pubchem' => ['required' => false, 'example' => '', 'description' => 'PubChem CID, e.g. 2519.'],
+                'chembl' => ['required' => false, 'example' => '', 'description' => 'ChEMBL id, e.g. CHEMBL113.'],
+                'chebi' => ['required' => false, 'example' => '', 'description' => 'ChEBI id, with or without the prefix, e.g. CHEBI:27732.'],
+                'drugbank' => ['required' => false, 'example' => '', 'description' => 'DrugBank id, e.g. DB00201.'],
+                'pdb' => ['required' => false, 'example' => '', 'description' => 'PDB ligand (chemical component) code, e.g. CFF.'],
+                'identifiers' => ['required' => false, 'example' => '', 'description' => 'Comma-separated MolMeDB identifiers (at most 100), e.g. MM00040,MM00045.'],
                 'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 100).'],
             ],
             'example' => '/structures?query=caffeine',
@@ -112,23 +209,33 @@ return [
             'query' => [],
             'example' => '/structures/MM00040',
         ],
+        'structures/{identifier}/molfile' => [
+            'description' => '3D structure as an MDL molfile (chemical/x-mdl-molfile), generated by RDKit on the first request.',
+            'query' => [],
+            'example' => '/structures/MM00040/molfile',
+            'is_download' => true,
+        ],
+        'structures/{identifier}/similar' => [
+            'description' => 'Structures similar to this one by the Tanimoto coefficient of their fingerprints, most similar first. Has its own, stricter rate limit.',
+            'query' => [
+                'threshold' => ['required' => false, 'example' => '0.8', 'description' => 'Minimum similarity, 0.7-1 (default 0.8).'],
+                'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 50).'],
+            ],
+            'example' => '/structures/MM00040/similar?threshold=0.9',
+        ],
         'structures/{identifier}/stats' => [
             'description' => 'Aggregate counts for a structure (passive/active interactions).',
             'query' => [],
             'example' => '/structures/MM00040/stats',
         ],
         'structures/{identifier}/interactions/passive' => [
-            'description' => 'Paginated passive interactions measured for this structure.',
-            'query' => [
-                'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 100).'],
-            ],
+            'description' => 'Paginated passive interactions measured for this structure, with the same filters as /interactions/passive.',
+            'query' => $without($passiveInteractionFilters, 'structure'),
             'example' => '/structures/MM00040/interactions/passive',
         ],
         'structures/{identifier}/interactions/active' => [
-            'description' => 'Paginated active interactions measured for this structure.',
-            'query' => [
-                'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 100).'],
-            ],
+            'description' => 'Paginated active interactions measured for this structure, with the same filters as /interactions/active.',
+            'query' => $without($activeInteractionFilters, 'structure'),
             'example' => '/structures/MM00040/interactions/active',
         ],
 
@@ -151,15 +258,25 @@ return [
             'example' => '/publications/1262/stats',
         ],
         'publications/{publication}/interactions/passive' => [
-            'description' => 'Downloads a .zip export of every passive interaction reported in this publication (refreshed daily).',
-            'query' => [],
-            'example' => '/publications/1262/interactions/passive',
-            'is_download' => true,
+            'description' => 'Paginated passive interactions with this publication as their primary reference or as the reference of their dataset, with the same filters as /interactions/passive.',
+            'query' => $without($passiveInteractionFilters, 'publication'),
+            'example' => '/publications/22/interactions/passive',
         ],
         'publications/{publication}/interactions/active' => [
+            'description' => 'Paginated active interactions with this publication as their primary reference or as the reference of their dataset, with the same filters as /interactions/active.',
+            'query' => $without($activeInteractionFilters, 'publication'),
+            'example' => '/publications/1031/interactions/active',
+        ],
+        'publications/{publication}/interactions/passive/export' => [
+            'description' => 'Downloads a .zip export of every passive interaction reported in this publication (refreshed daily).',
+            'query' => [],
+            'example' => '/publications/1262/interactions/passive/export',
+            'is_download' => true,
+        ],
+        'publications/{publication}/interactions/active/export' => [
             'description' => 'Downloads a .zip export of every active interaction reported in this publication (refreshed daily).',
             'query' => [],
-            'example' => '/publications/1262/interactions/active',
+            'example' => '/publications/1262/interactions/active/export',
             'is_download' => true,
         ],
 
@@ -188,11 +305,9 @@ return [
             'example' => '/proteins/1/stats',
         ],
         'proteins/{protein}/interactions' => [
-            'description' => 'Paginated active interactions measured for this protein.',
-            'query' => [
-                'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 100).'],
-            ],
-            'example' => '/proteins/1/interactions',
+            'description' => 'Paginated active interactions measured for this protein, with the same filters as /interactions/active.',
+            'query' => $without($activeInteractionFilters, 'protein', 'uniprot'),
+            'example' => '/proteins/2/interactions?type=Substrate',
         ],
 
     ],

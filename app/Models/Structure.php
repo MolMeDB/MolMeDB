@@ -54,6 +54,31 @@ class Structure extends BaseModel
             );
     }
 
+    /**
+     * Structures similar to the given SMILES by the Tanimoto coefficient of
+     * Bingo fingerprints (at least $threshold), most similar first, with it
+     * in the "similarity" column. Like the substructure search, the
+     * conditions match the partial Bingo index; without them the planner
+     * scans the whole table (~55 s instead of tens of milliseconds).
+     */
+    public function scopeSimilarTo(Builder $query, string $smiles, float $threshold): Builder
+    {
+        $canonicalSmiles = $query->getModel()->qualifyColumn('canonical_smiles');
+        $smiles = trim($smiles);
+
+        if ($query->getQuery()->columns === null) {
+            $query->select($query->getModel()->qualifyColumn('*'));
+        }
+
+        return $query
+            ->selectRaw("bingo.getSimilarity($canonicalSmiles, ?, 'Tanimoto') AS similarity", [$smiles])
+            ->whereNotNull($canonicalSmiles)
+            ->whereRaw("bingo.checkMolecule($canonicalSmiles) IS NULL")
+            ->whereRaw("$canonicalSmiles @ (?, 1, ?, 'Tanimoto')::bingo.sim", [$threshold, $smiles])
+            ->orderByDesc('similarity')
+            ->orderBy($query->getModel()->qualifyColumn('id'));
+    }
+
     protected static function boot()
     {
         parent::boot();

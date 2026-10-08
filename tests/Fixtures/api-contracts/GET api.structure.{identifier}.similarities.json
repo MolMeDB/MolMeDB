@@ -16,9 +16,14 @@
                 "molecular_weight": "number",
                 "name": "null",
                 "parent_identifier": "string",
+                "similarity": "null",
                 "structure_2d_url": "string",
                 "structure_2d_url_big": "string",
-                "structure_3d_url": "string"
+                "structure_3d_url": "string",
+                "total": {
+                    "interactions_active": "number",
+                    "interactions_passive": "number"
+                }
             }
         ],
         "similar_structures": []

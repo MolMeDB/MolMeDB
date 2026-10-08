@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\VisibleInPublicApi;
 use Database\Factories\InteractionActiveFactory;
 use EloquentFilter\Filterable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,13 +13,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class InteractionActive extends Model
 {
     protected $table = 'interactions_active';
+
+    use Filterable;
+
     /** @use HasFactory<InteractionActiveFactory> */
     use HasFactory, SoftDeletes;
-    use Filterable;
+
+    use VisibleInPublicApi;
 
     protected $guarded = [];
 
-    public static function enumCategories() : array
+    public static function enumCategories(): array
     {
         return Category::where('type', Category::TYPE_ACTIVE_INTERACTION)->pluck('title', 'id')->toArray();
     }
@@ -26,12 +31,12 @@ class InteractionActive extends Model
     /**
      * Returns assigned dataset
      */
-    public function dataset() : BelongsTo
+    public function dataset(): BelongsTo
     {
         return $this->belongsTo(Dataset::class);
     }
 
-    public function category() : BelongsTo
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
@@ -39,7 +44,7 @@ class InteractionActive extends Model
     /**
      * Returns assigned substance
      */
-    public function structure() : BelongsTo
+    public function structure(): BelongsTo
     {
         return $this->belongsTo(Structure::class);
     }
@@ -47,19 +52,19 @@ class InteractionActive extends Model
     /**
      * Returns assigned protein
      */
-    public function protein() : BelongsTo
+    public function protein(): BelongsTo
     {
         return $this->belongsTo(Protein::class);
     }
 
-    public function publication() : BelongsTo
+    public function publication(): BelongsTo
     {
         return $this->belongsTo(Publication::class);
     }
 
-    public function isRestoreable() {
-        if(!$this?->id)
-        {
+    public function isRestoreable()
+    {
+        if (! $this?->id) {
             return false;
         }
 

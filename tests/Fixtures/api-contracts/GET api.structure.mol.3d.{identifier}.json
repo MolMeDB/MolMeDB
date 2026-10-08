@@ -1,6 +1,6 @@
 {
     "route": "GET api/structure/mol/3d/{identifier}",
     "status": 200,
-    "content_type": "chemical/x-mdl-sdfile",
+    "content_type": "chemical/x-mdl-molfile",
     "body": null
 }

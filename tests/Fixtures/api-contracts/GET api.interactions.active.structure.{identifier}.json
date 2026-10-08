@@ -112,7 +112,41 @@
                     ],
                     "uniprot_id": "string"
                 },
-                "secondary_reference": "null",
+                "secondary_reference": {
+                    "authors": [
+                        {
+                            "affiliation": "string",
+                            "first_name": "string",
+                            "full_name": "string",
+                            "last_name": "string"
+                        }
+                    ],
+                    "citation": "string",
+                    "datasets": [
+                        {
+                            "created_at": "string",
+                            "enum_type": "string",
+                            "hash": "string",
+                            "mime": "string",
+                            "name": "string",
+                            "type": "number"
+                        }
+                    ],
+                    "doi": "string",
+                    "id": "number",
+                    "identifier": {
+                        "source": "string",
+                        "source_name": "string",
+                        "value": "string"
+                    },
+                    "issue": "string",
+                    "journal": "string",
+                    "page": "string",
+                    "stats": "null",
+                    "title": "string",
+                    "volume": "string",
+                    "year": "number"
+                },
                 "structure_id": "number",
                 "temperature": "number"
             }

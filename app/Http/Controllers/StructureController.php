@@ -4,14 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreStructureRequest;
 use App\Http\Requests\UpdateStructureRequest;
+use App\Http\Resources\SimilarStructureResource;
 use App\Http\Resources\StructureResource;
 use App\Models\Category;
 use App\Models\Structure;
+use App\Services\Structures\Structure3dMolfile;
 use App\Services\Structures\StructureIdentifierStatus;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Modules\Rdkit\Rdkit;
 
 class StructureController extends Controller
 {
+    private const SIMILARITY_THRESHOLD = 0.8;
+
+    private const SIMILAR_STRUCTURES = 12;
+
     /**
      * Display a listing of the resource.
      */
@@ -28,7 +37,7 @@ class StructureController extends Controller
         //
     }
 
-    public function mol3D(string $identifier)
+    public function mol3D(string $identifier, Structure3dMolfile $molfiles)
     {
         $structure = Structure::where('identifier', $identifier)->first();
 
@@ -38,72 +47,16 @@ class StructureController extends Controller
             ], 404);
         }
 
-        if ($this->isValidMolfile($structure->molfile_3d)) {
-            return response($structure->molfile_3d)
-                ->header('Content-Type', 'chemical/x-mdl-sdfile');
-        }
+        $molfile = $molfiles->of($structure);
 
-        if ($structure->molfile_3d !== null) {
-            $structure->molfile_3d = null;
-            $structure->save();
-        }
-
-        $rdkit = new Rdkit;
-
-        $molContent = $rdkit->get_3d_structure($structure->canonical_smiles);
-
-        if (! $this->isValidMolfile($molContent)) {
+        if ($molfile === null) {
             return response()->json([
                 'message' => '3D structure could not be generated.',
             ], 422);
         }
 
-        $structure->molfile_3d = $molContent;
-        $structure->save();
-
-        return response($molContent)
-            ->header('Content-Type', 'chemical/x-mdl-sdfile');
-    }
-
-    private function isValidMolfile(?string $molfile): bool
-    {
-        if (! $molfile || trim($molfile) === '') {
-            return false;
-        }
-
-        $lines = preg_split('/\R/', trim($molfile));
-
-        if (! is_array($lines) || count($lines) < 4) {
-            return false;
-        }
-
-        $endLineExists = collect($lines)->contains(fn (string $line): bool => trim($line) === 'M  END');
-
-        if (! $endLineExists) {
-            return false;
-        }
-
-        foreach ($lines as $index => $line) {
-            if (str_contains($line, 'V3000')) {
-                return collect($lines)->contains(fn (string $line): bool => str_contains($line, 'M  V30 BEGIN CTAB'))
-                    && collect($lines)->contains(fn (string $line): bool => str_contains($line, 'M  V30 END CTAB'));
-            }
-
-            if (! str_contains($line, 'V2000')) {
-                continue;
-            }
-
-            if (preg_match('/^\s*(\d+)\s+(\d+).*V2000/', $line, $matches) !== 1) {
-                return false;
-            }
-
-            $atomCount = (int) $matches[1];
-            $bondCount = (int) $matches[2];
-
-            return count($lines) >= $index + $atomCount + $bondCount + 2;
-        }
-
-        return false;
+        return response($molfile)
+            ->header('Content-Type', Structure3dMolfile::CONTENT_TYPE);
     }
 
     /**
@@ -130,6 +83,10 @@ class StructureController extends Controller
         return response()->json(['data' => StructureIdentifierStatus::of($identifier)->toArray()]);
     }
 
+    /**
+     * Forms or the parent of a structure and the most similar structures
+     * (Tanimoto coefficient of Bingo fingerprints), for the structure page.
+     */
     public function similarities(string $identifier)
     {
         $structure = Structure::where('identifier', $identifier)->first();
@@ -140,14 +97,51 @@ class StructureController extends Controller
             ], 404);
         }
 
-        $related = $structure->parent ? [$structure->parent] : $structure->children;
-
-        $similar = []; // TODO
+        $related = collect($structure->parent ? [$structure->parent] : $structure->children)
+            ->each->loadCount(['interactionsPassive', 'interactionsActive']);
 
         return response()->json([
-            'related_structures' => StructureResource::collection(collect($related)),
-            'similar_structures' => StructureResource::collection(collect($similar)),
+            'related_structures' => SimilarStructureResource::collection($related),
+            'similar_structures' => SimilarStructureResource::collection(
+                $this->similarStructures($structure, excluded: $related->pluck('id')->all())
+            ),
         ]);
+    }
+
+    /**
+     * The most similar structures apart from the excluded (related) ones,
+     * cached for a day: a structure with many close analogues takes up to
+     * ~0.5 s to score.
+     *
+     * @param  array<int, int>  $excluded
+     * @return Collection<int, Structure>
+     */
+    private function similarStructures(Structure $structure, array $excluded): Collection
+    {
+        // Bingo is a PostgreSQL extension.
+        if (DB::getDriverName() !== 'pgsql' || ! $structure->canonical_smiles) {
+            return collect();
+        }
+
+        $similarities = Cache::remember(
+            "structure-similarities:{$structure->id}:".implode(',', $excluded),
+            now()->addDay(),
+            fn (): array => Structure::similarTo($structure->canonical_smiles, self::SIMILARITY_THRESHOLD)
+                ->whereNotNull('structures.identifier')
+                ->whereKeyNot([$structure->id, ...$excluded])
+                ->limit(self::SIMILAR_STRUCTURES)
+                ->get()
+                ->mapWithKeys(fn (Structure $similar): array => [$similar->id => (float) $similar->similarity])
+                ->all(),
+        );
+
+        return Structure::query()
+            ->whereKey(array_keys($similarities))
+            ->withCount(['interactionsPassive', 'interactionsActive'])
+            ->get()
+            ->each(fn (Structure $similar) => $similar->setAttribute('similarity', $similarities[$similar->id]))
+            ->sortBy([['similarity', 'desc'], ['id', 'asc']])
+            ->values();
     }
 
     public function molCanonizeSmiles(string $smiles)

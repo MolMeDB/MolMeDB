@@ -1,0 +1,25 @@
+{
+    "structured_content": {
+        "data": [
+            {
+                "children": [
+                    {
+                        "children": [],
+                        "id": "number",
+                        "items": [
+                            {
+                                "abbreviation": "string",
+                                "id": "number",
+                                "name": "string"
+                            }
+                        ],
+                        "title": "string"
+                    }
+                ],
+                "id": "number",
+                "items": [],
+                "title": "string"
+            }
+        ]
+    }
+}

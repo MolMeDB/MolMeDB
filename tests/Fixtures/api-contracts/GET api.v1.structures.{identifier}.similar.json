@@ -1,0 +1,35 @@
+{
+    "route": "GET api/v1/structures/{identifier}/similar",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "canonical_smiles": "string",
+                "created_at": "string",
+                "identifier": "string",
+                "landing_page": "string",
+                "logp": "number",
+                "molecular_weight": "number",
+                "name": "null",
+                "similarity": "number",
+                "updated_at": "string",
+                "url": "string"
+            }
+        ],
+        "links": {
+            "first": "string",
+            "last": "null",
+            "next": "null",
+            "prev": "null"
+        },
+        "meta": {
+            "current_page": "number",
+            "current_page_url": "string",
+            "from": "number",
+            "path": "string",
+            "per_page": "number",
+            "to": "number"
+        }
+    }
+}

@@ -15,7 +15,8 @@ class StructureIdentifierResource extends JsonResource
             'type' => strtolower(Identifier::enumType($this->type)),
             'value' => $this->value,
             'uri' => ExternalIdentifierResolver::resolve($this->type, $this->value),
-            'verified' => $this->when($this->state === Identifier::STATE_NEW, false),
+            /** Present (false) only for identifiers not yet confirmed against their source. */
+            'verified' => $this->when(! in_array($this->state, Identifier::VERIFIED_STATES, true), false),
         ];
     }
 }

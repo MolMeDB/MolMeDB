@@ -98,6 +98,13 @@ class DatasetJsonLdMapper
             ],
             [
                 '@type' => 'DataDownload',
+                'name' => 'MolMeDB MCP server',
+                'contentUrl' => PublicApiUrl::to('mcp'),
+                'encodingFormat' => 'application/json',
+                'description' => 'Model Context Protocol server (Streamable HTTP, JSON-RPC over POST) giving AI agents read-only access to the same data as the REST API.',
+            ],
+            [
+                '@type' => 'DataDownload',
                 'name' => 'MolMeDB RDF dump',
                 'identifier' => config('fair.rdf.dump_url'),
                 'contentUrl' => config('fair.rdf.dump_url'),

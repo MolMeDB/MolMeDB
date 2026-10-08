@@ -21,12 +21,19 @@ class ApiContract
 
     public static function assert(TestResponse $response, string $route): void
     {
-        $path = self::path($route);
-        $actual = self::describe($response, $route);
+        self::assertRecorded(self::path($route), $route, self::describe($response, $route));
+    }
 
+    /**
+     * Compares (or, with UPDATE_API_CONTRACTS=1, records) a described response.
+     *
+     * @param  array<string, mixed>  $actual
+     */
+    public static function assertRecorded(string $path, string $name, array $actual): void
+    {
         if (getenv('UPDATE_API_CONTRACTS')) {
-            if (! is_dir(self::DIRECTORY)) {
-                mkdir(self::DIRECTORY, 0777, true);
+            if (! is_dir(dirname($path))) {
+                mkdir(dirname($path), 0777, true);
             }
 
             file_put_contents($path, json_encode($actual, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n");
@@ -35,12 +42,12 @@ class ApiContract
             return;
         }
 
-        Assert::assertFileExists($path, "No contract is recorded for [{$route}]. Record it with UPDATE_API_CONTRACTS=1.");
+        Assert::assertFileExists($path, "No contract is recorded for [{$name}]. Record it with UPDATE_API_CONTRACTS=1.");
 
         Assert::assertSame(
             json_encode(json_decode((string) file_get_contents($path), true), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
             json_encode($actual, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-            "The response of [{$route}] no longer matches its contract ({$path}). If the change is intended, update the API consumers (frontend, docs, explorer) and re-record it with UPDATE_API_CONTRACTS=1.",
+            "The response of [{$name}] no longer matches its contract ({$path}). If the change is intended, update its consumers and re-record it with UPDATE_API_CONTRACTS=1.",
         );
     }
 

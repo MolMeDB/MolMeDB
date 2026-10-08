@@ -1,0 +1,6 @@
+{
+    "route": "GET api/v1/structures/{identifier}/molfile",
+    "status": 200,
+    "content_type": "chemical/x-mdl-molfile",
+    "body": null
+}

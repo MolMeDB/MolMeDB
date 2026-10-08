@@ -96,7 +96,7 @@ test('protein interactions returns a live paginated interaction listing, not a f
             'data' => [['protein', 'temperature', 'ph', 'km', 'ec50', 'ki', 'ic50']],
             'meta',
         ])
-        ->assertJsonPath('data.0.protein', $protein->uniprot_id);
+        ->assertJsonPath('data.0.protein.uniprot_id', $protein->uniprot_id);
 });
 
 test('protein interactions returns an empty list rather than 404 when there are none', function () {

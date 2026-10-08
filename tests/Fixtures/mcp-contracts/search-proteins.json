@@ -1,0 +1,28 @@
+{
+    "structured_content": {
+        "data": [
+            {
+                "created_at": "string",
+                "id": "number",
+                "identifiers": [
+                    {
+                        "type": "string",
+                        "value": "string"
+                    }
+                ],
+                "landing_page": "string",
+                "uniprot_id": "string",
+                "uniprot_uri": "string",
+                "updated_at": "string",
+                "url": "string"
+            }
+        ],
+        "meta": {
+            "has_more": "boolean",
+            "last_page": "number",
+            "page": "number",
+            "per_page": "number",
+            "total": "number"
+        }
+    }
+}

@@ -10,6 +10,8 @@ use Illuminate\Validation\Validator;
 
 class SearchStructureRequest extends FormRequest
 {
+    public const MAX_IDENTIFIERS = 100;
+
     public function authorize(): bool
     {
         return true;
@@ -24,6 +26,13 @@ class SearchStructureRequest extends FormRequest
             'query' => ['nullable', 'string', 'max:4000'],
             'smiles' => ['nullable', 'string', 'max:4000'],
             'substructure' => ['nullable', 'string', 'max:4000'],
+            'inchikey' => ['nullable', 'string', 'regex:/^[A-Z]{14}-[A-Z]{10}-[A-Z]$/i'],
+            'pubchem' => ['nullable', 'string', 'regex:/^\d{1,12}$/'],
+            'chembl' => ['nullable', 'string', 'regex:/^CHEMBL\d{1,12}$/i'],
+            'chebi' => ['nullable', 'string', 'regex:/^(CHEBI:)?\d{1,12}$/i'],
+            'drugbank' => ['nullable', 'string', 'regex:/^DB\d{5,6}$/i'],
+            'pdb' => ['nullable', 'string', 'regex:/^[A-Z0-9]{1,5}$/i'],
+            'identifiers' => ['nullable', 'string', 'max:2000'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
@@ -37,8 +46,50 @@ class SearchStructureRequest extends FormRequest
             function (Validator $validator): void {
                 $this->validateSmilesField($validator, 'smiles');
                 $this->validateSmilesField($validator, 'substructure');
+                $this->validateIdentifierList($validator);
             },
         ];
+    }
+
+    /**
+     * A comma-separated list of at most MAX_IDENTIFIERS MolMeDB identifiers.
+     */
+    private function validateIdentifierList(Validator $validator): void
+    {
+        if (! filled($this->input('identifiers')) || $validator->errors()->has('identifiers')) {
+            return;
+        }
+
+        $error = self::identifierListError((string) $this->input('identifiers'));
+
+        if ($error !== null) {
+            $validator->errors()->add('identifiers', $error);
+        }
+    }
+
+    /**
+     * Why a list of identifiers is not valid, or null when it is.
+     */
+    public static function identifierListError(string $identifiers): ?string
+    {
+        $identifiers = self::identifierList($identifiers);
+        $pattern = '/'.config('fair.identifier_pattern').'/i';
+
+        if (count($identifiers) > self::MAX_IDENTIFIERS) {
+            return 'At most '.self::MAX_IDENTIFIERS.' identifiers can be requested at once.';
+        }
+
+        $invalid = array_filter($identifiers, fn (string $identifier): bool => preg_match($pattern, $identifier) !== 1);
+
+        return $invalid === [] ? null : 'Invalid identifiers: '.implode(', ', $invalid).'.';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function identifierList(string $identifiers): array
+    {
+        return array_values(array_unique(array_filter(array_map('trim', explode(',', $identifiers)), 'strlen')));
     }
 
     private function validateSmilesField(Validator $validator, string $field): void

@@ -16,7 +16,7 @@ import {
   Spinner,
 } from "@heroui/react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiDownload, FiSearch, FiTrash2 } from "react-icons/fi";
 
 const CATEGORY_LABELS: Record<DownloaderCategory, string> = {
@@ -96,6 +96,45 @@ export default function DownloaderClient() {
     };
   }, []);
 
+  const startPolling = useCallback((uuid: string) => {
+    if (pollRef.current) {
+      window.clearInterval(pollRef.current);
+    }
+
+    pollRef.current = window.setInterval(async () => {
+      const response = await getJson(`/api/downloader/${uuid}`);
+
+      if (!response || response.code !== 200) {
+        return;
+      }
+
+      const status = response.data?.data as DownloadStatus;
+
+      if (status.restarted) {
+        setWasRestarted(true);
+      }
+
+      if (status.progress) {
+        setProgress(status.progress);
+      }
+
+      if (status.state === "done") {
+        setExportState("done");
+
+        if (pollRef.current) {
+          window.clearInterval(pollRef.current);
+        }
+      } else if (status.state === "error") {
+        setExportState("error");
+        setErrorMessage(status.error_message ?? "Export failed.");
+
+        if (pollRef.current) {
+          window.clearInterval(pollRef.current);
+        }
+      }
+    }, POLL_INTERVAL_MS);
+  }, []);
+
   // Resume tracking an export started earlier (e.g. from a "your export is
   // ready" notification link) without requiring the original selection to
   // still be in the downloader context.
@@ -109,8 +148,7 @@ export default function DownloaderClient() {
     setDownloadUuid(uuid);
     setExportState("running");
     startPolling(uuid);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, startPolling]);
 
   async function handleVerify() {
     setIsVerifying(true);
@@ -158,45 +196,6 @@ export default function DownloaderClient() {
       setExportState("error");
       setErrorMessage("Could not start the export. Please, try again.");
     }
-  }
-
-  function startPolling(uuid: string) {
-    if (pollRef.current) {
-      window.clearInterval(pollRef.current);
-    }
-
-    pollRef.current = window.setInterval(async () => {
-      const response = await getJson(`/api/downloader/${uuid}`);
-
-      if (!response || response.code !== 200) {
-        return;
-      }
-
-      const status = response.data?.data as DownloadStatus;
-
-      if (status.restarted) {
-        setWasRestarted(true);
-      }
-
-      if (status.progress) {
-        setProgress(status.progress);
-      }
-
-      if (status.state === "done") {
-        setExportState("done");
-
-        if (pollRef.current) {
-          window.clearInterval(pollRef.current);
-        }
-      } else if (status.state === "error") {
-        setExportState("error");
-        setErrorMessage(status.error_message ?? "Export failed.");
-
-        if (pollRef.current) {
-          window.clearInterval(pollRef.current);
-        }
-      }
-    }, POLL_INTERVAL_MS);
   }
 
   async function handleDownload() {

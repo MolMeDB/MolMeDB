@@ -1,6 +1,7 @@
 import SimpleSiteHeader from "@/components/_core/layout/SimpleSiteHeader";
 import SiteContent from "@/components/_core/layout/SiteContent";
 import SiteFooter from "@/components/_core/layout/SiteFooter";
+import SafeRenderer from "@/components/errors/safeRender";
 import { FiDownload } from "react-icons/fi";
 import DownloaderClient from "./client";
 
@@ -18,9 +19,14 @@ export default async function DownloaderPage() {
         </div>
       </SimpleSiteHeader>
       <SiteContent>
-        <div className="min-h-screen flex flex-col gap-8 pb-16">
-          <DownloaderClient />
-        </div>
+        {/* DownloaderClient calls useSearchParams(), which Next.js only
+            allows behind a Suspense boundary - without one the page cannot
+            be prerendered and `next build` fails. */}
+        <SafeRenderer>
+          <div className="min-h-screen flex flex-col gap-8 pb-16">
+            <DownloaderClient />
+          </div>
+        </SafeRenderer>
       </SiteContent>
       <SiteFooter />
     </>

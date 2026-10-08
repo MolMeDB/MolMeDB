@@ -1,0 +1,44 @@
+{
+    "route": "GET api/search/proteins",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "description": "null",
+                "downloader": {
+                    "category": "string",
+                    "id": "string",
+                    "label": "string"
+                },
+                "imageUrl": "null",
+                "link": "string",
+                "subtitle": "string",
+                "title": "string"
+            }
+        ],
+        "links": {
+            "first": "string",
+            "last": "string",
+            "next": "null",
+            "prev": "null"
+        },
+        "meta": {
+            "current_page": "number",
+            "from": "number",
+            "last_page": "number",
+            "links": [
+                {
+                    "active": "boolean",
+                    "label": "string",
+                    "page": "null|number",
+                    "url": "null|string"
+                }
+            ],
+            "path": "string",
+            "per_page": "number",
+            "to": "number",
+            "total": "number"
+        }
+    }
+}

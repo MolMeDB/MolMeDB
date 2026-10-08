@@ -1,0 +1,17 @@
+{
+    "route": "GET api/lab/upload/publications",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "citation": "string",
+                "doi": "string",
+                "id": "number",
+                "identifier": "string",
+                "identifier_source": "string",
+                "title": "string"
+            }
+        ]
+    }
+}

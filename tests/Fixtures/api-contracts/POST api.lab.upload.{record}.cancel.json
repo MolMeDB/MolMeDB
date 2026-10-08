@@ -1,0 +1,13 @@
+{
+    "route": "POST api/lab/upload/{record}/cancel",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "id": "number",
+            "state": "number",
+            "state_label": "string"
+        },
+        "message": "string"
+    }
+}

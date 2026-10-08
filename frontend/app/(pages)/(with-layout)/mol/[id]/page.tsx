@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
 import SimpleSiteHeader from "@/components/_core/layout/SimpleSiteHeader";
 import SiteContent from "@/components/_core/layout/SiteContent";
 import SiteFooter from "@/components/_core/layout/SiteFooter";
@@ -11,6 +13,27 @@ import CompoundActiveInteractions from "./section/interactionActive";
 import CompoundPassiveInteractions from "./section/interactionPassive";
 import IStructure from "@/lib/api/admin/interfaces/Structure";
 import { getJson } from "@/lib/api/admin";
+import { fetchPublicJsonLd, JsonLdScript } from "@/components/_core/JsonLd";
+
+export async function generateMetadata(props: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const id = (await props.params).id;
+  const compound: IStructure = (await getJson(`/api/structure/${id}`, {}, { auth: false, revalidate: 3600 }))?.data
+    ?.data;
+
+  if (!compound) {
+    return { title: `Compound not found | MolMeDB` };
+  }
+
+  const name = compound.name ?? compound.identifier;
+
+  return {
+    title: `${name} | MolMeDB`,
+    description: `Membrane interaction data for ${name} (${compound.identifier}) in MolMeDB, the Molecules on Membranes Database.`,
+    alternates: { canonical: `/mol/${compound.identifier}` },
+  };
+}
 
 export default async function CompoundDetailPage(props: {
   params: Promise<{ id: string }>;
@@ -18,8 +41,20 @@ export default async function CompoundDetailPage(props: {
   const id = (await props.params).id;
   const compound: IStructure = (await getJson(`/api/structure/${id}`, {}, { auth: false, revalidate: 3600 }))?.data
     ?.data;
+  const jsonLd = compound ? await fetchPublicJsonLd(`structures/${compound.identifier}`) : null;
 
   if (!compound) {
+    // Identifiers are persistent: a merged one leads to the structure it was
+    // merged into, a removed one says so instead of "not found".
+    const status = (await getJson(`/api/structure/${encodeURIComponent(id)}/status`, {}, { auth: false, revalidate: 3600 }))
+      ?.data?.data;
+
+    if (status?.status === "merged" && status.replaced_by) {
+      permanentRedirect(`/mol/${status.replaced_by}`);
+    }
+
+    const isDeleted = status?.status === "deleted";
+
     return (
       <>
         <SimpleSiteHeader>
@@ -27,9 +62,11 @@ export default async function CompoundDetailPage(props: {
             <div className="flex flex-row items-center justify-start gap-6 lg:gap-8">
               <SiMoleculer className="text-3xl xl:text-4xl" />
               <div className="flex flex-col justify-center gap-2 lg:gap-1">
-                <h1 className="text-2xl md:text-3xl font-bold">Not found</h1>
+                <h1 className="text-2xl md:text-3xl font-bold">{isDeleted ? "Removed" : "Not found"}</h1>
                 <div className="flex flex-row gap-4 items-center">
-                  Cannot find compound with id {id}
+                  {isDeleted
+                    ? `Compound ${id} was removed from MolMeDB.`
+                    : `Cannot find compound with id ${id}`}
                 </div>
               </div>
             </div>
@@ -45,6 +82,7 @@ export default async function CompoundDetailPage(props: {
 
   return (
     <>
+      <JsonLdScript data={jsonLd} />
       <DownloaderSuggestion
         category="molecule"
         id={compound.identifier}

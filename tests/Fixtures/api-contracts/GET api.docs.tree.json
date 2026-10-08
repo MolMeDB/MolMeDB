@@ -1,0 +1,23 @@
+{
+    "route": "GET api/docs/tree",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "children": [
+                    {
+                        "id": "number",
+                        "path": "string",
+                        "slug": "string",
+                        "title": "string"
+                    }
+                ],
+                "id": "number",
+                "path": "string",
+                "slug": "string",
+                "title": "string"
+            }
+        ]
+    }
+}

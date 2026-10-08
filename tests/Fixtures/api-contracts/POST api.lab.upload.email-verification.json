@@ -1,0 +1,9 @@
+{
+    "route": "POST api/lab/upload/email-verification",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "expires_at": "string",
+        "message": "string"
+    }
+}

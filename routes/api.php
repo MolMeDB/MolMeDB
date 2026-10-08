@@ -8,16 +8,18 @@ use App\Http\Controllers\InteractionPassiveController;
 use App\Http\Controllers\LabUploadController;
 use App\Http\Controllers\MembraneController;
 use App\Http\Controllers\MethodController;
-use App\Http\Controllers\PredictionsController;
 use App\Http\Controllers\NotificationPreferenceController;
+use App\Http\Controllers\PredictionsController;
 use App\Http\Controllers\ProteinController;
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\RdfController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\StructureController;
 use App\Http\Controllers\UserNotificationController;
 use App\Http\Resources\UserResource;
+use App\Services\Rdf\RdfResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -29,9 +31,18 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 
 // Public, unauthenticated API — own rate limiter and CORS policy, not the
 // internal throttle:300,1 default group below.
-Route::prefix('public/v1')
+Route::prefix('v1')
     ->middleware(['public-cors', 'throttle:public-api', 'negotiate-public-api-format'])
     ->group(base_path('routes/public/v1.php'));
+
+// Dereferencing of MolMeDB RDF IRIs (https://rdf.molmedb.upol.cz/* is proxied here).
+Route::prefix('rdf')
+    ->middleware(['public-cors', 'throttle:public-api'])
+    ->group(function () {
+        Route::get('vocabulary', [RdfController::class, 'vocabulary']);
+        Route::get('vocabulary.owl', [RdfController::class, 'vocabulary']);
+        Route::get('{path}', [RdfController::class, 'show'])->where('path', RdfResource::PATH_PATTERN);
+    });
 
 Route::group([], function () {
     Route::get('test', function () {
@@ -201,6 +212,7 @@ Route::group([], function () {
             Route::post('/predictions/validate', [PredictionsController::class, 'validateSmiles'])
                 ->middleware('throttle:10,1');
             Route::get('/{identifier}', 'show');
+            Route::get('/{identifier}/status', 'status');
             Route::get('mol/3d/{identifier}', 'mol3D');
             Route::get('mol/canonize_smiles/{smiles}', 'molCanonizeSmiles')
                 ->middleware('throttle:35,1');

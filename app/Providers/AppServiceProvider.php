@@ -8,6 +8,7 @@ use App\Models\Filesystem;
 use App\Models\SshCredential;
 use App\Policies\ConfigPolicy;
 use App\Policies\PredictionDatasetPolicy;
+use Dedoc\Scramble\Scramble;
 use Exception;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -31,7 +32,14 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void {}
+    public function register(): void
+    {
+        // Must run in register(), not boot(): ScrambleServiceProvider reads
+        // this flag during its own boot() to decide whether to register its
+        // default /docs/api(.json) routes, and register() across all
+        // providers always completes before any provider's boot() runs.
+        Scramble::ignoreDefaultRoutes();
+    }
 
     /**
      * Bootstrap any application services.
@@ -41,11 +49,24 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ConfigModel::class, ConfigPolicy::class);
         Gate::policy(PredictionDataset::class, PredictionDatasetPolicy::class);
 
+        // dedoc/scramble restricts its rendered docs page to the local
+        // environment by default. It documents the open, unauthenticated
+        // public v1 API only (see config/scramble.php), so there is nothing
+        // to protect — allow it everywhere for FAIR "Accessible" discovery.
+        Gate::define('viewApiDocs', fn () => true);
+
+        // Serve the docs/spec under the public v1 path itself instead of
+        // Scramble's default /docs/api(.json) (ignored in register(), see
+        // above), reusing the public API's own CORS policy (the global
+        // HandleCors below is skipped for api/v*).
+        Scramble::registerUiRoute(path: 'api/v1/docs')->middleware('public-cors');
+        Scramble::registerJsonSpecificationRoute(path: 'api/v1/openapi.json')->middleware('public-cors');
+
         // The public API sets its own open CORS policy (App\Http\Middleware\PublicApiCors).
         // The global HandleCors middleware runs as the outermost layer and would
         // otherwise still attach config/cors.php's credentialed-frontend headers
         // (e.g. Access-Control-Allow-Credentials) on top of it — skip it entirely here.
-        HandleCors::skipWhen(fn (Request $request): bool => $request->is('api/public/*'));
+        HandleCors::skipWhen(fn (Request $request): bool => preg_match('#^api/(v\d+|rdf)(/|$)#', $request->path()) === 1);
 
         RateLimiter::for('remote-prediction-status', fn (): Limit => Limit::perMinute(
             max(1, (int) config('prediction-workers.remote.worker.max_status_requests_per_minute', 30)),
@@ -65,7 +86,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Stacks on top of the blanket 'public-api' limiter (applied to the whole
-        // public/v1 route group) — only adds extra restriction when a substructure
+        // public v1 route group) — only adds extra restriction when a substructure
         // search (expensive Bingo query) is actually requested.
         RateLimiter::for('public-api-substructure', function (Request $request): array {
             if (! filled($request->query('substructure'))) {

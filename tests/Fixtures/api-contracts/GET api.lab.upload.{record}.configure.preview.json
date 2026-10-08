@@ -1,0 +1,75 @@
+{
+    "route": "GET api/lab/upload/{record}/configure/preview",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "column_mapping": [
+                "string"
+            ],
+            "column_type_options": {
+                "charge": "string",
+                "chebi": "string",
+                "chembl": "string",
+                "comment": "string",
+                "drugbank": "string",
+                "g_pen": "string",
+                "g_pen_acc": "string",
+                "g_wat": "string",
+                "g_wat_acc": "string",
+                "ignore": "string",
+                "log_k_acc": "string",
+                "log_perm_acc": "string",
+                "logk": "string",
+                "logp": "string",
+                "logperm": "string",
+                "name": "string",
+                "pdb": "string",
+                "ph": "string",
+                "primaryReference": "string",
+                "pubchem": "string",
+                "smiles": "string",
+                "temperature": "string",
+                "x_min": "string",
+                "x_min_acc": "string"
+            },
+            "column_valid_types": [
+                {
+                    "charge": "string",
+                    "chebi": "string",
+                    "chembl": "string",
+                    "comment": "string",
+                    "drugbank": "string",
+                    "g_pen": "string",
+                    "g_pen_acc": "string",
+                    "g_wat": "string",
+                    "g_wat_acc": "string",
+                    "ignore": "string",
+                    "log_k_acc": "string",
+                    "log_perm_acc": "string",
+                    "logk": "string",
+                    "logp": "string",
+                    "logperm": "string",
+                    "name": "string",
+                    "pdb": "string",
+                    "ph": "string",
+                    "primaryReference": "string",
+                    "pubchem": "string",
+                    "smiles": "string",
+                    "temperature": "string",
+                    "x_min": "string",
+                    "x_min_acc": "string"
+                }
+            ],
+            "errors": [],
+            "ok": "boolean",
+            "preview_rows": [
+                [
+                    "string"
+                ]
+            ],
+            "start_line": "number",
+            "total_rows": "number"
+        }
+    }
+}

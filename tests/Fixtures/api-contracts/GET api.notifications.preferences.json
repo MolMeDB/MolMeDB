@@ -1,0 +1,16 @@
+{
+    "route": "GET api/notifications/preferences",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "email_enabled": "boolean",
+                "group": "string",
+                "key": "string",
+                "label": "string",
+                "push_enabled": "boolean"
+            }
+        ]
+    }
+}

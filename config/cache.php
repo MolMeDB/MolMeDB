@@ -19,6 +19,8 @@ return [
 
     'prediction_stats_store' => env('PREDICTION_STATS_CACHE_STORE', 'redis'),
 
+    'upload_lookup_store' => env('UPLOAD_LOOKUP_CACHE_STORE', 'redis'),
+
     /*
     |--------------------------------------------------------------------------
     | Cache Stores

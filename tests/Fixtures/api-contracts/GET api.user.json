@@ -1,0 +1,12 @@
+{
+    "route": "GET api/user",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "email": "string",
+            "id": "number",
+            "name": "string"
+        }
+    }
+}

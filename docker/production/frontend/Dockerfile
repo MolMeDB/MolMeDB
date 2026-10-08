@@ -1,6 +1,6 @@
 # syntax=docker.io/docker/dockerfile:1
 
-FROM node:21-alpine AS base
+FROM node:24.14.1-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -31,6 +31,12 @@ COPY . .
 # works for the build itself; the real secret is what matters at runtime).
 ARG JWT_SECRET
 ENV JWT_SECRET=$JWT_SECRET
+
+# NEXT_PUBLIC_* values are inlined into the client bundle by `next build`, so
+# they must be present at build time — env_file/environment in compose only
+# reach the running container, which is too late for client components.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry

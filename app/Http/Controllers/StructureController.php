@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateStructureRequest;
 use App\Http\Resources\StructureResource;
 use App\Models\Category;
 use App\Models\Structure;
+use App\Services\Structures\StructureIdentifierStatus;
 use Modules\Rdkit\Rdkit;
 
 class StructureController extends Controller
@@ -119,6 +120,14 @@ class StructureController extends Controller
         }
 
         return StructureResource::make($structure);
+    }
+
+    /**
+     * Whether an identifier is active, merged into another structure or removed.
+     */
+    public function status(string $identifier)
+    {
+        return response()->json(['data' => StructureIdentifierStatus::of($identifier)->toArray()]);
     }
 
     public function similarities(string $identifier)

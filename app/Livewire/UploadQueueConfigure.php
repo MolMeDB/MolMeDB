@@ -7,10 +7,12 @@ use App\Rules\UploadFile\ActiveInteractions\ColumnEc50;
 use App\Rules\UploadFile\ActiveInteractions\ColumnEc50Acc;
 use App\Rules\UploadFile\ActiveInteractions\ColumnIc50;
 use App\Rules\UploadFile\ActiveInteractions\ColumnIc50Acc;
+use App\Rules\UploadFile\ActiveInteractions\ColumnInteractionType;
 use App\Rules\UploadFile\ActiveInteractions\ColumnKi;
 use App\Rules\UploadFile\ActiveInteractions\ColumnKiAcc;
 use App\Rules\UploadFile\ActiveInteractions\ColumnKm;
 use App\Rules\UploadFile\ActiveInteractions\ColumnKmAcc;
+use App\Rules\UploadFile\ActiveInteractions\ColumnProteinName;
 use App\Rules\UploadFile\ActiveInteractions\ColumnTarget;
 use App\Rules\UploadFile\ColumnComment;
 use App\Rules\UploadFile\ColumnLogP;
@@ -117,6 +119,8 @@ class UploadQueueConfigure extends Component
             // ColumnSecondaryReference::class,
             ColumnLogP::class,
             ColumnTarget::class,
+            ColumnProteinName::class,
+            ColumnInteractionType::class,
             ColumnEc50::class,
             ColumnEc50Acc::class,
             ColumnIc50::class,

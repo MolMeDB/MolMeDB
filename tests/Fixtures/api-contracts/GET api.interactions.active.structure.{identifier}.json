@@ -45,6 +45,7 @@
                     "type": "number"
                 },
                 "id": "number",
+                "interaction_type": "string",
                 "measurements": {
                     "ec50": {
                         "accuracy": "number",

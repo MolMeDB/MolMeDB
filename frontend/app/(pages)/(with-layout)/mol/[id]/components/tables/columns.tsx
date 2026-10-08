@@ -51,6 +51,13 @@ export const activeInteractionsColumns: IUiTableColumn<IInteractionActive>[] = [
     isHideable: false,
   },
   {
+    key: "interaction_type",
+    title: "Type",
+    render: (item) => item.interaction_type,
+    isSortable: false,
+    isHideable: true,
+  },
+  {
     key: "charge",
     title: "Charge",
     render: (item) => item.charge,

@@ -20,6 +20,8 @@ class InteractionActiveResource extends JsonResource
             'dataset' => DatasetResource::make($this->dataset),
             'structure_id' => $this->structure_id,
             'protein' => ProteinResource::make($this->protein),
+            // Substrate, Inhibitor... ("type" tells passive and active records apart in the frontend).
+            'interaction_type' => $this->category?->title,
             'note' => $this->note,
             'temperature' => $this->temperature,
             'charge' => $this->charge,

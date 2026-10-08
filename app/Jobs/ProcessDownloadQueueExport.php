@@ -245,13 +245,14 @@ class ProcessDownloadQueueExport implements ShouldQueue
     protected function activeRows($query): Generator
     {
         foreach ($query
-            ->with(['dataset.publications', 'publication', 'protein', 'structure'])
+            ->with(['dataset.publications', 'publication', 'protein', 'structure', 'category'])
             ->lazyById(200, 'id') as $interaction) {
             $secondaryPublication = $interaction->dataset?->publications
                 ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id);
 
             yield (object) array_merge($this->structureFields($interaction->structure), [
                 'protein' => $interaction->protein?->uniprot_id,
+                'type' => $interaction->category?->title,
                 'temperature' => $interaction->temperature,
                 'ph' => $interaction->ph,
                 'charge' => $interaction->charge,

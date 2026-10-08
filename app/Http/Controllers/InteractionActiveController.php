@@ -31,7 +31,7 @@ class InteractionActiveController extends Controller
         $params['structureId'] = $structure->id;
 
         $interactions = InteractionActive::filter($params)
-            ->with(['dataset.publications.authors', 'publication.authors'])
+            ->with(['dataset.publications.authors', 'publication.authors', 'category'])
             ->paginateFilter($perPage);
 
         return InteractionActiveResource::collection($interactions);

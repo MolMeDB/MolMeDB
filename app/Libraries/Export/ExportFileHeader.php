@@ -83,6 +83,7 @@ class ExportFileHeader
         $this->items = [
             ...$this->items,
             ExportFileColumn::make($prefix.'protein', 'Protein'),
+            ExportFileColumn::make($prefix.'type', 'Type'),
             ExportFileColumn::make($prefix.'temperature'),
             ExportFileColumn::make($prefix.'ph'),
             ExportFileColumn::make($prefix.'charge'),

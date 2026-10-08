@@ -98,10 +98,15 @@ function Record(props: { compound: ISimilarStructure }) {
   return (
     <a href={`/mol/${props.compound.identifier}`}>
       <Card className="p-4 min-w-64 max-w-64 h-[350px] cursor-pointer">
-        <CardHeader className="w-full h-32">
+        <CardHeader className="w-full h-36 p-2 flex justify-center items-center rounded-xl dark:bg-background/70">
           <Image
             src={props.compound?.structure_2d_url}
             alt="Molecule 2D structure"
+            radius="none"
+            classNames={{
+              wrapper: "h-full w-full flex justify-center items-center",
+            }}
+            className="max-h-full max-w-full object-contain"
           />
         </CardHeader>
         <CardBody className="flex flex-col">

@@ -22,6 +22,6 @@
             </div>
         </x-slot>
 
-        @include('filament.prediction-stats.live-stats-chart', ['queue' => $queue])
+        @include('filament.prediction-stats.live-stats-chart', ['charts' => $charts])
     </x-filament::section>
 </x-filament-widgets::widget>

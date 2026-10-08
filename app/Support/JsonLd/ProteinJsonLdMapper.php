@@ -4,12 +4,11 @@ namespace App\Support\JsonLd;
 
 use App\Models\Protein;
 use App\Models\ProteinIdentifier;
-use App\Support\ExternalIdentifierResolver;
 
 /**
  * Maps a transporter Protein to a Bioschemas "Protein" document
  * (https://bioschemas.org/profiles/Protein/0.11-RELEASE), with its MolMeDB RDF
- * IRI as @id and the UniProt entry as sameAs.
+ * IRI as @id and the UniProt entry (its purl.uniprot.org RDF IRI) as sameAs.
  */
 class ProteinJsonLdMapper
 {
@@ -36,7 +35,8 @@ class ProteinJsonLdMapper
             'additionalType' => self::TRANSPORTER,
             'identifier' => $protein->uniprot_id,
             'name' => $geneName ?? $protein->uniprot_id,
-            'sameAs' => $protein->uniprot_id ? ExternalIdentifierResolver::resolveUniprot($protein->uniprot_id) : null,
+            // The UniProt RDF IRI, as MolMeDB RDF and UniProt's own RDF use it.
+            'sameAs' => $protein->uniprot_id ? "http://purl.uniprot.org/uniprot/{$protein->uniprot_id}" : null,
             'url' => $landingPage,
             'mainEntityOfPage' => $landingPage,
             'isPartOf' => JsonLdContext::datasetReference(),

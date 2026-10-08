@@ -161,7 +161,7 @@ test('protein detail is a Bioschemas Protein linked to UniProt', function () {
         ->and($response->json('@id'))->toBe("https://rdf.molmedb.upol.cz/transporter/target{$protein->id}")
         ->and($response->json('name'))->toBe('SLC22A2')
         ->and($response->json('identifier'))->toBe('O15244')
-        ->and($response->json('sameAs'))->toBe('https://identifiers.org/uniprot:O15244')
+        ->and($response->json('sameAs'))->toBe('http://purl.uniprot.org/uniprot/O15244')
         ->and($response->json('url'))->toBe("https://molmedb.upol.cz/protein/{$protein->id}");
 });
 

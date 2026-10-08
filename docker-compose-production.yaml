@@ -1,10 +1,6 @@
 services:
   web:
-    image: molmedb-nginx
-    build:
-      context: .
-      dockerfile: ./docker/production/nginx/Dockerfile
-      target: production
+    image: ghcr.io/molmedb/molmedb-nginx:${MOLMEDB_VERSION:-latest}
     container_name: molmedb-nginx
     restart: unless-stopped
     volumes:
@@ -26,7 +22,7 @@ services:
   # successfully before starting, regardless of whether it goes through
   # entrypoint.sh (the worker services bypass it via entrypoint: []).
   storage-init:
-    image: molmedb-backend
+    image: ghcr.io/molmedb/molmedb-backend:${MOLMEDB_VERSION:-latest}
     container_name: molmedb-storage-init
     user: "root"
     entrypoint: []
@@ -45,12 +41,8 @@ services:
     restart: "no"
 
   app:
-    image: molmedb-backend
+    image: ghcr.io/molmedb/molmedb-backend:${MOLMEDB_VERSION:-latest}
     user: "www-data"
-    build:
-      context: .
-      dockerfile: ./docker/common/php-fpm/Dockerfile
-      target: production
     restart: unless-stopped
     container_name: molmedb-backend
     volumes:
@@ -83,7 +75,7 @@ services:
         condition: service_completed_successfully
 
   app-scheduler-worker:
-    image: molmedb-backend 
+    image: ghcr.io/molmedb/molmedb-backend:${MOLMEDB_VERSION:-latest} 
     container_name: molmedb-scheduler-worker
     tty: true
     env_file:
@@ -120,7 +112,7 @@ services:
     restart: unless-stopped 
 
   app-queue-worker:
-    image: molmedb-backend
+    image: ghcr.io/molmedb/molmedb-backend:${MOLMEDB_VERSION:-latest}
     container_name: molmedb-queue-worker
     tty: true
     env_file:
@@ -155,7 +147,7 @@ services:
     restart: unless-stopped
 
   app-predictions-queue-worker:
-    image: molmedb-backend
+    image: ghcr.io/molmedb/molmedb-backend:${MOLMEDB_VERSION:-latest}
     container_name: molmedb-predictions-queue-worker
     tty: true
     env_file:
@@ -189,26 +181,21 @@ services:
     command: ["php", "artisan", "queue:work", "--queue=predictions", "--sleep=5", "--tries=1", "--timeout=150", "--memory=256"]
     restart: unless-stopped
 
-  # frontend:
-  #   container_name: molmedb-frontend
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: ../../docker/production/frontend/Dockerfile
-  #   restart: unless-stopped
-  #   networks:
-  #     - molmedb-network
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     #if you???re using Windows, you may need to uncomment the next line - Sol from @Kobe E
-  #     # - WATCHPACK_POLLING=true
-  #     - NEXT_BACKEND_URL=http://web:443
-  #     - NODE_ENV=production
-  #   ports:
-  #     - 3000:3000
-  #   depends_on:
-  #     - app
-
+  frontend:
+    image: ghcr.io/molmedb/molmedb-frontend:${MOLMEDB_VERSION:-latest}
+    container_name: molmedb-frontend
+    restart: unless-stopped
+    networks:
+      - molmedb-network
+    env_file:
+      - .env
+    environment:
+      - NEXT_BACKEND_URL=http://web:443
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - app
 
   db:
     build: ./database/extensions/bingo
@@ -288,9 +275,7 @@ services:
       start_period: 10s
 
   rdkit:
-    build:
-      context: ./modules/Rdkit/src
-      dockerfile: ./../../../docker/common/rdkit/Dockerfile
+    image: ghcr.io/molmedb/molmedb-rdkit:${MOLMEDB_VERSION:-latest}
     container_name: rdkit
     ports:
       - "9696:80"

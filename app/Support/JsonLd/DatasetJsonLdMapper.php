@@ -51,8 +51,9 @@ class DatasetJsonLdMapper
     {
         return array_map(fn (array $grant): array => array_filter([
             '@type' => 'Grant',
-            'identifier' => $grant['identifier'],
-            'name' => isset($grant['name']) ? "{$grant['name']} ({$grant['identifier']})" : $grant['identifier'],
+            'identifier' => $grant['identifier'] ?? null,
+            'name' => $grant['name'],
+            'description' => isset($grant['period']) ? "Funded {$grant['period']}" : null,
             'funder' => ['@type' => 'Organization', 'name' => $grant['funder']],
         ]), config('fair.funding', []));
     }

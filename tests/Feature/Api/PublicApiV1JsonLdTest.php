@@ -83,7 +83,7 @@ test('about endpoint describes the dataset as a Bioschemas Dataset', function ()
         ->and($document)->toHaveKeys(['name', 'description', 'identifier', 'keywords', 'license', 'url', 'creator', 'funding', 'citation', 'distribution'])
         ->and($document['license'])->toBe('https://creativecommons.org/publicdomain/zero/1.0/')
         ->and(collect($document['creator'])->pluck('@id'))->toContain('https://orcid.org/0000-0001-9472-2589')
-        ->and(collect($document['funding'])->pluck('identifier'))->toContain('17-21122S', '24-11986S')
+        ->and(collect($document['funding'])->pluck('identifier'))->toContain('17-21122S', 'LM2023055', '8K0208', 'DSGC-2021-0060')
         ->and(collect($document['citation'])->pluck('@id'))->toContain('https://doi.org/10.1093/database/baz078', 'https://doi.org/10.1186/s13321-026-01208-3')
         ->and(collect($document['distribution'])->pluck('contentUrl'))->toContain(
             'https://molmedb.upol.cz/api/v1',

@@ -107,18 +107,22 @@ return [
     ],
 
     /*
-    | Funding, newest first.
+    | Funding, newest first. `identifier` is the grant number, when it has one.
     */
 
     'funding' => [
-        ['funder' => 'Czech Science Foundation (GAČR)', 'identifier' => '24-11986S'],
-        ['funder' => 'Palacký University Olomouc', 'identifier' => 'IGA_PrF_2026_002'],
-        ['funder' => 'Ministry of Education, Youth and Sports of the Czech Republic', 'identifier' => 'LM2023055', 'name' => 'ELIXIR-CZ'],
-        ['funder' => 'Czech Science Foundation (GAČR)', 'identifier' => '17-21122S'],
-        ['funder' => 'Palacký University Olomouc', 'identifier' => 'IGA_2019_031'],
-        ['funder' => 'Palacký University Olomouc', 'identifier' => 'IGA_PrF_2018_032'],
-        ['funder' => 'Ministry of Education, Youth and Sports of the Czech Republic', 'identifier' => 'LM2018131', 'name' => 'ELIXIR-CZ'],
-        ['funder' => 'Ministry of Education, Youth and Sports of the Czech Republic', 'identifier' => 'LM2015047', 'name' => 'ELIXIR-CZ'],
+        ['name' => 'MolMeDB interoperability with UniProt and SwissLipids', 'funder' => 'Ministry of Education, Youth and Sports of the Czech Republic (Czech-Swiss Research Infrastructure Initiative, ELIXIR-IMPACT)', 'identifier' => '8K0208', 'period' => '2026–2028'],
+        ['name' => 'Database curation', 'funder' => 'Palacký University Olomouc (Internal Grant Agency)', 'identifier' => 'IGA_PrF_2026_002', 'period' => '2026'],
+        ['name' => 'Database curation', 'funder' => 'Palacký University Olomouc (Internal Grant Agency)', 'identifier' => 'IGA_PrF_2025_003', 'period' => '2025'],
+        ['name' => 'MembOn – Membrane Ontology for Integration of Data-related Web Services', 'funder' => 'ELIXIR (Staff Exchange Programme)', 'period' => '2024'],
+        ['name' => 'Database curation', 'funder' => 'Palacký University Olomouc (Internal Grant Agency)', 'identifier' => 'IGA_PrF_2024_017', 'period' => '2024'],
+        ['name' => 'MolMeDB support by the ELIXIR CZ infrastructure', 'funder' => 'Ministry of Education, Youth and Sports of the Czech Republic', 'identifier' => 'LM2023055', 'period' => '2023–2026'],
+        ['name' => 'MolMeDB interoperability update – RDF model draft', 'funder' => 'ELIXIR CZ (internal project)', 'period' => '2023'],
+        ['name' => 'Database curation', 'funder' => 'Palacký University Olomouc (Internal Grant Agency)', 'identifier' => 'IGA_PrF_2023_018', 'period' => '2023'],
+        ['name' => 'FunGIM – Effects of Functional Groups on Interactions with Membranes', 'funder' => 'Palacký University Olomouc (Doctoral Student Grant Competition, OP RDE project CZ.02.2.69/0.0/0.0/19_073/0016713)', 'identifier' => 'DSGC-2021-0060', 'period' => '2022'],
+        ['name' => 'MolMeDB support by the ELIXIR CZ infrastructure', 'funder' => 'Ministry of Education, Youth and Sports of the Czech Republic', 'identifier' => 'LM2018131', 'period' => '2020–2022'],
+        ['name' => 'Database curation', 'funder' => 'Palacký University Olomouc (Internal Grant Agency)', 'identifier' => 'IGA_PrF_2019_031', 'period' => '2019'],
+        ['name' => 'MolMeDB establishment', 'funder' => 'Czech Science Foundation (GAČR)', 'identifier' => '17-21122S', 'period' => '2017–2020'],
     ],
 
     /*

@@ -392,8 +392,16 @@ function ArticleContent(props: {
 }) {
   if (props.isLoading) {
     return (
-      <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-xl border border-default-200 bg-white/60 text-default-600">
-        <Spinner size="lg" color="primary" className="mb-4" />
+      <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-xl border border-default-200 bg-white/60 text-default-600 dark:border-default-100 dark:bg-zinc-950 dark:text-default-400">
+        <Spinner
+          size="lg"
+          color="primary"
+          className="mb-4"
+          classNames={{
+            circle1: "dark:border-b-white",
+            circle2: "dark:border-b-white",
+          }}
+        />
         Loading article...
       </div>
     );

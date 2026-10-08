@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Public\V1\SearchActiveInteractionsRequest;
 use App\Http\Requests\Api\Public\V1\SearchPassiveInteractionsRequest;
 use App\Http\Requests\Api\Public\V1\SearchStructureRequest;
+use App\Http\Requests\Api\Public\V1\SimilarStructuresRequest;
+use App\Http\Resources\Api\Public\V1\SimilarStructureResource;
 use App\Http\Resources\Api\Public\V1\StructureResource;
 use App\Models\Structure;
 use App\Services\Interactions\PublicInteractionQuery;
@@ -47,6 +49,24 @@ class StructureController extends Controller
         $structure->load(['identifiers', 'parent', 'children']);
 
         return StructureResource::make($structure)->withDetails();
+    }
+
+    /**
+     * Structures similar to this one (Tanimoto coefficient of Bingo
+     * fingerprints), most similar first. Without a total: counting the
+     * matches of a low threshold takes up to a second.
+     */
+    public function similar(string $identifier, SimilarStructuresRequest $request)
+    {
+        $structure = $this->findStructure($identifier);
+
+        $similar = Structure::similarTo($structure->canonical_smiles, $request->threshold())
+            ->whereNotNull('structures.identifier')
+            ->whereKeyNot($structure->id)
+            ->simplePaginate($request->perPage())
+            ->withQueryString();
+
+        return SimilarStructureResource::collection($similar);
     }
 
     /**

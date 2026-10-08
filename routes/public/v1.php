@@ -53,6 +53,7 @@ Route::prefix('structures')
     ->group(function () {
         Route::get('/{identifier}/stats', 'stats');
         Route::get('/{identifier}/molfile', 'molfile');
+        Route::get('/{identifier}/similar', 'similar')->middleware('throttle:public-api-similarity');
         Route::get('/{identifier}/interactions/passive', 'interactionsPassive');
         Route::get('/{identifier}/interactions/active', 'interactionsActive');
         Route::get('/{identifier}', 'show');

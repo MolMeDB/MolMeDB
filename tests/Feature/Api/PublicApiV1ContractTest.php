@@ -33,6 +33,7 @@ test('public API endpoint keeps its contract', function (string $route, Closure 
     'structures' => ['GET api/v1/structures', fn () => '/api/v1/structures'],
     'structure' => ['GET api/v1/structures/{identifier}', fn () => '/api/v1/structures/MM00040'],
     'structure stats' => ['GET api/v1/structures/{identifier}/stats', fn () => '/api/v1/structures/MM00040/stats'],
+    'similar structures' => ['GET api/v1/structures/{identifier}/similar', fn () => '/api/v1/structures/MM00040/similar'],
     'structure passive interactions' => ['GET api/v1/structures/{identifier}/interactions/passive', fn () => '/api/v1/structures/MM00040/interactions/passive'],
     'structure active interactions' => ['GET api/v1/structures/{identifier}/interactions/active', fn () => '/api/v1/structures/MM00040/interactions/active'],
     'publications' => ['GET api/v1/publications', fn () => '/api/v1/publications'],

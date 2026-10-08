@@ -3,6 +3,7 @@
 require_once __DIR__.'/api_test_helpers.php';
 
 use App\Models\Identifier;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 test('structures index returns paginated structures', function () {
@@ -293,3 +294,28 @@ test('structure detail lists public cross-references and marks unverified ones',
         ['type' => 'drugbank', 'value' => 'DB00201', 'uri' => 'https://identifiers.org/drugbank:DB00201'],
     ]);
 });
+
+test('similar structures are listed with their similarity, most similar first', function () {
+    createApiStructure(['identifier' => 'MM00040', 'canonical_smiles' => 'Cn1c(=O)c2c(ncn2C)n(C)c1=O']);
+    createApiStructure(['identifier' => 'MM00048', 'canonical_smiles' => 'Cn1c(=O)c2[nH]cnc2n(C)c1=O']);
+    createApiStructure(['identifier' => 'MM00998', 'canonical_smiles' => 'Cn1c(=O)c2c([nH]c(=O)n2C)n(C)c1=O']);
+    createApiStructure(['identifier' => 'MM00010', 'canonical_smiles' => 'CCCCCCCCCCCCCCCC(=O)O']);
+    createApiStructure(['identifier' => null, 'canonical_smiles' => 'Cn1c(=O)c2[nH]cnc2n(C)c1=O']);
+
+    $response = $this->getJson('/api/v1/structures/MM00040/similar')->assertOk();
+
+    expect($response->json('data.*.identifier'))->toEqualCanonicalizing(['MM00048', 'MM00998'])
+        ->and($response->json('data.*.similarity'))->each->toBeGreaterThanOrEqual(0.8)
+        ->and($response->json('data.0.similarity'))->toBeGreaterThanOrEqual($response->json('data.1.similarity'))
+        ->and($response->json('meta'))->not->toHaveKey('total');
+})->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'Similarity search needs PostgreSQL with Bingo.');
+
+test('the similarity threshold is between 0.7 and 1', function (string $threshold, int $status) {
+    createApiStructure(['identifier' => 'MM00040', 'canonical_smiles' => 'CCO']);
+
+    $this->getJson("/api/v1/structures/MM00040/similar?threshold={$threshold}")->assertStatus($status);
+})->with([
+    'too low' => ['0.6', 422],
+    'above one' => ['1.1', 422],
+    'not a number' => ['high', 422],
+]);

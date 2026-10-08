@@ -215,6 +215,14 @@ return [
             'example' => '/structures/MM00040/molfile',
             'is_download' => true,
         ],
+        'structures/{identifier}/similar' => [
+            'description' => 'Structures similar to this one by the Tanimoto coefficient of their fingerprints, most similar first. Has its own, stricter rate limit.',
+            'query' => [
+                'threshold' => ['required' => false, 'example' => '0.8', 'description' => 'Minimum similarity, 0.7-1 (default 0.8).'],
+                'per_page' => ['required' => false, 'example' => '20', 'description' => 'Results per page (max 50).'],
+            ],
+            'example' => '/structures/MM00040/similar?threshold=0.9',
+        ],
         'structures/{identifier}/stats' => [
             'description' => 'Aggregate counts for a structure (passive/active interactions).',
             'query' => [],

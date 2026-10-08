@@ -74,6 +74,18 @@ test('the substructure rate limiter only kicks in once a substructure search is 
         ->assertStatus(429);
 });
 
+test('similarity searches have their own, stricter rate limiter', function () {
+    createApiStructure(['identifier' => 'MM0001', 'canonical_smiles' => 'CCO']);
+
+    // Invalid requests are rejected before the search, but still count.
+    for ($i = 0; $i < 10; $i++) {
+        $this->getJson('/api/v1/structures/MM0001/similar?threshold=0.1')->assertUnprocessable();
+    }
+
+    $this->getJson('/api/v1/structures/MM0001/similar?threshold=0.1')->assertStatus(429);
+    $this->getJson('/api/v1/structures/MM0001')->assertOk();
+});
+
 test('the blanket public-api rate limiter eventually kicks in', function () {
     for ($i = 0; $i < 60; $i++) {
         $this->getJson('/api/v1/membranes')->assertOk();

@@ -28,6 +28,8 @@ class RdfController extends Controller
         'rdfxml' => ['application/rdf+xml', 'rdf'],
     ];
 
+    public const VOCABULARY_CACHE_KEY = 'rdf:vocabulary';
+
     private const ACCEPTED_TYPES = [
         'text/turtle' => 'turtle',
         'application/x-turtle' => 'turtle',
@@ -84,12 +86,13 @@ class RdfController extends Controller
     /**
      * The MolMeDB vocabulary (OWL, RDF/XML); its terms are hash IRIs
      * (https://rdf.molmedb.upol.cz/vocabulary#LogK), so the whole document is
-     * the description of each term. Served from the RDF storage, where it can
-     * be replaced without a deployment.
+     * the description of each term; the ontology itself is
+     * https://rdf.molmedb.upol.cz/vocabulary.owl. Served from the RDF storage,
+     * where `php artisan rdf:update-vocabulary` stores new versions.
      */
     public function vocabulary(): Response
     {
-        $vocabulary = Cache::remember('rdf:vocabulary', 3600, function (): ?string {
+        $vocabulary = Cache::remember(self::VOCABULARY_CACHE_KEY, 3600, function (): ?string {
             $file = File::query()->where('type', File::TYPE_RDF_VOCABULARY)->latest('id')->first();
 
             if (! $file || ! Storage::disk($file->storage)->exists($file->path)) {

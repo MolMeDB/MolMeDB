@@ -40,6 +40,7 @@ Route::prefix('rdf')
     ->middleware(['public-cors', 'throttle:public-api'])
     ->group(function () {
         Route::get('vocabulary', [RdfController::class, 'vocabulary']);
+        Route::get('vocabulary.owl', [RdfController::class, 'vocabulary']);
         Route::get('{path}', [RdfController::class, 'show'])->where('path', RdfResource::PATH_PATTERN);
     });
 

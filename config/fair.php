@@ -132,6 +132,8 @@ return [
     'rdf' => [
         'base_url' => 'https://rdf.molmedb.upol.cz',
         'vocabulary_url' => 'https://rdf.molmedb.upol.cz/vocabulary',
+        // Where the vocabulary is maintained, next to the R2RML mappings (php artisan rdf:update-vocabulary).
+        'vocabulary_source' => env('FAIR_RDF_VOCABULARY_SOURCE', 'https://raw.githubusercontent.com/DominikMartinat/rdf-mmdb/HEAD/vocabulary.owl'),
         'sparql_endpoint' => env('FAIR_SPARQL_ENDPOINT', 'https://idsm.elixir-czech.cz/sparql/endpoint/molmedb'),
         'dump_doi' => '10.5281/zenodo.18632779',
         'dump_url' => 'https://doi.org/10.5281/zenodo.18632779',

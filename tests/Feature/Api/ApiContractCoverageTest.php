@@ -12,6 +12,7 @@ const ROUTES_WITHOUT_CONTRACT = [
     'GET api/v1/docs' => 'HTML documentation page rendered by Scramble; the spec is pinned by OpenApiSpecificationTest.',
     'GET api/v1/openapi.json' => 'Pinned as a whole by OpenApiSpecificationTest.',
     'GET api/rdf/vocabulary' => 'Static RDF/XML document, see RdfDereferencingTest.',
+    'GET api/rdf/vocabulary.owl' => 'The same document under the ontology IRI, see UpdateRdfVocabularyTest.',
     'GET api/rdf/{path}' => 'RDF serializations from the SPARQL endpoint, see RdfDereferencingTest.',
     'GET api/test' => 'Health check returning a constant message.',
     'GET api/epmc/test' => 'Manual Europe PMC connectivity check calling the live service.',

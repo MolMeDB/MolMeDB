@@ -83,3 +83,10 @@ test('the OpenAPI specification matches the recorded one', function () {
     expect(file_exists(OPENAPI_SNAPSHOT))->toBeTrue('Record the OpenAPI specification with UPDATE_API_CONTRACTS=1.')
         ->and($specification)->toBe(file_get_contents(OPENAPI_SNAPSHOT), 'The generated OpenAPI specification changed. If intended, re-record tests/Fixtures/openapi.v1.json with UPDATE_API_CONTRACTS=1 and review the diff.');
 });
+
+test('the OpenAPI specification and the API reference are open to anonymous visitors', function (string $uri) {
+    $this->get($uri)->assertOk();
+})->with([
+    'specification' => '/api/v1/openapi.json',
+    'reference' => '/api/v1/docs',
+]);

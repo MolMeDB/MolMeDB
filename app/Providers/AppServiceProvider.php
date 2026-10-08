@@ -6,6 +6,7 @@ use App\Listeners\RunPredictionsMigrationsAfterDefaultMigrate;
 use App\Models\Config as ConfigModel;
 use App\Models\Filesystem;
 use App\Models\SshCredential;
+use App\Models\User;
 use App\Policies\ConfigPolicy;
 use App\Policies\PredictionDatasetPolicy;
 use Dedoc\Scramble\Scramble;
@@ -53,7 +54,8 @@ class AppServiceProvider extends ServiceProvider
         // environment by default. It documents the open, unauthenticated
         // public v1 API only (see config/scramble.php), so there is nothing
         // to protect — allow it everywhere for FAIR "Accessible" discovery.
-        Gate::define('viewApiDocs', fn () => true);
+        // The nullable user lets the Gate call it for anonymous visitors too.
+        Gate::define('viewApiDocs', fn (?User $user = null): bool => true);
 
         // Serve the docs/spec under the public v1 path itself instead of
         // Scramble's default /docs/api(.json) (ignored in register(), see

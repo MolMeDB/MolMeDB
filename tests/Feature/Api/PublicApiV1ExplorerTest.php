@@ -2,6 +2,8 @@
 
 require_once __DIR__.'/api_test_helpers.php';
 
+use App\Models\File;
+
 test('a browser request (Accept: text/html) renders the explorer page instead of JSON', function () {
     $response = $this->withHeaders(['Accept' => 'text/html'])
         ->get('/api/v1/membranes');
@@ -48,4 +50,16 @@ test('explorer returns a 404 JSON response for a route with no explorer config',
         ->get('/api/v1/membranes')
         ->assertNotFound()
         ->assertJsonPath('message', 'No explorer page is available for this endpoint.');
+});
+
+test('a browser request to a download endpoint gets the file, not the explorer', function () {
+    $membrane = createApiMembrane();
+    createApiExportFile($membrane, File::TYPE_EXPORT_INTERACTIONS_MEMBRANE, 'membrane export contents');
+
+    $response = $this->withHeaders(['Accept' => 'text/html,application/xhtml+xml,*/*;q=0.8'])
+        ->get("/api/v1/membranes/{$membrane->id}/interactions/export");
+
+    $response->assertOk();
+    expect($response->headers->get('content-type'))->not->toContain('text/html');
+    expect($response->streamedContent())->toBe('membrane export contents');
 });

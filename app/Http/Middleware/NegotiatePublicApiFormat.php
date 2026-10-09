@@ -12,7 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Public API content negotiation:
  *  - Accept explicitly mentioning `text/html` (a browser navigating to the
  *    URL) -> the interactive "try it" explorer page for the matched route,
- *    instead of calling the controller at all.
+ *    instead of calling the controller at all. Endpoints returning a file
+ *    (`is_download`) are the exception: a browser gets the file itself.
  *  - Accept explicitly mentioning `application/ld+json` -> flag the request
  *    so resources can return a schema.org/Bioschemas JSON-LD representation
  *    instead of the plain flat one, then fall through to the controller.
@@ -29,7 +30,7 @@ class NegotiatePublicApiFormat
 
         $accept = strtolower((string) $request->headers->get('Accept'));
 
-        if (str_contains($accept, 'text/html')) {
+        if (str_contains($accept, 'text/html') && ! $this->isDownload($request)) {
             return $this->renderExplorer($request);
         }
 
@@ -95,10 +96,23 @@ class NegotiatePublicApiFormat
         }
     }
 
+    private function isDownload(Request $request): bool
+    {
+        return (bool) config("api_explorer.routes.{$this->explorerUri($request)}.is_download", false);
+    }
+
+    /**
+     * The route URI without the "api/v1/" prefix, the key of config/api_explorer.php.
+     */
+    private function explorerUri(Request $request): string
+    {
+        return Str::after($request->route()->uri(), 'api/v1/');
+    }
+
     private function renderExplorer(Request $request): Response
     {
         $route = $request->route();
-        $uri = Str::after($route->uri(), 'api/v1/');
+        $uri = $this->explorerUri($request);
         $config = config("api_explorer.routes.$uri");
 
         if ($config === null) {
@@ -138,7 +152,6 @@ class NegotiatePublicApiFormat
             'pathParams' => $pathParams,
             'queryParams' => $queryParams,
             'exampleRequest' => $config['example'] ?? '/'.$uri,
-            'isDownload' => $config['is_download'] ?? false,
             'maxResponseLines' => config('api_explorer.max_response_lines', 300),
             'baseUrl' => rtrim($request->getSchemeAndHttpHost().'/api/v1', '/'),
         ]);

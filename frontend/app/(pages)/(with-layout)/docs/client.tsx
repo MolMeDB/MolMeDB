@@ -2,7 +2,7 @@
 
 import { Spinner } from "@heroui/react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useState } from "react";
 import { FiMenu, FiX } from "react-icons/fi";
 import DOMPurify from "dompurify";
 
@@ -438,11 +438,53 @@ function ArticleContent(props: {
         </h1>
         <div
           className="html-content-block max-w-none text-default-700"
+          onClick={copyRequestCommand}
           dangerouslySetInnerHTML={{ __html: props.parsedContent.html }}
         />
       </article>
     </>
   );
+}
+
+// "Copy curl" buttons of the request cards (see renderRequestCards).
+function copyRequestCommand(event: MouseEvent<HTMLDivElement>): void {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    "button[data-copy]",
+  );
+
+  if (!button) {
+    return;
+  }
+
+  const text = button.dataset.copy ?? "";
+  const showResult = (isCopied: boolean) => {
+    button.textContent = isCopied ? "Copied" : "Copy failed";
+    window.setTimeout(() => (button.textContent = "Copy curl"), 1500);
+  };
+
+  (navigator.clipboard?.writeText(text) ?? Promise.reject()).then(
+    () => showResult(true),
+    () => showResult(copyWithSelection(text)),
+  );
+}
+
+// Fallback where the Clipboard API is not allowed (e.g. embedded browsers).
+function copyWithSelection(text: string): boolean {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    textarea.remove();
+  }
 }
 
 function MobileDocumentationBar(props: {
@@ -590,6 +632,8 @@ function parseContent(content: string): ParsedArticleContent {
   const parser = new DOMParser();
   const parsedDocument = parser.parseFromString(content, "text/html");
   highlightCodeBlocks(parsedDocument);
+  renderRequestCards(parsedDocument);
+  decorateEndpointHeadings(parsedDocument);
   normalizeDocumentationTables(parsedDocument);
   const headingElements = Array.from(parsedDocument.querySelectorAll("h1, h2"));
   const usedIds = new Set<string>();
@@ -621,9 +665,242 @@ function parseContent(content: string): ParsedArticleContent {
   });
 
   return {
-    html: DOMPurify.sanitize(parsedDocument.body.innerHTML),
+    // "target" opens the Try it! links in a new tab.
+    html: DOMPurify.sanitize(parsedDocument.body.innerHTML, {
+      ADD_ATTR: ["target"],
+    }),
     headings,
   };
+}
+
+// Headings of endpoint references ("### `GET /api/v1/structures/{identifier}`")
+// start a section of their own: a method badge and the path with its
+// {parameters} marked.
+function decorateEndpointHeadings(parsedDocument: Document): void {
+  parsedDocument.querySelectorAll("h3").forEach((heading) => {
+    const code = heading.querySelector("code");
+    const match = code?.textContent
+      ?.trim()
+      .match(/^(GET|POST|PUT|PATCH|DELETE)\s+(\/\S*)$/);
+
+    if (
+      !code ||
+      !match ||
+      heading.textContent?.trim() !== code.textContent?.trim()
+    ) {
+      return;
+    }
+
+    const [, method, path] = match;
+    const methodBadge = parsedDocument.createElement("span");
+    methodBadge.className = "docs-endpoint-heading__method";
+    methodBadge.textContent = method;
+
+    const pathElement = parsedDocument.createElement("code");
+    pathElement.className = "docs-endpoint-heading__path";
+    path.split(/(\{[^}]+\})/).forEach((part) => {
+      if (part === "") {
+        return;
+      }
+
+      if (part.startsWith("{")) {
+        const parameter = parsedDocument.createElement("span");
+        parameter.className = "docs-endpoint-heading__parameter";
+        parameter.textContent = part;
+        pathElement.appendChild(parameter);
+      } else {
+        pathElement.appendChild(parsedDocument.createTextNode(part));
+      }
+    });
+
+    heading.classList.add("docs-endpoint-heading");
+    heading.replaceChildren(methodBadge, pathElement);
+  });
+}
+
+type CurlRequest = {
+  command: string;
+  caption: string | null;
+  endpoint: string;
+  query: [string, string][];
+  url: string;
+  isDownload: boolean;
+};
+
+// Shell examples made only of GET requests (curl, with "# comments") are shown
+// as request cards: the endpoint, its query parameters, a "Try it!" link
+// opening the request in a new tab (the API answers a browser with its
+// explorer page) and a button copying the curl command. Other shell examples,
+// such as POST requests, stay as code.
+function renderRequestCards(parsedDocument: Document): void {
+  const shellBlocks = Array.from(
+    parsedDocument.querySelectorAll("pre.docs-code-block"),
+  ).filter((block) =>
+    ["bash", "shell"].includes(block.getAttribute("data-language") ?? ""),
+  );
+
+  shellBlocks.forEach((block) => {
+    const requests = parseCurlRequests(block.textContent ?? "");
+
+    if (requests === null) {
+      return;
+    }
+
+    const cards = requests.map((request) =>
+      createRequestCard(parsedDocument, request),
+    );
+    block.replaceWith(...cards);
+  });
+}
+
+function createRequestCard(
+  parsedDocument: Document,
+  request: CurlRequest,
+): HTMLElement {
+  const element = (tag: string, className: string, text?: string) => {
+    const created = parsedDocument.createElement(tag);
+    created.className = className;
+    if (text !== undefined) {
+      created.textContent = text;
+    }
+
+    return created;
+  };
+
+  const card = element("div", "docs-request");
+
+  if (request.caption) {
+    card.appendChild(element("p", "docs-request__caption", request.caption));
+  }
+
+  const line = element("div", "docs-request__line");
+  line.appendChild(element("span", "docs-request__method", "GET"));
+  line.appendChild(element("code", "docs-request__endpoint", request.endpoint));
+  card.appendChild(line);
+
+  if (request.query.length > 0) {
+    const parameters = element("dl", "docs-request__query");
+    request.query.forEach(([name, value]) => {
+      parameters.appendChild(element("dt", "", name));
+      parameters.appendChild(element("dd", "", value));
+    });
+    card.appendChild(parameters);
+  }
+
+  const actions = element("div", "docs-request__actions");
+  const link = element(
+    "a",
+    "docs-request__try",
+    request.isDownload ? "Download" : "Try it!",
+  ) as HTMLAnchorElement;
+  link.href = request.url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  actions.appendChild(link);
+
+  const copy = element("button", "docs-request__copy", "Copy curl");
+  copy.setAttribute("type", "button");
+  copy.setAttribute("data-copy", request.command);
+  actions.appendChild(copy);
+  card.appendChild(actions);
+
+  return card;
+}
+
+// The requests of a shell example, or null when it contains anything else.
+function parseCurlRequests(source: string): CurlRequest[] | null {
+  const lines = source
+    .replace(/\\\r?\n\s*/g, " ")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+  const requests: CurlRequest[] = [];
+  let caption: string | null = null;
+
+  for (const line of lines) {
+    if (line.startsWith("#")) {
+      caption = line.replace(/^#+\s*/, "");
+      continue;
+    }
+
+    const request = line.startsWith("curl ")
+      ? parseCurlCommand(line, caption)
+      : null;
+
+    if (request === null) {
+      return null;
+    }
+
+    requests.push(request);
+    caption = null;
+  }
+
+  return requests.length > 0 ? requests : null;
+}
+
+function parseCurlCommand(
+  command: string,
+  caption: string | null,
+): CurlRequest | null {
+  const tokens = Array.from(
+    command.matchAll(/'([^']*)'|"([^"]*)"|(\S+)/g),
+    (match) => match[1] ?? match[2] ?? match[3],
+  );
+  let url: string | null = null;
+  let isGetQuery = false;
+  let isDownload = false;
+  const data: string[] = [];
+
+  for (let index = 1; index < tokens.length; index += 1) {
+    const token = tokens[index];
+
+    if (token === "-X" || token === "--request") {
+      if (tokens[index + 1]?.toUpperCase() !== "GET") {
+        return null;
+      }
+      index += 1;
+    } else if (token === "-G" || token === "--get") {
+      isGetQuery = true;
+    } else if (token === "--data-urlencode") {
+      const [name, ...value] = (tokens[index + 1] ?? "").split("=");
+      data.push(`${name}=${encodeURIComponent(value.join("="))}`);
+      index += 1;
+    } else if (token === "-d" || token.startsWith("--data")) {
+      data.push(tokens[index + 1] ?? "");
+      index += 1;
+    } else if (/^-[a-zA-Z]*O/.test(token) || token === "--remote-name") {
+      isDownload = true;
+    } else if (token === "-o" || token === "--output") {
+      isDownload = true;
+      index += 1;
+    } else if (url === null && /^https?:\/\//.test(token)) {
+      url = token;
+    }
+  }
+
+  // A body without -G makes the request a POST.
+  if (url === null || (data.length > 0 && !isGetQuery)) {
+    return null;
+  }
+
+  if (data.length > 0) {
+    url += (url.includes("?") ? "&" : "?") + data.join("&");
+  }
+
+  try {
+    const parsedUrl = new URL(url);
+
+    return {
+      command,
+      caption,
+      endpoint: parsedUrl.origin + parsedUrl.pathname,
+      query: Array.from(parsedUrl.searchParams.entries()),
+      url: parsedUrl.href,
+      isDownload,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function normalizeDocumentationTables(parsedDocument: Document): void {
@@ -694,6 +971,8 @@ function getTableTextBreakParts(text: string): string[] {
 // in the articles generated from resources/docs).
 const PLAIN_CODE_LANGUAGES = new Set(["text", "bash", "shell", "http"]);
 
+const HIGHLIGHTED_CODE_LANGUAGES = new Set(["sparql", "sql", "json", "python"]);
+
 function highlightCodeBlocks(parsedDocument: Document): void {
   const explicitBlocks = Array.from(
     parsedDocument.querySelectorAll("pre.docs-code-block"),
@@ -720,7 +999,10 @@ function highlightCodeBlocks(parsedDocument: Document): void {
       return;
     }
 
-    const highlighted = highlightSource(source, language);
+    const highlighted =
+      language === "python"
+        ? highlightPython(source)
+        : highlightSource(source, language);
 
     if (codeElement) {
       codeElement.innerHTML = highlighted;
@@ -734,7 +1016,7 @@ function detectCodeLanguage(block: Element): string {
   const fromData = (block.getAttribute("data-language") ?? "")
     .trim()
     .toLowerCase();
-  if (fromData === "sparql" || fromData === "sql" || fromData === "json") {
+  if (HIGHLIGHTED_CODE_LANGUAGES.has(fromData)) {
     return fromData;
   }
 
@@ -743,10 +1025,10 @@ function detectCodeLanguage(block: Element): string {
   }
 
   const className = block.getAttribute("class") ?? "";
-  const classMatch = className.match(/\blanguage-(sparql|sql|json)\b/i);
+  const classMatch = className.match(/\blanguage-([\w+-]+)\b/i);
   const fromClass = classMatch?.[1]?.toLowerCase() ?? "";
 
-  if (fromClass === "sparql" || fromClass === "sql" || fromClass === "json") {
+  if (HIGHLIGHTED_CODE_LANGUAGES.has(fromClass)) {
     return fromClass;
   }
 
@@ -921,6 +1203,157 @@ function wrapToken(
   }
 
   return escaped;
+}
+
+const PYTHON_KEYWORDS = new Set([
+  "and",
+  "as",
+  "assert",
+  "async",
+  "await",
+  "break",
+  "class",
+  "continue",
+  "def",
+  "del",
+  "elif",
+  "else",
+  "except",
+  "finally",
+  "for",
+  "from",
+  "global",
+  "if",
+  "import",
+  "in",
+  "is",
+  "lambda",
+  "nonlocal",
+  "not",
+  "or",
+  "pass",
+  "raise",
+  "return",
+  "try",
+  "while",
+  "with",
+  "yield",
+]);
+
+const PYTHON_CONSTANTS = new Set(["None", "True", "False"]);
+
+const PYTHON_BUILTINS = new Set([
+  "dict",
+  "enumerate",
+  "float",
+  "int",
+  "isinstance",
+  "len",
+  "list",
+  "max",
+  "min",
+  "open",
+  "print",
+  "range",
+  "round",
+  "set",
+  "sorted",
+  "str",
+  "sum",
+  "tuple",
+  "zip",
+]);
+
+// Highlighting of Python examples in the way of an IDE: keywords, strings
+// (with the {expressions} of f-strings), numbers, comments, called functions
+// and methods, builtins, keyword arguments, assigned names and constants.
+function highlightPython(source: string): string {
+  const tokenRegex =
+    /(#.*$)|((?:[rRbBuU]?[fF]|[fF][rR]|[rRbBuU]{1,2})?(?:"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'))|(\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|([A-Za-z_][A-Za-z0-9_]*)|(\S)/gm;
+  const span = (className: string, text: string) =>
+    `<span class="docs-code__${className}">${escapeHtml(text)}</span>`;
+
+  let html = "";
+  let cursor = 0;
+  let bracketDepth = 0;
+  let previousToken = "";
+  let match = tokenRegex.exec(source);
+
+  while (match) {
+    const [token, comment, string, number, name] = match;
+    const start = match.index;
+    const end = start + token.length;
+    const following = source.slice(end);
+
+    html += escapeHtml(source.slice(cursor, start));
+
+    if (comment) {
+      html += span("comment", token);
+    } else if (string) {
+      html += highlightPythonString(string);
+    } else if (number) {
+      html += span("number", token);
+    } else if (name) {
+      const isCalled = /^\s*\(/.test(following);
+      const isAssigned = /^\s*=(?!=)/.test(following);
+
+      if (PYTHON_KEYWORDS.has(name)) {
+        html += span("keyword", token);
+      } else if (PYTHON_CONSTANTS.has(name)) {
+        html += span("number", token);
+      } else if (previousToken === "def" || previousToken === "class") {
+        html += span("function", token);
+      } else if (
+        isCalled &&
+        previousToken !== "." &&
+        PYTHON_BUILTINS.has(name)
+      ) {
+        html += span("builtin", token);
+      } else if (isCalled) {
+        html += span("function", token);
+      } else if (isAssigned && bracketDepth > 0) {
+        html += span("parameter", token);
+      } else if (/^[A-Z][A-Z0-9_]*$/.test(name) || isAssigned) {
+        html += span("variable", token);
+      } else {
+        html += escapeHtml(token);
+      }
+    } else {
+      if ("([{".includes(token)) {
+        bracketDepth += 1;
+      } else if (")]}".includes(token)) {
+        bracketDepth = Math.max(0, bracketDepth - 1);
+      }
+
+      html += span("operator", token);
+    }
+
+    previousToken = token;
+    cursor = end;
+    match = tokenRegex.exec(source);
+  }
+
+  return html + escapeHtml(source.slice(cursor));
+}
+
+function highlightPythonString(token: string): string {
+  const prefix = token.match(/^[A-Za-z]*/)?.[0] ?? "";
+
+  if (!/f/i.test(prefix)) {
+    return `<span class="docs-code__string">${escapeHtml(token)}</span>`;
+  }
+
+  // {expressions} of an f-string ("{{" and "}}" are literal braces).
+  const parts = token.split(/(\{\{|\}\}|\{[^{}]*\})/);
+  const inner = parts
+    .map((part) =>
+      /^\{[^{]/.test(part) && part.endsWith("}") && part !== "}}"
+        ? `<span class="docs-code__variable">${escapeHtml(part)}</span>`
+        : escapeHtml(part),
+    )
+    .join("");
+
+  return `<span class="docs-code__string">${inner}</span>`;
 }
 
 function escapeHtml(value: string): string {

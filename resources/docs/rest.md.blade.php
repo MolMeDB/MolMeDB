@@ -2,6 +2,7 @@
 title: API & MCP
 ---
 @php($limits = $docs->rateLimits())
+@php($pages = $docs->pageLimits())
 MolMeDB data can be read by programs in three ways:
 
 - **REST API**, at [`{{ $docs->apiUrl() }}`]({{ $docs->apiUrl() }}): structures, membranes, methods, proteins, publications and all interaction records, with filters. It is described on this page and the pages below.
@@ -12,18 +13,70 @@ Both interfaces are free to use, read-only and need no registration or key. The 
 
 ## Quick start
 
+Every endpoint is a plain HTTPS `GET` request: the address of the endpoint followed by its parameters after `?`. No key and no special header are needed. For example, this request looks up caffeine. **Try it!** opens it in a new tab, **Copy curl** copies it as a command for the terminal:
+
 ```bash
-# Find a structure by name
 curl '{!! $docs->apiUrl('structures?query=caffeine') !!}'
-
-# Its passive interactions on one membrane, only those with a measured permeability
-curl '{!! $docs->apiUrl('interactions/passive?structure=MM00040&membrane=3&with_value=logperm') !!}'
-
-# Active interactions of a transporter, only substrates
-curl '{!! $docs->apiUrl('interactions/active?uniprot=O15245&type=Substrate') !!}'
 ```
 
-Every endpoint can also be tried in a web browser. Open its URL and the API explorer shows a form for its parameters and the live response, for example [{{ $docs->apiUrl('structures/MM00040') }}]({{ $docs->apiUrl('structures/MM00040') }}).
+The response is JSON. The structures found are in `data`; `links` and `meta` describe the pages of the result:
+
+```json
+{!! $docs->exampleResponse('structures') !!}
+```
+
+The response here is shortened, as in all examples of this documentation: lists show only their first items.
+
+The `identifier` of the structure (`MM00040`) is what the other endpoints take:
+
+```bash
+# Detail of the structure: SMILES, InChIKey, identifiers in other databases, forms
+curl '{!! $docs->apiUrl('structures/MM00040') !!}'
+
+# Its passive interactions on the DOPC membrane (id 3), only those with a measured permeability
+curl '{!! $docs->apiUrl('interactions/passive?structure=MM00040&membrane=3&with_value=logperm') !!}'
+```
+
+In a web browser, the URL of an endpoint opens the API explorer: a form for its parameters and the live response. This is what **Try it!** shows.
+
+### The same in Python
+
+With the [requests](https://requests.readthedocs.io) library, pass the parameters as a dictionary and read the JSON:
+
+```python
+import requests
+
+API = "{!! $docs->apiUrl() !!}"
+
+response = requests.get(f"{API}/structures", params={"query": "caffeine"})
+response.raise_for_status()
+
+for structure in response.json()["data"]:
+    print(structure["identifier"], structure["name"], structure["logp"])
+# MM00040 Caffeine -1.03
+```
+
+### Reading all pages of a result
+
+A list returns one page of records (at most {{ $pages['interactions'] }} for interactions, set by `per_page`). To read all of them, follow `links.next` until it is `null`:
+
+```python
+url = f"{API}/interactions/passive"
+params = {"membrane": 3, "with_value": "logperm", "per_page": {{ $pages['interactions'] }}}
+records = []
+
+while url:
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    page = response.json()
+    records.extend(page["data"])
+    url = page["links"]["next"]  # None on the last page
+    params = None                # the next URL already contains the parameters
+
+print(len(records), "records")
+```
+
+For whole membranes, methods or publications, the daily [exports](/docs/rest/membranes-and-methods) are faster than paging.
 
 ## Reference
 

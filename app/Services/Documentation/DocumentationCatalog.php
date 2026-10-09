@@ -36,7 +36,10 @@ class DocumentationCatalog
      * Public API endpoints described in config/api_explorer.php, in the
      * order given; a key ending with "*" stands for every route under it.
      *
-     * @return array<int, array{uri: string, path: string, description: string, query: array<string, array{required: bool, example: string, description: string}>, example: string, url: string, is_download: bool}>
+     * Each one comes with its path parameters and the shortened response
+     * of its example request (resources/docs/_examples), when there is one.
+     *
+     * @return array<int, array{uri: string, path: string, description: string, path_parameters: array<string, array{label: string, example: string}>, query: array<string, array{required: bool, example: string, description: string}>, example: string, url: string, is_download: bool, response: ?string}>
      */
     public function endpoints(string ...$uris): array
     {
@@ -54,15 +57,34 @@ class DocumentationCatalog
                     'uri' => $key,
                     'path' => "/api/v1/{$key}",
                     'description' => $route['description'],
+                    'path_parameters' => $this->pathParameters($key),
                     'query' => $route['query'],
                     'example' => $route['example'],
                     'url' => $this->apiUrl(ltrim($route['example'], '/')),
                     'is_download' => $route['is_download'] ?? false,
+                    'response' => $this->exampleResponse(str_replace(['{', '}', '/'], ['', '', '.'], $key)),
                 ];
             }
         }
 
         return array_values($selected);
+    }
+
+    /**
+     * Shortened real response of an example request, stored in
+     * resources/docs/_examples/{name}.json (or .mol for a molfile).
+     */
+    public function exampleResponse(string $name): ?string
+    {
+        foreach (['json', 'mol'] as $extension) {
+            $path = resource_path("docs/_examples/{$name}.{$extension}");
+
+            if (is_file($path)) {
+                return rtrim((string) file_get_contents($path));
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -221,6 +243,21 @@ class DocumentationCatalog
     public function cell(?string $text): string
     {
         return str_replace(['|', "\n"], ['\|', ' '], (string) $text);
+    }
+
+    /**
+     * Path parameters of a route URI ("structures/{identifier}") with their
+     * label and example from config/api_explorer.php.
+     *
+     * @return array<string, array{label: string, example: string}>
+     */
+    private function pathParameters(string $uri): array
+    {
+        preg_match_all('/\{(\w+)\}/', $uri, $matches);
+
+        return collect($matches[1])
+            ->mapWithKeys(fn (string $name): array => [$name => config("api_explorer.path_params.{$name}")])
+            ->all();
     }
 
     /**

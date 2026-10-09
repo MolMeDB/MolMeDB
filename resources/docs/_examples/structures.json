@@ -1,0 +1,44 @@
+{
+  "data": [
+    {
+      "identifier": "MM00040",
+      "name": "Caffeine",
+      "canonical_smiles": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+      "molecular_weight": 194.19,
+      "logp": -1.03,
+      "url": "https://molmedb.upol.cz/api/v1/structures/MM00040",
+      "landing_page": "https://molmedb.upol.cz/mol/MM00040",
+      "created_at": "2018-02-11T11:13:46.000000Z",
+      "updated_at": "2025-11-22T08:15:57.000000Z"
+    }
+  ],
+  "links": {
+    "first": "https://molmedb.upol.cz/api/v1/structures?query=caffeine&page=1",
+    "last": "https://molmedb.upol.cz/api/v1/structures?query=caffeine&page=1",
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://molmedb.upol.cz/api/v1/structures?query=caffeine&page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      }
+    ],
+    "path": "https://molmedb.upol.cz/api/v1/structures",
+    "per_page": 20,
+    "to": 1,
+    "total": 3
+  }
+}

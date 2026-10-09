@@ -1,0 +1,77 @@
+{
+  "data": [
+    {
+      "id": 2374,
+      "url": "https://molmedb.upol.cz/api/v1/interactions/passive/2374",
+      "rdf": "https://rdf.molmedb.upol.cz/interaction/int2374",
+      "structure": {
+        "identifier": "MM00481",
+        "name": "MM00481",
+        "url": "https://molmedb.upol.cz/api/v1/structures/MM00481"
+      },
+      "membrane": {
+        "id": 15,
+        "name": "POPC",
+        "abbreviation": "POPC"
+      },
+      "method": {
+        "id": 35,
+        "name": "ELFA",
+        "abbreviation": "ELFA"
+      },
+      "temperature": 30,
+      "ph": null,
+      "charge": "0",
+      "note": null,
+      "x_min": null,
+      "x_min_accuracy": null,
+      "gpen": null,
+      "gpen_accuracy": null,
+      "gwat": null,
+      "gwat_accuracy": null,
+      "logk": null,
+      "logk_accuracy": null,
+      "logperm": -2.6,
+      "logperm_accuracy": null,
+      "primary_reference": {
+        "id": 11,
+        "pmid": "24211703",
+        "citation": "Eyer K, Paech F, Schuler F, Kuhn P, Kissner R, Belli S, Dittrich PS, Krämer SD.: A liposomal fluorescence assay to study permeation kinetics of drug-like weak bases across the lipid bilayer. J Control Release, Volume 173, 102-109, 2014"
+      },
+      "secondary_reference": {
+        "id": 11,
+        "pmid": "24211703",
+        "citation": "Eyer K, Paech F, Schuler F, Kuhn P, Kissner R, Belli S, Dittrich PS, Krämer SD.: A liposomal fluorescence assay to study permeation kinetics of drug-like weak bases across the lipid bilayer. J Control Release, Volume 173, 102-109, 2014"
+      }
+    }
+  ],
+  "links": {
+    "first": "https://molmedb.upol.cz/api/v1/membranes/15/interactions?with_value=logperm&page=1",
+    "last": "https://molmedb.upol.cz/api/v1/membranes/15/interactions?with_value=logperm&page=3",
+    "prev": null,
+    "next": "https://molmedb.upol.cz/api/v1/membranes/15/interactions?with_value=logperm&page=2"
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 3,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://molmedb.upol.cz/api/v1/membranes/15/interactions?with_value=logperm&page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      }
+    ],
+    "path": "https://molmedb.upol.cz/api/v1/membranes/15/interactions",
+    "per_page": 20,
+    "to": 20,
+    "total": 53
+  }
+}

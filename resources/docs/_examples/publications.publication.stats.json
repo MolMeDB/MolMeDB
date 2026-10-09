@@ -1,0 +1,25 @@
+{
+  "data": {
+    "publication": {
+      "id": 1262,
+      "citation": "Thondorf I, Voigt V, Schäfer S, Gebauer S, Zebisch K, Laug L, Brandsch M.: Three-dimensional quantitative structure-activity relationship analyses of substrates of the human proton-coupled amino acid transporter 1 (hPAT1). Bioorg Med Chem, Volume 19 (21), 2011",
+      "title": "Three-dimensional quantitative structure-activity relationship analyses of substrates of the human proton-coupled amino acid transporter 1 (hPAT1).",
+      "doi": "10.1016/j.bmc.2011.08.058",
+      "doi_url": "https://doi.org/10.1016/j.bmc.2011.08.058",
+      "pmid": "21955456",
+      "pmid_url": "https://pubmed.ncbi.nlm.nih.gov/21955456/",
+      "year": 2011,
+      "url": "https://molmedb.upol.cz/api/v1/publications/1262",
+      "landing_page": "https://molmedb.upol.cz/publication/1262",
+      "created_at": "2021-01-20T08:55:42.000000Z",
+      "updated_at": null
+    },
+    "total": {
+      "interactions_passive": 0,
+      "interactions_active": 32,
+      "membranes": 0,
+      "methods": 0,
+      "datasets": 0
+    }
+  }
+}

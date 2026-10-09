@@ -1,0 +1,45 @@
+{
+  "data": [
+    {
+      "id": 4,
+      "title": "Experimental",
+      "children": [
+        {
+          "id": 7,
+          "title": "Partitioning",
+          "children": [],
+          "items": [
+            {
+              "id": 75,
+              "name": "Electron paramagnetic resonance",
+              "abbreviation": "EPR"
+            },
+            {
+              "id": 47,
+              "name": "pH-Metric Titration",
+              "abbreviation": "pH_Titration"
+            }
+          ]
+        },
+        {
+          "id": 167,
+          "title": "Positioning",
+          "children": [],
+          "items": [
+            {
+              "id": 43,
+              "name": "ESSM",
+              "abbreviation": "ESSM"
+            },
+            {
+              "id": 38,
+              "name": "Confocal Fluorescence Microscopy",
+              "abbreviation": "CFM"
+            }
+          ]
+        }
+      ],
+      "items": []
+    }
+  ]
+}

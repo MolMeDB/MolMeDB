@@ -5,6 +5,49 @@ position: 1
 @php($pages = $docs->pageLimits())
 A structure is one molecule or one form of it. It is identified by its MolMeDB identifier (for example `MM00040`) and described by its canonical SMILES, InChI and InChIKey, molecular weight, LogP and links to other databases (PubChem, ChEMBL, ChEBI, DrugBank, PDB ligands). Structures still being curated have no identifier yet and are not public.
 
+## Example: from a SMILES to the structure record
+
+**1. Find the structure.** Search by its SMILES; any valid notation of the same molecule matches. In a URL, characters such as `=` and `#` must be encoded (`%3D`, `%23`); **Try it!** and the copied `curl` command do it for you:
+
+```bash
+curl -G '{!! $docs->apiUrl('structures') !!}' --data-urlencode 'smiles=CN1C=NC2=C1C(=O)N(C)C(=O)N2C'
+```
+
+The structures found are in `data`, each with its `identifier`:
+
+```json
+{!! $docs->exampleResponse('guide.structures-smiles') !!}
+```
+
+**2. Read its detail** with the identifier from the first step:
+
+```bash
+curl '{!! $docs->apiUrl('structures/MM00040') !!}'
+```
+
+```json
+{!! $docs->exampleResponse('structures.identifier') !!}
+```
+
+The detail adds the InChI and InChIKey, the `identifiers` of the structure in other databases (with an [identifiers.org](https://identifiers.org) `uri`), its `forms` and `parent` (see below), a picture (`depiction_url`) and the 3D structure (`molfile_url`).
+
+**3. Continue** with the measured data of the structure: `/structures/MM00040/interactions/passive` and `/structures/MM00040/interactions/active`, described on the page [Interactions](/docs/rest/interactions).
+
+In Python, `requests` encodes the parameters itself:
+
+```python
+import requests
+
+API = "{!! $docs->apiUrl() !!}"
+
+found = requests.get(f"{API}/structures", params={"smiles": "CN1C=NC2=C1C(=O)N(C)C(=O)N2C"}).json()
+identifier = found["data"][0]["identifier"]  # "MM00040"
+
+structure = requests.get(f"{API}/structures/{identifier}").json()["data"]
+print(structure["name"], structure["inchikey"])
+# Caffeine RYYVLZVUVIJVGH-UHFFFAOYSA-N
+```
+
 ## Finding structures
 
 `GET /structures` combines these searches; every result has the identifier needed by the other endpoints.

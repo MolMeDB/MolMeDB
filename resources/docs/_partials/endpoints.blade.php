@@ -4,8 +4,16 @@
 
 {{ $endpoint['description'] }}
 
+@if ($endpoint['path_parameters'] !== [])
+| Path parameter | Description | Example |
+|---|---|---|
+@foreach ($endpoint['path_parameters'] as $name => $parameter)
+| `{{ '{'.$name.'}' }}` | {{ $docs->cell($parameter['label']) }} | `{{ $parameter['example'] }}` |
+@endforeach
+
+@endif
 @if ($endpoint['query'] !== [])
-| Parameter | Description |
+| Query parameter | Description |
 |---|---|
 @foreach ($endpoint['query'] as $name => $parameter)
 | `{{ $name }}`{{ $parameter['required'] ? ' (required)' : '' }} | {{ $docs->cell($parameter['description']) }} |
@@ -13,9 +21,28 @@
 
 @endif
 @if ($endpoint['is_download'])
-Example (downloads a file): [`{!! $endpoint['example'] !!}`]({{ $endpoint['url'] }})
+**Example request** (downloads a file):
+
+```bash
+curl -OJ '{!! $endpoint['url'] !!}'
+```
 @else
-Example: [`{!! $endpoint['example'] !!}`]({{ $endpoint['url'] }})
+**Example request:**
+
+```bash
+curl '{!! $endpoint['url'] !!}'
+```
 @endif
 
+@if ($endpoint['response'] !== null)
+<details class="docs-response">
+<summary>Example response (shortened)</summary>
+
+```{{ str_starts_with($endpoint['response'], '{') ? 'json' : 'text' }}
+{!! $endpoint['response'] !!}
+```
+
+</details>
+
+@endif
 @endforeach

@@ -270,7 +270,7 @@ return [
         'publications/{publication}/interactions/passive/export' => [
             'description' => 'Downloads a .zip export of every passive interaction reported in this publication (refreshed daily).',
             'query' => [],
-            'example' => '/publications/1262/interactions/passive/export',
+            'example' => '/publications/22/interactions/passive/export',
             'is_download' => true,
         ],
         'publications/{publication}/interactions/active/export' => [

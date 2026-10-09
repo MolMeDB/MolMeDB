@@ -42,6 +42,25 @@ The server describes itself to the assistant, and its resource `molmedb-overview
 
 The tools return the same records as the REST API, including their API URLs, so answers can be checked and cited.
 
+## Calling a tool without an assistant
+
+The server speaks JSON-RPC over HTTP, so a tool can be tried, or used from a script, with a single `POST` request; no session is needed. The request names the tool and its arguments (listed under [Tools](#tools) below):
+
+```bash
+curl -X POST '{!! $docs->apiUrl('mcp') !!}' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "search-structures", "arguments": {"query": "caffeine"}}}'
+```
+
+The result is in `result.structuredContent`, the same records as the REST API returns; `result.content` holds the same data as text for the assistant:
+
+```json
+{!! $docs->exampleResponse('guide.mcp-tools-call') !!}
+```
+
+The method `tools/list` (`{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}`) returns all tools with the JSON Schema of their arguments.
+
 ## Tools
 
 @foreach ($docs->mcpTools() as $tool)

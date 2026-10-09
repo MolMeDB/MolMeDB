@@ -10,6 +10,47 @@ An interaction record is one measured or calculated value set of one structure:
 
 The meaning of the values is described in [What is stored in MolMeDB?](/docs/about/about-data), their units on the [overview page](/docs/rest).
 
+## Example: permeability of caffeine through DOPC
+
+Combine the filters in one request: the structure (`MM00040`, found by [`/structures`](/docs/rest/structures)), the membrane (DOPC has the `id` 3, found by [`/membranes?query=DOPC`](/docs/rest/membranes-and-methods)) and only records with a measured permeability (`with_value=logperm`):
+
+```bash
+curl '{!! $docs->apiUrl('interactions/passive?structure=MM00040&membrane=3&with_value=logperm') !!}'
+```
+
+Every item of `data` is one record: the value (`logperm`, in log<sub>10</sub>(cm/s)) and its error (`logperm_accuracy`), the conditions, the method and the publication the value comes from. Values not measured in the record are `null`. `meta.total` is the number of records found.
+
+```json
+{!! $docs->exampleResponse('guide.interactions-passive-logperm') !!}
+```
+
+Active interactions are filtered the same way, for example all substrates of the transporter with the UniProt accession O15245:
+
+```bash
+curl '{!! $docs->apiUrl('interactions/active?uniprot=O15245&type=Substrate') !!}'
+```
+
+In Python, read the records into a table, for example with [pandas](https://pandas.pydata.org):
+
+```python
+import pandas as pd
+import requests
+
+API = "{!! $docs->apiUrl() !!}"
+
+response = requests.get(f"{API}/interactions/passive", params={
+    "structure": "MM00040",
+    "membrane": 3,
+    "with_value": "logperm",
+})
+records = response.json()["data"]
+
+table = pd.json_normalize(records)  # nested objects become columns such as "method.abbreviation"
+print(table[["method.abbreviation", "temperature", "logperm", "primary_reference.citation"]])
+```
+
+A list has at most {{ $pages['interactions'] }} records per page; how to read all pages is shown on the [overview page](/docs/rest).
+
 ## Listing and filtering
 
 `GET /interactions/passive` and `GET /interactions/active` list the records of the whole database, ordered by `id`, at most {{ $pages['interactions'] }} per page. Filters narrow the list; all given filters apply together. The same filters work on the interaction listings of a structure, membrane, method, protein and publication.

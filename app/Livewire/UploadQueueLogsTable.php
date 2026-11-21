@@ -2,10 +2,11 @@
 
 namespace App\Livewire;
 
-use App\Enums\UploadQUeueLogContextEnums;
+use App\Enums\UploadQueueLogContextEnums;
 use App\Models\UploadQueue;
 use App\Models\User;
 use App\ValueObjects\UploadQueueLog;
+use BackedEnum;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Tables\Columns\TextColumn;
@@ -28,14 +29,19 @@ class UploadQueueLogsTable extends TableWidget implements HasForms, HasTable
 
     public function getTableRecords(): EloquentCollection
     {
-        $records = $this->record->logs;
+        $sortColumn = $this->getTableSortColumn() ?? 'timestamp';
+        $sortDirection = $this->getTableSortDirection() ?? 'desc';
 
-        // Sort
-        $sort_by = $this->getTableSortColumn() ?? 'timestamp';
-        $sort_dir = $this->getTableSortDirection() ?? 'asc';
-        $records = $records->sortBy($sort_by, SORT_REGULAR, $sort_dir === 'asc');
+        // Enum columns (severity, type) are sorted by their values, enum cases cannot be compared.
+        return $this->record->logs->sortBy(
+            function (UploadQueueLog $log) use ($sortColumn): mixed {
+                $value = $log->{$sortColumn};
 
-        return $records;
+                return $value instanceof BackedEnum ? $value->value : $value;
+            },
+            SORT_REGULAR,
+            $sortDirection === 'desc',
+        );
     }
 
     public function getTableRecordKey(Model|array $record): string
@@ -55,10 +61,10 @@ class UploadQueueLogsTable extends TableWidget implements HasForms, HasTable
                     ->badge()
                     ->sortable()
                     ->color(fn (UploadQueueLog $record) => match ($record->context) {
-                        UploadQUeueLogContextEnums::ERROR => 'danger',
-                        UploadQUeueLogContextEnums::INFO => 'primary',
-                        UploadQUeueLogContextEnums::SUCCESS => 'success',
-                        UploadQUeueLogContextEnums::WARNING => 'warning',
+                        UploadQueueLogContextEnums::ERROR => 'danger',
+                        UploadQueueLogContextEnums::INFO => 'primary',
+                        UploadQueueLogContextEnums::SUCCESS => 'success',
+                        UploadQueueLogContextEnums::WARNING => 'warning',
                         default => 'default',
                     })
                     ->label('Severity'),
@@ -81,10 +87,10 @@ class UploadQueueLogsTable extends TableWidget implements HasForms, HasTable
                         'class' => 'max-w-xl whitespace-normal break-words',
                     ])
                     ->color(fn (UploadQueueLog $record) => match ($record->context) {
-                        UploadQUeueLogContextEnums::ERROR => 'danger',
-                        UploadQUeueLogContextEnums::INFO => 'primary',
-                        UploadQUeueLogContextEnums::SUCCESS => 'success',
-                        UploadQUeueLogContextEnums::WARNING => 'warning',
+                        UploadQueueLogContextEnums::ERROR => 'danger',
+                        UploadQueueLogContextEnums::INFO => 'primary',
+                        UploadQueueLogContextEnums::SUCCESS => 'success',
+                        UploadQueueLogContextEnums::WARNING => 'warning',
                         default => 'default',
                     })
                     ->label('Log message'),

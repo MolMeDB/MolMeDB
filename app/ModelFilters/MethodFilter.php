@@ -8,6 +8,10 @@ class MethodFilter extends ModelFilter
 {
     public function query($name)
     {
+        if (! is_string($name)) {
+            return $this;
+        }
+
         return $this->whereRaw('LOWER(name) LIKE ?', ['%'.strtolower($name).'%'])
             ->orWhereRaw('LOWER(abbreviation) LIKE ?', ['%'.strtolower($name).'%']);
     }

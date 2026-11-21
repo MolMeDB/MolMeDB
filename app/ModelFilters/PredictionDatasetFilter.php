@@ -34,7 +34,7 @@ class PredictionDatasetFilter extends ModelFilter
 
     public function query($comment)
     {
-        if (! $comment) {
+        if (! is_string($comment) || $comment === '') {
             return $this;
         }
 
@@ -43,7 +43,7 @@ class PredictionDatasetFilter extends ModelFilter
         if (str_starts_with($comment, 'id:')) {
             $id = trim(str_replace('id:', '', $comment));
 
-            return ctype_digit($id) ? $this->where('id', $id) : $this->whereRaw('1 = 0');
+            return ctype_digit($id) && strlen($id) <= 18 ? $this->where('id', $id) : $this->whereRaw('1 = 0');
         }
 
         return $this->whereRaw('LOWER(comment) LIKE ?', ['%'.$comment.'%'])

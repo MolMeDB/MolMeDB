@@ -221,3 +221,24 @@ test('membrane and method ids that are not numbers match nothing instead of fail
         ->and(passiveNotes('?method_ids[]=1%20or%201=1'))->toBe([])
         ->and(passiveNotes('?membrane_ids[0][]=1'))->toBe([]);
 });
+
+test('malformed list parameters answer normally instead of failing', function (string $endpoint, string $query) {
+    createApiPublication();
+    createApiPassiveInteraction(['structure' => createApiStructure(['identifier' => 'MM02100'])]);
+    createApiActiveInteraction(['structure' => createApiStructure(['identifier' => 'MM02101'])]);
+
+    $this->getJson(apiRoutePath($endpoint).'?'.$query)->assertOk();
+})->with([
+    'passive' => 'api/interactions/passive/structure/MM02100',
+    'active' => 'api/interactions/active/structure/MM02101',
+    'publications' => 'api/publication',
+])->with([
+    'filter helper by name' => 'translate_sort_by=membrane&sortable_column=id&numeric_ids=1',
+    'sort direction as a list' => 'sort_by=id&sort_by_direction[]=asc',
+    'search text as a list' => 'query[]=x',
+    'id beyond bigint' => 'membrane_ids[]=99999999999999999999&query=id:99999999999999999999',
+]);
+
+test('search texts given as a list are ignored', function (string $endpoint) {
+    $this->getJson(apiRoutePath($endpoint).'?query[]=x')->assertOk();
+})->with(['api/search/membranes', 'api/search/methods', 'api/search/proteins', 'api/search/datasets']);

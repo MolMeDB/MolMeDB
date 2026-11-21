@@ -8,6 +8,10 @@ class ProteinFilter extends ModelFilter
 {
     public function query($name)
     {
+        if (! is_string($name)) {
+            return $this;
+        }
+
         // Left join: a protein with no protein_identifiers rows must still
         // be matchable by its own uniprot_id (an inner join would silently
         // exclude it from every text search).

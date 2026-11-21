@@ -9,6 +9,14 @@ class PublicationFilter extends ModelFilter
 {
     public $sortBy = 'id';
 
+    /**
+     * EloquentFilter sees private methods too; these helpers must not be
+     * callable from the request input.
+     *
+     * @var array<int, string>
+     */
+    protected $blacklist = ['sortableColumn'];
+
     public function sortBy($column)
     {
         $this->sortBy = $this->sortableColumn($column);
@@ -18,7 +26,7 @@ class PublicationFilter extends ModelFilter
 
     public function sortByDirection($direction)
     {
-        if (strtolower($direction) !== 'asc') {
+        if (! is_string($direction) || strtolower($direction) !== 'asc') {
             return $this->orderBy($this->sortBy, 'desc');
         }
 
@@ -27,7 +35,7 @@ class PublicationFilter extends ModelFilter
 
     public function query($name)
     {
-        if (! $name) {
+        if (! is_string($name) || $name === '') {
             return $this;
         }
 
@@ -36,7 +44,7 @@ class PublicationFilter extends ModelFilter
         if (str_starts_with($name, 'id:')) {
             $id = trim(str_replace('id:', '', $name));
 
-            return ctype_digit($id) ? $this->where('id', $id) : $this->whereRaw('1 = 0');
+            return ctype_digit($id) && strlen($id) <= 18 ? $this->where('id', $id) : $this->whereRaw('1 = 0');
         }
 
         return $this->whereRaw('LOWER(citation) LIKE ?', ['%'.$name.'%'])

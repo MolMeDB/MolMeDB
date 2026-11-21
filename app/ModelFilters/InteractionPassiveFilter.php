@@ -28,6 +28,14 @@ class InteractionPassiveFilter extends ModelFilter
         return $this->where('structure_id', $id);
     }
 
+    /**
+     * EloquentFilter sees private methods too; these helpers must not be
+     * callable from the request input.
+     *
+     * @var array<int, string>
+     */
+    protected $blacklist = ['translateSortBy', 'sortableColumn', 'numericIds'];
+
     public function sortBy($column)
     {
         $this->sortBy = $this->translateSortBy($column);
@@ -37,7 +45,7 @@ class InteractionPassiveFilter extends ModelFilter
 
     public function sortByDirection($direction)
     {
-        if (strtolower($direction) !== 'asc') {
+        if (! is_string($direction) || strtolower($direction) !== 'asc') {
             return $this->orderBy($this->sortBy, 'desc');
         }
 
@@ -93,7 +101,7 @@ class InteractionPassiveFilter extends ModelFilter
     {
         return array_values(array_filter(
             (array) $ids,
-            fn (mixed $id): bool => (is_string($id) || is_int($id)) && ctype_digit((string) $id),
+            fn (mixed $id): bool => (is_string($id) || is_int($id)) && ctype_digit((string) $id) && strlen((string) $id) <= 18,
         ));
     }
 }

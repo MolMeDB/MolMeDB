@@ -73,8 +73,12 @@ class UpdateStatistics extends Command
         // Aim for about 22 bars, but at least one month per step, so a history shorter than 22 months still works.
         $step = max(1, intdiv($totalMonths, 22));
 
-        // Months from the first one up to the current month, never a future one.
+        // Months from the first one up to the current month, never a future
+        // one, and always ending with the current month.
         $steps = $totalMonths > 0 ? range(0, $totalMonths - 1, $step) : [];
+        if ($steps !== [] && end($steps) !== $totalMonths - 1) {
+            $steps[] = $totalMonths - 1;
+        }
         $data = [];
 
         foreach ($steps as $i) {

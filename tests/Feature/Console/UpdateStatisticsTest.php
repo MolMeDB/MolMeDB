@@ -195,6 +195,23 @@ test('a long history is sampled in even steps starting the month after the first
         ->and($points->firstWhere('date', Carbon::parse('2023-08-01')->valueOf())['value1'])->toBe(2);
 });
 
+test('a sampled history always ends with the current month', function () {
+    Carbon::setTestNow('2026-11-20 12:00:00');
+    createApiStructure(['created_at' => '2018-08-10']);
+
+    runStatisticsUpdate();
+
+    $months = collect(Stats::getByType(Stats::TYPE_INTERACTION_SUBSTANCE_HISTORY)->content)
+        ->map(fn (array $item): string => Carbon::createFromTimestampMs($item['date'])->format('Y-m'));
+
+    // 99 months from 09/2018 to 11/2026, sampled every 4 months up to
+    // 09/2026: 11/2026 is not on a step, so it is added at the end.
+    expect($months->first())->toBe('2018-09')
+        ->and($months->get(1))->toBe('2019-01')
+        ->and($months->last())->toBe('2026-11')
+        ->and($months->slice(-2, 1)->first())->toBe('2026-09');
+});
+
 test('the databases chart counts structures having a live identifier of each external database', function () {
     [$first, $second] = [createApiStructure(), createApiStructure()];
     createStatisticsIdentifier($first, Identifier::TYPE_PUBCHEM, '702');

@@ -28,7 +28,13 @@ $total = ['statements' => 0, 'covered' => 0, 'files' => 0];
 foreach ($clover->xpath('//file') ?: [] as $file) {
     $path = (string) $file['name'];
     $relative = str_starts_with($path, $root) ? substr($path, strlen($root)) : ltrim($path, '/');
-    $group = implode('/', array_slice(explode('/', dirname($relative)), 0, $depth));
+    $directories = explode('/', dirname($relative));
+    $group = implode('/', array_slice($directories, 0, $depth));
+
+    // Files directly in a top directory are not that directory's total.
+    if (count($directories) < $depth) {
+        $group .= ' (files directly in it)';
+    }
 
     $statements = (int) ($file->metrics['statements'] ?? 0);
     $covered = (int) ($file->metrics['coveredstatements'] ?? 0);

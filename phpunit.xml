@@ -21,6 +21,7 @@
             <directory>app</directory>
             <directory>modules</directory>
         </include>
+        <!-- Listed one by one: a new module has to add its tests and database directories here. -->
         <exclude>
             <directory>modules/CdkDepict/tests</directory>
             <directory>modules/PredictionWorkers/tests</directory>

@@ -30,7 +30,9 @@ export default defineConfig({
       env: { MOCK_BACKEND_PORT: String(MOCK_BACKEND_PORT) },
     },
     {
-      command: `npx next start -p ${PORT}`,
+      // Without the fetch cache of an earlier run, which would keep answers of
+      // the mock backend that have changed since.
+      command: `rm -rf .next/cache/fetch-cache && npx next start -p ${PORT}`,
       url: baseURL,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

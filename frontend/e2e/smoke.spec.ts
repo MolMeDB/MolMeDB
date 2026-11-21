@@ -6,21 +6,11 @@ import { test, expect, Page } from "@playwright/test";
 // backend's API contract fixtures — a page that stops coping with what the
 // backend sends fails here.
 
-// A hydration mismatch (React error #418) is reported intermittently by the
-// detail pages, in this build as well as on the production site, and React
-// recovers from it by rendering on the client. Until its cause is fixed it
-// is the only page error these tests let through.
-// Any other one fails the test — such as error #419, which /browse/membranes
-// and /browse/methods reported while their server rendering threw.
-const KNOWN_PAGE_ERRORS = [/Minified React error #418/];
-
+// Page errors include React's hydration (#418) and server rendering (#419)
+// errors, which a visitor does not see but which cost the server rendering.
 async function openPage(page: Page, path: string): Promise<string[]> {
   const pageErrors: string[] = [];
-  page.on("pageerror", (error) => {
-    if (!KNOWN_PAGE_ERRORS.some((known) => known.test(error.message))) {
-      pageErrors.push(error.message);
-    }
-  });
+  page.on("pageerror", (error) => pageErrors.push(error.message));
 
   // The captcha is a third-party script; the tests stay off the network.
   await page.route(/challenges\.cloudflare\.com/, (route) => route.abort());
@@ -31,16 +21,28 @@ async function openPage(page: Page, path: string): Promise<string[]> {
   return pageErrors;
 }
 
+// Hydration and the first client-side requests have to finish before the
+// collected page errors say anything.
+async function settle(page: Page): Promise<void> {
+  // Not "networkidle": some pages keep polling.
+  await page.waitForLoadState("load");
+  await page.waitForTimeout(1000);
+}
+
+// `text` is something the page can only show from the backend's answer; the
+// pages without it draw the data as numbers and charts only.
 const pages: { path: string; heading: string; text?: string }[] = [
   { path: "/", heading: "MolMeDB is an open chemical database" },
-  { path: "/browse/membranes", heading: "Membranes" },
-  { path: "/browse/methods", heading: "Methods" },
-  { path: "/browse/proteins", heading: "Proteins" },
-  { path: "/browse/datasets", heading: "Datasets" },
+  { path: "/browse/membranes", heading: "Membranes", text: "Sample title" },
+  { path: "/browse/methods", heading: "Methods", text: "Sample title" },
+  { path: "/browse/membranes?id=1", heading: "Sample name", text: "Sample description" },
+  { path: "/browse/methods?id=1", heading: "Sample name", text: "Sample description" },
+  { path: "/browse/proteins", heading: "Proteins", text: "Sample title" },
+  { path: "/browse/datasets", heading: "Datasets", text: "Sample journal" },
   { path: "/membrane/1", heading: "Sample name", text: "Sample description" },
   { path: "/method/1", heading: "Sample name", text: "Sample description" },
-  { path: "/protein/1", heading: "P08183" },
-  { path: "/publication/1", heading: "Sample title" },
+  { path: "/protein/1", heading: "P08183", text: "Sample value" },
+  { path: "/publication/1", heading: "Sample title", text: "Sample citation" },
   { path: "/mol/MM00001", heading: "Sample name", text: "BASIC PROPERTIES" },
   { path: "/stats", heading: "Statistics" },
   { path: "/docs", heading: "Documentation", text: "Sample title" },
@@ -61,13 +63,11 @@ test.describe("public pages", () => {
       ).toBeVisible();
 
       if (text) {
-        await expect(page.getByText(text).first()).toBeVisible();
+        // Attached, not visible: the browsers keep it in a collapsed tree.
+        await expect(page.getByText(text).first()).toBeAttached();
       }
 
-      // Let hydration and the first client-side requests finish, so their
-      // errors are caught as well.
-      await page.waitForLoadState("load");
-      await page.waitForTimeout(1000);
+      await settle(page);
 
       expect(pageErrors).toEqual([]);
     });
@@ -78,6 +78,8 @@ test.describe("public pages", () => {
 
     await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
     await expect(page.getByText("Cannot find compound with id missing")).toBeVisible();
+    await settle(page);
+
     expect(pageErrors).toEqual([]);
   });
 });

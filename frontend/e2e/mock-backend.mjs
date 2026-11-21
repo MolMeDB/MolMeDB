@@ -46,7 +46,7 @@ function sampleString(key) {
     return "2026-01-15T10:00:00.000000Z";
   }
   if (/url$/i.test(key) || ["first", "last", "next", "prev"].includes(key)) {
-    return "http://127.0.0.1/sample";
+    return "/assets/layout/logo/molmedb-white.svg";
   }
   if (/email/i.test(key)) {
     return "e2e@example.test";
@@ -173,7 +173,7 @@ const server = createServer((req, res) => {
       return;
     }
 
-    console.log(`[mock-backend] not mocked: ${req.method} ${req.url}`);
+    console.error(`[mock-backend] not mocked: ${req.method} ${req.url}`);
     send(res, 404, { message: `Not mocked: ${req.method} ${req.url}` });
   });
 });

@@ -5,6 +5,8 @@ on:
     branches: [develop, main]
     paths: &frontend_paths
       - "frontend/**"
+      # The e2e mock backend answers from the backend's API contract fixtures.
+      - "tests/Fixtures/api-contracts/**"
       - ".github/workflows/frontend-ci.yml"
   push:
     branches: [develop, main]

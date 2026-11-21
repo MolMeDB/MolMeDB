@@ -18,7 +18,8 @@ test('a signed-in user changes their password with the current one', function ()
             'password' => 'New-secret-password-42',
             'password_confirmation' => 'New-secret-password-42',
         ])
-        ->assertOk();
+        ->assertOk()
+        ->assertApiContract('PUT api/user/password');
 
     expect(Hash::check('New-secret-password-42', $user->refresh()->password))->toBeTrue();
 });

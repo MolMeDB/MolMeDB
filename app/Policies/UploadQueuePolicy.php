@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\PermissionEnums;
+use App\Models\Dataset;
 use App\Models\UploadQueue;
 use App\Models\User;
 
@@ -56,11 +57,24 @@ class UploadQueuePolicy
      */
     public function revert(User $user, UploadQueue $uploadQueue): bool
     {
-        $dataset = $uploadQueue->dataset;
+        $dataset = Dataset::withTrashed()->find($uploadQueue->dataset_id);
 
         return $this->canManage($user, $uploadQueue)
             && $dataset !== null
-            && app(DatasetPolicy::class)->update($user, $dataset);
+            && $this->targetDataset($user, $dataset);
+    }
+
+    /**
+     * Whether an upload may write into (and be reverted in) the dataset:
+     * administrators and dataset.edit holders may use any dataset, everyone
+     * else only datasets they created, e.g. by their own lab upload.
+     * UploadQueueResource::scopeDatasetOptions() is the query form of this.
+     */
+    public function targetDataset(User $user, Dataset $dataset): bool
+    {
+        return $user->hasAdminRole()
+            || $user->hasPermissionTo(PermissionEnums::DATASET_EDIT)
+            || $dataset->created_by === $user->id;
     }
 
     /**

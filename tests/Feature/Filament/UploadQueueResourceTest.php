@@ -4,6 +4,8 @@ require_once __DIR__.'/../Api/api_test_helpers.php';
 
 use App\Enums\PermissionEnums;
 use App\Enums\RoleEnums;
+use App\Filament\Resources\Datasets\Pages\EditDataset;
+use App\Filament\Resources\SharedRelationManagers\UploadQueuesRelationManager;
 use App\Filament\Resources\UploadQueues\Pages\EditUploadQueue;
 use App\Filament\Resources\UploadQueues\Pages\ListUploadQueues;
 use App\Filament\Resources\UploadQueues\UploadQueueResource;
@@ -244,4 +246,105 @@ test('an uploader may revert their upload only when they may edit its dataset', 
 
     Livewire::test(EditUploadQueue::class, ['record' => $intoForeignDataset->getRouteKey()])
         ->assertActionHidden('revert');
+});
+
+test('a dataset created from the upload form belongs to its creator and receives the upload', function () {
+    $uploader = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_OWN, PermissionEnums::DATASET_EDIT_OWN]);
+    $record = createUploadQueueRecord($uploader, 'own.csv', ['state' => UploadQueue::STATE_UPLOADED]);
+    $existing = Dataset::query()->findOrFail($record->dataset_id);
+
+    $this->actingAs($uploader);
+
+    Livewire::test(EditUploadQueue::class, ['record' => $record->getRouteKey()])
+        ->callAction(TestAction::make('createOption')->schemaComponent('dataset_id'), data: [
+            'type' => Dataset::TYPE_PASSIVE,
+            'membrane_id' => $existing->membrane_id,
+            'method_id' => $existing->method_id,
+            'name' => 'Created in the upload form',
+        ])
+        ->assertHasNoFormErrors()
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $created = Dataset::query()->where('name', 'Created in the upload form')->firstOrFail();
+
+    expect($created->created_by)->toBe($uploader->id)
+        ->and($record->refresh()->dataset_id)->toBe($created->id);
+});
+
+test('users who may not create datasets do not get the create option of the upload form', function () {
+    $uploader = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_OWN]);
+    $record = createUploadQueueRecord($uploader, 'own.csv', ['state' => UploadQueue::STATE_UPLOADED]);
+
+    $this->actingAs($uploader);
+
+    Livewire::test(EditUploadQueue::class, ['record' => $record->getRouteKey()])
+        ->assertActionHidden(TestAction::make('createOption')->schemaComponent('dataset_id'));
+});
+
+test('an uploader without dataset permissions may still use the dataset of their own lab upload', function () {
+    $uploader = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_OWN]);
+    $record = createUploadQueueRecord($uploader, 'own.csv', ['state' => UploadQueue::STATE_UPLOADED]);
+
+    $this->actingAs($uploader);
+
+    Livewire::test(EditUploadQueue::class, ['record' => $record->getRouteKey()])
+        ->call('save')
+        ->assertHasNoFormErrors();
+});
+
+test('administrators may move any upload to any dataset and revert it', function () {
+    $admin = User::factory()->create();
+    $admin->syncRoles([RoleEnums::ADMIN->value]);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    $record = createUploadQueueRecord(User::factory()->create(), 'foreign.csv', ['state' => UploadQueue::STATE_UPLOADED]);
+    $otherDataset = createApiDataset(['owner' => User::factory()->create(), 'name' => 'Another dataset']);
+
+    $this->actingAs($admin->refresh());
+
+    Livewire::test(EditUploadQueue::class, ['record' => $record->getRouteKey()])
+        ->fillForm(['dataset_id' => $otherDataset->id])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($record->refresh()->dataset_id)->toBe($otherDataset->id)
+        ->and(Gate::allows('revert', $record))->toBeTrue();
+});
+
+test('upload queue managers reject the review of an upload', function () {
+    $manager = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_ALL]);
+    $record = createUploadQueueAwaitingReview(User::factory()->create());
+
+    $this->actingAs($manager);
+
+    Livewire::test(EditUploadQueue::class, ['record' => $record->getRouteKey()])
+        ->callAction([TestAction::make('review_data'), TestAction::make('reject_review')], data: ['reason' => 'Missing temperature.']);
+
+    expect($record->refresh()->state)->not->toBe(UploadQueue::STATE_REVIEW_REQUIRED);
+});
+
+test('an upload whose dataset was deleted can still be reverted by whoever may manage it', function () {
+    $manager = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_ALL, PermissionEnums::DATASET_EDIT]);
+    $record = createUploadQueueRecord(User::factory()->create(), 'trashed.csv');
+    Dataset::query()->findOrFail($record->dataset_id)->delete();
+
+    $this->actingAs($manager);
+
+    expect(Gate::allows('revert', $record->refresh()))->toBeTrue();
+});
+
+test('the uploads tab of a dataset shows manage own users only their own uploads', function () {
+    $uploader = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_OWN, PermissionEnums::DATASET_VIEW]);
+    $own = createUploadQueueRecord($uploader, 'own.csv');
+    $foreign = createUploadQueueRecord(User::factory()->create(), 'foreign.csv', ['dataset_id' => $own->dataset_id]);
+
+    $this->actingAs($uploader);
+
+    Livewire::test(UploadQueuesRelationManager::class, [
+        'ownerRecord' => Dataset::query()->findOrFail($own->dataset_id),
+        'pageClass' => EditDataset::class,
+    ])
+        ->assertCanSeeTableRecords([$own])
+        ->assertCanNotSeeTableRecords([$foreign]);
 });

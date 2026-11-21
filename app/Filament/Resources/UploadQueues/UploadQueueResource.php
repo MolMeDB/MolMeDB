@@ -13,6 +13,7 @@ use App\Filament\Resources\UploadQueues\Pages\ListUploadQueues;
 use App\Models\Dataset;
 use App\Models\File;
 use App\Models\UploadQueue;
+use App\Policies\UploadQueuePolicy;
 use App\Rules\FileUniqueByHash;
 use App\Services\UploadQueueImporter;
 use Closure;
@@ -77,7 +78,7 @@ class UploadQueueResource extends Resource
                     ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
                         $dataset = $value ? Dataset::withTrashed()->find($value) : null;
 
-                        if ($dataset !== null && Gate::denies('update', $dataset)) {
+                        if ($dataset !== null && ! app(UploadQueuePolicy::class)->targetDataset(Auth::user(), $dataset)) {
                             $fail('You may upload only to datasets you are allowed to edit.');
                         }
                     })
@@ -85,6 +86,21 @@ class UploadQueueResource extends Resource
                     ->disabled(fn (Get $get, ?UploadQueue $record) => ! $get('type') || $record?->isRevertible())
                     ->preload()
                     ->createOptionForm(fn (Schema $schema) => DatasetResource::form($schema))
+                    ->createOptionUsing(function (Select $component, array $data, Schema $schema): int {
+                        // Filament's default, plus the owner: CreateDataset sets
+                        // it the same way, and only owners may upload into it.
+                        $dataset = $component->getRelationship()->newModelInstance();
+                        $dataset->fill($data);
+                        $dataset->forceFill(['created_by' => Auth::id()]);
+                        $dataset->save();
+
+                        $schema->model($dataset)->saveRelationships();
+
+                        return $dataset->getKey();
+                    })
+                    // A closure, because authorize('create', ...) would be checked
+                    // against the upload queue record of the page.
+                    ->createOptionAction(fn (Action $action): Action => $action->authorize(fn (): bool => Gate::allows('create', Dataset::class)))
                     ->createOptionModalHeading('Add new dataset')
                     ->suffixActions([
                         Action::make('edit_dataset')
@@ -260,7 +276,14 @@ class UploadQueueResource extends Resource
      */
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        return static::scopeToVisibleUploads(parent::getEloquentQuery());
+    }
+
+    /**
+     * Shared with the uploads relation manager on datasets.
+     */
+    public static function scopeToVisibleUploads(Builder $query): Builder
+    {
         $user = Auth::user();
 
         if ($user === null) {
@@ -275,7 +298,8 @@ class UploadQueueResource extends Resource
     }
 
     /**
-     * Only datasets the signed-in user may edit can receive their upload.
+     * Only datasets the signed-in user may upload into are offered, see
+     * UploadQueuePolicy::targetDataset().
      */
     public static function scopeDatasetOptions(Builder $query): Builder
     {
@@ -285,15 +309,11 @@ class UploadQueueResource extends Resource
             return $query->whereRaw('1 = 0');
         }
 
-        if ($user->hasPermissionTo(PermissionEnums::DATASET_EDIT)) {
+        if ($user->hasAdminRole() || $user->hasPermissionTo(PermissionEnums::DATASET_EDIT)) {
             return $query;
         }
 
-        if ($user->hasPermissionTo(PermissionEnums::DATASET_EDIT_OWN)) {
-            return $query->where('created_by', $user->id);
-        }
-
-        return $query->whereRaw('1 = 0');
+        return $query->where('created_by', $user->id);
     }
 
     public static function getRelations(): array

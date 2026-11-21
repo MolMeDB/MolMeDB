@@ -20,6 +20,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Spatie\Activitylog\Traits\CausesActivity;
+use Spatie\Permission\Models\Role as SpatieRole;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, MustVerifyEmail
@@ -100,7 +101,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
      * hand out the Administrator role, and nobody a role whose permissions
      * they do not hold.
      */
-    public function canAssignRole(Role $role): bool
+    public function canAssignRole(SpatieRole $role): bool
     {
         if ($this->hasAdminRole()) {
             return true;

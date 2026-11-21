@@ -19,6 +19,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Models\Role as SpatieRole;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesRelationManager extends RelationManager
 {
@@ -76,9 +78,11 @@ class RolesRelationManager extends RelationManager
                     ->after(fn () => $this->notifyRoleChanged()),
             ])
             ->recordActions([
+                // Not one's own roles, and only roles one could assign.
                 DetachAction::make()
-                    ->visible(fn ($record): bool => $this->ownerRecord->id !== Auth::user()->id && // Cannot detach own roles.
-                        RolePolicy::attach(Auth::user()))
+                    ->visible(fn (SpatieRole $record): bool => $this->ownerRecord->id !== Auth::user()->id
+                        && RolePolicy::attach(Auth::user())
+                        && Auth::user()->canAssignRole($record))
                     ->after(fn () => $this->notifyRoleChanged()),
             ])
             ->toolbarActions([
@@ -89,6 +93,8 @@ class RolesRelationManager extends RelationManager
 
     private function notifyRoleChanged(): void
     {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         $user = $this->ownerRecord;
         $roles = $user->roles()->pluck('name')->implode(', ');
 

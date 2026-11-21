@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Access\Resources\Roles\RelationManagers;
 
+use App\Enums\RoleEnums;
 use App\Models\Permission;
 use Closure;
 use Filament\Actions\AttachAction;
@@ -15,6 +16,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Models\Permission as SpatiePermission;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionsRelationManager extends RelationManager
 {
@@ -62,11 +65,16 @@ class PermissionsRelationManager extends RelationManager
                         if (! Auth::user()->canGrantPermissions($permissions)) {
                             $fail('You can grant only permissions you hold yourself.');
                         }
-                    })),
+                    }))
+                    ->after(fn () => app(PermissionRegistrar::class)->forgetCachedPermissions()),
             ])
             ->recordActions([
+                // The Administrator role keeps every permission; others lose
+                // only permissions the signed-in user holds themselves.
                 DetachAction::make()
-                    ->visible(fn ($record): bool => $this->ownerRecord->id !== 1), // Cannot detach admin permissions
+                    ->visible(fn (SpatiePermission $record): bool => $this->ownerRecord->name !== RoleEnums::ADMIN->value
+                        && Auth::user()->canGrantPermissions([$record]))
+                    ->after(fn () => app(PermissionRegistrar::class)->forgetCachedPermissions()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

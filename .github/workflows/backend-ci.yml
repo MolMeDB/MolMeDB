@@ -80,6 +80,22 @@ jobs:
             exit 0
           fi
 
+          # Merging that release into main arrives as one push whose diff is
+          # again the whole release. When the push is exactly one merge commit
+          # on top of the previous main, what it brings in was checked on
+          # develop or in its pull request, so it is not checked a second time.
+          # This relies on the "Create a merge commit" method: a squash or
+          # rebase merge has a single parent and is checked like any other
+          # commit, and so are commits pushed to main together with a merge.
+          if [ "$EVENT_NAME" = "push" ] \
+             && [ "$GITHUB_REF" = "refs/heads/main" ] \
+             && git rev-parse --quiet --verify "$PUSH_SHA^2^{commit}" >/dev/null \
+             && [ "$(git rev-parse --quiet --verify "$PUSH_SHA^1^{commit}")" = "$PUSH_BEFORE_SHA" ]; then
+            echo "A single merge commit on main — its changes were gated before the merge. Skipping Pint."
+            echo "files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [ "$EVENT_NAME" = "pull_request" ]; then
             HEAD_SHA="$PR_HEAD_SHA"
             # A PR is checked out as the merge commit, whose parent IS the base

@@ -19,7 +19,18 @@
     <source>
         <include>
             <directory>app</directory>
+            <directory>modules</directory>
         </include>
+        <exclude>
+            <directory>modules/CdkDepict/tests</directory>
+            <directory>modules/PredictionWorkers/tests</directory>
+            <directory>modules/PredictionWorkers/database</directory>
+            <directory>modules/Rdkit/tests</directory>
+            <directory>modules/Rdkit/src</directory>
+            <directory>modules/References/tests</directory>
+            <directory>modules/References/CrossRef/tests</directory>
+            <directory>modules/References/EuropePMC/tests</directory>
+        </exclude>
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>

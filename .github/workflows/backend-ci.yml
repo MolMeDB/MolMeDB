@@ -8,12 +8,14 @@ on:
       - "bootstrap/**"
       - "config/**"
       - "database/**"
+      - "modules/**"
       - "routes/**"
       - "tests/**"
       - "composer.json"
       - "composer.lock"
       - "phpunit.xml"
       - ".github/workflows/backend-ci.yml"
+      - ".github/scripts/coverage-summary.php"
   push:
     branches: [develop, main]
     paths: *backend_paths
@@ -152,7 +154,10 @@ jobs:
         with:
           php-version: ${{ env.PHP_VERSION }}
           extensions: mbstring, pdo_pgsql, pgsql, bcmath, gd, zip, intl
-          coverage: none
+          coverage: pcov
+          # By default pcov watches only ./app (or src, lib); modules/ is
+          # source code as well.
+          ini-values: pcov.directory=., pcov.exclude="~/(vendor|node_modules|frontend|storage)/~"
 
       - uses: actions/cache@v4
         with:
@@ -164,4 +169,17 @@ jobs:
 
       - run: php artisan migrate --force
 
-      - run: php artisan test
+      # Coverage is measured and reported, not enforced: there is no minimum
+      # a run could fail on.
+      - run: php artisan test --coverage-clover=coverage/clover.xml
+
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('coverage/clover.xml') != '' }}
+        run: php .github/scripts/coverage-summary.php coverage/clover.xml >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && hashFiles('coverage/clover.xml') != '' }}
+        with:
+          name: backend-coverage
+          path: coverage/clover.xml
+          retention-days: 14

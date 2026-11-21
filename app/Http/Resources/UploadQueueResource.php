@@ -39,6 +39,8 @@ class UploadQueueResource extends JsonResource
 
     /**
      * Lists of validation messages, published up to this many entries each.
+     * A message about a duplicate names the existing interaction and its
+     * stored value; interactions are public data.
      */
     private const PUBLIC_LOG_PAYLOAD_LISTS = ['errors', 'warnings'];
 
@@ -99,18 +101,25 @@ class UploadQueueResource extends JsonResource
         $public = [];
 
         foreach (self::PUBLIC_LOG_PAYLOAD_KEYS as $key) {
-            if (array_key_exists($key, $payload) && (is_scalar($payload[$key]) || $payload[$key] === null)) {
+            if (is_scalar($payload[$key] ?? null)) {
                 $public[$key] = $payload[$key];
             }
         }
 
         foreach (self::PUBLIC_LOG_PAYLOAD_LISTS as $key) {
-            if (is_array($payload[$key] ?? null)) {
-                $public[$key] = array_slice(
-                    array_values(array_filter($payload[$key], is_string(...))),
-                    0,
-                    self::PUBLIC_LOG_PAYLOAD_LIST_LIMIT,
-                );
+            if (! is_array($payload[$key] ?? null)) {
+                continue;
+            }
+
+            $messages = array_slice(
+                array_values(array_filter($payload[$key], is_string(...))),
+                0,
+                self::PUBLIC_LOG_PAYLOAD_LIST_LIMIT,
+            );
+
+            // An empty list says nothing and would show up as an empty block.
+            if ($messages !== []) {
+                $public[$key] = $messages;
             }
         }
 

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 use Modules\PredictionWorkers\Models\Prediction;
 use Modules\PredictionWorkers\Models\PredictionDataset;
 
@@ -16,6 +17,13 @@ class PredictionDatasetResource extends JsonResource
         $this->include_stats = false;
 
         return $this;
+    }
+
+    private function ownerVisibleTo(Request $request): bool
+    {
+        $viewer = $request->user();
+
+        return $viewer !== null && Gate::forUser($viewer)->allows('view', $this->resource);
     }
 
     /**
@@ -32,7 +40,8 @@ class PredictionDatasetResource extends JsonResource
             'comment' => $this->comment,
             'token' => $this->token,
             'user_id' => $this->user_id,
-            'user' => UserResource::make($this->user),
+            // Token holders (share links) do not get the owner's e-mail.
+            'user' => $this->ownerVisibleTo($request) ? UserResource::make($this->user) : null,
             'temperature' => $this->temperature,
             'membrane' => PredictionMembraneResource::make($this->predictionMembrane),
             'method_type' => $this->method_type,

@@ -399,14 +399,16 @@ class PredictionsController extends Controller
         $token = (string) ($request->query('token') ?? '');
         $user = $request->user();
 
+        $tokenDataset = null;
+
         if ($token !== '') {
             // Token path — verify a dataset containing this structure has this exact token
-            $valid = PredictionDataset::query()
+            $tokenDataset = PredictionDataset::query()
                 ->whereHas('predictions', fn ($q) => $q->where('structure_id', $record->id))
                 ->get()
-                ->contains(fn ($dataset) => $dataset->token !== null && hash_equals($dataset->token, $token));
+                ->first(fn ($dataset) => $dataset->token !== null && hash_equals($dataset->token, $token));
 
-            if (! $valid) {
+            if (! $tokenDataset) {
                 abort(403);
             }
         } elseif ($user) {
@@ -430,8 +432,13 @@ class PredictionsController extends Controller
         $request->merge(['structureId' => $record->id]);
 
         $records = Prediction::filter($request->all())
+            // A token opens one dataset, so only that dataset's predictions.
             ->when(
-                $user && ! Gate::allows('viewAny', PredictionDataset::class),
+                $tokenDataset !== null,
+                fn ($q) => $q->whereHas('predictionDatasets', fn ($q2) => $q2->where('datasets.id', $tokenDataset->id))
+            )
+            ->when(
+                $tokenDataset === null && $user && ! Gate::allows('viewAny', PredictionDataset::class),
                 fn ($q) => $q->whereHas('predictionDatasets', fn ($q2) => $q2->where('user_id', $user->id))
             )
             ->paginateFilter($perPage);

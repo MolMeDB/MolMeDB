@@ -160,3 +160,40 @@ test('an authentication failure alerts prediction managers at most every thirty 
 
     Notification::assertSentToTimes($manager, TemplatedNotification::class, 1);
 });
+
+test('a structure the validation service fails on does not block other submissions', function () {
+    ['prediction' => $failing] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED, 'priority' => Prediction::PRIORITY_HIGH]);
+    ['prediction' => $valid] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED]);
+    $failingSmiles = $failing->predictionStructure->canonical_smiles;
+
+    Http::fake(function (Request $request) use ($failingSmiles) {
+        if (str_starts_with($request->url(), 'https://rdkit.test/structure/predictions/validate')) {
+            return ($request->data()['smi'] ?? null) === $failingSmiles
+                ? Http::response(['detail' => 'RDKit crashed on this molecule.'], 500)
+                : Http::response(['data' => ['valid' => true, 'canonical_smiles' => 'CCO', 'errors' => []]]);
+        }
+
+        return Http::response(['molecule_id' => 'mol-2', 'calculation_id' => 'calc-2', 'calculation_status' => 'queued']);
+    });
+
+    runWorker(['--skip-results' => true]);
+
+    expect($failing->refresh()->state)->toBe(Prediction::STATE_PREPARED)
+        ->and($failing->remote_calculation_id)->toBeNull()
+        ->and($valid->refresh()->remote_calculation_id)->toBe('calc-2');
+});
+
+test('paused predictions are resumed while structure validation is down', function () {
+    ['prediction' => $prepared] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED, 'priority' => Prediction::PRIORITY_HIGH]);
+    ['prediction' => $paused] = createPredictionDataset(User::factory()->create(), [
+        'remote_calculation_id' => 'calc-1',
+        'remote_status' => 'queued',
+        'remote_paused_at' => now()->subHour(),
+    ]);
+    fakeRemotePredictionService(validationStatus: 503);
+
+    runWorker(['--skip-results' => true]);
+
+    expect($prepared->refresh()->remote_calculation_id)->toBeNull()
+        ->and($paused->refresh()->remote_paused_at)->toBeNull();
+});

@@ -132,3 +132,18 @@ test('the import job processes finished predictions and logs failures on them', 
         ->and($broken->refresh()->step)->toBe(Prediction::STEP_RESULT_PARSE)
         ->and(collect($broken->logs)->last()['message'] ?? '')->toContain('Import failed: RDKit could not canonicalize');
 });
+
+test('failing imports rotate to the back of the batch instead of starving newer predictions', function () {
+    config()->set('prediction-workers.remote.worker.result_import_batch_size', 1);
+    $broken = createFinishedPrediction(smiles: 'CC(');
+    $this->travel(1)->minute();
+    $good = createFinishedPrediction();
+    $this->travel(1)->minute();
+
+    (new ImportFinishedPredictionResults)->handle(app(PredictionResultImporter::class));
+    $this->travel(1)->minute();
+    (new ImportFinishedPredictionResults)->handle(app(PredictionResultImporter::class));
+
+    expect($broken->refresh()->step)->toBe(Prediction::STEP_RESULT_PARSE)
+        ->and($good->refresh()->step)->toBe(Prediction::STEP_RESULT_DB_STORE);
+});

@@ -111,3 +111,27 @@ test('a signed-in owner sees only the predictions of their own datasets for a sh
 
     expect($ids->all())->toContain($own->id)->not->toContain($foreign->id);
 });
+
+test('a token shows only the predictions of its own dataset for a shared structure', function () {
+    ['dataset' => $dataset, 'prediction' => $own, 'structure' => $structure] = createPredictionDataset(User::factory()->create());
+    ['prediction' => $foreign] = createPredictionDataset(User::factory()->create(), structure: $structure);
+
+    $ids = collect($this->getJson("/api/predictions/byStructure/{$structure->id}?token={$dataset->token}")->assertOk()->json('data'))->pluck('id');
+
+    expect($ids->all())->toBe([$own->id])->not->toContain($foreign->id);
+});
+
+test('the owner of a dataset is shown to the owner but not to token holders', function () {
+    $owner = User::factory()->create(['email' => 'owner@example.org']);
+    ['dataset' => $dataset] = createPredictionDataset($owner);
+
+    $this->getJson("/api/predictions/datasets/{$dataset->id}?token={$dataset->token}")
+        ->assertOk()
+        ->assertJsonPath('data.user', null)
+        ->assertDontSee('owner@example.org');
+
+    $this->actingAs($owner)
+        ->getJson("/api/predictions/datasets/{$dataset->id}")
+        ->assertOk()
+        ->assertJsonPath('data.user.email', 'owner@example.org');
+});

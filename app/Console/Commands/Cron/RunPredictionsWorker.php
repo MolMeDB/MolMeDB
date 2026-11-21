@@ -27,6 +27,8 @@ class RunPredictionsWorker extends Command
 
     private int $downloadErrors = 0;
 
+    private const MAX_VALIDATION_FAILURES_PER_RUN = 3;
+
     private int $submissionErrors = 0;
 
     private int $rejectedStructures = 0;
@@ -363,6 +365,7 @@ class RunPredictionsWorker extends Command
         $attempts = 0;
         $submitted = 0;
         $resumed = 0;
+        $validationFailures = 0;
 
         foreach ($candidates as $prediction) {
             if ($attempts >= $limit || $submitted + $resumed >= $availableSlots) {
@@ -397,16 +400,26 @@ class RunPredictionsWorker extends Command
                 continue;
             }
 
+            // After a few failed validations in one run the service is taken
+            // as down: the remaining new predictions wait for the next run,
+            // paused ones (which need no validation) are still resumed.
+            if ($validationFailures >= self::MAX_VALIDATION_FAILURES_PER_RUN) {
+                continue;
+            }
+
             try {
                 $structureIsValid = $structureValidator->passes($prediction);
             } catch (Throwable $throwable) {
-                // The validation service is down: leave the prediction
-                // prepared for the next run instead of aborting the whole run,
-                // which would also stop result downloads and status checks.
+                // The validation service failed for this structure (an outage,
+                // or an error on this one SMILES): leave the prediction
+                // prepared for the next run and go on with the others, instead
+                // of aborting the whole run, which would also stop result
+                // downloads and status checks.
+                $validationFailures++;
                 $this->submissionErrors++;
-                $this->warn("Prediction {$prediction->getKey()} was not submitted, structure validation is unavailable: {$throwable->getMessage()}");
+                $this->warn("Prediction {$prediction->getKey()} was not submitted, structure validation failed: {$throwable->getMessage()}");
 
-                break;
+                continue;
             }
 
             if (! $structureIsValid) {

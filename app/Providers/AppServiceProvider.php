@@ -7,8 +7,13 @@ use App\Models\Config as ConfigModel;
 use App\Models\Filesystem;
 use App\Models\SshCredential;
 use App\Models\User;
+use App\Policies\ActivityPolicy;
 use App\Policies\ConfigPolicy;
 use App\Policies\PredictionDatasetPolicy;
+use App\Policies\PredictionMethodPolicy;
+use App\Policies\PredictionPolicy;
+use App\Policies\PredictionStatPolicy;
+use App\Policies\PredictionStructurePolicy;
 use Dedoc\Scramble\Scramble;
 use Exception;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -26,7 +31,12 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Modules\PredictionWorkers\Models\Prediction;
 use Modules\PredictionWorkers\Models\PredictionDataset;
+use Modules\PredictionWorkers\Models\PredictionMethod;
+use Modules\PredictionWorkers\Models\PredictionStat;
+use Modules\PredictionWorkers\Models\PredictionStructure;
+use Spatie\Activitylog\Models\Activity;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,6 +59,11 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(ConfigModel::class, ConfigPolicy::class);
         Gate::policy(PredictionDataset::class, PredictionDatasetPolicy::class);
+        Gate::policy(Prediction::class, PredictionPolicy::class);
+        Gate::policy(PredictionMethod::class, PredictionMethodPolicy::class);
+        Gate::policy(PredictionStat::class, PredictionStatPolicy::class);
+        Gate::policy(PredictionStructure::class, PredictionStructurePolicy::class);
+        Gate::policy(Activity::class, ActivityPolicy::class);
 
         // dedoc/scramble restricts its rendered docs page to the local
         // environment by default. It documents the open, unauthenticated

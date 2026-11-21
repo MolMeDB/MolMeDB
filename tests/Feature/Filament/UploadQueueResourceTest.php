@@ -1,0 +1,148 @@
+<?php
+
+require_once __DIR__.'/../Api/api_test_helpers.php';
+
+use App\Enums\PermissionEnums;
+use App\Enums\RoleEnums;
+use App\Filament\Resources\UploadQueues\Pages\EditUploadQueue;
+use App\Filament\Resources\UploadQueues\Pages\ListUploadQueues;
+use App\Models\Dataset;
+use App\Models\File;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\UploadQueue;
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
+use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
+
+beforeEach(function () {
+    Queue::fake();
+    fakePublicStorageForTests();
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    collect(PermissionEnums::cases())->each(function (PermissionEnums $permissionEnum): void {
+        Permission::query()->firstOrCreate([
+            'name' => $permissionEnum->value,
+            'guard_name' => 'web',
+        ], [
+            'description' => $permissionEnum->description(),
+        ]);
+    });
+
+    collect(RoleEnums::cases())->each(function (RoleEnums $roleEnum): void {
+        Role::query()->firstOrCreate([
+            'name' => $roleEnum->value,
+            'guard_name' => 'web',
+        ]);
+    });
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+});
+
+/**
+ * @param  array<int, PermissionEnums>  $permissions
+ */
+function createUploadQueueUser(array $permissions): User
+{
+    $role = Role::query()->create([
+        'name' => 'Uploader '.fake()->unique()->numberBetween(1, 1_000_000),
+        'guard_name' => 'web',
+    ]);
+
+    $role->givePermissionTo([
+        PermissionEnums::ADMIN_PANEL->value,
+        ...array_map(fn (PermissionEnums $permission): string => $permission->value, $permissions),
+    ]);
+
+    $user = User::factory()->create();
+    $user->syncRoles([$role]);
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    return $user->refresh();
+}
+
+function createUploadQueueRecord(User $owner, string $fileName): UploadQueue
+{
+    $file = File::query()->create([
+        'path' => 'upload_queue/passive/'.$fileName,
+        'name' => $fileName,
+        'type' => File::TYPE_UPLOAD_PASSIVE,
+        'storage' => 'public',
+        'mime' => 'text/csv',
+        'hash' => md5($fileName),
+    ]);
+
+    return UploadQueue::query()->create([
+        'type' => Dataset::TYPE_PASSIVE,
+        'state' => UploadQueue::STATE_PENDING,
+        'file_id' => $file->id,
+        'dataset_id' => createApiDataset(['owner' => $owner, 'name' => 'Dataset of '.$fileName])->id,
+        'user_id' => $owner->id,
+        'config' => [],
+    ]);
+}
+
+test('an uploader with manage own permission lists only their own uploads', function () {
+    $uploader = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_OWN]);
+    $own = createUploadQueueRecord($uploader, 'own.csv');
+    $foreign = createUploadQueueRecord(User::factory()->create(), 'foreign.csv');
+
+    $this->actingAs($uploader);
+
+    Livewire::test(ListUploadQueues::class)
+        ->assertOk()
+        ->assertCanSeeTableRecords([$own])
+        ->assertCanNotSeeTableRecords([$foreign]);
+});
+
+test('an uploader with manage all permission lists every upload', function () {
+    $manager = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_ALL]);
+    $first = createUploadQueueRecord(User::factory()->create(), 'first.csv');
+    $second = createUploadQueueRecord(User::factory()->create(), 'second.csv');
+
+    $this->actingAs($manager);
+
+    Livewire::test(ListUploadQueues::class)
+        ->assertOk()
+        ->assertCanSeeTableRecords([$first, $second]);
+});
+
+test('an uploader with manage own permission may update their own upload but not a foreign one', function () {
+    $uploader = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_OWN]);
+    $own = createUploadQueueRecord($uploader, 'own.csv');
+    $foreign = createUploadQueueRecord(User::factory()->create(), 'foreign.csv');
+
+    $this->actingAs($uploader);
+
+    expect(Gate::allows('update', $own))->toBeTrue()
+        ->and(Gate::allows('update', $foreign))->toBeFalse()
+        ->and(Gate::allows('view', $foreign))->toBeFalse();
+});
+
+test('an uploader with manage own permission cannot open the detail of a foreign upload', function () {
+    $uploader = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_OWN]);
+    $foreign = createUploadQueueRecord(User::factory()->create(), 'foreign.csv');
+
+    $this->actingAs($uploader);
+
+    $this->get(EditUploadQueue::getUrl(['record' => $foreign]))->assertNotFound();
+});
+
+test('an uploader with manage own permission can open the detail of their own upload', function () {
+    $uploader = createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_OWN]);
+    $own = createUploadQueueRecord($uploader, 'own.csv');
+
+    $this->actingAs($uploader);
+
+    Livewire::test(EditUploadQueue::class, ['record' => $own->getRouteKey()])->assertOk();
+});
+
+test('upload queues are never deleted in bulk', function () {
+    $this->actingAs(createUploadQueueUser([PermissionEnums::UPLOAD_QUEUE_MANAGE_ALL]));
+
+    expect(Gate::allows('deleteAny', UploadQueue::class))->toBeFalse();
+});

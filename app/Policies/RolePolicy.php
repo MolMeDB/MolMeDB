@@ -5,7 +5,6 @@ namespace App\Policies;
 use App\Enums\PermissionEnums;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class RolePolicy
 {
@@ -53,6 +52,11 @@ class RolePolicy
      * Determine whether the user can delete the model.
      */
     public function delete(User $user, Role $role): bool
+    {
+        return $user->hasPermissionTo(PermissionEnums::ROLES_DELETE);
+    }
+
+    public function deleteAny(User $user): bool
     {
         return $user->hasPermissionTo(PermissionEnums::ROLES_DELETE);
     }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\UploadQueues;
 
 use App\Enums\IconEnums;
+use App\Enums\PermissionEnums;
 use App\Filament\Resources\Datasets\DatasetResource;
 use App\Filament\Resources\SharedRelationManagers\InteractionsActiveRelationManager;
 use App\Filament\Resources\SharedRelationManagers\InteractionsPassiveRelationManager;
@@ -242,6 +243,26 @@ class UploadQueueResource extends Resource
                     // Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Administrators and UPLOAD_QUEUE_MANAGE_ALL holders see every upload,
+     * UPLOAD_QUEUE_MANAGE_OWN holders only their own (see UploadQueuePolicy).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasAdminRole() || $user->hasPermissionTo(PermissionEnums::UPLOAD_QUEUE_MANAGE_ALL)) {
+            return $query;
+        }
+
+        return $query->where('user_id', $user->id);
     }
 
     public static function getRelations(): array

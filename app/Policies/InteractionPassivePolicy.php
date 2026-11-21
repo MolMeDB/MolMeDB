@@ -32,6 +32,14 @@ class InteractionPassivePolicy
         return app(DatasetPolicy::class)->delete($user, $interactionPassive->dataset);
     }
 
+    /**
+     * Every selected record is still checked against delete().
+     */
+    public function deleteAny(User $user): bool
+    {
+        return app(DatasetPolicy::class)->deleteAny($user);
+    }
+
     public function restore(User $user, InteractionPassive $interactionPassive): bool
     {
         return app(DatasetPolicy::class)->restore($user, $interactionPassive->dataset);

@@ -20,6 +20,16 @@ class UploadQueuePolicy
         return $this->canManage($user, $uploadQueue);
     }
 
+    public function create(User $user): bool
+    {
+        return $this->viewAny($user);
+    }
+
+    public function update(User $user, UploadQueue $uploadQueue): bool
+    {
+        return $this->canManage($user, $uploadQueue);
+    }
+
     public function configure(User $user, UploadQueue $uploadQueue): bool
     {
         return $this->canManage($user, $uploadQueue);
@@ -48,6 +58,14 @@ class UploadQueuePolicy
     public function delete(User $user, UploadQueue $uploadQueue): bool
     {
         return $this->canManage($user, $uploadQueue) && $uploadQueue->canBeCanceled();
+    }
+
+    /**
+     * Upload queues are deleted one by one (delete()), never in bulk.
+     */
+    public function deleteAny(User $user): bool
+    {
+        return false;
     }
 
     /**

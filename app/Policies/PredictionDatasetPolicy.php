@@ -23,9 +23,24 @@ class PredictionDatasetPolicy
         return $this->canAccess($user, $dataset);
     }
 
+    public function create(User $user): bool
+    {
+        return $user->hasPermissionTo(PermissionEnums::PREDICTION_DATASET_MANAGE_ALL);
+    }
+
     public function update(User $user, PredictionDataset $dataset): bool
     {
         return $this->canAccess($user, $dataset);
+    }
+
+    public function delete(User $user, PredictionDataset $dataset): bool
+    {
+        return $this->canAccess($user, $dataset);
+    }
+
+    public function deleteAny(User $user): bool
+    {
+        return $user->hasPermissionTo(PermissionEnums::PREDICTION_DATASET_MANAGE_ALL);
     }
 
     public function viewRecords(User $user, PredictionDataset $dataset): bool

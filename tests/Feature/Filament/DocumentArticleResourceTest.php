@@ -1,9 +1,11 @@
 <?php
 
+use App\Enums\PermissionEnums;
 use App\Enums\RoleEnums;
 use App\Filament\Resources\DocumentArticles\Pages\CreateDocumentArticle;
 use App\Filament\Resources\DocumentArticles\Pages\EditDocumentArticle;
 use App\Models\DocumentArticle;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Livewire\Livewire;
@@ -18,8 +20,18 @@ use Spatie\Permission\PermissionRegistrar;
 beforeEach(function () {
     config()->set('documentation.directory', base_path('tests/Fixtures/docs'));
 
+    collect(PermissionEnums::cases())->each(function (PermissionEnums $permissionEnum): void {
+        Permission::query()->firstOrCreate(
+            ['name' => $permissionEnum->value, 'guard_name' => 'web'],
+            ['description' => $permissionEnum->description()],
+        );
+    });
+
+    $adminRole = Role::query()->firstOrCreate(['name' => RoleEnums::ADMIN->value, 'guard_name' => 'web']);
+    $adminRole->givePermissionTo(PermissionEnums::SETTINGS_EDIT->value);
+
     $admin = User::factory()->create();
-    $admin->syncRoles([Role::query()->firstOrCreate(['name' => RoleEnums::ADMIN->value, 'guard_name' => 'web'])]);
+    $admin->syncRoles([$adminRole]);
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
     $this->actingAs($admin->refresh());

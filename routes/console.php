@@ -52,9 +52,11 @@ Artisan::command('predictions:refresh-dataset-stats {--chunk=200}', function () 
     return Command::SUCCESS;
 })->purpose('Refresh cached prediction dataset progress statistics.');
 
+// Lock expiry (minutes) on every entry: the default of 1440 would let one
+// killed run block the task for a whole day.
 Schedule::command('predictions:refresh-dataset-stats')
     ->everyFiveMinutes()
-    ->withoutOverlapping();
+    ->withoutOverlapping(30);
 
 Schedule::command(RunPredictionsWorker::class)
     ->everyMinute()
@@ -68,27 +70,27 @@ Schedule::job(new ImportFinishedPredictionResults)
 
 Schedule::command(ProcessFrontendUploads::class)
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 Schedule::command(SendUploadQueueNotifications::class)
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 Schedule::command(SendUploadQueueAdminDigest::class)
     ->everyTenMinutes()
-    ->withoutOverlapping();
+    ->withoutOverlapping(30);
 
 Schedule::command(FlushQueuedNotifications::class)
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 Schedule::command(RunDailyCommands::class)
     ->dailyAt('01:00')
-    ->withoutOverlapping();
+    ->withoutOverlapping(720);
 
 Schedule::command(SendPredictionProgressNotifications::class)
     ->dailyAt('08:00')
-    ->withoutOverlapping();
+    ->withoutOverlapping(60);
 
 // Sunday night, after the nightly database backups. The command reports both
 // success and failure itself (system.admin.cosmo_export_* notifications).

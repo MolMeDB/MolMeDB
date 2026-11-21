@@ -19,6 +19,7 @@ use App\Notifications\TemplatedNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\Mime\Email;
@@ -180,4 +181,14 @@ test('daily log directories older than ten days are deleted', function () {
 
     expect(File::isDirectory($old))->toBeFalse()
         ->and(File::isDirectory($recent))->toBeTrue();
+});
+
+test('a failing summary e-mail does not stop the backup alerts', function () {
+    $monitor = createSystemMonitor();
+    DailyCommandStandIns::$outcomes[BackupDb::class] = Command::FAILURE;
+    Mail::shouldReceive('html')->andThrow(new RuntimeException('SMTP connection refused.'));
+
+    $this->artisan(RunDailyCommands::class)->assertFailed();
+
+    Notification::assertSentTo($monitor, TemplatedNotification::class);
 });

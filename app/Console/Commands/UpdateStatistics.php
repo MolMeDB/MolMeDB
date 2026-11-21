@@ -2,19 +2,19 @@
 
 namespace App\Console\Commands;
 
-use App\DTO\Stats\Counts;
-use App\Models\InteractionPassive;
-use App\Models\Membrane;
-use App\Models\Method;
-use App\Models\Stats;
-use App\DTO\Stats\LineChart;
 use App\DTO\Stats\BarChart;
-use App\Models\Protein;
-use App\Models\Publication;
+use App\DTO\Stats\Counts;
+use App\DTO\Stats\LineChart;
 use App\Models\Category;
 use App\Models\Config;
 use App\Models\Identifier;
 use App\Models\InteractionActive;
+use App\Models\InteractionPassive;
+use App\Models\Membrane;
+use App\Models\Method;
+use App\Models\Protein;
+use App\Models\Publication;
+use App\Models\Stats;
 use App\Models\Structure;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -45,18 +45,13 @@ class UpdateStatistics extends Command
 
         $last_update = $this->option('force') ? Carbon::parse(0) : Carbon::parse(Config::get('command:stats:update-all:last-run', 0));
 
-        if($last_update->isCurrentWeek())
-        {
+        if ($last_update->isCurrentWeek()) {
             $this->warn('Last update was less than a week ago. Skipping...');
+
             return Command::SUCCESS;
         }
 
-        if(!$this->option('force'))
-        {
-            Config::set('command:stats:update-all:last-run', Carbon::now());
-        }
-
-        // Update counts 
+        // Update counts
         $this->warn('... 1) Updating counts statistics');
         $counts = Counts::from([
             'total_passive_interactions' => InteractionPassive::count(),
@@ -75,25 +70,24 @@ class UpdateStatistics extends Command
         $maxDate = now()->startOfMonth();
 
         $totalMonths = $minDate->diffInMonths($maxDate) + 1;
-        $step = floor($totalMonths 
+        $step = floor($totalMonths
                       / 22); // Maximum number of bars
 
         $steps = range(0, $totalMonths, $step);
         $data = [];
 
-        foreach($steps as $i)
-        {
+        foreach ($steps as $i) {
             $date = $minDate->copy()->addMonths($i);
-            $this->info('... ## Processing date: ' . $date->format('m/Y'));
+            $this->info('... ## Processing date: '.$date->format('m/Y'));
             $data[] = LineChart::makeItem(
                 $date->valueOf(),
                 Structure::where('created_at', '<=', $date->endOfMonth())
                     ->count(),
                 InteractionActive::where('created_at', '<=', $date->endOfMonth())
-                    ->count() 
+                    ->count()
                 + InteractionPassive::where('created_at', '<=', $date->endOfMonth())
                     ->count()
-                
+
             );
         }
 
@@ -113,8 +107,7 @@ class UpdateStatistics extends Command
         ];
 
         $data = [];
-        foreach($databases as $type => $name)
-        {
+        foreach ($databases as $type => $name) {
             $count = Identifier::where('type', $type)
                 ->select('structure_id')
                 ->distinct()->count();
@@ -136,9 +129,8 @@ class UpdateStatistics extends Command
             ->get();
 
         $data = [];
-        foreach($proteinGroups as $group)
-        {
-            $this->info('... ## Processing group: ' . $group->title);
+        foreach ($proteinGroups as $group) {
+            $this->info('... ## Processing group: '.$group->title);
             $subcats = [$group->id];
             $last = 0;
 
@@ -149,8 +141,9 @@ class UpdateStatistics extends Command
                     ->toArray()));
             }
 
-            $proteins = Protein::whereHas('categories', function ($query) use ($subcats) { 
-                    $query->whereIn('category_id', $subcats);})
+            $proteins = Protein::whereHas('categories', function ($query) use ($subcats) {
+                $query->whereIn('category_id', $subcats);
+            })
                 ->get();
 
             $total_interactions = InteractionActive::whereIn('protein_id', $proteins->pluck('id'))
@@ -171,22 +164,19 @@ class UpdateStatistics extends Command
         // Update publication by year stats
         $this->warn('... 5) Updating publication by year stats');
         $minYear = Publication::min('year');
-        $minYear =  $minYear - ($minYear % 5);
+        $minYear = $minYear - ($minYear % 5);
         $maxYear = date('Y');
 
         $data = [];
 
-        foreach(range($minYear, $maxYear, 5) as $year)
-        {
-            $this->info('... ## Processing year: ' . $year);
+        foreach (range($minYear, $maxYear, 5) as $year) {
+            $this->info('... ## Processing year: '.$year);
             $data[] = LineChart::makeItem(
-                "$year - " . $year + 4,
-                InteractionActive::whereHas('publication', function ($query) use ($year) 
-                { 
-                    $query->whereBetween('year', [$year, $year + 4]); 
+                "$year - ".$year + 4,
+                InteractionActive::whereHas('publication', function ($query) use ($year) {
+                    $query->whereBetween('year', [$year, $year + 4]);
                 })->count()
-                + InteractionPassive::whereHas('publication', function ($query) use ($year) 
-                { 
+                + InteractionPassive::whereHas('publication', function ($query) use ($year) {
                     $query->whereBetween('year', [$year, $year + 4]);
                 })->count(),
                 null
@@ -200,7 +190,7 @@ class UpdateStatistics extends Command
 
         // Update publication by journal counts
         $this->warn('... 6) Updating publications by journal bar counts');
-        
+
         $data = [];
 
         $journals = Publication::select('journal')
@@ -208,18 +198,15 @@ class UpdateStatistics extends Command
             ->distinct()
             ->get();
 
-        foreach ($journals as $journal)
-        {
-            $this->info('... ## Processing journal: ' . $journal->journal);
+        foreach ($journals as $journal) {
+            $this->info('... ## Processing journal: '.$journal->journal);
             $data[] = BarChart::makeItem(
                 $journal->journal,
-                InteractionActive::whereHas('publication', function ($query) use ($journal) 
-                { 
-                    $query->where('journal', $journal->journal); 
+                InteractionActive::whereHas('publication', function ($query) use ($journal) {
+                    $query->where('journal', $journal->journal);
                 })->count()
-                + InteractionPassive::whereHas('publication', function ($query) use ($journal) 
-                { 
-                    $query->where('journal', $journal->journal); 
+                + InteractionPassive::whereHas('publication', function ($query) use ($journal) {
+                    $query->where('journal', $journal->journal);
                 })->count(),
             );
         }
@@ -237,5 +224,12 @@ class UpdateStatistics extends Command
         );
 
         $this->info('... 6) Finished.');
+
+        // Only a finished run counts, so a failed one is retried the next day.
+        if (! $this->option('force')) {
+            Config::set('command:stats:update-all:last-run', Carbon::now());
+        }
+
+        return Command::SUCCESS;
     }
 }

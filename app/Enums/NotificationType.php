@@ -164,7 +164,11 @@ enum NotificationType: string
             self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED,
             self::PREDICTION_ADMIN_REMOTE_SERVICE_DOWN,
-            self::FEEDBACK_ADMIN_NEW_SUBMISSION => NotificationDeliveryMode::IMMEDIATE,
+            self::FEEDBACK_ADMIN_NEW_SUBMISSION,
+            // Scheduled reports are summaries already; batching would merge
+            // e.g. Monday's day and week reports into one and lose the first.
+            self::PREDICTION_JOB_DAILY_PROGRESS,
+            self::PREDICTION_ADMIN_STATS_REPORT => NotificationDeliveryMode::IMMEDIATE,
             default => NotificationDeliveryMode::BATCHED,
         };
     }

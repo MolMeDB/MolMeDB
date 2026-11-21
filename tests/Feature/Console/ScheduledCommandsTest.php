@@ -18,6 +18,7 @@ use App\Models\Permission;
 use App\Models\QueuedNotification;
 use App\Models\UploadQueue;
 use App\Models\User;
+use App\Models\UserNotification;
 use App\Services\NotificationBatcher;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -80,32 +81,35 @@ test('the export cleanup fails when the export filesystem is not set up', functi
     $this->artisan(CleanupExpiredDownloadFiles::class)->assertFailed();
 });
 
-test('owners of running prediction datasets get the daily progress notification', function () {
+test('owners of running prediction datasets get one progress notification per dataset', function () {
     $running = User::factory()->create();
     $finished = User::factory()->create();
+    createPredictionDataset($running);
     createPredictionDataset($running);
     createPredictionDataset($finished, ['state' => Prediction::STATE_FINISHED, 'step' => Prediction::finalStep()]);
     createPredictionDataset(null);
 
     $this->artisan(SendPredictionProgressNotifications::class)->assertSuccessful();
 
-    expect(queuedNotificationsFor($running, NotificationType::PREDICTION_JOB_DAILY_PROGRESS))->toBe(1)
-        ->and(queuedNotificationsFor($finished, NotificationType::PREDICTION_JOB_DAILY_PROGRESS))->toBe(0);
+    // Sent at once, not batched: batching would merge the two datasets.
+    expect(UserNotification::query()->where('user_id', $running->id)->count())->toBe(2)
+        ->and(UserNotification::query()->where('user_id', $finished->id)->count())->toBe(0)
+        ->and(queuedNotificationsFor($running, NotificationType::PREDICTION_JOB_DAILY_PROGRESS))->toBe(0);
 });
 
-test('the prediction statistics report goes to prediction managers', function () {
+test('the day and week statistics reports reach prediction managers as two reports', function () {
     $manager = createPredictionManager();
     createPredictionDataset(User::factory()->create());
 
     $this->artisan(SendPredictionAdminStatsNotification::class, ['period' => 'day'])->assertSuccessful();
+    $this->artisan(SendPredictionAdminStatsNotification::class, ['period' => 'week'])->assertSuccessful();
 
-    $queued = QueuedNotification::query()
-        ->where('group_key', NotificationBatcher::groupKey(NotificationType::PREDICTION_ADMIN_STATS_REPORT))
-        ->where('notifiable_id', $manager->id)
-        ->sole();
+    $reports = UserNotification::query()->where('user_id', $manager->id)->orderBy('id')->get();
 
-    expect($queued->data['period_from'])->toBe(now()->subDay()->toDateString())
-        ->and($queued->data['total_all'])->toBe(1);
+    expect($reports)->toHaveCount(2)
+        ->and($reports[0]->data['period_from'])->toBe(now()->subDay()->toDateString())
+        ->and($reports[0]->data['total_all'])->toBe(1)
+        ->and($reports[1]->data['period_from'])->not->toBe($reports[0]->data['period_from']);
 });
 
 test('the prediction statistics report refuses an unknown period', function () {
@@ -147,4 +151,17 @@ test('the export update writes a downloadable export for every membrane with int
     $export = $membrane->files()->where('type', File::TYPE_EXPORT_INTERACTIONS_MEMBRANE)->sole();
 
     Storage::disk($export->storage)->assertExists($export->path);
+});
+
+test('every-minute scheduled tasks release their overlap lock within an hour', function () {
+    $events = collect(app(Illuminate\Console\Scheduling\Schedule::class)->events())
+        ->filter(fn ($event): bool => $event->withoutOverlapping);
+
+    expect($events)->not->toBeEmpty();
+
+    foreach ($events as $event) {
+        $limit = $event->expression === '* * * * *' ? 10 : 720;
+
+        expect($event->expiresAt)->toBeLessThanOrEqual($limit, "{$event->command} keeps its lock for {$event->expiresAt} minutes");
+    }
 });

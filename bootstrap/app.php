@@ -43,9 +43,10 @@ return Application::configure(basePath: dirname(__DIR__))
             NormalizeLivewireUploadUrl::class,
         ]);
 
-        // Fortify's "login" route is disabled, so guests are sent to the
-        // frontend sign-in page instead (the admin panel has its own).
-        $middleware->redirectGuestsTo(fn (): string => rtrim((string) config('app.frontend_url'), '/').'/login');
+        // Fortify's "login" route is disabled. The only signed-in web pages
+        // belong to the admin panel (the frontend's API calls get a 401), so
+        // guests, and sessions ended elsewhere, go to the panel sign-in.
+        $middleware->redirectGuestsTo(fn (): string => route('filament.admin.auth.login'));
 
         $middleware->alias([
             'verified' => EnsureEmailIsVerified::class,

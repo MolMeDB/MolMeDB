@@ -27,14 +27,54 @@ class BackupDbIdsm extends Command
      */
     protected $description = 'Creates a safe database backup for IDSM and saves it to the config specified location.';
 
-    private array $excludedTables = [
+    /**
+     * The dump is downloadable by anyone (/api/dump/idsm/download), so it
+     * holds only these tables of published data. A table not listed here is
+     * left out; tests make every table of the schema either listed here or
+     * in PRIVATE_TABLES, so a new table needs a decision.
+     *
+     * @var array<int, string>
+     */
+    public const PUBLIC_TABLES = [
+        'public.categories',
+        'public.datasets',
+        'public.fluorescent_properties',
+        'public.identifiers',
+        'public.interactions_active',
+        'public.interactions_passive',
+        'public.keywords',
+        'public.membranes',
+        'public.methods',
+        'public.model_has_categories',
+        'public.model_has_publications',
+        'public.protein_identifiers',
+        'public.proteins',
+        'public.publications',
+        'public.structure_links',
+        'public.structures',
+    ];
+
+    /**
+     * Tables that never go into the public dump: accounts, contact data,
+     * notifications, queues, credentials, internal bookkeeping and the Bingo
+     * search index (rebuilt on import).
+     *
+     * @var array<int, string>
+     */
+    public const PRIVATE_TABLES = [
+        'bingo.bingo_config',
+        'bingo.bingo_tau_config',
         'public.activity_log',
         'public.authors',
         'public.cache',
         'public.cache_locks',
         'public.configs',
         'public.dataset_groups',
+        'public.document_articles',
+        'public.download_queue',
         'public.failed_jobs',
+        'public.feedback_email_verifications',
+        'public.feedback_submissions',
         'public.files',
         'public.filesystems',
         'public.job_batches',
@@ -43,18 +83,36 @@ class BackupDbIdsm extends Command
         'public.model_has_files',
         'public.model_has_permissions',
         'public.model_has_roles',
+        'public.notification_preferences',
+        'public.notification_templates',
         'public.password_reset_tokens',
         'public.permissions',
         'public.personal_access_tokens',
         'public.publication_has_authors',
+        'public.push_subscriptions',
+        'public.queued_notifications',
         'public.role_has_permissions',
         'public.roles',
         'public.sessions',
         'public.ssh_credentials',
         'public.stats',
+        'public.structures_canonical_smiles_bingo_index_shadow',
+        'public.structures_canonical_smiles_bingo_index_shadow_hash',
         'public.upload_queue',
+        'public.user_notifications',
         'public.users',
     ];
+
+    /**
+     * pg_dump options selecting the public tables by their exact names (owned
+     * sequences come with them).
+     *
+     * @return array<int, string>
+     */
+    public static function tableArguments(): array
+    {
+        return array_map(fn (string $table): string => '--table='.$table, self::PUBLIC_TABLES);
+    }
 
     public static function datePath(?string $date = null): string
     {
@@ -78,7 +136,9 @@ class BackupDbIdsm extends Command
     {
         $lastBackup = Config::get('db_backup_idsm_last');
 
-        if ($lastBackup && now()->diffInDays(Carbon::parse($lastBackup)) < 7) {
+        // From the last backup to now: Carbon 3 returns a signed difference, so
+        // now()->diffInDays($past) is negative and the dump was always skipped.
+        if ($lastBackup && Carbon::parse($lastBackup)->diffInDays(now()) < 7) {
             $this->info('Last IDSM backup was made at '.$lastBackup.', skipping (younger than 7 days).');
 
             return Command::SUCCESS;
@@ -126,11 +186,7 @@ class BackupDbIdsm extends Command
                 (string) $host,
             ];
 
-            foreach ($this->excludedTables as $table) {
-                $arguments[] = '--exclude-table='.$table.'*';
-            }
-
-            $arguments[] = (string) $db;
+            $arguments = [...$arguments, ...self::tableArguments(), (string) $db];
 
             $this->runPgDump($arguments, $tmpFile, (string) $pass);
 

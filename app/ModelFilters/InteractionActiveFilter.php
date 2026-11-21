@@ -1,12 +1,13 @@
-<?php 
+<?php
 
 namespace App\ModelFilters;
 
 use EloquentFilter\ModelFilter;
+use Illuminate\Support\Facades\Schema;
 
 class InteractionActiveFilter extends ModelFilter
 {
-    public $sortBy = "id";
+    public $sortBy = 'id';
 
     public function structureId($id)
     {
@@ -16,15 +17,16 @@ class InteractionActiveFilter extends ModelFilter
     public function sortBy($column)
     {
         $this->sortBy = $this->translateSortBy($column);
+
         return $this;
     }
 
     public function sortByDirection($direction)
     {
-        if(strtolower($direction) !== 'asc')
-        {
+        if (strtolower($direction) !== 'asc') {
             return $this->orderBy($this->sortBy, 'desc');
         }
+
         return $this->orderBy($this->sortBy, 'asc');
     }
 
@@ -33,13 +35,26 @@ class InteractionActiveFilter extends ModelFilter
         $this->select('interactions_active.*');
     }
 
-    private function translateSortBy($key) 
+    private function translateSortBy($key)
     {
-        $translated = match($key) {
-            default => $key
+        $translated = match ($key) {
+            default => $this->sortableColumn($key),
         };
 
         return $translated;
     }
 
+    /**
+     * Only a column of the listed table may be sorted by; anything else,
+     * which would otherwise reach the SQL as it is, falls back to the id.
+     */
+    private function sortableColumn(mixed $key): string
+    {
+        $model = $this->query->getModel();
+
+        $isOwnColumn = is_string($key)
+            && in_array($key, Schema::getColumnListing($model->getTable()), true);
+
+        return $model->qualifyColumn($isOwnColumn ? $key : 'id');
+    }
 }

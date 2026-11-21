@@ -6,7 +6,8 @@ use Illuminate\Support\Facades\Route;
 /*
  * Signing in, registration and password resets go through the application's
  * own routes (routes/auth.php). Fortify's duplicate routes under /api, among
- * them a registration without Turnstile, must not exist.
+ * them a registration without Turnstile, must not exist; only the password
+ * change of the account settings has an application route at the same URL.
  */
 
 test('no Fortify route is registered', function () {
@@ -38,12 +39,10 @@ test('the former Fortify account endpoints answer not found to signed-in users',
         ->assertNotFound();
 })->with([
     'profile' => ['PUT', '/api/user/profile-information'],
-    'password' => ['PUT', '/api/user/password'],
     'enable two-factor' => ['POST', '/api/user/two-factor-authentication'],
     'two-factor QR code' => ['GET', '/api/user/two-factor-qr-code'],
 ]);
 
-test('a guest opening a signed-in web page is sent to the frontend sign-in', function () {
-    $this->get('/export/upload-queue/1')
-        ->assertRedirect(rtrim((string) config('app.frontend_url'), '/').'/login');
+test('a guest opening a signed-in web page is sent to the panel sign-in', function () {
+    $this->get('/export/upload-queue/1')->assertRedirect(route('filament.admin.auth.login'));
 });

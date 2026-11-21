@@ -20,7 +20,11 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // The frontend signs in, registers and resets passwords through the
+        // application's own routes (routes/auth.php, with Turnstile). Fortify's
+        // routes under /api were reachable as a second registration without
+        // Turnstile and as unused profile, password and two-factor endpoints.
+        Fortify::ignoreRoutes();
     }
 
     /**

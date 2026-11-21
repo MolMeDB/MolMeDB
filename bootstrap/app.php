@@ -43,6 +43,10 @@ return Application::configure(basePath: dirname(__DIR__))
             NormalizeLivewireUploadUrl::class,
         ]);
 
+        // Fortify's "login" route is disabled, so guests are sent to the
+        // frontend sign-in page instead (the admin panel has its own).
+        $middleware->redirectGuestsTo(fn (): string => rtrim((string) config('app.frontend_url'), '/').'/login');
+
         $middleware->alias([
             'verified' => EnsureEmailIsVerified::class,
             'public-cors' => PublicApiCors::class,

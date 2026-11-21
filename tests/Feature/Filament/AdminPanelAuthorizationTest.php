@@ -14,6 +14,9 @@ use App\Filament\Resources\PredictionMethods\Pages\ListPredictionMethods;
 use App\Filament\Resources\Predictions\Pages\ListPredictions;
 use App\Filament\Resources\PredictionStatsResource\Pages\ListPredictionStats;
 use App\Filament\Resources\PredictionStructures\Pages\ListPredictionStructures;
+use App\Filament\Widgets\LatestActivityLogsWidget;
+use App\Filament\Widgets\PredictionLiveStatsWidget;
+use App\Models\FeedbackSubmission;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -229,4 +232,36 @@ test('the permission migration creates missing settings and prediction permissio
     expect($admin->refresh()->hasPermissionTo(PermissionEnums::SETTINGS_VIEW))->toBeTrue()
         ->and($admin->hasPermissionTo(PermissionEnums::SETTINGS_EDIT))->toBeTrue()
         ->and($admin->hasPermissionTo(PermissionEnums::PREDICTION_DATASET_MANAGE_ALL))->toBeTrue();
+});
+
+test('dashboard widgets follow the policies of the records they show', function () {
+    $this->actingAs(createPanelUser());
+
+    expect(LatestActivityLogsWidget::canView())->toBeFalse()
+        ->and(PredictionLiveStatsWidget::canView())->toBeFalse();
+
+    $this->actingAs(createPanelUser([PermissionEnums::SETTINGS_VIEW]));
+    expect(LatestActivityLogsWidget::canView())->toBeTrue();
+
+    $this->actingAs(createPanelUser([PermissionEnums::PREDICTION_DATASET_MANAGE_ALL]));
+    expect(PredictionLiveStatsWidget::canView())->toBeTrue();
+});
+
+test('marking feedback as read needs the settings edit permission', function () {
+    $feedback = FeedbackSubmission::query()->create([
+        'email' => 'visitor@example.org',
+        'message' => 'The search is slow.',
+        'context' => 'search',
+        'state' => FeedbackSubmission::STATE_NEW,
+    ]);
+
+    $this->actingAs(createPanelUser([PermissionEnums::SETTINGS_VIEW]));
+
+    Livewire::test(ListFeedbackSubmissions::class)->assertTableActionHidden('markAsRead', $feedback);
+
+    $this->actingAs(createPanelUser([PermissionEnums::SETTINGS_EDIT]));
+
+    Livewire::test(ListFeedbackSubmissions::class)->callTableAction('markAsRead', $feedback);
+
+    expect($feedback->refresh()->state)->toBe(FeedbackSubmission::STATE_READ);
 });

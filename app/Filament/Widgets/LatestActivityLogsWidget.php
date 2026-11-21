@@ -10,6 +10,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Spatie\Activitylog\Models\Activity;
 
 class LatestActivityLogsWidget extends TableWidget
@@ -17,6 +18,14 @@ class LatestActivityLogsWidget extends TableWidget
     public string $scope = BaseModel::ACTIVITY_LOG_SYSTEM;
 
     protected int|string|array $columnSpan = 'full';
+
+    /**
+     * Shown only to users the Activity policy lets list these records.
+     */
+    public static function canView(): bool
+    {
+        return Gate::allows('viewAny', Activity::class);
+    }
 
     protected static ?int $sort = 90;
 

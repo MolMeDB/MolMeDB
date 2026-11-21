@@ -89,10 +89,15 @@ class AppServiceProvider extends ServiceProvider
             max(1, (int) config('prediction-workers.remote.worker.max_status_requests_per_minute', 30)),
         )->by('remote-prediction-status'));
 
-        RateLimiter::for('resend-email-verification', function (Request $request): Limit {
+        // One link per address a minute, and a cap per IP so nobody can mail
+        // many addresses by rotating them.
+        RateLimiter::for('resend-email-verification', function (Request $request): array {
             $email = Str::lower((string) $request->input('email'));
 
-            return Limit::perMinute(1)->by($email !== '' ? $email : $request->ip());
+            return [
+                Limit::perMinute(1)->by('email:'.($email !== '' ? $email : $request->ip())),
+                Limit::perMinute(10)->by('ip:'.$request->ip()),
+            ];
         });
 
         RateLimiter::for('public-api', function (Request $request): array {

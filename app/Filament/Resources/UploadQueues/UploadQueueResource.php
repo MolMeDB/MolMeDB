@@ -15,6 +15,7 @@ use App\Models\File;
 use App\Models\UploadQueue;
 use App\Rules\FileUniqueByHash;
 use App\Services\UploadQueueImporter;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -32,6 +33,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -71,7 +73,14 @@ class UploadQueueResource extends Resource
                     ->required(),
                 Select::make('dataset_id')
                     ->label('Dataset')
-                    ->relationship('dataset', 'name', fn (Builder $query, Get $get) => $query->where('type', $get('type'))->orderby('id', 'DESC'))
+                    ->relationship('dataset', 'name', fn (Builder $query, Get $get) => static::scopeDatasetOptions($query->where('type', $get('type'))->orderby('id', 'DESC')))
+                    ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                        $dataset = $value ? Dataset::withTrashed()->find($value) : null;
+
+                        if ($dataset !== null && Gate::denies('update', $dataset)) {
+                            $fail('You may upload only to datasets you are allowed to edit.');
+                        }
+                    })
                     ->getOptionLabelFromRecordUsing(fn (Dataset $record) => "[$record->id]: $record->name (".Str::limit($record->comment, 40).')')
                     ->disabled(fn (Get $get, ?UploadQueue $record) => ! $get('type') || $record?->isRevertible())
                     ->preload()
@@ -265,6 +274,28 @@ class UploadQueueResource extends Resource
         return $query->where('user_id', $user->id);
     }
 
+    /**
+     * Only datasets the signed-in user may edit can receive their upload.
+     */
+    public static function scopeDatasetOptions(Builder $query): Builder
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasPermissionTo(PermissionEnums::DATASET_EDIT)) {
+            return $query;
+        }
+
+        if ($user->hasPermissionTo(PermissionEnums::DATASET_EDIT_OWN)) {
+            return $query->where('created_by', $user->id);
+        }
+
+        return $query->whereRaw('1 = 0');
+    }
+
     public static function getRelations(): array
     {
         return [
@@ -302,6 +333,7 @@ class UploadQueueResource extends Resource
                 ->label('Revert')
                 ->color('danger')
                 ->icon(IconEnums::RESTORE->value)
+                ->authorize('revert')
                 ->requiresConfirmation()
                 ->action(function (UploadQueue $record) {
                     return $record->revert();
@@ -328,7 +360,7 @@ class UploadQueueResource extends Resource
             ->modalWidth('7xl')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Close')
-            ->modalFooterActions(fn (UploadQueue $record) => $record->shouldBeDecidedByAdmin() ? [
+            ->modalFooterActions(fn (UploadQueue $record) => $record->shouldBeDecidedByAdmin() && Gate::allows('review', $record) ? [
                 static::approveReviewAction(),
                 static::rejectReviewAction(),
             ] : [])
@@ -345,6 +377,7 @@ class UploadQueueResource extends Resource
             ->label('Approve')
             ->icon(IconEnums::CHECK->value)
             ->color('success')
+            ->authorize('review')
             ->requiresConfirmation()
             ->modalHeading('Approve upload data?')
             ->modalDescription('The upload will be returned to the processing queue and the final import step will run.')
@@ -367,6 +400,7 @@ class UploadQueueResource extends Resource
             ->label('Reject')
             ->icon(IconEnums::STOP->value)
             ->color('danger')
+            ->authorize('review')
             ->schema([
                 Textarea::make('reason')
                     ->label('Reason')

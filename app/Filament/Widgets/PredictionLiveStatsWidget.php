@@ -5,10 +5,19 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\PredictionStatsResource;
 use Carbon\CarbonInterface;
 use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Gate;
 use Modules\PredictionWorkers\Models\PredictionStat;
 
 class PredictionLiveStatsWidget extends Widget
 {
+    /**
+     * Shown only to users the PredictionStat policy lets list these records.
+     */
+    public static function canView(): bool
+    {
+        return Gate::allows('viewAny', PredictionStat::class);
+    }
+
     protected static ?int $sort = 3;
 
     protected int|string|array $columnSpan = 'full';

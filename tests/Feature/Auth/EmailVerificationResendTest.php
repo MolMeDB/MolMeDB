@@ -72,3 +72,11 @@ test('a guest resend is limited to one request per minute for the same address',
 
     Notification::assertSentToTimes($user, VerifyEmail::class, 1);
 });
+
+test('a guest resend is capped per IP address when the addresses rotate', function () {
+    foreach (range(1, 10) as $attempt) {
+        $this->postJson(route('verification.send.guest'), ['email' => "rotating{$attempt}@example.org"])->assertOk();
+    }
+
+    $this->postJson(route('verification.send.guest'), ['email' => 'rotating11@example.org'])->assertTooManyRequests();
+});

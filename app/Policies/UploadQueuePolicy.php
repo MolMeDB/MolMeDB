@@ -50,9 +50,27 @@ class UploadQueuePolicy
         return $this->canManage($user, $uploadQueue) && $uploadQueue->canBeCanceled();
     }
 
+    /**
+     * Reverting deletes every interaction of the upload's dataset, so the
+     * user must also be allowed to change that dataset.
+     */
     public function revert(User $user, UploadQueue $uploadQueue): bool
     {
-        return $this->canManage($user, $uploadQueue);
+        $dataset = $uploadQueue->dataset;
+
+        return $this->canManage($user, $uploadQueue)
+            && $dataset !== null
+            && app(DatasetPolicy::class)->update($user, $dataset);
+    }
+
+    /**
+     * Approving or rejecting the data of an upload waiting for review is the
+     * administrators' decision, never the uploader's own.
+     */
+    public function review(User $user, UploadQueue $uploadQueue): bool
+    {
+        return $user->hasAdminRole()
+            || $user->hasPermissionTo(PermissionEnums::UPLOAD_QUEUE_MANAGE_ALL);
     }
 
     public function delete(User $user, UploadQueue $uploadQueue): bool

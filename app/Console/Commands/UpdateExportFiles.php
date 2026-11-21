@@ -56,7 +56,8 @@ class UpdateExportFiles extends Command
         if (! $filesystem || ! $filesystem->isInitialized()) {
             $this->error('Filesystem is not properly configured. Ending...');
 
-            return;
+            // A failure, so cron:daily reports it instead of a silent success.
+            return Command::FAILURE;
         }
 
         $lastUpdateValue = Config::get('command:exports:update-all:last-run');

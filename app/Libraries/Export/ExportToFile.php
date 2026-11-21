@@ -142,7 +142,7 @@ class ExportToFile
         }
 
         if (is_array($row)) {
-            fputcsv($this->fileHandler, $row, $separator, '"', '\\');
+            fputcsv($this->fileHandler, SpreadsheetSafeCsv::row($row), $separator, '"', '\\');
         } elseif (is_string($row)) {
             fwrite($this->fileHandler, $row.PHP_EOL);
         } else {
@@ -155,7 +155,7 @@ class ExportToFile
                 $toWrite[] = $column->getValue($row);
             }
 
-            fputcsv($this->fileHandler, $toWrite, $separator, '"', '\\');
+            fputcsv($this->fileHandler, SpreadsheetSafeCsv::row($toWrite), $separator, '"', '\\');
         }
 
         return $this;
@@ -325,7 +325,7 @@ class ExportToFile
                     $toWrite[] = $column->getValue($row);
                 }
 
-                fputcsv($output, $toWrite, $separator, '"', '\\');
+                fputcsv($output, SpreadsheetSafeCsv::row($toWrite), $separator, '"', '\\');
             }
 
             fclose($output);

@@ -71,6 +71,45 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
         return $this->hasRole(RoleEnums::ADMIN->value);
     }
 
+    /**
+     * Whether the user may give these permissions to a role: administrators
+     * any, everyone else only permissions they hold, so that managing roles
+     * never raises anyone's rights.
+     *
+     * @param  iterable<int, Permission>  $permissions
+     */
+    public function canGrantPermissions(iterable $permissions): bool
+    {
+        if ($this->hasAdminRole()) {
+            return true;
+        }
+
+        $held = $this->getAllPermissions()->pluck('id')->all();
+
+        foreach ($permissions as $permission) {
+            if (! in_array($permission->getKey(), $held, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether the user may assign the role to someone: only administrators
+     * hand out the Administrator role, and nobody a role whose permissions
+     * they do not hold.
+     */
+    public function canAssignRole(Role $role): bool
+    {
+        if ($this->hasAdminRole()) {
+            return true;
+        }
+
+        return $role->name !== RoleEnums::ADMIN->value
+            && $this->canGrantPermissions($role->permissions);
+    }
+
     public function getFilamentName(): string
     {
         return $this->name;

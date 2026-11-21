@@ -2,19 +2,19 @@
 
 namespace App\Filament\Clusters\Access\Resources\Roles\RelationManagers;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Tables\Columns\TextColumn;
+use App\Models\Permission;
+use Closure;
 use Filament\Actions\AttachAction;
-use Filament\Actions\DetachAction;
 use Filament\Actions\BulkActionGroup;
-use App\Filament\Clusters\Access\Resources\Permissions\PermissionResource;
-use Filament\Forms;
+use Filament\Actions\DetachAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
 
 class PermissionsRelationManager extends RelationManager
 {
@@ -42,7 +42,7 @@ class PermissionsRelationManager extends RelationManager
                 TextColumn::make('description')
                     ->sortable()
                     ->wrap()
-                    ->searchable()
+                    ->searchable(),
             ])
             ->filters([
                 //
@@ -52,6 +52,17 @@ class PermissionsRelationManager extends RelationManager
                     ->multiple()
                     ->color('primary')
                     ->preloadRecordSelect()
+                    // Only permissions the signed-in user holds (all for administrators).
+                    ->recordSelectOptionsQuery(fn (Builder $query): Builder => Auth::user()->hasAdminRole()
+                        ? $query
+                        : $query->whereKey(Auth::user()->getAllPermissions()->modelKeys()))
+                    ->recordSelect(fn (Select $select): Select => $select->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                        $permissions = Permission::query()->whereKey((array) $value)->get();
+
+                        if (! Auth::user()->canGrantPermissions($permissions)) {
+                            $fail('You can grant only permissions you hold yourself.');
+                        }
+                    })),
             ])
             ->recordActions([
                 DetachAction::make()

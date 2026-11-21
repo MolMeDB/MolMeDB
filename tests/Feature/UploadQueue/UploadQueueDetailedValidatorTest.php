@@ -184,7 +184,22 @@ test('an accuracy column written differently is never read as its value column',
     'plus-minus sign' => ['± Gpen', 'g_pen_acc'],
     'marker after the name' => ['Gpen +/-', 'ignore'],
     'the value column again' => ['GPEN ', 'ignore'],
+    'plus and minus' => ['+-Gpen', 'g_pen_acc'],
+    'spaced marker' => ['+ / - Gpen', 'g_pen_acc'],
+    'unicode minus' => ['+/− Gpen', 'g_pen_acc'],
 ]);
+
+test('a column named exactly takes its attribute even after a column that only resembles it', function (string $accuracyHeader) {
+    $record = createUnconfiguredUpload("SMILES,{$accuracyHeader},Gpen,temperature\nCCO,0.2,-12.3,25\n");
+
+    expect(validateUpload($record)['config'][UploadQueueConfig::ATTRIBUTES])->toBe(['smiles', 'g_pen_acc', 'g_pen', 'temperature']);
+})->with(['+-Gpen', '+ / - Gpen', '± Gpen']);
+
+test('of two columns resembling the same attribute only the first takes it', function () {
+    $record = createUnconfiguredUpload("SMILES,G pen,G-pen,temperature\nCCO,-12.3,-1.0,25\n");
+
+    expect(validateUpload($record)['config'][UploadQueueConfig::ATTRIBUTES])->toBe(['smiles', 'g_pen', 'ignore', 'temperature']);
+});
 
 test('a header without the SMILES column fails', function () {
     $record = createUnconfiguredUpload("Name,Gpen\nethanol,-1\n");

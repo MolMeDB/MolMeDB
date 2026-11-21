@@ -5,6 +5,8 @@ use App\Models\Config;
 use App\Models\Filesystem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 
 /*
  * The IDSM dump is downloadable by anyone, so it may hold published data
@@ -52,14 +54,106 @@ test('no public dump table holds contact data, credentials or tokens', function 
     expect($personal)->toBe([]);
 })->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'needs PostgreSQL');
 
-test('the dump selects exactly the public tables by name', function () {
-    $arguments = BackupDbIdsm::tableArguments();
+/**
+ * Runs a PostgreSQL client tool against the test database server.
+ *
+ * @param  array<int, string>  $arguments
+ */
+function runPostgresTool(string $tool, array $arguments, ?string $input = null): Process
+{
+    $connection = config('database.connections.pgsql');
+    $process = new Process(
+        [$tool, '-h', (string) $connection['host'], '-p', (string) $connection['port'], '-U', (string) $connection['username'], ...$arguments],
+        null,
+        ['PGPASSWORD' => (string) $connection['password']],
+        $input,
+        120,
+    );
+    $process->run();
 
-    expect($arguments)->toHaveCount(count(BackupDbIdsm::PUBLIC_TABLES))
-        ->and($arguments)->toContain('--table=public.interactions_passive')
-        ->and(implode(' ', $arguments))->not->toContain('*')
-        ->and(implode(' ', $arguments))->not->toContain('feedback')
-        ->and(implode(' ', $arguments))->not->toContain('users');
+    return $process;
+}
+
+test('the public dump restores into an empty database without errors', function () {
+    $dump = runPostgresTool('pg_dump', [...BackupDbIdsm::tableArguments(), (string) config('database.connections.pgsql.database')]);
+    expect($dump->isSuccessful())->toBeTrue($dump->getErrorOutput());
+
+    $lines = preg_split('/(?<=\n)/', $dump->getOutput(), -1, PREG_SPLIT_NO_EMPTY);
+    $restorable = implode('', iterator_to_array(BackupDbIdsm::restorableDump($lines), false));
+
+    $database = 'idsm_restore_check_'.getmypid();
+    runPostgresTool('psql', ['-d', 'postgres', '-c', "DROP DATABASE IF EXISTS {$database}"]);
+    runPostgresTool('psql', ['-d', 'postgres', '-c', "CREATE DATABASE {$database}"]);
+
+    try {
+        $restore = runPostgresTool('psql', ['-d', $database, '-v', 'ON_ERROR_STOP=1', '-q'], $restorable);
+        expect($restore->isSuccessful())->toBeTrue($restore->getErrorOutput());
+
+        $tables = runPostgresTool('psql', ['-d', $database, '-At', '-c', "select table_schema || '.' || table_name from information_schema.tables where table_type = 'BASE TABLE' and table_schema = 'public' order by 1"]);
+        expect(array_filter(explode("\n", trim($tables->getOutput()))))->toEqualCanonicalizing(BackupDbIdsm::PUBLIC_TABLES);
+    } finally {
+        runPostgresTool('psql', ['-d', 'postgres', '-c', "DROP DATABASE IF EXISTS {$database}"]);
+    }
+})->skip(fn (): bool => DB::getDriverName() !== 'pgsql'
+    || (new ExecutableFinder)->find('pg_dump') === null
+    || (new ExecutableFinder)->find('psql') === null, 'needs PostgreSQL and its client tools');
+
+test('the restorable dump drops the Bingo index and foreign keys to private tables only', function () {
+    $dump = <<<'SQL'
+        SET client_encoding = 'UTF8';
+        SET transaction_timeout = 0;
+        CREATE TABLE public.structures (id bigint, identifier public.citext);
+
+        --
+        -- Data for Name: structures; Type: TABLE DATA; Schema: public; Owner: postgres
+        --
+
+        COPY public.structures (id, identifier) FROM stdin;
+        1	MM00001
+        \.
+
+        --
+        -- Name: structures_identifier_index; Type: INDEX; Schema: public; Owner: postgres
+        --
+
+        CREATE INDEX structures_identifier_index ON public.structures USING btree (identifier);
+
+        --
+        -- Name: structures_canonical_smiles_bingo_index; Type: INDEX; Schema: public; Owner: postgres
+        --
+
+        CREATE INDEX structures_canonical_smiles_bingo_index ON public.structures USING bingo_idx (canonical_smiles bingo.molecule);
+
+        --
+        -- Name: datasets datasets_created_by_foreign; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+        --
+
+        ALTER TABLE ONLY public.datasets
+            ADD CONSTRAINT datasets_created_by_foreign FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+        --
+        -- Name: interactions_passive interactions_passive_structure_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+        --
+
+        ALTER TABLE ONLY public.interactions_passive
+            ADD CONSTRAINT interactions_passive_structure_id_foreign FOREIGN KEY (structure_id) REFERENCES public.structures(id);
+
+        --
+        -- PostgreSQL database dump complete
+        --
+        SQL;
+
+    $result = implode('', iterator_to_array(BackupDbIdsm::restorableDump(preg_split('/(?<=\n)/', $dump."\n")), false));
+
+    expect($result)->toStartWith('CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;')
+        ->and($result)->toContain("COPY public.structures (id, identifier) FROM stdin;\n1\tMM00001\n\\.")
+        ->and($result)->toContain('structures_identifier_index ON public.structures USING btree')
+        ->and($result)->toContain('interactions_passive_structure_id_foreign FOREIGN KEY (structure_id) REFERENCES public.structures(id);')
+        ->and($result)->toContain('-- PostgreSQL database dump complete')
+        ->and($result)->toContain("SET client_encoding = 'UTF8';")
+        ->and($result)->not->toContain('transaction_timeout')
+        ->and($result)->not->toContain('bingo_idx')
+        ->and($result)->not->toContain('REFERENCES public.users');
 });
 
 test('the dump is skipped for a week after the last one and made again after', function () {

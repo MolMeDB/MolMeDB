@@ -114,6 +114,99 @@ class BackupDbIdsm extends Command
         return array_map(fn (string $table): string => '--table='.$table, self::PUBLIC_TABLES);
     }
 
+    /**
+     * Makes pg_dump's output of the public tables restorable into an empty
+     * database: a dump of selected tables has no extensions, so the citext
+     * extension of the identifier columns is created first; the Bingo index
+     * (an access method of the private bingo schema) and foreign keys to
+     * tables left out of the dump are dropped, and so is a setting that
+     * servers older than the pg_dump that made the dump reject.
+     *
+     * pg_dump starts every object with a comment header such as
+     * "-- Name: x; Type: FK CONSTRAINT; Schema: public; Owner: y", so whole
+     * objects are kept or dropped. Only indexes and foreign keys are held in
+     * memory; table data streams through.
+     *
+     * @param  iterable<int, string>  $lines  pg_dump output, line by line with line endings
+     * @return \Generator<int, string>
+     */
+    public static function restorableDump(iterable $lines): \Generator
+    {
+        yield "CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;\n";
+
+        $heldBlock = null;
+        $heldType = null;
+        $separator = null;
+
+        foreach ($lines as $line) {
+            if ($separator !== null) {
+                if (preg_match('/^-- (?:Data for )?Name: .*; Type: ([^;]+);/', $line, $match) === 1) {
+                    if ($heldBlock !== null && self::keepsDumpObject((string) $heldType, $heldBlock)) {
+                        yield $heldBlock;
+                    }
+
+                    $heldBlock = null;
+                    $heldType = null;
+
+                    if (in_array($match[1], ['INDEX', 'FK CONSTRAINT'], true)) {
+                        $heldType = $match[1];
+                        $heldBlock = $separator.$line;
+                        $separator = null;
+
+                        continue;
+                    }
+                }
+
+                $held = $separator;
+                $separator = null;
+
+                if ($heldBlock !== null) {
+                    $heldBlock .= $held;
+                } else {
+                    yield $held;
+                }
+            }
+
+            // Set by pg_dump 17+ only; servers before 17 reject it.
+            if (str_starts_with($line, 'SET transaction_timeout')) {
+                continue;
+            }
+
+            if (rtrim($line, "\r\n") === '--') {
+                $separator = $line;
+
+                continue;
+            }
+
+            if ($heldBlock !== null) {
+                $heldBlock .= $line;
+            } else {
+                yield $line;
+            }
+        }
+
+        if ($heldBlock !== null && self::keepsDumpObject((string) $heldType, $heldBlock)) {
+            yield $heldBlock;
+        }
+
+        if ($separator !== null) {
+            yield $separator;
+        }
+    }
+
+    private static function keepsDumpObject(string $type, string $block): bool
+    {
+        if ($type === 'INDEX') {
+            return ! str_contains($block, 'USING bingo_idx');
+        }
+
+        if (preg_match('/REFERENCES\s+("?[\w]+"?)\.("?[\w]+"?)\s*\(/', $block, $match) !== 1) {
+            return true;
+        }
+
+        return in_array(str_replace('"', '', $match[1]).'.'.str_replace('"', '', $match[2]), self::PUBLIC_TABLES, true);
+    }
+
     public static function datePath(?string $date = null): string
     {
         $timestamp = $date ? strtotime($date) : time();
@@ -266,6 +359,9 @@ class BackupDbIdsm extends Command
         }
     }
 
+    /**
+     * Compresses the dump, made restorable on the way.
+     */
     private function gzipFile(string $source, string $target): void
     {
         $input = fopen($source, 'rb');
@@ -275,8 +371,14 @@ class BackupDbIdsm extends Command
             throw new \RuntimeException('Could not create gzip archive.');
         }
 
-        while (! feof($input)) {
-            gzwrite($output, fread($input, 1024 * 1024));
+        $lines = (function () use ($input): \Generator {
+            while (($line = fgets($input)) !== false) {
+                yield $line;
+            }
+        })();
+
+        foreach (self::restorableDump($lines) as $chunk) {
+            gzwrite($output, $chunk);
         }
 
         fclose($input);

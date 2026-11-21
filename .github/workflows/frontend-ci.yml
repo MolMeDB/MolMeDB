@@ -1,6 +1,8 @@
 name: Frontend CI
 
 on:
+  # Called by release.yml before the images are published.
+  workflow_call:
   pull_request:
     branches: [develop, main]
     paths: &frontend_paths

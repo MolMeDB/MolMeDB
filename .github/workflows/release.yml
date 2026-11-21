@@ -1,0 +1,126 @@
+name: Release
+
+# A version tag (v1.2.3) runs the test suites and, when they pass, builds the
+# production images and publishes them to the GitHub container registry as
+# ghcr.io/molmedb/molmedb-{backend,nginx,frontend,rdkit}:1.2.3.
+# The server only pulls them: docker/production/deploy.sh 1.2.3
+# (see docker/production/nginx/README.md).
+#
+# The database image (molmedb-db) has a version of its own and is published
+# by bingo-postgres-image.yml.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+# Two pushes of the same tag must not publish over each other.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Only what was merged into main is released: a tag on any other commit
+  # would publish code that skipped the pull request to main.
+  on-main:
+    name: Tag is on main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: |
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_REF_NAME does not point to a commit on main."
+            exit 1
+          fi
+
+  backend-ci:
+    name: Backend CI
+    uses: ./.github/workflows/backend-ci.yml
+    permissions:
+      contents: read
+      packages: read
+
+  frontend-ci:
+    name: Frontend CI
+    uses: ./.github/workflows/frontend-ci.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish ${{ matrix.name }}
+    needs: [on-main, backend-ci, frontend-ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      # An incomplete set of images must not look like a release: the deploy
+      # script checks that all four exist before it touches the server.
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: .
+            file: ./docker/common/php-fpm/Dockerfile
+            target: production
+          - name: nginx
+            context: .
+            file: ./docker/production/nginx/Dockerfile
+            target: production
+          - name: rdkit
+            context: ./modules/Rdkit/src
+            file: ./docker/common/rdkit/Dockerfile
+            target: ""
+          - name: frontend
+            context: ./frontend
+            file: ./docker/production/frontend/Dockerfile
+            target: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # v1.2.3 -> 1.2.3 and 1.2; "latest" is deliberately not published, a
+      # server always runs a named version.
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/molmedb/molmedb-${{ matrix.name }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      # NEXT_PUBLIC_* values are compiled into the frontend's client bundle,
+      # so they come from the repository variables (Settings -> Secrets and
+      # variables -> Actions -> Variables). They are public by nature. The
+      # JWT secret is not: the build only needs a placeholder, the real one
+      # is read from frontend/.env on the server when the container runs.
+      # The other images do not declare these arguments and ignore them.
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            JWT_SECRET=ci-build-placeholder
+            NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+            NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=${{ vars.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID }}
+            NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          cache-from: type=gha,scope=release-${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.name }}

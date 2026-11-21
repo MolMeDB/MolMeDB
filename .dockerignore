@@ -21,3 +21,6 @@ phpunit.xml
 tests
 *.log
 *.sql
+*.zip
+.claude
+coverage

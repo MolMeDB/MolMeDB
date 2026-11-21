@@ -1,10 +1,15 @@
-name: Build bingo Postgres CI image
+name: Build bingo Postgres image
 
 # Builds the Postgres 15 + bingo cartridge image used as the test database
 # for backend CI (smiles / substructure search needs the real extension —
 # it cannot run against sqlite). Published to GHCR so backend-ci.yml can
 # pull a ready image as a `services:` container instead of rebuilding it
 # on every run.
+#
+# The same image runs the production databases (docker-compose-production.yaml)
+# as ghcr.io/molmedb/molmedb-db. It is versioned by the PostgreSQL major
+# version, not by the application release, so deploying a release does not
+# restart the databases; the commit tag allows pinning (MOLMEDB_DB_VERSION).
 on:
   push:
     branches: [develop, main]
@@ -19,6 +24,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/molmedb/ci-bingo-postgres
+  PRODUCTION_IMAGE: ghcr.io/molmedb/molmedb-db
 
 jobs:
   build-and-push:
@@ -42,5 +48,7 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:15
             ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.PRODUCTION_IMAGE }}:15
+            ${{ env.PRODUCTION_IMAGE }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

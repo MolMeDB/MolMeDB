@@ -29,9 +29,7 @@ Inside Docker, the frontend calls the backend at `http://web` (`NEXT_BACKEND_URL
 
 ## 1. The stack
 
-```bash
-cp docker-compose-production.yaml docker-compose.yaml
-```
+The images are built on GitHub and pulled from its container registry (`ghcr.io/molmedb/molmedb-*`); nothing is built on the server. The server needs this repository only for `docker-compose-production.yaml`, the deploy script and the two `.env` files.
 
 Set these values in `.env`:
 
@@ -50,12 +48,31 @@ MOLMEDB_ADMIN_HOST=admin.molmedb.upol.cz
 MOLMEDB_RDF_HOST=rdf.molmedb.upol.cz
 ```
 
-The frontend reads `frontend/.env`. Then start the stack:
+`.env` is not part of any image. Compose passes it to the containers and mounts it read-only into the application containers. The frontend reads `frontend/.env` when it runs; its `NEXT_PUBLIC_*` values are compiled into the image by the release (see below), so changing them on the server has no effect.
+
+If the packages are private, log the server in to the registry once, with a GitHub token that has only the `read:packages` scope:
 
 ```bash
-docker compose build
-docker compose up -d
+docker login ghcr.io -u <github user>
 ```
+
+Then deploy a release:
+
+```bash
+docker/production/deploy.sh 1.4.0          # DOCKER="sudo docker" docker/production/deploy.sh 1.4.0
+```
+
+The script checks that all images of the version exist, writes `MOLMEDB_VERSION` into `.env`, pulls and restarts the stack. The application container runs the migrations when it starts. To go back, run it with the previous version (it prints it); migrations are not rolled back. `docker compose -f docker-compose-production.yaml …` works as usual afterwards, since Compose reads the version from `.env`.
+
+The databases use `ghcr.io/molmedb/molmedb-db:15` (PostgreSQL with Bingo). It is published when `database/extensions/bingo` changes, not with every release, so a deployment does not restart them. Set `MOLMEDB_DB_VERSION` in `.env` to pin a build.
+
+### Publishing a release
+
+1. Merge `develop` into `main` through a pull request.
+2. Tag the merge commit on `main` and push the tag: `git tag v1.4.0 && git push origin v1.4.0`.
+3. The Release workflow runs the backend and frontend test suites and publishes the backend, nginx, frontend and RDKit images as `1.4.0` (and `1.4`). A tag that is not on `main`, or a failing test, publishes nothing.
+
+The frontend's public build-time values come from the repository variables on GitHub (Settings → Secrets and variables → Actions → Variables): `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` and `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. An unset one is compiled in as empty.
 
 Only nginx is meant to be reached from outside, and only through Apache. Its port `8443` and the debugging ports of the databases, RDKit and CDK Depict are published on `127.0.0.1` only.
 

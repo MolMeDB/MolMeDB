@@ -14,10 +14,14 @@ import {
 } from "@heroui/react";
 import { useEffect, useRef, useState } from "react";
 import { MdCloudDownload } from "react-icons/md";
-import DOMPurify from "dompurify";
+import SanitizedHtml from "@/components/_core/SanitizedHtml";
 import MembraneModalContent from "./components/modalContent";
 
-export default function SectionDetail(props: { membraneId: string }) {
+export default function SectionDetail(props: {
+  membraneId: string;
+  /** Scroll the detail into view once loaded (the browser page lists it under a chart). */
+  scrollIntoView?: boolean;
+}) {
   const [data, setData] = useState<IMembrane | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const detailSectionRef = useRef<HTMLDivElement>(null);
@@ -55,11 +59,13 @@ export default function SectionDetail(props: { membraneId: string }) {
         }
 
         setData(d.data?.data);
-        scrollToElement();
+        if (props.scrollIntoView ?? true) {
+          scrollToElement();
+        }
         setIsLoading(false);
       }
     );
-  }, [props.membraneId]);
+  }, [props.membraneId, props.scrollIntoView]);
 
   return (
     <div ref={detailSectionRef} className="min-h-64 w-full">
@@ -92,11 +98,9 @@ export default function SectionDetail(props: { membraneId: string }) {
               </Button>
             ) : null}
           </div>
-          <div
+          <SanitizedHtml
             className="html-content-block"
-            dangerouslySetInnerHTML={{
-              __html: DOMPurify.sanitize(data?.description || ""),
-            }}
+            html={data?.description}
           />
         </div>
       )}

@@ -1,0 +1,85 @@
+{
+  "entryType": "UniProtKB reviewed (Swiss-Prot)",
+  "primaryAccession": "P08183",
+  "proteinDescription": {
+    "recommendedName": {
+      "fullName": {
+        "evidences": [
+          {
+            "evidenceCode": "ECO:0000305"
+          }
+        ],
+        "value": "ATP-dependent translocase ABCB1"
+      }
+    },
+    "alternativeNames": [
+      {
+        "fullName": {
+          "evidences": [
+            {
+              "evidenceCode": "ECO:0000305"
+            }
+          ],
+          "value": "ATP-binding cassette sub-family B member 1"
+        }
+      },
+      {
+        "fullName": {
+          "value": "Multidrug resistance protein 1"
+        },
+        "ecNumbers": [
+          {
+            "evidences": [
+              {
+                "evidenceCode": "ECO:0000269",
+                "source": "PubMed",
+                "id": "35507548"
+              },
+              {
+                "evidenceCode": "ECO:0000269",
+                "source": "PubMed",
+                "id": "9038218"
+              }
+            ],
+            "value": "7.6.2.2"
+          }
+        ]
+      },
+      {
+        "fullName": {
+          "value": "P-glycoprotein 1"
+        }
+      },
+      {
+        "fullName": {
+          "evidences": [
+            {
+              "evidenceCode": "ECO:0000305"
+            }
+          ],
+          "value": "Phospholipid transporter ABCB1"
+        },
+        "ecNumbers": [
+          {
+            "evidences": [
+              {
+                "evidenceCode": "ECO:0000269",
+                "source": "PubMed",
+                "id": "8898203"
+              }
+            ],
+            "value": "7.6.2.1"
+          }
+        ]
+      }
+    ],
+    "cdAntigenNames": [
+      {
+        "value": "CD243"
+      }
+    ]
+  },
+  "extraAttributes": {
+    "uniParcId": "UPI000013D66C"
+  }
+}

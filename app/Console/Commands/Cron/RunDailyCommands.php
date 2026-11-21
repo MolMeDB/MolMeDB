@@ -7,6 +7,7 @@ use App\Console\Commands\CleanupExpiredDownloadFiles;
 use App\Console\Commands\Database\BackupDb;
 use App\Console\Commands\Database\BackupDbIdsm;
 use App\Console\Commands\Database\BackupDbPredictions;
+use App\Console\Commands\GenerateSitemap;
 use App\Console\Commands\UpdateExportFiles;
 use App\Console\Commands\UpdateStatistics;
 use App\Enums\PermissionEnums;
@@ -65,6 +66,11 @@ class RunDailyCommands extends Command
             [
                 'name' => UpdateExportFiles::class,
                 'label' => 'Update export files',
+                'parameters' => [],
+            ],
+            [
+                'name' => GenerateSitemap::class,
+                'label' => 'Generate sitemap',
                 'parameters' => [],
             ],
             [
@@ -179,8 +185,16 @@ class RunDailyCommands extends Command
                 : SystemActivityLogger::SEVERITY_ERROR,
         );
 
-        $this->sendSummaryEmail($results, $startedAt, $finishedAt);
+        // Backup alerts first and independent of the summary e-mail, so a
+        // failing mailer cannot swallow them.
         $this->notifyFailedBackups($results, $notificationService);
+
+        try {
+            $this->sendSummaryEmail($results, $startedAt, $finishedAt);
+        } catch (Throwable $throwable) {
+            report($throwable);
+            $this->error('Failed to send the daily summary e-mail: '.$throwable->getMessage());
+        }
 
         return $successful ? Command::SUCCESS : Command::FAILURE;
     }

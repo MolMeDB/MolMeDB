@@ -14,16 +14,19 @@ class ExportUploadQueueController extends Controller
      */
     public function raw(Request $request, UploadQueue $record)
     {
-        $file = $record->file;
         $guestToken = $request->query('guest_token');
         $guestToken = is_string($guestToken) && trim($guestToken) !== '' ? trim($guestToken) : null;
 
-        if (! Storage::disk($file->storage)->exists($file->path)) {
-            abort(404, 'File not found');
+        // Authorize before looking at the file, so a stranger cannot tell
+        // which upload queue records exist or still have their file.
+        if (! $record->isAccessibleBy($request->user(), $guestToken)) {
+            abort(401, 'Unauthenticated');
         }
 
-        if (! $record->isAccessibleBy($request->user(), $guestToken)) {
-            abort(401, 'Unathenticated');
+        $file = $record->file;
+
+        if (! $file || ! Storage::disk($file->storage)->exists($file->path)) {
+            abort(404, 'File not found');
         }
 
         return Storage::disk($file->storage)->download($file->path);

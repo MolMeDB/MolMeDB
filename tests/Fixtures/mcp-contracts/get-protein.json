@@ -1,0 +1,23 @@
+{
+    "structured_content": {
+        "protein": {
+            "created_at": "string",
+            "id": "number",
+            "identifiers": [
+                {
+                    "type": "string",
+                    "value": "string"
+                }
+            ],
+            "landing_page": "string",
+            "uniprot_id": "string",
+            "uniprot_uri": "string",
+            "updated_at": "string",
+            "url": "string"
+        },
+        "total": {
+            "interactions_active": "number",
+            "structures": "number"
+        }
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "route": "POST api/downloader/verify",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "active": "number",
+            "passive": "number",
+            "total": "number"
+        }
+    }
+}

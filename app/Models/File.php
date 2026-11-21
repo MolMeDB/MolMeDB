@@ -230,6 +230,20 @@ class File extends Model
         return $this->hasMany(UploadQueue::class);
     }
 
+    /**
+     * Files uploaded to the upload queue are the contributor's unpublished
+     * data and are served only through the upload queue export, which checks
+     * who is asking. Every other file may be downloaded by its hash.
+     */
+    public function isPubliclyDownloadable(): bool
+    {
+        return ! in_array($this->type, [
+            self::TYPE_UPLOAD_PASSIVE,
+            self::TYPE_UPLOAD_ACTIVE,
+            self::TYPE_UPLOAD_ENERGY,
+        ], true);
+    }
+
     public function name()
     {
         $name = ! empty($this->name) ? $this->name : pathinfo($this->path, PATHINFO_FILENAME);

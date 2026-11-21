@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api\Public\V1;
 
+use App\Http\Controllers\Api\Public\V1\Concerns\ListsInteractions;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Public\V1\SearchActiveInteractionsRequest;
 use App\Http\Resources\Api\Public\V1\CategoryTreeCollection;
-use App\Http\Resources\Api\Public\V1\InteractionActiveResource;
 use App\Http\Resources\Api\Public\V1\ProteinResource;
 use App\Models\Category;
 use App\Models\Protein;
+use App\Services\Interactions\PublicInteractionQuery;
 use Illuminate\Http\Request;
 
 /**
@@ -17,6 +19,8 @@ use Illuminate\Http\Request;
  */
 class ProteinController extends Controller
 {
+    use ListsInteractions;
+
     public function index(Request $request)
     {
         $perPage = min(max($request->integer('per_page', 20), 1), 100);
@@ -37,12 +41,14 @@ class ProteinController extends Controller
 
     public function stats(Protein $protein)
     {
+        $interactions = PublicInteractionQuery::active(['protein' => $protein->id]);
+
         return response()->json([
             'data' => [
                 'protein' => ProteinResource::make($protein),
                 'total' => [
-                    'interactions_active' => $protein->interactionsActive()->count(),
-                    'structures' => $protein->structures()->count(),
+                    'interactions_active' => PublicInteractionQuery::total($interactions),
+                    'structures' => PublicInteractionQuery::structures($interactions),
                 ],
             ],
         ]);
@@ -58,14 +64,8 @@ class ProteinController extends Controller
         return CategoryTreeCollection::forProteins($categories);
     }
 
-    public function interactions(Protein $protein, Request $request)
+    public function interactions(Protein $protein, SearchActiveInteractionsRequest $request)
     {
-        $perPage = min(max($request->integer('per_page', 20), 1), 100);
-
-        $interactions = $protein->interactionsActive()
-            ->with(['protein', 'dataset.publications', 'publication'])
-            ->paginate($perPage);
-
-        return InteractionActiveResource::collection($interactions);
+        return $this->activeInteractions($request, ['protein' => $protein->id]);
     }
 }

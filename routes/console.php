@@ -4,6 +4,7 @@ use App\Console\Commands\Cron\RunDailyCommands;
 use App\Console\Commands\Cron\RunPredictionsWorker;
 use App\Console\Commands\Cron\SendPredictionAdminStatsNotification;
 use App\Console\Commands\Cron\SendPredictionProgressNotifications;
+use App\Console\Commands\ExportPredictionCosmo;
 use App\Console\Commands\FlushQueuedNotifications;
 use App\Console\Commands\ProcessFrontendUploads;
 use App\Console\Commands\SendUploadQueueAdminDigest;
@@ -51,9 +52,11 @@ Artisan::command('predictions:refresh-dataset-stats {--chunk=200}', function () 
     return Command::SUCCESS;
 })->purpose('Refresh cached prediction dataset progress statistics.');
 
+// Lock expiry (minutes) on every entry: the default of 1440 would let one
+// killed run block the task for a whole day.
 Schedule::command('predictions:refresh-dataset-stats')
     ->everyFiveMinutes()
-    ->withoutOverlapping();
+    ->withoutOverlapping(30);
 
 Schedule::command(RunPredictionsWorker::class)
     ->everyMinute()
@@ -62,32 +65,38 @@ Schedule::command(RunPredictionsWorker::class)
 // ShouldBeUnique on the job itself (not ->withoutOverlapping()) is what
 // actually guarantees only one instance is ever queued-or-running, since
 // that holds regardless of how many queue:work processes are running.
-Schedule::job(new ImportFinishedPredictionResults())
+Schedule::job(new ImportFinishedPredictionResults)
     ->everyMinute();
 
 Schedule::command(ProcessFrontendUploads::class)
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 Schedule::command(SendUploadQueueNotifications::class)
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 Schedule::command(SendUploadQueueAdminDigest::class)
     ->everyTenMinutes()
-    ->withoutOverlapping();
+    ->withoutOverlapping(30);
 
 Schedule::command(FlushQueuedNotifications::class)
     ->everyMinute()
-    ->withoutOverlapping();
+    ->withoutOverlapping(10);
 
 Schedule::command(RunDailyCommands::class)
     ->dailyAt('01:00')
-    ->withoutOverlapping();
+    ->withoutOverlapping(720);
 
 Schedule::command(SendPredictionProgressNotifications::class)
     ->dailyAt('08:00')
-    ->withoutOverlapping();
+    ->withoutOverlapping(60);
+
+// Sunday night, after the nightly database backups. The command reports both
+// success and failure itself (system.admin.cosmo_export_* notifications).
+Schedule::command(ExportPredictionCosmo::class)
+    ->weeklyOn(0, '03:00')
+    ->withoutOverlapping(360);
 
 // expiresAt=60 (minutes): this report runs in seconds, so if a stuck lock
 // ever survives a crashed/killed run, it self-heals within an hour instead

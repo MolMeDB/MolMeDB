@@ -1,0 +1,6 @@
+{
+    "route": "GET api/v1/membranes/{membrane}/interactions/export",
+    "status": 200,
+    "content_type": "application/zip",
+    "body": null
+}

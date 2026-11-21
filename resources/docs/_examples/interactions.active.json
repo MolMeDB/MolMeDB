@@ -1,0 +1,72 @@
+{
+  "data": [
+    {
+      "id": 31496,
+      "url": "https://molmedb.upol.cz/api/v1/interactions/active/31496",
+      "rdf": "https://rdf.molmedb.upol.cz/transporter/tra31496",
+      "structure": {
+        "identifier": "MM16886",
+        "name": "Tetrylammonium",
+        "url": "https://molmedb.upol.cz/api/v1/structures/MM16886"
+      },
+      "protein": {
+        "id": 2,
+        "uniprot_id": "O15245",
+        "name": "SLC22A1",
+        "url": "https://molmedb.upol.cz/api/v1/proteins/2"
+      },
+      "type": "Substrate",
+      "temperature": null,
+      "ph": null,
+      "charge": null,
+      "note": null,
+      "km": 3.64,
+      "km_accuracy": 0,
+      "ec50": null,
+      "ec50_accuracy": null,
+      "ki": 3.79,
+      "ki_accuracy": null,
+      "ic50": null,
+      "ic50_accuracy": null,
+      "primary_reference": {
+        "id": 130,
+        "pmid": "9655880",
+        "citation": "Zhang L, Schaner ME, Giacomini KM.: Functional characterization of an organic cation transporter (hOCT1) in a transiently transfected human cell line (HeLa). J Pharmacol Exp Ther, Volume 286 (1), 1998"
+      },
+      "secondary_reference": {
+        "id": 1031,
+        "pmid": "37933841",
+        "citation": "Zdrazil B, Felix E, Hunter F, Manners EJ, Blackshaw J, Corbett S, de Veij M, Ioannidis H, Lopez DM, Mosquera JF, Magarin…"
+      }
+    }
+  ],
+  "links": {
+    "first": "https://molmedb.upol.cz/api/v1/interactions/active?uniprot=O15245&type=Substrate&page=1",
+    "last": "https://molmedb.upol.cz/api/v1/interactions/active?uniprot=O15245&type=Substrate&page=1",
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://molmedb.upol.cz/api/v1/interactions/active?uniprot=O15245&type=Substrate&page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      }
+    ],
+    "path": "https://molmedb.upol.cz/api/v1/interactions/active",
+    "per_page": 20,
+    "to": 4,
+    "total": 4
+  }
+}

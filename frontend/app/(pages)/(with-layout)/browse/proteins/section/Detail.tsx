@@ -16,7 +16,11 @@ import { useEffect, useRef, useState } from "react";
 import { MdCloudDownload, MdDownload } from "react-icons/md";
 import ProteinModalContent from "./components/modalContent";
 
-export default function SectionDetail(props: { proteinId: string }) {
+export default function SectionDetail(props: {
+  proteinId: string;
+  /** Scroll the detail into view once loaded (the browser page lists it under a chart). */
+  scrollIntoView?: boolean;
+}) {
   const [data, setData] = useState<IProtein | null>(null);
   const [stats, setStats] = useState<IProteinStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,11 +60,13 @@ export default function SectionDetail(props: { proteinId: string }) {
         }
 
         setData(d.data?.data);
-        scrollToElement();
+        if (props.scrollIntoView ?? true) {
+          scrollToElement();
+        }
         setIsLoading(false);
       }
     );
-  }, [props.proteinId]);
+  }, [props.proteinId, props.scrollIntoView]);
 
   // return (
   //     <div ref={detailSectionRef} className="min-h-64 w-full">

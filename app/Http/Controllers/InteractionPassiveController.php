@@ -31,6 +31,7 @@ class InteractionPassiveController extends Controller
         $params['structureId'] = $structure->id;
 
         $interactions = InteractionPassive::filter($params)
+            ->with(['dataset.publications.authors', 'publication.authors'])
             ->paginateFilter($perPage);
 
         return InteractionPassiveResource::collection($interactions);

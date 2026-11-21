@@ -5,9 +5,7 @@ use Modules\References\CrossRef\CrossRef;
 use Modules\References\Models\Record;
 
 beforeEach(function () {
-    putenv('CROSSREF_ENDPOINT=https://crossref.test');
-    $_ENV['CROSSREF_ENDPOINT'] = 'https://crossref.test';
-    $_SERVER['CROSSREF_ENDPOINT'] = 'https://crossref.test';
+    config()->set('services.crossref.endpoint', 'https://crossref.test');
 });
 
 test('crossref work returns mapped record for valid response', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Public\V1\Concerns;
 
+use App\Libraries\Export\ExportLicenseFiles;
 use App\Models\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -27,6 +28,6 @@ trait DownloadsExportFile
 
         abort_unless($disk->exists($file->path), 404, 'Export file is not available yet.');
 
-        return $disk->download($file->path, $file->downloadName());
+        return $disk->download($file->path, $file->downloadName(), ['Link' => ExportLicenseFiles::linkHeader()]);
     }
 }

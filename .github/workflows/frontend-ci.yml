@@ -1,10 +1,14 @@
 name: Frontend CI
 
 on:
+  # Called by release.yml before the images are published.
+  workflow_call:
   pull_request:
     branches: [develop, main]
     paths: &frontend_paths
       - "frontend/**"
+      # The e2e mock backend answers from the backend's API contract fixtures.
+      - "tests/Fixtures/api-contracts/**"
       - ".github/workflows/frontend-ci.yml"
   push:
     branches: [develop, main]
@@ -41,29 +45,55 @@ jobs:
       # style on files actually touched by this PR/push.
       - name: Determine changed frontend files
         id: changed
+        # A branch name is chosen by whoever opens the pull request; written
+        # into the script as an expression it would be run as shell code.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_SHA: ${{ github.sha }}
         run: |
           # Release PR (develop -> main): the cumulative diff is effectively the
           # whole frontend, and every commit in it already passed this same gate
           # when it was pushed to develop. Re-running it here would only
           # re-report the pre-existing findings this job exists to stay out of.
-          if [ "${{ github.event_name }}" = "pull_request" ] \
-             && [ "${{ github.base_ref }}" = "main" ] \
-             && [ "${{ github.head_ref }}" = "develop" ]; then
+          if [ "$EVENT_NAME" = "pull_request" ] \
+             && [ "$BASE_REF" = "main" ] \
+             && [ "$HEAD_REF" = "develop" ]; then
             echo "Release PR (develop -> main) — already gated on every push to develop. Skipping lint."
             echo "files=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          # Merging that release into main arrives as one push whose diff is
+          # again the whole release. When the push is exactly one merge commit
+          # on top of the previous main, what it brings in was checked on
+          # develop or in its pull request, so it is not checked a second time.
+          # This relies on the "Create a merge commit" method: a squash or
+          # rebase merge has a single parent and is checked like any other
+          # commit, and so are commits pushed to main together with a merge.
+          if [ "$EVENT_NAME" = "push" ] \
+             && [ "$GITHUB_REF" = "refs/heads/main" ] \
+             && git rev-parse --quiet --verify "$PUSH_SHA^2^{commit}" >/dev/null \
+             && [ "$(git rev-parse --quiet --verify "$PUSH_SHA^1^{commit}")" = "$PUSH_BEFORE_SHA" ]; then
+            echo "A single merge commit on main — its changes were gated before the merge. Skipping lint."
+            echo "files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            HEAD_SHA="$PR_HEAD_SHA"
             # A PR is checked out as the merge commit, whose parent IS the base
             # branch tip, so diffing straight against that tip also drags in
             # every commit that landed on the base branch after this one forked.
             # The merge base is the real "what does this branch change" line.
-            BASE_SHA=$(git merge-base "${{ github.event.pull_request.base.sha }}" "$HEAD_SHA" 2>/dev/null || true)
+            BASE_SHA=$(git merge-base "$PR_BASE_SHA" "$HEAD_SHA" 2>/dev/null || true)
           else
-            HEAD_SHA="${{ github.sha }}"
-            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="$PUSH_SHA"
+            BASE_SHA="$PUSH_BEFORE_SHA"
           fi
 
           if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA" 2>/dev/null; then

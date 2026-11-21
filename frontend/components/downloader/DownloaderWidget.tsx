@@ -35,10 +35,24 @@ const CATEGORY_ITEM_LABELS: Record<DownloaderCategory, string> = {
 
 export default function DownloaderWidget() {
   const align = useDockAlign();
-  const { items, count, suggestedItem, isAdded, addItem, removeItem } =
-    useDownloader();
+  const downloader = useDownloader();
+  const { isAdded, addItem, removeItem } = downloader;
   const [isOpen, setIsOpen] = useState(false);
   const [bounceKey, setBounceKey] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mounting is the whole point
+    setIsMounted(true);
+  }, []);
+
+  // The dock streams in late: by the time it hydrates, the stored items and
+  // the page's suggestion are already in the context, while the server HTML
+  // has neither. The first render therefore repeats the server's empty
+  // state, otherwise React reports a hydration mismatch (error #418).
+  const items = isMounted ? downloader.items : [];
+  const count = isMounted ? downloader.count : 0;
+  const suggestedItem = isMounted ? downloader.suggestedItem : null;
 
   useEffect(() => {
     if (count > 0) {

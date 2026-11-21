@@ -1,0 +1,72 @@
+{
+  "data": [
+    {
+      "id": 31399,
+      "url": "https://molmedb.upol.cz/api/v1/interactions/active/31399",
+      "rdf": "https://rdf.molmedb.upol.cz/transporter/tra31399",
+      "structure": {
+        "identifier": "MM17305",
+        "name": "Pyrrolidine",
+        "url": "https://molmedb.upol.cz/api/v1/structures/MM17305"
+      },
+      "protein": {
+        "id": 68,
+        "uniprot_id": "Q7Z2H8",
+        "name": "SLC36A1",
+        "url": "https://molmedb.upol.cz/api/v1/proteins/68"
+      },
+      "type": "Non-inhibitor",
+      "temperature": null,
+      "ph": null,
+      "charge": null,
+      "note": null,
+      "km": null,
+      "km_accuracy": null,
+      "ec50": null,
+      "ec50_accuracy": null,
+      "ki": 1.42,
+      "ki_accuracy": 0,
+      "ic50": null,
+      "ic50_accuracy": null,
+      "primary_reference": {
+        "id": 1262,
+        "pmid": "21955456",
+        "citation": "Thondorf I, Voigt V, Schäfer S, Gebauer S, Zebisch K, Laug L, Brandsch M.: Three-dimensional quantitative structure-activity relationship analyses of substrates of the human proton-coupled amino acid transporter 1 (hPAT1). Bioorg Med Chem, Volume 19 (21), 2011"
+      },
+      "secondary_reference": {
+        "id": 1031,
+        "pmid": "37933841",
+        "citation": "Zdrazil B, Felix E, Hunter F, Manners EJ, Blackshaw J, Corbett S, de Veij M, Ioannidis H, Lopez DM, Mosquera JF, Magarin…"
+      }
+    }
+  ],
+  "links": {
+    "first": "https://molmedb.upol.cz/api/v1/publications/1031/interactions/active?page=1",
+    "last": "https://molmedb.upol.cz/api/v1/publications/1031/interactions/active?page=178",
+    "prev": null,
+    "next": "https://molmedb.upol.cz/api/v1/publications/1031/interactions/active?page=2"
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 178,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://molmedb.upol.cz/api/v1/publications/1031/interactions/active?page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      }
+    ],
+    "path": "https://molmedb.upol.cz/api/v1/publications/1031/interactions/active",
+    "per_page": 20,
+    "to": 20,
+    "total": 3557
+  }
+}

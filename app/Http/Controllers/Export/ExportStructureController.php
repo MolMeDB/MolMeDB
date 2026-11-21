@@ -93,6 +93,7 @@ class ExportStructureController extends Controller
                 'dataset.publications',
                 'publication',
                 'protein',
+                'category',
             ])
             ->lazyById(200, 'id') as $interaction) {
             $secondaryPublication = $interaction->dataset?->publications
@@ -100,6 +101,7 @@ class ExportStructureController extends Controller
 
             yield (object) array_merge($structureBase, [
                 'protein' => $interaction->protein?->uniprot_id,
+                'type' => $interaction->category?->title,
                 'temperature' => $interaction->temperature,
                 'ph' => $interaction->ph,
                 'charge' => $interaction->charge,

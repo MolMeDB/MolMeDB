@@ -10,6 +10,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class UploadQueuesRelationManager extends RelationManager
 {
@@ -24,6 +25,7 @@ class UploadQueuesRelationManager extends RelationManager
         return $table
             ->description('Upload queue records created for this dataset.')
             ->query(null)
+            ->modifyQueryUsing(fn (Builder $query): Builder => UploadQueueResource::scopeToVisibleUploads($query))
             ->columns([
                 TextColumn::make('id')
                     ->label('ID')

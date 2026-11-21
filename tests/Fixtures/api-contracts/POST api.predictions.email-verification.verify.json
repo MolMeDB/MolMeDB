@@ -1,0 +1,15 @@
+{
+    "route": "POST api/predictions/email-verification/verify",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "email": "string",
+            "id": "number",
+            "name": "string"
+        },
+        "meta": {
+            "session_expires_at": "string"
+        }
+    }
+}

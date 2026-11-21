@@ -1,0 +1,13 @@
+{
+    "route": "POST api/lab/upload",
+    "status": 201,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "dataset_id": "number",
+            "publication_id": "number",
+            "upload_queue_id": "number"
+        },
+        "message": "string"
+    }
+}

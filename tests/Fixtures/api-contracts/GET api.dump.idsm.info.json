@@ -1,0 +1,10 @@
+{
+    "route": "GET api/dump/idsm/info",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "download_url": "string",
+        "is_available": "boolean",
+        "last_backup": "string"
+    }
+}

@@ -2,12 +2,11 @@
 
 namespace App\Services\External\Protein;
 
-class UniprotProteinComment 
+class UniprotProteinComment
 {
     public function __construct(
-        public array $texts, 
-        public string $commentType)
-    {}
+        public array $texts,
+        public ?string $commentType) {}
 
     public static function fromRawData(array $data): self
     {
@@ -17,4 +16,3 @@ class UniprotProteinComment
         return new self($texts, $commentType);
     }
 }
-

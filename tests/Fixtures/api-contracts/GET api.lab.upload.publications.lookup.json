@@ -1,0 +1,19 @@
+{
+    "route": "GET api/lab/upload/publications/lookup",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "citation": "string",
+                "identifier_source": "string",
+                "is_local": "boolean",
+                "journal": "string",
+                "pmid": "string",
+                "provider": "string",
+                "title": "string",
+                "year": "number|string"
+            }
+        ]
+    }
+}

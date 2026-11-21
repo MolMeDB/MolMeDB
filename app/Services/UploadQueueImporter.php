@@ -155,7 +155,7 @@ class UploadQueueImporter
     /**
      * This is the final active interaction persistence path.
      *
-     * Active uploads start in a default category and are classified later by admin.
+     * Rows take their category from the interaction type column; rows without a type fall back to the default category.
      * TODO: decide whether missing proteins should be created or rejected.
      *
      * @return array<string, mixed>

@@ -48,6 +48,8 @@ class Filesystem extends BaseModel
 
     const TYPE_DB_PREDICTIONS_BACKUP = 10;
 
+    const TYPE_PREDICTIONS_COSMO_EXPORT = 11;
+
     public static $types = [
         self::TYPE_PUBLIC => 'Public',
         self::TYPE_PRIVATE => 'Private',
@@ -61,6 +63,7 @@ class Filesystem extends BaseModel
         self::TYPE_DB_FULL_BACKUP => 'Database full backups',
         self::TYPE_DB_PUBLIC_BACKUP => 'Database public backups (restricted)',
         self::TYPE_DB_PREDICTIONS_BACKUP => 'Predictions database backups',
+        self::TYPE_PREDICTIONS_COSMO_EXPORT => 'Prediction COSMO export (weekly dump)',
     ];
 
     public static function drivers(): array
@@ -88,21 +91,19 @@ class Filesystem extends BaseModel
         return $this->belongsTo(self::class, 'scope_id');
     }
 
-    public function isDiskConnected() : bool 
+    public function isDiskConnected(): bool
     {
-        try
-        {
+        try {
             $storage_disk = Storage::disk($this->systemName);
             $storage_disk->makeDirectory('');
+
             return $storage_disk?->exists('') ?? false;
-        }
-        catch(Exception $e)
-        {
+        } catch (Exception $e) {
             return false;
         }
     }
 
-    public function isConfigured() : bool 
+    public function isConfigured(): bool
     {
         if (filled($this->scope_id) && $this->scope?->isConfigured()) {
             return filled($this->root_path);

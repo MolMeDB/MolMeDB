@@ -1,0 +1,8 @@
+{
+    "route": "DELETE api/notifications/push-subscriptions",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "message": "string"
+    }
+}

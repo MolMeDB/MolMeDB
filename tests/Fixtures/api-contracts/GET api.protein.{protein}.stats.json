@@ -1,0 +1,23 @@
+{
+    "route": "GET api/protein/{protein}/stats",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "interactions_count": "number",
+            "protein": {
+                "id": "number",
+                "identifiers": [
+                    {
+                        "id": "number",
+                        "state": "string",
+                        "type": "string",
+                        "value": "string"
+                    }
+                ],
+                "uniprot_id": "string"
+            },
+            "structures_count": "number"
+        }
+    }
+}

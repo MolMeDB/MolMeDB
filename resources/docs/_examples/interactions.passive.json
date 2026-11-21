@@ -1,0 +1,77 @@
+{
+  "data": [
+    {
+      "id": 1474,
+      "url": "https://molmedb.upol.cz/api/v1/interactions/passive/1474",
+      "rdf": "https://rdf.molmedb.upol.cz/interaction/int1474",
+      "structure": {
+        "identifier": "MM00040",
+        "name": "Caffeine",
+        "url": "https://molmedb.upol.cz/api/v1/structures/MM00040"
+      },
+      "membrane": {
+        "id": 3,
+        "name": "DOPC",
+        "abbreviation": "DOPC"
+      },
+      "method": {
+        "id": 1,
+        "name": "COSMOmic ",
+        "abbreviation": "COSMOmic"
+      },
+      "temperature": 25,
+      "ph": null,
+      "charge": "0",
+      "note": null,
+      "x_min": 1.283,
+      "x_min_accuracy": null,
+      "gpen": 2.303,
+      "gpen_accuracy": null,
+      "gwat": 2.56,
+      "gwat_accuracy": null,
+      "logk": 0.452,
+      "logk_accuracy": null,
+      "logperm": null,
+      "logperm_accuracy": null,
+      "primary_reference": {
+        "id": 22,
+        "pmid": null,
+        "citation": "in-house calculations"
+      },
+      "secondary_reference": {
+        "id": 22,
+        "pmid": null,
+        "citation": "in-house calculations"
+      }
+    }
+  ],
+  "links": {
+    "first": "https://molmedb.upol.cz/api/v1/interactions/passive?structure=MM00040&membrane=3&with_value=logk&page=1",
+    "last": "https://molmedb.upol.cz/api/v1/interactions/passive?structure=MM00040&membrane=3&with_value=logk&page=1",
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://molmedb.upol.cz/api/v1/interactions/passive?structure=MM00040&membrane=3&with_value=logk&page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      }
+    ],
+    "path": "https://molmedb.upol.cz/api/v1/interactions/passive",
+    "per_page": 20,
+    "to": 2,
+    "total": 2
+  }
+}

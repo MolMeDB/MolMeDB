@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1
 
+# The patch version is pinned: an image built today and one built next month
+# must not differ in the PHP they ship. Raise it deliberately.
+ARG PHP_VERSION=8.4.27
+
 # Use the official PHP image as a base image
-FROM php:8.4-fpm AS builder
+FROM php:${PHP_VERSION}-fpm AS builder
 
 # Copy dependency manifests separately so dependency installation stays cached
 # when only application source files change.

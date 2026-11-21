@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "id": 172,
+      "title": "Enzyme",
+      "children": [],
+      "items": [
+        {
+          "id": 28,
+          "uniprot_id": "Q9BYF1"
+        },
+        {
+          "id": 12,
+          "uniprot_id": "P31749"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "data": [
+    {
+      "id": 2959,
+      "citation": "Sorenson MM, Coelho HS, Reuben JP.: Caffeine inhibition of calcium accumulation by the sarcoplasmic reticulum in mammalian skinned fibers. J Membr Biol, Volume 90 (3), 219-230, 1986",
+      "title": "Caffeine inhibition of calcium accumulation by the sarcoplasmic reticulum in mammalian skinned fibers.",
+      "doi": "10.1007/BF01870128",
+      "doi_url": "https://doi.org/10.1007/BF01870128",
+      "pmid": "3488409",
+      "pmid_url": "https://pubmed.ncbi.nlm.nih.gov/3488409/",
+      "year": 1986,
+      "url": "https://molmedb.upol.cz/api/v1/publications/2959",
+      "landing_page": "https://molmedb.upol.cz/publication/2959",
+      "created_at": "2023-08-03T10:09:59.000000Z",
+      "updated_at": null
+    }
+  ],
+  "links": {
+    "first": "https://molmedb.upol.cz/api/v1/publications?query=caffeine&page=1",
+    "last": "https://molmedb.upol.cz/api/v1/publications?query=caffeine&page=1",
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://molmedb.upol.cz/api/v1/publications?query=caffeine&page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      }
+    ],
+    "path": "https://molmedb.upol.cz/api/v1/publications",
+    "per_page": 20,
+    "to": 1,
+    "total": 1
+  }
+}

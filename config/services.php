@@ -60,6 +60,10 @@ return [
         'endpoint' => env('EUROPE_PMC_ENDPOINT', ''),
     ],
 
+    'crossref' => [
+        'endpoint' => env('CROSSREF_ENDPOINT', 'https://api.crossref.org'),
+    ],
+
     'turnstile' => [
         'enabled' => env('TURNSTILE_ENABLED', true),
         'site_key' => env('TURNSTILE_SITE_KEY'),

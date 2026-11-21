@@ -1,0 +1,24 @@
+{
+    "route": "GET api/v1/methods/{method}/stats",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "method": {
+                "abbreviation": "string",
+                "created_at": "string",
+                "description": "string",
+                "id": "number",
+                "landing_page": "string",
+                "name": "string",
+                "updated_at": "string",
+                "url": "string"
+            },
+            "total": {
+                "interactions_active": "number",
+                "interactions_passive": "number",
+                "structures": "number"
+            }
+        }
+    }
+}

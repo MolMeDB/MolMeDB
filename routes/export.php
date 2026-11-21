@@ -19,7 +19,7 @@ Route::prefix('/export')->group(function () {
 
 Route::get('/download/public/{hash}', function (string $hash) {
     $file = File::where('hash', $hash)->first();
-    if (! $file || ! Storage::disk($file->storage)->exists($file->path)) {
+    if (! $file || ! $file->isPubliclyDownloadable() || ! Storage::disk($file->storage)->exists($file->path)) {
         abort(404);
     }
 

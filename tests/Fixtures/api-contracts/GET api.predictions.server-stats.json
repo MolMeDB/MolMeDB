@@ -1,0 +1,73 @@
+{
+    "route": "GET api/predictions/server-stats",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "jobs": {
+                "completed": "number",
+                "failed": "number",
+                "paused": "number",
+                "queued": "number",
+                "running": "number"
+            },
+            "remote": {
+                "fetched_at": "string",
+                "payload": {
+                    "paused": {
+                        "cosmo_calculations": "number",
+                        "molecules": "number"
+                    },
+                    "periods": {
+                        "day": {
+                            "steps": {
+                                "cosmo": {
+                                    "avg_duration_seconds": "number",
+                                    "completed": "number",
+                                    "failed": "number",
+                                    "running": "number",
+                                    "started": "number",
+                                    "total": "number"
+                                }
+                            }
+                        },
+                        "total": {
+                            "steps": {
+                                "cosmo": {
+                                    "avg_duration_seconds": "number",
+                                    "completed": "number",
+                                    "failed": "number",
+                                    "running": "number",
+                                    "started": "number",
+                                    "total": "number"
+                                }
+                            }
+                        }
+                    },
+                    "queue": {
+                        "cosmo": "number"
+                    },
+                    "running": {
+                        "conformer_steps": [],
+                        "cosmo": [
+                            {
+                                "calculation_id": "string",
+                                "cancel_requested_at": "null",
+                                "canonical_smiles": "string",
+                                "heartbeat_age_seconds": "number",
+                                "lease_owner": "string",
+                                "membrane_key": "string",
+                                "molecule_id": "string",
+                                "paused_at": "null",
+                                "started_at": "string",
+                                "temperature_c": "number"
+                            }
+                        ],
+                        "molecule_steps": []
+                    }
+                },
+                "server_url": "string"
+            }
+        }
+    }
+}

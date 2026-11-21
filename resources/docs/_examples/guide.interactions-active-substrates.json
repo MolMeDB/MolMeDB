@@ -1,0 +1,72 @@
+{
+  "data": [
+    {
+      "id": 31524,
+      "url": "https://molmedb.upol.cz/api/v1/interactions/active/31524",
+      "rdf": "https://rdf.molmedb.upol.cz/transporter/tra31524",
+      "structure": {
+        "identifier": "MM17342",
+        "name": "Nicotinyl Methylamide",
+        "url": "https://molmedb.upol.cz/api/v1/structures/MM17342"
+      },
+      "protein": {
+        "id": 1,
+        "uniprot_id": "O15244",
+        "name": "SLC22A2",
+        "url": "https://molmedb.upol.cz/api/v1/proteins/1"
+      },
+      "type": "Substrate",
+      "temperature": null,
+      "ph": null,
+      "charge": null,
+      "note": null,
+      "km": 3.52,
+      "km_accuracy": 0,
+      "ec50": null,
+      "ec50_accuracy": null,
+      "ki": 3.58,
+      "ki_accuracy": null,
+      "ic50": null,
+      "ic50_accuracy": null,
+      "primary_reference": {
+        "id": 129,
+        "pmid": "9260930",
+        "citation": "Gorboulev V, Ulzheimer JC, Akhoundova A, Ulzheimer-Teuber I, Karbach U, Quester S, Baumann C, Lang F, Busch AE, Koepsell H.: Cloning and characterization of two human polyspecific organic cation transporters. DNA Cell Biol, Volume 16 (7), 1997"
+      },
+      "secondary_reference": {
+        "id": 1031,
+        "pmid": "37933841",
+        "citation": "Zdrazil B, Felix E, Hunter F, Manners EJ, Blackshaw J, Corbett S, de Veij M, Ioannidis H, Lopez DM, Mosquera JF, Magarin…"
+      }
+    }
+  ],
+  "links": {
+    "first": "https://molmedb.upol.cz/api/v1/interactions/active?uniprot=O15244&type=Substrate&page=1",
+    "last": "https://molmedb.upol.cz/api/v1/interactions/active?uniprot=O15244&type=Substrate&page=1",
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://molmedb.upol.cz/api/v1/interactions/active?uniprot=O15244&type=Substrate&page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      }
+    ],
+    "path": "https://molmedb.upol.cz/api/v1/interactions/active",
+    "per_page": 20,
+    "to": 11,
+    "total": 11
+  }
+}

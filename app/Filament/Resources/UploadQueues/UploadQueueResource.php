@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\UploadQueues;
 
 use App\Enums\IconEnums;
+use App\Enums\PermissionEnums;
 use App\Filament\Resources\Datasets\DatasetResource;
 use App\Filament\Resources\SharedRelationManagers\InteractionsActiveRelationManager;
 use App\Filament\Resources\SharedRelationManagers\InteractionsPassiveRelationManager;
@@ -12,8 +13,10 @@ use App\Filament\Resources\UploadQueues\Pages\ListUploadQueues;
 use App\Models\Dataset;
 use App\Models\File;
 use App\Models\UploadQueue;
+use App\Policies\UploadQueuePolicy;
 use App\Rules\FileUniqueByHash;
 use App\Services\UploadQueueImporter;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -31,6 +34,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -70,11 +74,33 @@ class UploadQueueResource extends Resource
                     ->required(),
                 Select::make('dataset_id')
                     ->label('Dataset')
-                    ->relationship('dataset', 'name', fn (Builder $query, Get $get) => $query->where('type', $get('type'))->orderby('id', 'DESC'))
+                    ->relationship('dataset', 'name', fn (Builder $query, Get $get) => static::scopeDatasetOptions($query->where('type', $get('type'))->orderby('id', 'DESC')))
+                    ->rule(fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                        $dataset = $value ? Dataset::withTrashed()->find($value) : null;
+
+                        if ($dataset !== null && ! app(UploadQueuePolicy::class)->targetDataset(Auth::user(), $dataset)) {
+                            $fail('You may upload only to datasets you are allowed to edit.');
+                        }
+                    })
                     ->getOptionLabelFromRecordUsing(fn (Dataset $record) => "[$record->id]: $record->name (".Str::limit($record->comment, 40).')')
                     ->disabled(fn (Get $get, ?UploadQueue $record) => ! $get('type') || $record?->isRevertible())
                     ->preload()
                     ->createOptionForm(fn (Schema $schema) => DatasetResource::form($schema))
+                    ->createOptionUsing(function (Select $component, array $data, Schema $schema): int {
+                        // Filament's default, plus the owner: CreateDataset sets
+                        // it the same way, and only owners may upload into it.
+                        $dataset = $component->getRelationship()->newModelInstance();
+                        $dataset->fill($data);
+                        $dataset->forceFill(['created_by' => Auth::id()]);
+                        $dataset->save();
+
+                        $schema->model($dataset)->saveRelationships();
+
+                        return $dataset->getKey();
+                    })
+                    // A closure, because authorize('create', ...) would be checked
+                    // against the upload queue record of the page.
+                    ->createOptionAction(fn (Action $action): Action => $action->authorize(fn (): bool => Gate::allows('create', Dataset::class)))
                     ->createOptionModalHeading('Add new dataset')
                     ->suffixActions([
                         Action::make('edit_dataset')
@@ -244,6 +270,52 @@ class UploadQueueResource extends Resource
             ]);
     }
 
+    /**
+     * Administrators and UPLOAD_QUEUE_MANAGE_ALL holders see every upload,
+     * UPLOAD_QUEUE_MANAGE_OWN holders only their own (see UploadQueuePolicy).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return static::scopeToVisibleUploads(parent::getEloquentQuery());
+    }
+
+    /**
+     * Shared with the uploads relation manager on datasets.
+     */
+    public static function scopeToVisibleUploads(Builder $query): Builder
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasAdminRole() || $user->hasPermissionTo(PermissionEnums::UPLOAD_QUEUE_MANAGE_ALL)) {
+            return $query;
+        }
+
+        return $query->where('user_id', $user->id);
+    }
+
+    /**
+     * Only datasets the signed-in user may upload into are offered, see
+     * UploadQueuePolicy::targetDataset().
+     */
+    public static function scopeDatasetOptions(Builder $query): Builder
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->hasAdminRole() || $user->hasPermissionTo(PermissionEnums::DATASET_EDIT)) {
+            return $query;
+        }
+
+        return $query->where('created_by', $user->id);
+    }
+
     public static function getRelations(): array
     {
         return [
@@ -281,6 +353,7 @@ class UploadQueueResource extends Resource
                 ->label('Revert')
                 ->color('danger')
                 ->icon(IconEnums::RESTORE->value)
+                ->authorize('revert')
                 ->requiresConfirmation()
                 ->action(function (UploadQueue $record) {
                     return $record->revert();
@@ -307,7 +380,7 @@ class UploadQueueResource extends Resource
             ->modalWidth('7xl')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Close')
-            ->modalFooterActions(fn (UploadQueue $record) => $record->shouldBeDecidedByAdmin() ? [
+            ->modalFooterActions(fn (UploadQueue $record) => $record->shouldBeDecidedByAdmin() && Gate::allows('review', $record) ? [
                 static::approveReviewAction(),
                 static::rejectReviewAction(),
             ] : [])
@@ -324,6 +397,7 @@ class UploadQueueResource extends Resource
             ->label('Approve')
             ->icon(IconEnums::CHECK->value)
             ->color('success')
+            ->authorize('review')
             ->requiresConfirmation()
             ->modalHeading('Approve upload data?')
             ->modalDescription('The upload will be returned to the processing queue and the final import step will run.')
@@ -346,6 +420,7 @@ class UploadQueueResource extends Resource
             ->label('Reject')
             ->icon(IconEnums::STOP->value)
             ->color('danger')
+            ->authorize('review')
             ->schema([
                 Textarea::make('reason')
                     ->label('Reason')

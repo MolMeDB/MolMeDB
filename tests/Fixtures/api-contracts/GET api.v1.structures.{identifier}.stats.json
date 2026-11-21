@@ -1,0 +1,24 @@
+{
+    "route": "GET api/v1/structures/{identifier}/stats",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "structure": {
+                "canonical_smiles": "string",
+                "created_at": "string",
+                "identifier": "string",
+                "landing_page": "string",
+                "logp": "number",
+                "molecular_weight": "number",
+                "name": "string",
+                "updated_at": "string",
+                "url": "string"
+            },
+            "total": {
+                "interactions_active": "number",
+                "interactions_passive": "number"
+            }
+        }
+    }
+}

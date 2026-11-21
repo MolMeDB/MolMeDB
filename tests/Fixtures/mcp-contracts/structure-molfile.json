@@ -1,0 +1,7 @@
+{
+    "structured_content": {
+        "format": "string",
+        "identifier": "string",
+        "molfile": "string"
+    }
+}

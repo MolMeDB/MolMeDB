@@ -32,6 +32,14 @@ class InteractionActivePolicy
         return app(DatasetPolicy::class)->delete($user, $interactionActive->dataset);
     }
 
+    /**
+     * Every selected record is still checked against delete().
+     */
+    public function deleteAny(User $user): bool
+    {
+        return app(DatasetPolicy::class)->deleteAny($user);
+    }
+
     public function restore(User $user, InteractionActive $interactionActive): bool
     {
         return app(DatasetPolicy::class)->restore($user, $interactionActive->dataset);

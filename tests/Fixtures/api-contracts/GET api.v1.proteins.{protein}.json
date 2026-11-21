@@ -1,0 +1,22 @@
+{
+    "route": "GET api/v1/proteins/{protein}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "created_at": "string",
+            "id": "number",
+            "identifiers": [
+                {
+                    "type": "string",
+                    "value": "string"
+                }
+            ],
+            "landing_page": "string",
+            "uniprot_id": "string",
+            "uniprot_uri": "string",
+            "updated_at": "string",
+            "url": "string"
+        }
+    }
+}

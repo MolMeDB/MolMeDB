@@ -1,0 +1,44 @@
+{
+    "route": "GET api/predictions/datasets/{record}/structures",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "canonical_smiles": "string",
+                "created_at": "string",
+                "id": "number",
+                "remote_id": "number",
+                "remote_identifier": "string",
+                "remote_molecule_status": "string",
+                "structure_2d_url": "string",
+                "structure_2d_url_big": "string",
+                "total_conformers": "null",
+                "updated_at": "string"
+            }
+        ],
+        "links": {
+            "first": "string",
+            "last": "string",
+            "next": "null",
+            "prev": "null"
+        },
+        "meta": {
+            "current_page": "number",
+            "from": "number",
+            "last_page": "number",
+            "links": [
+                {
+                    "active": "boolean",
+                    "label": "string",
+                    "page": "null|number",
+                    "url": "null|string"
+                }
+            ],
+            "path": "string",
+            "per_page": "number",
+            "to": "number",
+            "total": "number"
+        }
+    }
+}

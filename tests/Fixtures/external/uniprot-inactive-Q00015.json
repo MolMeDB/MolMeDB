@@ -1,0 +1,13 @@
+{
+  "entryType": "Inactive",
+  "primaryAccession": "Q00015",
+  "inactiveReason": {
+    "inactiveReasonType": "MERGED",
+    "mergeDemergeTo": [
+      "P23141"
+    ]
+  },
+  "extraAttributes": {
+    "uniParcId": "UPI000016B005"
+  }
+}

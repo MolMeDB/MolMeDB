@@ -1,0 +1,29 @@
+{
+    "route": "GET api/method/{method}/stats",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "method": {
+                "abbreviation": "string",
+                "datasets": [
+                    {
+                        "created_at": "string",
+                        "enum_type": "string",
+                        "hash": "string",
+                        "mime": "string",
+                        "name": "string",
+                        "type": "number"
+                    }
+                ],
+                "description": "string",
+                "id": "number",
+                "name": "string"
+            },
+            "total": {
+                "interactions_passive": "number",
+                "structures": "number"
+            }
+        }
+    }
+}

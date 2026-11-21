@@ -1,0 +1,33 @@
+{
+    "route": "GET api/membrane/categories",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "children": [
+                    {
+                        "children": [],
+                        "id": "number",
+                        "membranes": [
+                            {
+                                "id": "number",
+                                "name": "string"
+                            }
+                        ],
+                        "methods": [],
+                        "order": "number",
+                        "proteins": [],
+                        "title": "string"
+                    }
+                ],
+                "id": "number",
+                "membranes": [],
+                "methods": [],
+                "order": "number",
+                "proteins": [],
+                "title": "string"
+            }
+        ]
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "route": "POST api/downloader",
+    "status": 201,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "reused": "boolean",
+            "uuid": "string"
+        }
+    }
+}

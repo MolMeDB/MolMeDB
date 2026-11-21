@@ -1,0 +1,24 @@
+{
+    "route": "GET api/structure/{identifier}/form/select/methods",
+    "status": 200,
+    "content_type": "application/json",
+    "body": [
+        {
+            "items": [
+                {
+                    "category": "string",
+                    "children": [
+                        {
+                            "label": "string",
+                            "totalInteractions": "number",
+                            "type": "string",
+                            "value": "number"
+                        }
+                    ],
+                    "type": "string"
+                }
+            ],
+            "placeholder": "string"
+        }
+    ]
+}

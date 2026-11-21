@@ -6,8 +6,15 @@ use App\Listeners\RunPredictionsMigrationsAfterDefaultMigrate;
 use App\Models\Config as ConfigModel;
 use App\Models\Filesystem;
 use App\Models\SshCredential;
+use App\Models\User;
+use App\Policies\ActivityPolicy;
 use App\Policies\ConfigPolicy;
 use App\Policies\PredictionDatasetPolicy;
+use App\Policies\PredictionMethodPolicy;
+use App\Policies\PredictionPolicy;
+use App\Policies\PredictionStatPolicy;
+use App\Policies\PredictionStructurePolicy;
+use Dedoc\Scramble\Scramble;
 use Exception;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -24,14 +31,26 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Modules\PredictionWorkers\Models\Prediction;
 use Modules\PredictionWorkers\Models\PredictionDataset;
+use Modules\PredictionWorkers\Models\PredictionMethod;
+use Modules\PredictionWorkers\Models\PredictionStat;
+use Modules\PredictionWorkers\Models\PredictionStructure;
+use Spatie\Activitylog\Models\Activity;
 
 class AppServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
      */
-    public function register(): void {}
+    public function register(): void
+    {
+        // Must run in register(), not boot(): ScrambleServiceProvider reads
+        // this flag during its own boot() to decide whether to register its
+        // default /docs/api(.json) routes, and register() across all
+        // providers always completes before any provider's boot() runs.
+        Scramble::ignoreDefaultRoutes();
+    }
 
     /**
      * Bootstrap any application services.
@@ -40,32 +59,56 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(ConfigModel::class, ConfigPolicy::class);
         Gate::policy(PredictionDataset::class, PredictionDatasetPolicy::class);
+        Gate::policy(Prediction::class, PredictionPolicy::class);
+        Gate::policy(PredictionMethod::class, PredictionMethodPolicy::class);
+        Gate::policy(PredictionStat::class, PredictionStatPolicy::class);
+        Gate::policy(PredictionStructure::class, PredictionStructurePolicy::class);
+        Gate::policy(Activity::class, ActivityPolicy::class);
+
+        // dedoc/scramble restricts its rendered docs page to the local
+        // environment by default. It documents the open, unauthenticated
+        // public v1 API only (see config/scramble.php), so there is nothing
+        // to protect — allow it everywhere for FAIR "Accessible" discovery.
+        // The nullable user lets the Gate call it for anonymous visitors too.
+        Gate::define('viewApiDocs', fn (?User $user = null): bool => true);
+
+        // Serve the docs/spec under the public v1 path itself instead of
+        // Scramble's default /docs/api(.json) (ignored in register(), see
+        // above), reusing the public API's own CORS policy (the global
+        // HandleCors below is skipped for api/v*).
+        Scramble::registerUiRoute(path: 'api/v1/docs')->middleware('public-cors');
+        Scramble::registerJsonSpecificationRoute(path: 'api/v1/openapi.json')->middleware('public-cors');
 
         // The public API sets its own open CORS policy (App\Http\Middleware\PublicApiCors).
         // The global HandleCors middleware runs as the outermost layer and would
         // otherwise still attach config/cors.php's credentialed-frontend headers
         // (e.g. Access-Control-Allow-Credentials) on top of it — skip it entirely here.
-        HandleCors::skipWhen(fn (Request $request): bool => $request->is('api/public/*'));
+        HandleCors::skipWhen(fn (Request $request): bool => preg_match('#^api/(v\d+|rdf)(/|$)#', $request->path()) === 1);
 
         RateLimiter::for('remote-prediction-status', fn (): Limit => Limit::perMinute(
             max(1, (int) config('prediction-workers.remote.worker.max_status_requests_per_minute', 30)),
         )->by('remote-prediction-status'));
 
-        RateLimiter::for('resend-email-verification', function (Request $request): Limit {
+        // One link per address a minute, and a cap per IP so nobody can mail
+        // many addresses by rotating them.
+        RateLimiter::for('resend-email-verification', function (Request $request): array {
             $email = Str::lower((string) $request->input('email'));
 
-            return Limit::perMinute(1)->by($email !== '' ? $email : $request->ip());
+            return [
+                Limit::perMinute(1)->by('email:'.($email !== '' ? $email : $request->ip())),
+                Limit::perMinute(10)->by('ip:'.$request->ip()),
+            ];
         });
 
         RateLimiter::for('public-api', function (Request $request): array {
             return [
-                Limit::perMinute(60)->by('minute:'.$request->ip()),
-                Limit::perDay(5000)->by('day:'.$request->ip()),
+                Limit::perMinute(config('public_api.rate_limits.requests.per_minute'))->by('minute:'.$request->ip()),
+                Limit::perDay(config('public_api.rate_limits.requests.per_day'))->by('day:'.$request->ip()),
             ];
         });
 
         // Stacks on top of the blanket 'public-api' limiter (applied to the whole
-        // public/v1 route group) — only adds extra restriction when a substructure
+        // public v1 route group) — only adds extra restriction when a substructure
         // search (expensive Bingo query) is actually requested.
         RateLimiter::for('public-api-substructure', function (Request $request): array {
             if (! filled($request->query('substructure'))) {
@@ -73,10 +116,18 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return [
-                Limit::perMinute(6)->by('substructure-minute:'.$request->ip()),
-                Limit::perHour(30)->by('substructure-hour:'.$request->ip()),
+                Limit::perMinute(config('public_api.rate_limits.substructure.per_minute'))->by('substructure-minute:'.$request->ip()),
+                Limit::perHour(config('public_api.rate_limits.substructure.per_hour'))->by('substructure-hour:'.$request->ip()),
             ];
         });
+
+        // Stacks on top of 'public-api' like the substructure limiter: a
+        // similarity search at the lowest threshold (0.7) scores up to
+        // thousands of structures (~0.5 s on production data).
+        RateLimiter::for('public-api-similarity', fn (Request $request): array => [
+            Limit::perMinute(config('public_api.rate_limits.similarity.per_minute'))->by('similarity-minute:'.$request->ip()),
+            Limit::perHour(config('public_api.rate_limits.similarity.per_hour'))->by('similarity-hour:'.$request->ip()),
+        ]);
 
         Event::listen(CommandFinished::class, RunPredictionsMigrationsAfterDefaultMigrate::class);
 

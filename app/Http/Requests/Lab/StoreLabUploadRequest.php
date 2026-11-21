@@ -11,6 +11,13 @@ use Illuminate\Validation\Validator;
 
 class StoreLabUploadRequest extends FormRequest
 {
+    public const MAX_FILE_KILOBYTES = 20480;
+
+    /**
+     * @var array<int, string>
+     */
+    public const FILE_EXTENSIONS = ['csv', 'txt', 'tsv'];
+
     public function authorize(): bool
     {
         return true;
@@ -34,9 +41,8 @@ class StoreLabUploadRequest extends FormRequest
             'file' => [
                 'required',
                 'file',
-                'max:20480',
-                'mimes:csv,txt,tsv',
-                // 'mimes:csv,txt,tsv,xls,xlsx,json',
+                'max:'.self::MAX_FILE_KILOBYTES,
+                'mimes:'.implode(',', self::FILE_EXTENSIONS),
                 new FileDatasetUniqueByHash,
             ],
         ];

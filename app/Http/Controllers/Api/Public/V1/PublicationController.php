@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api\Public\V1;
 
 use App\Http\Controllers\Api\Public\V1\Concerns\DownloadsExportFile;
+use App\Http\Controllers\Api\Public\V1\Concerns\ListsInteractions;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Public\V1\SearchActiveInteractionsRequest;
+use App\Http\Requests\Api\Public\V1\SearchPassiveInteractionsRequest;
 use App\Http\Resources\Api\Public\V1\PublicationResource;
 use App\Models\File;
 use App\Models\Publication;
+use App\Services\Interactions\PublicInteractionQuery;
 use Illuminate\Http\Request;
 
 /**
@@ -17,6 +21,7 @@ use Illuminate\Http\Request;
 class PublicationController extends Controller
 {
     use DownloadsExportFile;
+    use ListsInteractions;
 
     public function index(Request $request)
     {
@@ -38,8 +43,6 @@ class PublicationController extends Controller
     public function stats(Publication $publication)
     {
         $publication->loadCount([
-            'interactionsPassive',
-            'interactionsActive',
             'membranes',
             'methods',
             'datasets',
@@ -49,8 +52,9 @@ class PublicationController extends Controller
             'data' => [
                 'publication' => PublicationResource::make($publication),
                 'total' => [
-                    'interactions_passive' => $publication->interactions_passive_count,
-                    'interactions_active' => $publication->interactions_active_count,
+                    // Primary or secondary (dataset) reference, the same as the interaction listings.
+                    'interactions_passive' => PublicInteractionQuery::total(PublicInteractionQuery::passive(['publication' => $publication->id])),
+                    'interactions_active' => PublicInteractionQuery::total(PublicInteractionQuery::active(['publication' => $publication->id])),
                     'membranes' => $publication->membranes_count,
                     'methods' => $publication->methods_count,
                     'datasets' => $publication->datasets_count,
@@ -59,12 +63,30 @@ class PublicationController extends Controller
         ]);
     }
 
-    public function interactionsPassive(Publication $publication)
+    /**
+     * Passive interactions with this publication as their primary reference
+     * or as the secondary reference of their dataset.
+     */
+    public function interactionsPassive(Publication $publication, SearchPassiveInteractionsRequest $request)
+    {
+        return $this->passiveInteractions($request, ['publication' => $publication->id]);
+    }
+
+    /**
+     * Active interactions with this publication as their primary reference
+     * or as the secondary reference of their dataset.
+     */
+    public function interactionsActive(Publication $publication, SearchActiveInteractionsRequest $request)
+    {
+        return $this->activeInteractions($request, ['publication' => $publication->id]);
+    }
+
+    public function exportPassive(Publication $publication)
     {
         return $this->downloadLatestExport($publication, File::TYPE_EXPORT_INTERACTIONS_PASSIVE_PUBLICATION);
     }
 
-    public function interactionsActive(Publication $publication)
+    public function exportActive(Publication $publication)
     {
         return $this->downloadLatestExport($publication, File::TYPE_EXPORT_INTERACTIONS_ACTIVE_PUBLICATION);
     }

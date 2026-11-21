@@ -20,6 +20,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Notifications\Notification;
 use Spatie\Activitylog\Traits\CausesActivity;
+use Spatie\Permission\Models\Role as SpatieRole;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, MustVerifyEmail
@@ -69,6 +70,45 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, HasName, 
     public function hasAdminRole(): bool
     {
         return $this->hasRole(RoleEnums::ADMIN->value);
+    }
+
+    /**
+     * Whether the user may give these permissions to a role: administrators
+     * any, everyone else only permissions they hold, so that managing roles
+     * never raises anyone's rights.
+     *
+     * @param  iterable<int, Permission>  $permissions
+     */
+    public function canGrantPermissions(iterable $permissions): bool
+    {
+        if ($this->hasAdminRole()) {
+            return true;
+        }
+
+        $held = $this->getAllPermissions()->pluck('id')->all();
+
+        foreach ($permissions as $permission) {
+            if (! in_array($permission->getKey(), $held, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether the user may assign the role to someone: only administrators
+     * hand out the Administrator role, and nobody a role whose permissions
+     * they do not hold.
+     */
+    public function canAssignRole(SpatieRole $role): bool
+    {
+        if ($this->hasAdminRole()) {
+            return true;
+        }
+
+        return $role->name !== RoleEnums::ADMIN->value
+            && $this->canGrantPermissions($role->permissions);
     }
 
     public function getFilamentName(): string

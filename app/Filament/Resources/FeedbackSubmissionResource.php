@@ -161,6 +161,7 @@ class FeedbackSubmissionResource extends Resource
                     ->icon(Heroicon::OutlinedCheck)
                     ->color('success')
                     ->tooltip('Mark as read')
+                    ->authorize('update')
                     ->hidden(fn (FeedbackSubmission $record): bool => $record->state === FeedbackSubmission::STATE_READ)
                     ->action(function (FeedbackSubmission $record): void {
                         $record->markAsRead();

@@ -1,0 +1,19 @@
+{
+    "route": "GET api/protein/{protein}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "id": "number",
+            "identifiers": [
+                {
+                    "id": "number",
+                    "state": "string",
+                    "type": "string",
+                    "value": "string"
+                }
+            ],
+            "uniprot_id": "string"
+        }
+    }
+}

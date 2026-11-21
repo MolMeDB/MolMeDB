@@ -27,6 +27,8 @@ export interface IInteractionActive {
   dataset: IDatasetActive;
   structure_id: number;
   protein: IProtein;
+  /** Substrate, Non-substrate, Inhibitor or Non-inhibitor. */
+  interaction_type?: string | null;
   note?: string;
   temperature?: number;
   ph?: number;

@@ -149,9 +149,11 @@ class UploadQueueDetailedValidator
         $processedRows = $progress['processed_rows'];
         $skippedDuplicateRows = $progress['skipped_duplicate_rows'];
         $validators = $this->validatorsByKey($record);
-        $errors = [];
-        $rowErrors = [];
-        $warnings = [];
+        // Lines before next_line are skipped on resume, so the messages they
+        // produced come back from the checkpoint instead of being lost.
+        $errors = $progress['errors'];
+        $rowErrors = $progress['row_errors'];
+        $warnings = $progress['warnings'];
         $maxErrors = 20;
         $maxRowErrors = 20;
         $maxWarnings = 20;
@@ -214,7 +216,7 @@ class UploadQueueDetailedValidator
             $duplicate = $this->duplicateForRow($record, $row);
             if ($duplicate === null) {
                 if ($this->shouldSaveProgress($rowsSinceProgressSave, $deadline)) {
-                    $this->saveProgress($record, $separator, $columnKeys, $firstDataLine, $currentLineNumber + 1, $validatedRows, $processedRows, $skippedDuplicateRows);
+                    $this->saveProgress($record, $separator, $columnKeys, $firstDataLine, $currentLineNumber + 1, $validatedRows, $processedRows, $skippedDuplicateRows, $errors, $rowErrors, $warnings);
                     $rowsSinceProgressSave = 0;
                 }
 
@@ -238,7 +240,7 @@ class UploadQueueDetailedValidator
             }
 
             if ($this->shouldSaveProgress($rowsSinceProgressSave, $deadline)) {
-                $this->saveProgress($record, $separator, $columnKeys, $firstDataLine, $currentLineNumber + 1, $validatedRows, $processedRows, $skippedDuplicateRows);
+                $this->saveProgress($record, $separator, $columnKeys, $firstDataLine, $currentLineNumber + 1, $validatedRows, $processedRows, $skippedDuplicateRows, $errors, $rowErrors, $warnings);
                 $rowsSinceProgressSave = 0;
             }
 
@@ -252,9 +254,11 @@ class UploadQueueDetailedValidator
         fclose($stream);
 
         if ($processedRows < 1) {
+            // When every row failed, its line errors explain why; the generic
+            // message is only for a file without data rows.
             return [
                 'ok' => false,
-                'errors' => ['File does not contain rows for validation.'],
+                'errors' => $errors !== [] ? $errors : ['File does not contain rows for validation.'],
                 'warnings' => [],
                 'config' => null,
             ];
@@ -305,7 +309,7 @@ class UploadQueueDetailedValidator
 
     /**
      * @param  array<int, string|null>  $columnKeys
-     * @return array{next_line: int, validated_rows: int, processed_rows: int, skipped_duplicate_rows: int}
+     * @return array{next_line: int, validated_rows: int, processed_rows: int, skipped_duplicate_rows: int, errors: array<int, string>, row_errors: array<int, string>, warnings: array<int, string>}
      */
     private function resumeProgress(UploadQueue $record, string $separator, array $columnKeys, int $firstDataLine): array
     {
@@ -318,6 +322,9 @@ class UploadQueueDetailedValidator
                 'validated_rows' => 0,
                 'processed_rows' => 0,
                 'skipped_duplicate_rows' => 0,
+                'errors' => [],
+                'row_errors' => [],
+                'warnings' => [],
             ];
         }
 
@@ -326,11 +333,17 @@ class UploadQueueDetailedValidator
             'validated_rows' => max(0, (int) ($progress['validated_rows'] ?? 0)),
             'processed_rows' => max(0, (int) ($progress['processed_rows'] ?? 0)),
             'skipped_duplicate_rows' => max(0, (int) ($progress['skipped_duplicate_rows'] ?? 0)),
+            'errors' => array_values(array_filter((array) ($progress['errors'] ?? []), 'is_string')),
+            'row_errors' => array_values(array_filter((array) ($progress['row_errors'] ?? []), 'is_string')),
+            'warnings' => array_values(array_filter((array) ($progress['warnings'] ?? []), 'is_string')),
         ];
     }
 
     /**
      * @param  array<int, string|null>  $columnKeys
+     * @param  array<int, string>  $errors
+     * @param  array<int, string>  $rowErrors
+     * @param  array<int, string>  $warnings
      */
     private function saveProgress(
         UploadQueue $record,
@@ -341,6 +354,9 @@ class UploadQueueDetailedValidator
         int $validatedRows,
         int $processedRows,
         int $skippedDuplicateRows,
+        array $errors,
+        array $rowErrors,
+        array $warnings,
     ): void {
         $record->config = $record->config->withProcessingProgress([
             'phase' => 'detailed_validation',
@@ -349,6 +365,9 @@ class UploadQueueDetailedValidator
             'validated_rows' => $validatedRows,
             'processed_rows' => $processedRows,
             'skipped_duplicate_rows' => $skippedDuplicateRows,
+            'errors' => $errors,
+            'row_errors' => $rowErrors,
+            'warnings' => $warnings,
             'heartbeat_at' => now()->toISOString(),
         ]);
 

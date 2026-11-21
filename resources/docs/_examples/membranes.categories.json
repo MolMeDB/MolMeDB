@@ -1,0 +1,40 @@
+{
+  "data": [
+    {
+      "id": 58,
+      "title": "Generic",
+      "children": [
+        {
+          "id": 64,
+          "title": "Experimental",
+          "children": [],
+          "items": [
+            {
+              "id": 18,
+              "name": "GENER",
+              "abbreviation": "GENER"
+            }
+          ]
+        },
+        {
+          "id": 65,
+          "title": "Model",
+          "children": [],
+          "items": [
+            {
+              "id": 26,
+              "name": "CHCl3",
+              "abbreviation": "CHCl3"
+            },
+            {
+              "id": 37,
+              "name": "Hexadecane Liquid Layer",
+              "abbreviation": "Hexadecane"
+            }
+          ]
+        }
+      ],
+      "items": []
+    }
+  ]
+}

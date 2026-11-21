@@ -1,0 +1,116 @@
+{
+  "id": 15365,
+  "chebi_accession": "CHEBI:15365",
+  "name": "acetylsalicylic acid",
+  "stars": 3,
+  "definition": "A member of the class of benzoic acids that is salicylic acid in which the hydrogen that is attached to the phenolic hydroxy group has been replaced by an acetoxy group. A non-steroidal anti-inflammatory drug with cyclooxygenase inhibitor activity.",
+  "ascii_name": "acetylsalicylic acid",
+  "names": {
+    "SYNONYM": [
+      {
+        "name": "2-Acetoxybenzenecarboxylic acid",
+        "status": "C",
+        "type": "SYNONYM",
+        "source": "KEGG COMPOUND",
+        "ascii_name": "2-Acetoxybenzenecarboxylic acid",
+        "adapted": false,
+        "language_code": "en"
+      },
+      {
+        "name": "2-acetoxybenzoic acid",
+        "status": "C",
+        "type": "SYNONYM",
+        "source": "ChemIDplus",
+        "ascii_name": "2-acetoxybenzoic acid",
+        "adapted": true,
+        "language_code": "en"
+      },
+      {
+        "name": "2-(ACETYLOXY)BENZOIC ACID",
+        "status": "C",
+        "type": "SYNONYM",
+        "source": "PDBeChem",
+        "ascii_name": "2-(ACETYLOXY)BENZOIC ACID",
+        "adapted": false,
+        "language_code": "en"
+      }
+    ],
+    "IUPAC NAME": [
+      {
+        "name": "2-(acetyloxy)benzoic acid",
+        "status": "C",
+        "type": "IUPAC NAME",
+        "source": "IUPAC",
+        "ascii_name": "2-(acetyloxy)benzoic acid",
+        "adapted": false,
+        "language_code": "en"
+      }
+    ],
+    "BRAND NAME": [
+      {
+        "name": "8-hour bayer",
+        "status": "S",
+        "type": "BRAND NAME",
+        "source": "ChEMBL",
+        "ascii_name": "8-hour bayer",
+        "adapted": false,
+        "language_code": "en"
+      },
+      {
+        "name": "Acetosalic acid",
+        "status": "S",
+        "type": "BRAND NAME",
+        "source": "ChEMBL",
+        "ascii_name": "Acetosalic acid",
+        "adapted": false,
+        "language_code": "en"
+      },
+      {
+        "name": "Acetylsalic acid",
+        "status": "S",
+        "type": "BRAND NAME",
+        "source": "ChEMBL",
+        "ascii_name": "Acetylsalic acid",
+        "adapted": false,
+        "language_code": "en"
+      }
+    ],
+    "INN": [
+      {
+        "name": "acide acétylsalicylique",
+        "status": "C",
+        "type": "INN",
+        "source": "ChemIDplus",
+        "ascii_name": "acide acetylsalicylique",
+        "adapted": true,
+        "language_code": "fr"
+      },
+      {
+        "name": "ácido acetilsalicílico",
+        "status": "C",
+        "type": "INN",
+        "source": "NIST Chemistry WebBook",
+        "ascii_name": "acido acetilsalicilico",
+        "adapted": true,
+        "language_code": "es"
+      },
+      {
+        "name": "acidum acetylsalicylicum",
+        "status": "C",
+        "type": "INN",
+        "source": "NIST Chemistry WebBook",
+        "ascii_name": "acidum acetylsalicylicum",
+        "adapted": false,
+        "language_code": "la"
+      }
+    ]
+  },
+  "chemical_data": {
+    "formula": "C9H8O4",
+    "charge": 0,
+    "mass": "180.159",
+    "monoisotopic_mass": "180.04226"
+  },
+  "modified_on": "2025-04-03T10:13:40Z",
+  "is_released": true
+}

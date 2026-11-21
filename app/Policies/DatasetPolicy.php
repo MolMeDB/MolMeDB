@@ -47,6 +47,16 @@ class DatasetPolicy
             );
     }
 
+    /**
+     * Bulk deletion is offered to anyone who may delete some datasets;
+     * every selected record is still checked against delete().
+     */
+    public function deleteAny(User $user): bool
+    {
+        return $user->hasPermissionTo(PermissionEnums::DATASET_DELETE)
+            || $user->hasPermissionTo(PermissionEnums::DATASET_DELETE_OWN);
+    }
+
     public function restore(User $user, Dataset $dataset): bool
     {
         return $this->delete($user, $dataset);

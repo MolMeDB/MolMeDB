@@ -1,0 +1,77 @@
+{
+  "data": [
+    {
+      "id": 1157,
+      "url": "https://molmedb.upol.cz/api/v1/interactions/passive/1157",
+      "rdf": "https://rdf.molmedb.upol.cz/interaction/int1157",
+      "structure": {
+        "identifier": "MM00040",
+        "name": "Caffeine",
+        "url": "https://molmedb.upol.cz/api/v1/structures/MM00040"
+      },
+      "membrane": {
+        "id": 1,
+        "name": "DMPC",
+        "abbreviation": "DMPC"
+      },
+      "method": {
+        "id": 1,
+        "name": "COSMOmic ",
+        "abbreviation": "COSMOmic"
+      },
+      "temperature": 25,
+      "ph": null,
+      "charge": "0",
+      "note": null,
+      "x_min": 1.242,
+      "x_min_accuracy": null,
+      "gpen": 2.652,
+      "gpen_accuracy": null,
+      "gwat": 2.422,
+      "gwat_accuracy": null,
+      "logk": 0.624,
+      "logk_accuracy": null,
+      "logperm": null,
+      "logperm_accuracy": null,
+      "primary_reference": {
+        "id": 22,
+        "pmid": null,
+        "citation": "in-house calculations"
+      },
+      "secondary_reference": {
+        "id": 22,
+        "pmid": null,
+        "citation": "in-house calculations"
+      }
+    }
+  ],
+  "links": {
+    "first": "https://molmedb.upol.cz/api/v1/structures/MM00040/interactions/passive?page=1",
+    "last": "https://molmedb.upol.cz/api/v1/structures/MM00040/interactions/passive?page=8",
+    "prev": null,
+    "next": "https://molmedb.upol.cz/api/v1/structures/MM00040/interactions/passive?page=2"
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 8,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://molmedb.upol.cz/api/v1/structures/MM00040/interactions/passive?page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      }
+    ],
+    "path": "https://molmedb.upol.cz/api/v1/structures/MM00040/interactions/passive",
+    "per_page": 20,
+    "to": 20,
+    "total": 144
+  }
+}

@@ -1,0 +1,43 @@
+{
+    "structured_content": {
+        "interaction": {
+            "charge": "string",
+            "ec50": "number",
+            "ec50_accuracy": "number",
+            "ic50": "number",
+            "ic50_accuracy": "number",
+            "id": "number",
+            "ki": "number",
+            "ki_accuracy": "number",
+            "km": "number",
+            "km_accuracy": "number",
+            "note": "string",
+            "ph": "number",
+            "primary_reference": {
+                "citation": "string",
+                "id": "number",
+                "pmid": "string"
+            },
+            "protein": {
+                "id": "number",
+                "name": "string",
+                "uniprot_id": "string",
+                "url": "string"
+            },
+            "rdf": "string",
+            "secondary_reference": {
+                "citation": "string",
+                "id": "number",
+                "pmid": "string"
+            },
+            "structure": {
+                "identifier": "string",
+                "name": "string",
+                "url": "string"
+            },
+            "temperature": "number",
+            "type": "string",
+            "url": "string"
+        }
+    }
+}

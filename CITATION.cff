@@ -1,0 +1,80 @@
+cff-version: 1.2.0
+message: "If you use MolMeDB, please cite the article below. The dataset itself is dedicated to the public domain under CC0 1.0 — see LICENSE-DATA.md."
+title: "MolMeDB: Molecules on Membranes Database"
+type: dataset
+license: CC0-1.0
+repository-code: "https://github.com/MolMeDB/MolMeDB"
+url: "https://molmedb.upol.cz"
+contact:
+  - email: molmedb@upol.cz
+    name: "MolMeDB Team"
+authors:
+  - family-names: Juračka
+    given-names: Jakub
+    orcid: "https://orcid.org/0000-0003-2518-075X"
+  - family-names: Šrejber
+    given-names: Martin
+    orcid: "https://orcid.org/0000-0001-9556-2978"
+  - family-names: Jaroměřská
+    given-names: Michaela
+    alias: "Michaela Melíková"
+    orcid: "https://orcid.org/0000-0001-8658-6169"
+  - family-names: Bazgier
+    given-names: Václav
+    orcid: "https://orcid.org/0000-0003-3393-3010"
+  - family-names: Martinát
+    given-names: Dominik
+    orcid: "https://orcid.org/0000-0001-6611-7883"
+  - family-names: Galgonek
+    given-names: Jakub
+    orcid: "https://orcid.org/0000-0002-7038-544X"
+  - family-names: Berka
+    given-names: Karel
+    orcid: "https://orcid.org/0000-0001-9472-2589"
+identifiers:
+  - type: doi
+    value: 10.1093/database/baz078
+    description: "Peer-reviewed article describing MolMeDB"
+  - type: doi
+    value: 10.5281/zenodo.18632779
+    description: "MolMeDB RDF dataset (Turtle, N-Triples, RDF/XML)"
+keywords:
+  - membrane
+  - membrane permeability
+  - membrane partitioning
+  - small molecules
+  - transporter proteins
+  - RDF
+preferred-citation:
+  type: article
+  title: "MolMeDB: Molecules on Membranes Database"
+  journal: Database
+  volume: "2019"
+  year: 2019
+  doi: 10.1093/database/baz078
+  authors:
+    - family-names: Juračka
+      given-names: Jakub
+    - family-names: Šrejber
+      given-names: Martin
+    - family-names: Melíková
+      given-names: Michaela
+    - family-names: Bazgier
+      given-names: Václav
+    - family-names: Berka
+      given-names: Karel
+references:
+  - type: article
+    title: "MolMeDB RDF: transforming a relational database about biological membranes to the RDF format to increase interoperability"
+    journal: "Journal of Cheminformatics"
+    year: 2026
+    doi: 10.1186/s13321-026-01208-3
+    authors:
+      - family-names: Martinát
+        given-names: Dominik
+      - family-names: Juračka
+        given-names: Jakub
+      - family-names: Galgonek
+        given-names: Jakub
+      - family-names: Berka
+        given-names: Karel

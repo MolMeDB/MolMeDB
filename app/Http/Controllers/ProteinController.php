@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateProteinRequest;
 use App\Http\Resources\CategoryCollection;
 use App\Http\Resources\ProteinResource;
 use App\Http\Resources\Public\InteractionActivePublicResource;
+use App\Libraries\Export\SpreadsheetSafeCsv;
 use App\Models\Category;
 use App\Models\Protein;
 use Spatie\TemporaryDirectory\TemporaryDirectory;
@@ -71,7 +72,7 @@ class ProteinController extends Controller
         fputcsv($handle, array_keys($csv_rows[0]), separator: ';', escape: '\\');
 
         foreach ($csv_rows as $row) {
-            fputcsv($handle, $row, separator: ';', escape: '\\');
+            fputcsv($handle, SpreadsheetSafeCsv::row($row), separator: ';', escape: '\\');
         }
 
         fclose($handle);

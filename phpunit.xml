@@ -19,13 +19,27 @@
     <source>
         <include>
             <directory>app</directory>
+            <directory>modules</directory>
         </include>
+        <!-- Listed one by one: a new module has to add its tests and database directories here. -->
+        <exclude>
+            <directory>modules/CdkDepict/tests</directory>
+            <directory>modules/PredictionWorkers/tests</directory>
+            <directory>modules/PredictionWorkers/database</directory>
+            <directory>modules/Rdkit/tests</directory>
+            <directory>modules/Rdkit/src</directory>
+            <directory>modules/References/tests</directory>
+            <directory>modules/References/CrossRef/tests</directory>
+            <directory>modules/References/EuropePMC/tests</directory>
+        </exclude>
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
+        <env name="PREDICTION_STATS_CACHE_STORE" value="array"/>
+        <env name="UPLOAD_LOOKUP_CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <!-- <env name="DB_DATABASE" value=":memory:"/> -->
         <!-- <env name="DB_PREDICTIONS_DATABASE" value=":memory:"/> -->

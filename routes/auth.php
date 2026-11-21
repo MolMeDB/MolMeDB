@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\ResetPasswordController;
@@ -34,6 +35,10 @@ Route::post('/reset-password', [NewPasswordController::class, 'store'])
 
 Route::get('/reset-password/{token}', [ResetPasswordController::class, '__invoke'])
     ->name('frontend.password.reset');
+
+Route::put('/api/user/password', [PasswordController::class, 'update'])
+    ->middleware(['auth', 'throttle:6,1'])
+    ->name('user-password.update');
 
 Route::get('/verify-email/{id}/{hash}', VerifyEmailController::class)
     ->middleware('throttle:6,1')

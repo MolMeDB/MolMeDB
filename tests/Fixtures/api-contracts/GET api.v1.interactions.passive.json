@@ -1,0 +1,76 @@
+{
+    "route": "GET api/v1/interactions/passive",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": [
+            {
+                "charge": "string",
+                "gpen": "number",
+                "gpen_accuracy": "number",
+                "gwat": "number",
+                "gwat_accuracy": "number",
+                "id": "number",
+                "logk": "number",
+                "logk_accuracy": "number",
+                "logperm": "number",
+                "logperm_accuracy": "number",
+                "membrane": {
+                    "abbreviation": "string",
+                    "id": "number",
+                    "name": "string"
+                },
+                "method": {
+                    "abbreviation": "string",
+                    "id": "number",
+                    "name": "string"
+                },
+                "note": "string",
+                "ph": "number",
+                "primary_reference": {
+                    "citation": "string",
+                    "id": "number",
+                    "pmid": "string"
+                },
+                "rdf": "string",
+                "secondary_reference": {
+                    "citation": "string",
+                    "id": "number",
+                    "pmid": "string"
+                },
+                "structure": {
+                    "identifier": "string",
+                    "name": "string",
+                    "url": "string"
+                },
+                "temperature": "number",
+                "url": "string",
+                "x_min": "number",
+                "x_min_accuracy": "number"
+            }
+        ],
+        "links": {
+            "first": "string",
+            "last": "string",
+            "next": "null",
+            "prev": "null"
+        },
+        "meta": {
+            "current_page": "number",
+            "from": "number",
+            "last_page": "number",
+            "links": [
+                {
+                    "active": "boolean",
+                    "label": "string",
+                    "page": "null|number",
+                    "url": "null|string"
+                }
+            ],
+            "path": "string",
+            "per_page": "number",
+            "to": "number",
+            "total": "number"
+        }
+    }
+}

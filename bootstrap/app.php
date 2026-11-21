@@ -43,6 +43,11 @@ return Application::configure(basePath: dirname(__DIR__))
             NormalizeLivewireUploadUrl::class,
         ]);
 
+        // Fortify's "login" route is disabled. The only signed-in web pages
+        // belong to the admin panel (the frontend's API calls get a 401), so
+        // guests, and sessions ended elsewhere, go to the panel sign-in.
+        $middleware->redirectGuestsTo(fn (): string => route('filament.admin.auth.login'));
+
         $middleware->alias([
             'verified' => EnsureEmailIsVerified::class,
             'public-cors' => PublicApiCors::class,

@@ -179,24 +179,28 @@
         @endif
 
         <div style="margin-top: 1.1rem;">
-            <button id="try-it-btn" type="button">{{ $isDownload ? 'Download' : 'Try it' }}</button>
+            <button id="try-it-btn" type="button">Try it</button>
         </div>
         <div class="url-preview" id="url-preview"></div>
     </section>
 
-    @unless ($isDownload)
-        <section id="result-section" class="hidden">
-            <h2>Response</h2>
-            <div class="status-line" id="status-line"></div>
-            <pre id="result-body"></pre>
-            <div class="truncated-note hidden" id="truncated-note"></div>
-        </section>
-    @endunless
+    <section id="result-section" class="hidden">
+        <h2>Response</h2>
+        <div class="status-line" id="status-line"></div>
+        <pre id="result-body"></pre>
+        <div class="truncated-note hidden" id="truncated-note"></div>
+    </section>
 
     <section>
         <h2>Example request</h2>
         <pre>GET {{ $baseUrl }}{{ $exampleRequest }}</pre>
     </section>
+
+    <p class="description">
+        Full API reference: <a href="{{ $baseUrl }}/docs">OpenAPI docs</a>
+        &middot; <a href="{{ $baseUrl }}/openapi.json">openapi.json</a>
+        &middot; <a href="{{ $baseUrl }}/about">/about</a> (license &amp; citation)
+    </p>
 
 </div>
 
@@ -204,7 +208,6 @@
 (function () {
     const baseUrl = @json($baseUrl);
     const uriTemplate = @json($uriTemplate);
-    const isDownload = @json($isDownload);
     const maxLines = @json($maxResponseLines);
 
     function buildUrl() {
@@ -235,11 +238,6 @@
 
     document.getElementById('try-it-btn').addEventListener('click', function () {
         const url = buildUrl();
-
-        if (isDownload) {
-            window.location.href = url;
-            return;
-        }
 
         const btn = this;
         const section = document.getElementById('result-section');

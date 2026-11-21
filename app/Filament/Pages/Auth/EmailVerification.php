@@ -2,9 +2,9 @@
 
 namespace App\Filament\Pages\Auth;
 
-use Filament\Auth\Pages\EmailVerification\EmailVerificationPrompt;
 use App\Notifications\EmailVerification as NotificationsEmailVerification;
 use Exception;
+use Filament\Auth\Pages\EmailVerification\EmailVerificationPrompt;
 use Filament\Facades\Filament;
 use Filament\Notifications\Auth\VerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -14,7 +14,7 @@ class EmailVerification extends EmailVerificationPrompt
     public function mount(): void
     {
         if ($this->getVerifiable()->hasVerifiedEmail()) {
-            redirect()->route('logout');
+            $this->redirect(Filament::getUrl());
         }
     }
 
@@ -31,7 +31,7 @@ class EmailVerification extends EmailVerificationPrompt
         }
 
         // $notification = app(VerifyEmail::class);
-        $notification = new NotificationsEmailVerification();
+        $notification = new NotificationsEmailVerification;
         $notification->url = Filament::getVerifyEmailUrl($user);
 
         $user->notify($notification);

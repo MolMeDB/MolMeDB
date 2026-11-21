@@ -2,12 +2,11 @@
 
 namespace App\Services\External\Protein;
 
-class UniprotProteinDescription 
+class UniprotProteinDescription
 {
     public function __construct(
-        public array $recommendedName, 
-        public array $alternativeNames)
-    {}
+        public array $recommendedName,
+        public array $alternativeNames) {}
 
     public static function fromRawData(array $data): self
     {
@@ -17,37 +16,37 @@ class UniprotProteinDescription
         return new self($recommendedName, $alternativeNames);
     }
 
-    public function getRecommendedName(): string
+    public function getRecommendedName(): ?string
     {
-        return $this->recommendedName['fullName'] && $this->recommendedName['fullName']['value'] ? 
-            $this->recommendedName['fullName']['value'] : null;
+        return $this->recommendedName['fullName']['value'] ?? null;
     }
 
     public function getRecommendedShortNames(): array
     {
         $names = [];
-        foreach($this->recommendedName['shortNames'] ?? [] as $shortName) {
-            if($shortName['value']) {
+        foreach ($this->recommendedName['shortNames'] ?? [] as $shortName) {
+            if (! empty($shortName['value'])) {
                 $names[] = $shortName['value'];
             }
         }
+
         return $names;
     }
 
-    public function getRecommendedNameEvidences(): array 
+    public function getRecommendedNameEvidences(): array
     {
-        return $this->recommendedName['fullName'] && $this->recommendedName['fullName']['evidences'] ? 
-            $this->recommendedName['fullName']['evidences'] : null;
+        return $this->recommendedName['fullName']['evidences'] ?? [];
     }
 
     public function getAlternativeNames(): array
     {
         $names = [];
-        foreach($this->alternativeNames as $alternativeName) {
-            if($alternativeName['fullName'] && $alternativeName['fullName']['value']) {
+        foreach ($this->alternativeNames as $alternativeName) {
+            if (! empty($alternativeName['fullName']['value'])) {
                 $names[] = $alternativeName['fullName']['value'];
             }
         }
+
         return $names;
     }
 }

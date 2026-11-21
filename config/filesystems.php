@@ -64,20 +64,6 @@ return [
         //     'throw' => false,
         // ],
 
-        // Legacy COSMO worker server - holds the old optimization/COSMO output
-        // files referenced by app/Console/Commands/UpdatePredictions.php.
-        'cosmo_runner' => [
-            'driver' => 'sftp',
-            'host' => env('COSMO_RUNNER_HOST'),
-            'port' => env('COSMO_RUNNER_PORT', 22),
-            'username' => env('COSMO_RUNNER_USERNAME'),
-            'password' => env('COSMO_RUNNER_PASSWORD'),
-            'privateKey' => env('COSMO_RUNNER_PRIVATE_KEY'),
-            'passphrase' => env('COSMO_RUNNER_PASSPHRASE'),
-            'root' => env('COSMO_RUNNER_ROOT', '/'),
-            'timeout' => 30,
-        ],
-
     ],
 
     /*

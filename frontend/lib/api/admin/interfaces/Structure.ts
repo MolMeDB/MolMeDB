@@ -47,10 +47,10 @@ export type IIdentifierSource =
   | { type: "identifier"; data: IIdentifier };
 
 export interface ISimilarStructure extends IStructure {
+  // Only for similar (not related) structures.
   similarity: {
     tanimoto: number;
-    cosine: number;
-  };
+  } | null;
   total: {
     interactions_passive: number;
     interactions_active: number;

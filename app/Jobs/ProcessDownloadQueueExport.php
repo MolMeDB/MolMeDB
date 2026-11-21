@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Libraries\Export\ExportFileHeader;
+use App\Libraries\Export\ExportLicenseFiles;
 use App\Libraries\Export\ExportToFile;
 use App\Models\DownloadQueue;
 use App\Models\Filesystem;
@@ -139,6 +140,7 @@ class ProcessDownloadQueueExport implements ShouldQueue
 
             $zip->addFile($disk->path('downloader/'.$folder.'/passive_interactions.csv'), 'passive_interactions.csv');
             $zip->addFile($disk->path('downloader/'.$folder.'/active_interactions.csv'), 'active_interactions.csv');
+            ExportLicenseFiles::addTo($zip, 'passive and active interactions selected in the MolMeDB downloader (passive_interactions.csv, active_interactions.csv; semicolon separated)');
             $zip->close();
 
             $disk->delete('downloader/'.$folder.'/passive_interactions.csv');
@@ -243,13 +245,14 @@ class ProcessDownloadQueueExport implements ShouldQueue
     protected function activeRows($query): Generator
     {
         foreach ($query
-            ->with(['dataset.publications', 'publication', 'protein', 'structure'])
+            ->with(['dataset.publications', 'publication', 'protein', 'structure', 'category'])
             ->lazyById(200, 'id') as $interaction) {
             $secondaryPublication = $interaction->dataset?->publications
                 ?->first(fn (Publication $publication): bool => $publication->id !== $interaction->publication_id);
 
             yield (object) array_merge($this->structureFields($interaction->structure), [
                 'protein' => $interaction->protein?->uniprot_id,
+                'type' => $interaction->category?->title,
                 'temperature' => $interaction->temperature,
                 'ph' => $interaction->ph,
                 'charge' => $interaction->charge,

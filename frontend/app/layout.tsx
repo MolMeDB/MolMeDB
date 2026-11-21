@@ -10,8 +10,11 @@ import FeedbackWidget from "@/components/feedback/FeedbackWidget";
 import { UserSession } from "@/lib/api/admin/interfaces/User";
 import { Cookie } from "@/lib/api/cookies";
 import { Suspense } from "react";
+import { SITE_URL } from "@/lib/publicUrls";
 
 export const metadata: Metadata = {
+  // Canonical URLs and other relative metadata URLs resolve against the public site.
+  metadataBase: new URL(SITE_URL),
   title: "MolMeDB",
   description: "Molecules on Membranes Database",
 };

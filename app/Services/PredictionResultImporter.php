@@ -9,7 +9,7 @@ use JsonSerializable;
 use Modules\PredictionWorkers\Models\Prediction;
 use Modules\PredictionWorkers\Models\PredictionMethod;
 use Modules\PredictionWorkers\Models\PredictionStructure;
-use Modules\Rdkit\Rdkit;
+use RuntimeException;
 
 /**
  * Turns a finished prediction's parsed COSMO result into a real passive
@@ -177,12 +177,27 @@ class PredictionResultImporter
     private function resolveStructure(PredictionStructure $predictionStructure): Structure
     {
         $smiles = trim((string) $predictionStructure->canonical_smiles);
-        $canonical = (new Rdkit)->canonize_smiles($smiles) ?: $smiles;
+        $canonical = app(UploadQueueExternalLookupCache::class)->canonicalSmiles($smiles);
+
+        // Falling back to the prediction's own SMILES would create a second
+        // Structure for a molecule stored under its RDKit form. The
+        // prediction stays at STEP_RESULT_PARSE, so the next run retries it.
+        if ($canonical === null) {
+            throw new RuntimeException("RDKit could not canonicalize [{$smiles}]; the import will be retried.");
+        }
 
         $structure = Structure::withTrashed()->where('canonical_smiles', $canonical)->first()
             ?? Structure::create(['canonical_smiles' => $canonical]);
 
-        if ($predictionStructure->remote_id !== $structure->id) {
+        // remote_id is unique, but two prediction structures whose SMILES
+        // differ can canonicalize to the same Structure; the link stays with
+        // the first one rather than failing this import on every run.
+        $linkedElsewhere = PredictionStructure::query()
+            ->where('remote_id', $structure->id)
+            ->whereKeyNot($predictionStructure->getKey())
+            ->exists();
+
+        if ($predictionStructure->remote_id !== $structure->id && ! $linkedElsewhere) {
             $predictionStructure->forceFill(['remote_id' => $structure->id])->save();
         }
 

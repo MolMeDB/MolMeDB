@@ -8,6 +8,14 @@ use Modules\PredictionWorkers\Models\Prediction;
 
 class StorePredictionDatasetRequest extends FormRequest
 {
+    public const MAX_MOLECULES = 100;
+
+    public const MIN_TEMPERATURE = 20;
+
+    public const MAX_TEMPERATURE = 45;
+
+    public const MAX_DESCRIPTION_LENGTH = 512;
+
     public function authorize(): bool
     {
         return true;
@@ -23,10 +31,10 @@ class StorePredictionDatasetRequest extends FormRequest
             'membranes.*' => ['integer', 'distinct'],
             'methods' => ['required', 'array', 'size:1'],
             'methods.*' => ['string', 'distinct', Rule::in(array_keys(Prediction::enabledPredictionMethodOptions()))],
-            'smiles' => ['required', 'array', 'min:1', 'max:100'],
+            'smiles' => ['required', 'array', 'min:1', 'max:'.self::MAX_MOLECULES],
             'smiles.*' => ['string', 'max:4000'],
-            'temperature' => ['required', 'numeric', 'between:20,45'],
-            'description' => ['required', 'string', 'max:512'],
+            'temperature' => ['required', 'numeric', 'between:'.self::MIN_TEMPERATURE.','.self::MAX_TEMPERATURE],
+            'description' => ['required', 'string', 'max:'.self::MAX_DESCRIPTION_LENGTH],
         ];
     }
 

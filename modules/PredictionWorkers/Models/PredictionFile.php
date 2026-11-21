@@ -19,6 +19,8 @@ class PredictionFile extends PredictionBaseModel
 
     const TYPE_RESULT_ARCHIVE = 3;
 
+    const TYPE_COSMO_CONFORMERS = 4;
+
     protected static function booted()
     {
         static::saving(function ($file) {

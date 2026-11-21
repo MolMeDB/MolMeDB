@@ -54,6 +54,10 @@ class ImportFinishedPredictionResults implements ShouldBeUnique, ShouldQueue
             ->with(['predictionResult', 'predictionStructure', 'predictionMembrane'])
             ->where('step', Prediction::STEP_RESULT_PARSE)
             ->where('state', Prediction::STATE_FINISHED)
+            // A failed import logs on the prediction (touching updated_at) and
+            // stays at this step, so ordering by the last touch rotates failing
+            // predictions to the back instead of letting them fill every batch.
+            ->orderBy('updated_at')
             ->orderBy('id')
             ->limit($batchSize)
             ->get();

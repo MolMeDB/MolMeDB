@@ -56,7 +56,8 @@ class UpdateExportFiles extends Command
         if (! $filesystem || ! $filesystem->isInitialized()) {
             $this->error('Filesystem is not properly configured. Ending...');
 
-            return;
+            // A failure, so cron:daily reports it instead of a silent success.
+            return Command::FAILURE;
         }
 
         $lastUpdateValue = Config::get('command:exports:update-all:last-run');
@@ -373,6 +374,7 @@ class UpdateExportFiles extends Command
                 ->leftJoin('publications as pub', 'pub.id', '=', 'interactions_active.publication_id')
                 ->join('structures as s', 's.id', '=', 'interactions_active.structure_id')
                 ->join('proteins as p', 'p.id', '=', 'interactions_active.protein_id')
+                ->leftJoin('categories as interaction_type', 'interaction_type.id', '=', 'interactions_active.category_id')
                 ->leftJoinSub(self::prepareIdentifierQuery(Identifier::TYPE_NAME), 'name', function ($join) {
                     $join->on('s.id', '=', 'name.structure_id');
                 })
@@ -393,6 +395,7 @@ class UpdateExportFiles extends Command
                 ->select(
                     'interactions_active.*',
                     'p.uniprot_id as protein',
+                    'interaction_type.title as type',
                     's.identifier', 's.canonical_smiles', 's.logp', 's.molecular_weight as mw', 's.inchikey',
                     'pdb.value as pdb',
                     'pubchem.value as pubchem',

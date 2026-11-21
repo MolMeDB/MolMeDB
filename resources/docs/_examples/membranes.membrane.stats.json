@@ -1,0 +1,18 @@
+{
+  "data": {
+    "membrane": {
+      "id": 15,
+      "name": "POPC",
+      "abbreviation": "POPC",
+      "description": "<h2 dir=\"ltr\">POPC bilayer</h2>\r\n\r\n<p dir=\"ltr\" style=\"text-align:justify\">POPC (16:0-18:1(9Z) PC or 1-palmitoyl-2-oleoy…",
+      "url": "https://molmedb.upol.cz/api/v1/membranes/15",
+      "landing_page": "https://molmedb.upol.cz/membrane/15",
+      "created_at": "2018-06-30T15:50:17.000000Z",
+      "updated_at": "2019-04-04T09:15:58.000000Z"
+    },
+    "total": {
+      "interactions_passive": 75,
+      "structures": 38
+    }
+  }
+}

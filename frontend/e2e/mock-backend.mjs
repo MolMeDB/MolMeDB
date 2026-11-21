@@ -1,45 +1,185 @@
-// Minimal stand-in for the Laravel backend, used only by Playwright e2e
-// tests. The frontend's data-fetching for pages like /login runs as Next.js
-// Server Actions/Server Components (server-to-server fetches), which
-// Playwright cannot intercept at the browser level — so instead of mocking
-// requests, NEXT_BACKEND_URL is pointed at this real (but fake) HTTP server.
+// Stand-in for the Laravel backend, used only by Playwright e2e tests. The
+// frontend fetches its data in Next.js Server Components and Server Actions
+// (server-to-server), which Playwright cannot intercept in the browser — so
+// NEXT_BACKEND_URL is pointed at this real (but fake) HTTP server instead.
 //
-// Add a route here only when a new e2e test needs the frontend to reach the
-// "backend" for something specific — keep it minimal.
+// The answers are not written by hand: they are built from the API contract
+// fixtures the backend tests record (tests/Fixtures/api-contracts), which
+// hold the shape of every endpoint's response. A backend change that alters
+// a response therefore reaches these tests with the re-recorded fixture.
+// SAMPLE_VALUES below gives the few fields a page needs a real value for.
 import { createServer } from "node:http";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const port = process.env.MOCK_BACKEND_PORT
   ? Number(process.env.MOCK_BACKEND_PORT)
   : 4001;
 
+const contractsDir = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../tests/Fixtures/api-contracts",
+);
+
+// Values by field name; anything else gets a generic value of its type.
+const SAMPLE_VALUES = {
+  identifier: "MM00001",
+  canonical_smiles: "CC(=O)Oc1ccccc1C(=O)O",
+  smiles: "CC(=O)Oc1ccccc1C(=O)O",
+  inchikey: "BSYNRYMUTXBXSQ-UHFFFAOYSA-N",
+  uniprot_id: "P08183",
+  doi: "10.1000/e2e.sample",
+  hash: "e2e0000000000000000000000000hash",
+  mime: "text/csv",
+  link: "/browse/membranes",
+  slug: "sample-article",
+  content: "<p>Sample content</p>",
+  description: "<p>Sample description</p>",
+};
+
+function sampleString(key) {
+  if (key in SAMPLE_VALUES) {
+    return SAMPLE_VALUES[key];
+  }
+  if (/(_at|date|timestamp)$/i.test(key)) {
+    return "2026-01-15T10:00:00.000000Z";
+  }
+  if (/url$/i.test(key) || ["first", "last", "next", "prev"].includes(key)) {
+    return "/assets/layout/logo/molmedb-white.svg";
+  }
+  if (/email/i.test(key)) {
+    return "e2e@example.test";
+  }
+
+  return `Sample ${key.replaceAll("_", " ")}`;
+}
+
+// A contract leaf names the JSON type of the value ("string", "number",
+// "null|string", ...); the first type that is not null is used.
+function materialize(shape, key = "value") {
+  if (Array.isArray(shape)) {
+    return shape.map((item) => materialize(item, key));
+  }
+  if (shape !== null && typeof shape === "object") {
+    return Object.fromEntries(
+      Object.entries(shape).map(([name, value]) => [
+        name,
+        materialize(value, name),
+      ]),
+    );
+  }
+  if (typeof shape !== "string") {
+    return shape;
+  }
+
+  const type = shape.split("|").find((part) => part !== "null") ?? "null";
+
+  switch (type) {
+    case "number":
+      return 1;
+    case "boolean":
+      return true;
+    case "null":
+      return null;
+    default:
+      return sampleString(key);
+  }
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// "GET api/membrane/{membrane}" -> a matcher; routes with fewer parameters
+// win, so /api/membrane/categories is not read as /api/membrane/{membrane}.
+const routes = readdirSync(contractsDir)
+  .filter((file) => file.endsWith(".json"))
+  .map((file) => JSON.parse(readFileSync(join(contractsDir, file), "utf8")))
+  .filter(
+    (contract) =>
+      typeof contract.route === "string" &&
+      contract.content_type === "application/json",
+  )
+  .map((contract) => {
+    const [method, path] = contract.route.split(" ");
+    const pattern = path
+      .split("/")
+      .map((segment) =>
+        segment.startsWith("{") ? "[^/]+" : escapeRegExp(segment),
+      )
+      .join("/");
+
+    return {
+      method,
+      parameters: (path.match(/\{/g) ?? []).length,
+      regex: new RegExp(`^/${pattern}/?$`),
+      status: contract.status,
+      body: JSON.stringify(materialize(contract.body)),
+    };
+  })
+  .sort((a, b) => a.parameters - b.parameters);
+
+function send(res, status, body) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(typeof body === "string" ? body : JSON.stringify(body));
+}
+
 const server = createServer((req, res) => {
-  const chunks = [];
-  req.on("data", (chunk) => chunks.push(chunk));
+  req.on("data", () => {});
   req.on("end", () => {
+    const { pathname } = new URL(req.url, "http://mock-backend");
+
     // Playwright's webServer readiness check does a GET on this URL and
     // expects a non-error status before starting tests.
-    if (req.method === "GET" && req.url === "/") {
+    if (req.method === "GET" && pathname === "/") {
       res.writeHead(200, { "Content-Type": "text/plain" });
       res.end("mock-backend ok");
+
       return;
     }
 
-    if (req.method === "POST" && req.url === "/login") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          data: { id: 1, name: "E2E Test User", email: "e2e@example.test" },
-          meta: {},
-        })
-      );
+    if (req.method === "POST" && pathname === "/login") {
+      send(res, 200, {
+        data: { id: 1, name: "E2E Test User", email: "e2e@example.test" },
+        meta: {},
+      });
+
       return;
     }
 
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: `Not mocked: ${req.method} ${req.url}` }));
+    // The smoke tests visit the pages as an anonymous visitor.
+    if (req.method === "GET" && pathname === "/api/user") {
+      send(res, 401, { message: "Unauthenticated." });
+
+      return;
+    }
+
+    // An identifier the backend does not know.
+    if (pathname.split("/").includes("missing")) {
+      send(res, 404, { message: "Not found." });
+
+      return;
+    }
+
+    const route = routes.find(
+      (candidate) =>
+        candidate.method === req.method && candidate.regex.test(pathname),
+    );
+
+    if (route) {
+      send(res, route.status, route.body);
+
+      return;
+    }
+
+    console.error(`[mock-backend] not mocked: ${req.method} ${req.url}`);
+    send(res, 404, { message: `Not mocked: ${req.method} ${req.url}` });
   });
 });
 
 server.listen(port, () => {
-  console.log(`[mock-backend] listening on http://127.0.0.1:${port}`);
+  console.log(
+    `[mock-backend] listening on http://127.0.0.1:${port} with ${routes.length} contract routes`,
+  );
 });

@@ -40,9 +40,17 @@ class ProcessFrontendUploads extends Command
                 ProcessUploadQueueRecord::dispatch($record->id);
                 $queuedCount++;
             } catch (Throwable $throwable) {
+                // The uploader reads this log; a queue connection error names
+                // hosts and ports, so the detail goes to the log channel only.
+                Log::channel('upload')->error('Dispatching the upload processing job failed.', [
+                    'record_id' => $record->id,
+                    'exception' => $throwable::class,
+                    'message' => $throwable->getMessage(),
+                ]);
+
                 $record->transitionToState(
                     UploadQueue::STATE_ERROR,
-                    'Failed to enqueue record: '.$throwable->getMessage(),
+                    'The upload could not be queued for processing. The administrators have been notified.',
                     UploadQueueLogContextEnums::ERROR,
                     UploadQueueLogTypeEnums::STATE_CHANGE,
                     null,

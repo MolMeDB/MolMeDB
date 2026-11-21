@@ -1,0 +1,24 @@
+{
+    "route": "POST api/lab/upload/{record}/configure/validate",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "config": {
+                "attributes": [
+                    "string"
+                ],
+                "detailed_validation_at": "null",
+                "detailed_validation_ok": "boolean",
+                "quick_validation_at": "string",
+                "quick_validation_ok": "boolean",
+                "separator": "string",
+                "skip_first_row": "number",
+                "validated_at": "string",
+                "validated_rows": "number"
+            },
+            "warnings": []
+        },
+        "message": "string"
+    }
+}

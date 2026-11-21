@@ -1,0 +1,19 @@
+{
+  "data": {
+    "structure": {
+      "identifier": "MM00040",
+      "name": "Caffeine",
+      "canonical_smiles": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+      "molecular_weight": 194.19,
+      "logp": -1.03,
+      "url": "https://molmedb.upol.cz/api/v1/structures/MM00040",
+      "landing_page": "https://molmedb.upol.cz/mol/MM00040",
+      "created_at": "2018-02-11T11:13:46.000000Z",
+      "updated_at": "2025-11-22T08:15:57.000000Z"
+    },
+    "total": {
+      "interactions_passive": 144,
+      "interactions_active": 3
+    }
+  }
+}

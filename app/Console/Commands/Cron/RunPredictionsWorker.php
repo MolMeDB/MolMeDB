@@ -27,6 +27,8 @@ class RunPredictionsWorker extends Command
 
     private int $downloadErrors = 0;
 
+    private const MAX_VALIDATION_FAILURES_PER_RUN = 3;
+
     private int $submissionErrors = 0;
 
     private int $rejectedStructures = 0;
@@ -295,6 +297,13 @@ class RunPredictionsWorker extends Command
                     $prediction->storeRemotePredictionResult($client);
                     $downloaded++;
 
+                    // A failed COSMO download does not invalidate the stored result, the prediction is only left out of the COSMO export.
+                    try {
+                        $prediction->storeRemotePredictionCosmoFiles($client);
+                    } catch (Throwable $throwable) {
+                        $this->warn("Prediction {$prediction->getKey()} COSMO files download failed: {$throwable->getMessage()}");
+                    }
+
                     // Track which datasets may now be complete
                     foreach ($prediction->predictionDatasets()->pluck('datasets.id') as $datasetId) {
                         $finishedDatasetIds[(int) $datasetId] = true;
@@ -356,6 +365,7 @@ class RunPredictionsWorker extends Command
         $attempts = 0;
         $submitted = 0;
         $resumed = 0;
+        $validationFailures = 0;
 
         foreach ($candidates as $prediction) {
             if ($attempts >= $limit || $submitted + $resumed >= $availableSlots) {
@@ -390,7 +400,29 @@ class RunPredictionsWorker extends Command
                 continue;
             }
 
-            if (! $structureValidator->passes($prediction)) {
+            // After a few failed validations in one run the service is taken
+            // as down: the remaining new predictions wait for the next run,
+            // paused ones (which need no validation) are still resumed.
+            if ($validationFailures >= self::MAX_VALIDATION_FAILURES_PER_RUN) {
+                continue;
+            }
+
+            try {
+                $structureIsValid = $structureValidator->passes($prediction);
+            } catch (Throwable $throwable) {
+                // The validation service failed for this structure (an outage,
+                // or an error on this one SMILES): leave the prediction
+                // prepared for the next run and go on with the others, instead
+                // of aborting the whole run, which would also stop result
+                // downloads and status checks.
+                $validationFailures++;
+                $this->submissionErrors++;
+                $this->warn("Prediction {$prediction->getKey()} was not submitted, structure validation failed: {$throwable->getMessage()}");
+
+                continue;
+            }
+
+            if (! $structureIsValid) {
                 $this->rejectedStructures++;
                 $this->warn("Prediction {$prediction->getKey()} was not submitted: {$prediction->remote_error_message}");
 

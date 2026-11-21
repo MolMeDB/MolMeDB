@@ -1,0 +1,6 @@
+{
+    "route": "GET api/v1/publications/{publication}/interactions/active/export",
+    "status": 200,
+    "content_type": "application/zip",
+    "body": null
+}

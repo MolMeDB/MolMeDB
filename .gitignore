@@ -40,3 +40,5 @@ frontend/tsconfig.tsbuildinfo
 **/*.DS_Store
 **/*.composer
 **__pycache__
+/coverage
+.env.deploy*

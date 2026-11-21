@@ -43,3 +43,53 @@ test('the active interactions of a structure on its page carry the type of the i
         ->assertOk()
         ->assertJsonPath('data.0.interaction_type', 'Inhibitor');
 });
+
+/**
+ * @return array<int, array<int, string|null>>
+ */
+function structureExportRows(string $csv): array
+{
+    return array_map(
+        fn (string $line): array => str_getcsv($line, ';', '"', '\\'),
+        array_values(array_filter(explode("\n", $csv))),
+    );
+}
+
+test('the CSV export of passive interactions of a structure lists its values and both references', function () {
+    $structure = createApiStructure(['identifier' => 'MM00041']);
+    $primary = createApiPublication(['doi' => '10.1000/primary']);
+    $secondary = createApiPublication(['doi' => '10.1000/secondary']);
+    $dataset = createApiDataset(['publication' => $secondary]);
+    createApiPassiveInteraction([
+        'structure' => $structure,
+        'dataset' => $dataset,
+        'publication' => $primary,
+        'logperm' => -5.25,
+        'note' => '=HYPERLINK("https://evil.example")',
+    ]);
+    createApiPassiveInteraction();
+
+    $response = $this->get("/export/structure/{$structure->id}/passiveInteractions")->assertOk();
+    $rows = structureExportRows($response->streamedContent());
+    $column = fn (string $name): int|false => array_search($name, $rows[0], true);
+
+    expect($rows)->toHaveCount(2)
+        ->and($response->headers->get('Content-Disposition'))->toContain('MM00041_passiveInteractions.csv')
+        ->and($rows[1][$column('Identifier')] ?? null)->toBe('MM00041')
+        ->and($response->streamedContent())->toContain('-5.25')
+        ->and($response->streamedContent())->toContain('10.1000/primary')
+        ->and($response->streamedContent())->toContain('10.1000/secondary')
+        ->and($response->streamedContent())->toContain("'=HYPERLINK");
+});
+
+test('a structure without interactions exports only the header', function () {
+    $structure = createApiStructure();
+
+    $rows = structureExportRows($this->get("/export/structure/{$structure->id}/passiveInteractions")->assertOk()->streamedContent());
+
+    expect($rows)->toHaveCount(1);
+});
+
+test('exporting an unknown structure answers not found', function () {
+    $this->get('/export/structure/999999/passiveInteractions')->assertNotFound();
+});

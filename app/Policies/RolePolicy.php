@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\PermissionEnums;
+use App\Enums\RoleEnums;
 use App\Models\Role;
 use App\Models\User;
 
@@ -53,6 +54,11 @@ class RolePolicy
      */
     public function delete(User $user, Role $role): bool
     {
+        // The default roles (Administrator among them) are relied on by name.
+        if (RoleEnums::tryFrom($role->name) !== null) {
+            return false;
+        }
+
         return $user->hasPermissionTo(PermissionEnums::ROLES_DELETE);
     }
 

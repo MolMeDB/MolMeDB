@@ -28,10 +28,25 @@ class UploadQueueLogCasts implements CastsAttributes
                     isset($object->user_id) ? (string) $object->user_id : null,
                     $object->type ?? UploadQueueLogTypeEnums::STATE_CHANGE->value,
                     isset($object->state) ? intval($object->state) : null,
-                    isset($object->payload) && is_array($object->payload) ? $object->payload : null,
+                    $this->payloadArray($object->payload ?? null),
                 );
             }, $logs ?? [])
         ));
+    }
+
+    /**
+     * The logs are decoded as objects, so a stored payload comes back as one
+     * and is turned into the array it was saved as.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function payloadArray(mixed $payload): ?array
+    {
+        if (is_object($payload)) {
+            $payload = json_decode((string) json_encode($payload), true);
+        }
+
+        return is_array($payload) ? $payload : null;
     }
 
     public function set($model, string $key, $value, array $attributes): string

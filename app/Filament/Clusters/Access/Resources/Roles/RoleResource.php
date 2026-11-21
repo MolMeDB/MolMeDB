@@ -2,30 +2,33 @@
 
 namespace App\Filament\Clusters\Access\Resources\Roles;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\EditAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use App\Filament\Clusters\Access\Resources\Roles\RelationManagers\PermissionsRelationManager;
-use App\Filament\Clusters\Access\Resources\Roles\RelationManagers\UsersRelationManager;
-use App\Filament\Clusters\Access\Resources\Roles\Pages\ListRoles;
-use App\Filament\Clusters\Access\Resources\Roles\Pages\CreateRole;
-use App\Filament\Clusters\Access\Resources\Roles\Pages\EditRole;
 use App\Enums\IconEnums;
 use App\Enums\RoleEnums;
+use App\Filament\Clusters\Access\Resources\Roles\Pages\CreateRole;
+use App\Filament\Clusters\Access\Resources\Roles\Pages\EditRole;
+use App\Filament\Clusters\Access\Resources\Roles\Pages\ListRoles;
+use App\Filament\Clusters\Access\Resources\Roles\RelationManagers\PermissionsRelationManager;
+use App\Filament\Clusters\Access\Resources\Roles\RelationManagers\UsersRelationManager;
 use App\Filament\Clusters\Settings\SettingsCluster;
 use App\Models\Role;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class RoleResource extends Resource
 {
     protected static ?string $model = Role::class;
-    protected static string | \BackedEnum | null $navigationIcon = IconEnums::ROLES->value;
+
+    protected static string|\BackedEnum|null $navigationIcon = IconEnums::ROLES->value;
+
     protected static ?string $cluster = SettingsCluster::class;
-    protected static string | \UnitEnum | null $navigationGroup = 'Access rules';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Access rules';
 
     public static function form(Schema $schema): Schema
     {
@@ -35,7 +38,7 @@ class RoleResource extends Resource
             ->components([
                 TextInput::make('name')
                     ->disabled(fn ($record) => $record && in_array($record->name, $default_enums))
-                    ->hint(fn($record) => $record && in_array($record->name, $default_enums) ? 'Default roles cannot be changed.' : '')
+                    ->hint(fn ($record) => $record && in_array($record->name, $default_enums) ? 'Default roles cannot be changed.' : '')
                     ->required(),
             ]);
     }
@@ -57,7 +60,7 @@ class RoleResource extends Resource
                 TextColumn::make('permissions_count')
                     ->counts('permissions')
                     ->badge()
-                    ->tooltip(fn ($record) => $record->permissions->pluck('description')->implode(" - "))
+                    ->tooltip(fn ($record) => $record->permissions->pluck('description')->implode(' - '))
                     ->label('# Permissions')
                     ->alignCenter()
                     ->color('primary')
@@ -81,7 +84,8 @@ class RoleResource extends Resource
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // Checks each role, so the default roles are skipped.
+                    DeleteBulkAction::make()->authorizeIndividualRecords('delete'),
                 ]),
             ]);
     }
@@ -90,7 +94,7 @@ class RoleResource extends Resource
     {
         return [
             PermissionsRelationManager::class,
-            UsersRelationManager::class
+            UsersRelationManager::class,
         ];
     }
 

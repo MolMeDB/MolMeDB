@@ -29,9 +29,7 @@ Inside Docker, the frontend calls the backend at `http://web` (`NEXT_BACKEND_URL
 
 ## 1. The stack
 
-```bash
-cp docker-compose-production.yaml docker-compose.yaml
-```
+The images are built on GitHub and pulled from its container registry (`ghcr.io/molmedb/molmedb-*`); nothing is built on the server. The server needs this repository only for `docker-compose-production.yaml`, the deploy script, the two `.env` files and the `./storage` directory.
 
 Set these values in `.env`:
 
@@ -50,12 +48,40 @@ MOLMEDB_ADMIN_HOST=admin.molmedb.upol.cz
 MOLMEDB_RDF_HOST=rdf.molmedb.upol.cz
 ```
 
-The frontend reads `frontend/.env`. Then start the stack:
+`.env` is not part of any image; Compose passes its values to the application containers when it creates them, so after editing it run `docker compose -f docker-compose-production.yaml up -d` to recreate them. The databases get only their own settings from it. The frontend reads `frontend/.env` when it runs; its `NEXT_PUBLIC_*` values are compiled into the image by the release (see below), so changing them on the server has no effect.
+
+If the packages are private, log the server in to the registry once, with a GitHub token that has only the `read:packages` scope:
 
 ```bash
-docker compose build
-docker compose up -d
+docker login ghcr.io -u <github user>      # sudo docker login … if docker runs through sudo: root keeps its own login
 ```
+
+Then deploy a release:
+
+```bash
+docker/production/deploy.sh 1.4.0          # DOCKER="sudo docker" docker/production/deploy.sh 1.4.0
+```
+
+The script checks that all images of the version exist, pulls them, writes `MOLMEDB_VERSION` into `.env` and restarts the application. The application container runs the migrations when it starts; the script watches it for a minute and, if it does not stay up, shows its log and points `.env` back to the previous version. To go back, run it with the previous version (it prints it); migrations are not rolled back. Only the images of the release are pulled: the databases, Redis and CDK Depict keep the image they run until you pull them yourself (`docker compose -f docker-compose-production.yaml pull <service>`). `docker compose -f docker-compose-production.yaml …` works as usual afterwards, since Compose reads the version from `.env`.
+
+The databases use `ghcr.io/molmedb/molmedb-db:15` (PostgreSQL with Bingo). It is published from `main` when `database/extensions/bingo` changes, not with every release, so a deployment does not restart them. Set `MOLMEDB_DB_VERSION` in `.env` to pin a build.
+
+### Moving from images built on the server
+
+Once, before the first deployment from the registry:
+- delete the old `docker-compose.yaml` copy in the checkout (it still has `build:` sections, and a plain `docker compose up -d` would use it);
+- keep `./storage` and the Docker volumes: the containers are recreated from the new images under the same names, and the data stays in the volumes (`docker volume ls` shows `…_molmedb-db` and `…_molmedb-predictions-db`). Run the commands from the same directory as before, so the project name and with it the volume names stay the same;
+- drop the local edits of `.dockerignore` and `docker/common/php-fpm/Dockerfile` (`git checkout -- .dockerignore docker/common/php-fpm/Dockerfile`); they are no longer used.
+
+### Publishing a release
+
+1. Merge `develop` into `main` through a pull request.
+2. Tag the merge commit on `main` and push the tag: `git tag v1.4.0 && git push origin v1.4.0`.
+3. The Release workflow runs the backend and frontend test suites and publishes the backend, nginx, frontend and RDKit images as `1.4.0` (and `1.4`). A tag that is not on `main`, or a failing test, publishes nothing.
+
+The frontend's public build-time values come from the repository variables on GitHub (Settings → Secrets and variables → Actions → Variables): `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` and `NEXT_PUBLIC_VAPID_PUBLIC_KEY`. An unset one is compiled in as empty. `NEXT_PUBLIC_API_LOGGING` is not passed, so API logging in the browser is off in released images.
+
+Restrict who may create, move or delete `v*` tags with a tag ruleset on GitHub (Settings → Rules → Rulesets): a pushed tag is what publishes the images.
 
 Only nginx is meant to be reached from outside, and only through Apache. Its port `8443` and the debugging ports of the databases, RDKit and CDK Depict are published on `127.0.0.1` only.
 

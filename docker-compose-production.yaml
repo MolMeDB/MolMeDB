@@ -1,14 +1,19 @@
+# Production stack. Every MolMeDB image is built by the Release workflow
+# (.github/workflows/release.yml) and pulled from the GitHub container
+# registry; nothing is built on the server. MOLMEDB_VERSION in .env selects
+# the release — docker/production/deploy.sh sets it, pulls and restarts.
+# Setup and deployment: docker/production/nginx/README.md.
+
+x-backend: &backend
+  image: ghcr.io/molmedb/molmedb-backend:${MOLMEDB_VERSION:?Set MOLMEDB_VERSION in .env (docker/production/deploy.sh does)}
+
 services:
   # The only entry point: routes every MolMeDB domain to the frontend,
   # Laravel, CDK Depict or the RDF dereferencing, see
   # docker/production/nginx/README.md. Plain HTTP, reachable only from the
   # host, where the TLS proxy (Apache) passes all domains to it.
   web:
-    image: molmedb-nginx
-    build:
-      context: .
-      dockerfile: ./docker/production/nginx/Dockerfile
-      target: production
+    image: ghcr.io/molmedb/molmedb-nginx:${MOLMEDB_VERSION:?Set MOLMEDB_VERSION in .env (docker/production/deploy.sh does)}
     container_name: molmedb-nginx
     restart: unless-stopped
     volumes:
@@ -34,7 +39,7 @@ services:
   # successfully before starting, regardless of whether it goes through
   # entrypoint.sh (the worker services bypass it via entrypoint: []).
   storage-init:
-    image: molmedb-backend
+    <<: *backend
     container_name: molmedb-storage-init
     user: "root"
     entrypoint: []
@@ -53,12 +58,8 @@ services:
     restart: "no"
 
   app:
-    image: molmedb-backend
+    <<: *backend
     user: "www-data"
-    build:
-      context: .
-      dockerfile: ./docker/common/php-fpm/Dockerfile
-      target: production
     restart: unless-stopped
     container_name: molmedb-backend
     volumes:
@@ -85,7 +86,7 @@ services:
         condition: service_completed_successfully
 
   app-scheduler-worker:
-    image: molmedb-backend 
+    <<: *backend
     container_name: molmedb-scheduler-worker
     tty: true
     env_file:
@@ -122,7 +123,7 @@ services:
     restart: unless-stopped 
 
   app-queue-worker:
-    image: molmedb-backend
+    <<: *backend
     container_name: molmedb-queue-worker
     tty: true
     env_file:
@@ -157,7 +158,7 @@ services:
     restart: unless-stopped
 
   app-predictions-queue-worker:
-    image: molmedb-backend
+    <<: *backend
     container_name: molmedb-predictions-queue-worker
     tty: true
     env_file:
@@ -192,13 +193,11 @@ services:
     restart: unless-stopped
 
   # Served by the web service on the site domain, not published itself.
+  # NEXT_PUBLIC_* values are compiled into the image by the Release workflow
+  # (repository variables on GitHub); frontend/.env holds the runtime ones.
   frontend:
+    image: ghcr.io/molmedb/molmedb-frontend:${MOLMEDB_VERSION:?Set MOLMEDB_VERSION in .env (docker/production/deploy.sh does)}
     container_name: molmedb-frontend
-    build:
-      context: ./frontend
-      dockerfile: ../docker/production/frontend/Dockerfile
-      args:
-        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
     restart: unless-stopped
     networks:
       - molmedb-network
@@ -212,11 +211,15 @@ services:
         condition: service_started
 
   db:
-    build: ./database/extensions/bingo
+    # PostgreSQL with the Bingo cartridge. It has a version of its own and
+    # gets only its own settings (no env_file: MOLMEDB_VERSION in .env would
+    # otherwise change its configuration), so a release of the application
+    # does not restart the databases.
+    image: ghcr.io/molmedb/molmedb-db:${MOLMEDB_DB_VERSION:-15}
+    restart: unless-stopped
     platform: linux/amd64
     privileged: true
     container_name: molmedb-dev-db
-    env_file: ./.env
     environment:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
@@ -235,11 +238,15 @@ services:
       - molmedb-network
 
   db-predictions:
-    build: ./database/extensions/bingo
+    # PostgreSQL with the Bingo cartridge. It has a version of its own and
+    # gets only its own settings (no env_file: MOLMEDB_VERSION in .env would
+    # otherwise change its configuration), so a release of the application
+    # does not restart the databases.
+    image: ghcr.io/molmedb/molmedb-db:${MOLMEDB_DB_VERSION:-15}
+    restart: unless-stopped
     platform: linux/amd64
     privileged: true
     container_name: molmedb-predictions-db
-    env_file: ./.env
     environment:
       POSTGRES_DB: ${DB_PREDICTIONS_DATABASE}
       POSTGRES_USER: ${DB_PREDICTIONS_USERNAME}
@@ -276,9 +283,7 @@ services:
       start_period: 10s
 
   rdkit:
-    build:
-      context: ./modules/Rdkit/src
-      dockerfile: ./../../../docker/common/rdkit/Dockerfile
+    image: ghcr.io/molmedb/molmedb-rdkit:${MOLMEDB_VERSION:?Set MOLMEDB_VERSION in .env (docker/production/deploy.sh does)}
     container_name: rdkit
     ports:
       - "127.0.0.1:9696:80"

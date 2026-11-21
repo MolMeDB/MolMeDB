@@ -46,10 +46,19 @@ class PublicationReferenceResolver
             return self::$existsCache[$cacheKey] = true;
         }
 
-        return self::$existsCache[$cacheKey] = $this->externalLookupCache->publicationReferenceExists(
+        $exists = $this->externalLookupCache->publicationReferenceExists(
             $reference,
             fn (): bool => $this->fetchPublicationRecord($reference) instanceof Record,
         );
+
+        // Only found references stay in this process-wide cache: a miss may be
+        // an outage of EuropePMC or CrossRef, and a queue worker keeps this
+        // class for its whole life, so a cached miss would last until restart.
+        if ($exists) {
+            self::$existsCache[$cacheKey] = true;
+        }
+
+        return $exists;
     }
 
     public function resolveOrCreatePublication(string $reference): Publication

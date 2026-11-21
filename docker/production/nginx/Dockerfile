@@ -20,6 +20,11 @@ RUN mkdir -p /var/cache/nginx/fastcgi && chown -R nginx:nginx /var/cache/nginx
 # dependencies remain in the backend image.
 COPY public /var/www/public
 
+# Uploaded public files live in the storage volume (mounted at
+# /var/www/storage); the link to them is not in the repository.
+RUN rm -rf /var/www/public/storage \
+    && ln -s ../storage/app/public /var/www/public/storage
+
 # Set the working directory to the public folder
 WORKDIR /var/www/public
 

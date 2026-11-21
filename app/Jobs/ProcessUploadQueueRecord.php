@@ -22,6 +22,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use PDOException;
 use RuntimeException;
 use Throwable;
 
@@ -199,10 +200,16 @@ class ProcessUploadQueueRecord implements ShouldBeUnique, ShouldQueue
         } catch (Throwable $throwable) {
             $record->refresh();
 
+            Log::channel('upload')->error('Upload processing failed.', [
+                'record_id' => $this->recordId,
+                'exception' => $throwable::class,
+                'message' => $throwable->getMessage(),
+            ]);
+
             if ((int) $record->state !== UploadQueue::STATE_ERROR) {
                 $record->transitionToState(
                     UploadQueue::STATE_ERROR,
-                    $throwable->getMessage(),
+                    $this->uploaderFailureMessage($throwable),
                     UploadQueueLogContextEnums::ERROR,
                     UploadQueueLogTypeEnums::UPLOAD_RUN,
                     null,
@@ -219,6 +226,25 @@ class ProcessUploadQueueRecord implements ShouldBeUnique, ShouldQueue
         }
     }
 
+    /**
+     * The message stored in the upload's log, which its uploader reads (also
+     * through a tracking link and in the status e-mail). A database error
+     * carries the SQL and its values, so it is replaced; the administrators
+     * still get the original in their digest and in the upload log channel.
+     */
+    private function uploaderFailureMessage(?Throwable $throwable): string
+    {
+        if ($throwable === null || trim($throwable->getMessage()) === '') {
+            return 'Upload processing failed.';
+        }
+
+        if ($throwable instanceof PDOException) {
+            return 'Upload processing failed because of a database error. The administrators have been notified.';
+        }
+
+        return $throwable->getMessage();
+    }
+
     public function failed(?Throwable $throwable): void
     {
         $record = UploadQueue::query()->find($this->recordId);
@@ -226,7 +252,7 @@ class ProcessUploadQueueRecord implements ShouldBeUnique, ShouldQueue
         if ($record && in_array((int) $record->state, [UploadQueue::STATE_PENDING, UploadQueue::STATE_RUNNING], true)) {
             $record->transitionToState(
                 UploadQueue::STATE_ERROR,
-                $throwable?->getMessage() ?? 'Upload processing failed.',
+                $this->uploaderFailureMessage($throwable),
                 UploadQueueLogContextEnums::ERROR,
                 UploadQueueLogTypeEnums::UPLOAD_RUN,
                 null,

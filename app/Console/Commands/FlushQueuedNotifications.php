@@ -101,7 +101,9 @@ class FlushQueuedNotifications extends Command
         $rows = $items
             ->map(function (QueuedNotification $item): string {
                 $data = $item->data ?? [];
-                $label = $data['dataset_name'] ?? $data['comment'] ?? $data['label'] ?? ('#'.$item->notifiable_id);
+                // notifiable_id is the recipient, so it cannot label the event.
+                $label = collect([$data['dataset_name'] ?? null, $data['comment'] ?? null, $data['label'] ?? null])->first(fn (mixed $value): bool => filled($value))
+                    ?? (isset($data['record_id']) ? '#'.$data['record_id'] : (NotificationType::tryFrom((string) $item->event)?->label() ?? (string) $item->event));
                 $url = $data['manage_url'] ?? $data['dataset_url'] ?? $data['admin_url'] ?? null;
 
                 $content = $url ? sprintf('<a href="%s">%s</a>', e($url), e($label)) : e($label);

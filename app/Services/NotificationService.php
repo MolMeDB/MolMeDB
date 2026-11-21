@@ -223,14 +223,25 @@ class NotificationService
     private function buildNotification(NotificationTemplate $template, array $data, ?string $preferencesUrl = null, bool $emailAllowed = true, bool $pushAllowed = false, ?string $replyToEmail = null, ?string $replyToName = null): ?TemplatedNotification
     {
         try {
+            $batchedCount = $this->batchedCount($data);
+
             return new TemplatedNotification(
                 notificationTitle: $this->renderString($template->notification_title, $data),
-                notificationBody: $this->renderString($template->notification_body, $data),
+                notificationBody: $this->withBatchedBodySuffix(
+                    $this->renderString($template->notification_body, $data),
+                    $template->notification_body,
+                    $batchedCount,
+                ),
                 emailSubject: filled($template->email_subject)
                     ? $this->renderString($template->email_subject, $data)
                     : null,
                 emailMessage: filled($template->email_message)
-                    ? $this->renderString($template->email_message, $data)
+                    ? $this->withBatchedItemsList(
+                        $this->renderString($template->email_message, $data),
+                        $template->email_message,
+                        $batchedCount,
+                        $data,
+                    )
                     : null,
                 data: $data,
                 preferencesUrl: $preferencesUrl,
@@ -248,6 +259,48 @@ class NotificationService
 
             return null;
         }
+    }
+
+    /**
+     * Number of events a FlushQueuedNotifications summary stands for (it adds
+     * count and the Htmlable items list), 0 for an ordinary notification.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function batchedCount(array $data): int
+    {
+        return ($data['items'] ?? null) instanceof Htmlable ? (int) ($data['count'] ?? 0) : 0;
+    }
+
+    /**
+     * A template written for a single event names only the last of several
+     * batched ones, so the list of all of them is appended to the e-mail.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function withBatchedItemsList(string $rendered, string $template, int $batchedCount, array $data): string
+    {
+        if ($batchedCount < 2 || $this->templateUses($template, 'items')) {
+            return $rendered;
+        }
+
+        return $rendered
+            .'<p>This message summarizes '.$batchedCount.' notifications:</p>'
+            .$data['items']->toHtml();
+    }
+
+    private function withBatchedBodySuffix(string $rendered, string $template, int $batchedCount): string
+    {
+        if ($batchedCount < 2 || $this->templateUses($template, 'items') || $this->templateUses($template, 'count')) {
+            return $rendered;
+        }
+
+        return $rendered.' (+'.($batchedCount - 1).' more)';
+    }
+
+    private function templateUses(string $template, string $variable): bool
+    {
+        return preg_match('/{{\s*'.preg_quote($variable, '/').'\s*}}/', $template) === 1;
     }
 
     /**

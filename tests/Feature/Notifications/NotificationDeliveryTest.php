@@ -16,6 +16,7 @@ use App\Services\NotificationBatcher;
 use App\Services\NotificationService;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -207,4 +208,79 @@ test('batched notification types are collected and flushed as one after their wi
         ->where('group_key', NotificationBatcher::groupKey(NotificationType::PREDICTION_JOB_FINISHED))
         ->whereNull('notified_at')
         ->count())->toBe(0);
+});
+
+/**
+ * @param  array<string, mixed>  $data
+ */
+function finishedPredictionData(string $comment): array
+{
+    return [
+        'comment' => $comment,
+        'total' => 3,
+        'done' => 3,
+        'failed' => 0,
+        'membrane' => 'DOPC',
+        'method' => 'COSMOperm',
+        'dataset_url' => 'https://molmedb.test/lab/running-predictions?token='.Str::slug($comment),
+    ];
+}
+
+test('a batch of events for a single-event template lists every event in the e-mail', function () {
+    // The template seeded by the migration names one dataset ({{ comment }}).
+    $user = User::factory()->create();
+    $service = app(NotificationService::class);
+    $service->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, finishedPredictionData('Ethanol run'));
+    $service->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, finishedPredictionData('Caffeine run'));
+
+    $this->travel(11)->minutes();
+    $this->artisan(FlushQueuedNotifications::class)->assertSuccessful();
+
+    Notification::assertSentTo($user, TemplatedNotification::class, fn (TemplatedNotification $notification): bool => str_contains((string) $notification->emailMessage, 'This message summarizes 2 notifications')
+        && str_contains((string) $notification->emailMessage, 'Ethanol run')
+        && str_contains((string) $notification->emailMessage, 'Caffeine run')
+        && str_ends_with($notification->notificationBody, '(+1 more)'));
+});
+
+test('a single batched event is sent without a summary list', function () {
+    $user = User::factory()->create();
+    app(NotificationService::class)->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, finishedPredictionData('Ethanol run'));
+
+    $this->travel(11)->minutes();
+    $this->artisan(FlushQueuedNotifications::class)->assertSuccessful();
+
+    Notification::assertSentTo($user, TemplatedNotification::class, fn (TemplatedNotification $notification): bool => ! str_contains((string) $notification->emailMessage, 'summarizes')
+        && ! str_contains($notification->notificationBody, 'more)'));
+});
+
+test('a template that lists the items itself gets no second list', function () {
+    useNotificationTemplate(NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, [
+        'notification_title' => '{{ count }} jobs finished',
+        'notification_body' => '{{ count }} jobs finished.',
+        'email_message' => '<div>{{ items }}</div>',
+    ]);
+    $user = User::factory()->create();
+    $service = app(NotificationService::class);
+    $service->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, finishedPredictionData('Ethanol run'));
+    $service->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, finishedPredictionData('Caffeine run'));
+
+    $this->travel(11)->minutes();
+    $this->artisan(FlushQueuedNotifications::class)->assertSuccessful();
+
+    Notification::assertSentTo($user, TemplatedNotification::class, fn (TemplatedNotification $notification): bool => ! str_contains((string) $notification->emailMessage, 'summarizes')
+        && $notification->notificationBody === '2 jobs finished.');
+});
+
+test('batched items without a name are labelled by their record, not by the recipient', function () {
+    $user = User::factory()->create();
+    $items = collect([
+        new QueuedNotification(['event' => 'upload.status_update', 'notifiable_id' => $user->id, 'data' => ['record_id' => 42]]),
+        new QueuedNotification(['event' => 'export.failed', 'notifiable_id' => $user->id, 'data' => []]),
+    ]);
+
+    $html = FlushQueuedNotifications::formatItemsList($items)->toHtml();
+
+    expect($html)->toContain('#42')
+        ->and($html)->toContain('Export failed')
+        ->and($html)->not->toContain('#'.$user->id.'<');
 });

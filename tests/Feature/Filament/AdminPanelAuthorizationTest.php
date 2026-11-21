@@ -219,19 +219,28 @@ test('settings permissions do not open the prediction resources', function (stri
     'prediction stats' => ListPredictionStats::class,
 ]);
 
-test('the permission migration creates missing settings and prediction permissions for administrators', function () {
+test('the migration keeps every role that may enter the panel its access to the newly guarded resources', function () {
     Permission::query()->where('name', PermissionEnums::SETTINGS_VIEW->value)->delete();
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-    $admin = User::factory()->create();
-    $admin->syncRoles([RoleEnums::ADMIN->value]);
+    Role::findByName(RoleEnums::ADMIN->value)->givePermissionTo(PermissionEnums::ADMIN_PANEL->value);
+    Role::findByName(RoleEnums::MANAGER->value)->givePermissionTo([PermissionEnums::ADMIN_PANEL->value, PermissionEnums::DATASET_EDIT->value]);
+    Role::findByName(RoleEnums::EDITOR->value)->givePermissionTo(PermissionEnums::ADMIN_PANEL->value);
 
-    $migration = require database_path('migrations/2026_11_21_061026_ensure_settings_and_prediction_permissions_exist.php');
+    $migration = require database_path('migrations/2026_11_21_061026_keep_panel_roles_access_to_newly_guarded_resources.php');
     $migration->up();
 
-    expect($admin->refresh()->hasPermissionTo(PermissionEnums::SETTINGS_VIEW))->toBeTrue()
-        ->and($admin->hasPermissionTo(PermissionEnums::SETTINGS_EDIT))->toBeTrue()
-        ->and($admin->hasPermissionTo(PermissionEnums::PREDICTION_DATASET_MANAGE_ALL))->toBeTrue();
+    $granted = [
+        PermissionEnums::SETTINGS_VIEW->value,
+        PermissionEnums::SETTINGS_EDIT->value,
+        PermissionEnums::PREDICTION_DATASET_MANAGE_ALL->value,
+    ];
+
+    foreach ([RoleEnums::ADMIN, RoleEnums::MANAGER, RoleEnums::EDITOR] as $panelRole) {
+        expect(Role::findByName($panelRole->value)->refresh()->hasAllPermissions($granted))->toBeTrue();
+    }
+
+    expect(Role::findByName(RoleEnums::VIEWER->value)->refresh()->hasAnyPermission($granted))->toBeFalse();
 });
 
 test('dashboard widgets follow the policies of the records they show', function () {

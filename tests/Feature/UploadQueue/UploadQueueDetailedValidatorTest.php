@@ -172,6 +172,20 @@ test('without a manual configuration the separator and columns are read from the
     'tab' => "\t",
 ]);
 
+test('an accuracy column written differently is never read as its value column', function (string $accuracyHeader, string $expected) {
+    $record = createUnconfiguredUpload("SMILES,Gpen,{$accuracyHeader},temperature\nCCO,-12.3,0.2,25\n");
+
+    $result = validateUpload($record);
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['config'][UploadQueueConfig::ATTRIBUTES])->toBe(['smiles', 'g_pen', $expected, 'temperature']);
+})->with([
+    'no space' => ['+/-Gpen', 'g_pen_acc'],
+    'plus-minus sign' => ['± Gpen', 'g_pen_acc'],
+    'marker after the name' => ['Gpen +/-', 'ignore'],
+    'the value column again' => ['GPEN ', 'ignore'],
+]);
+
 test('a header without the SMILES column fails', function () {
     $record = createUnconfiguredUpload("Name,Gpen\nethanol,-1\n");
 

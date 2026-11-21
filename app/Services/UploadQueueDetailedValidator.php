@@ -433,8 +433,9 @@ class UploadQueueDetailedValidator
     private function buildColumnMapping(UploadQueue $record, array $headers): array
     {
         $options = $this->validatorClasses($record);
-        // Normalizing drops the "+/-" of accuracy labels ("+/- Gpen" becomes "gpen"),
-        // so an exact name wins and the first column claims a normalized name.
+        // An exact name wins over a normalized one, and an attribute goes to
+        // the first column naming it: the same attribute twice would import
+        // the wrong value.
         $exactLookup = [];
         $normalizedLookup = [];
         foreach ($options as $className) {
@@ -450,19 +451,38 @@ class UploadQueueDetailedValidator
             }
         }
 
-        return array_map(function ($header) use ($exactLookup, $normalizedLookup) {
-            $header = (string) $header;
+        $mapping = [];
+        $taken = [];
 
-            return $exactLookup[mb_strtolower(trim($header))]
+        foreach ($headers as $header) {
+            $header = (string) $header;
+            $key = $exactLookup[mb_strtolower(trim($header))]
                 ?? $normalizedLookup[$this->normalizeKey($header)]
-                ?? self::IGNORE_COLUMN;
-        }, $headers);
+                ?? null;
+
+            if ($key === null || in_array($key, $taken, true)) {
+                $mapping[] = self::IGNORE_COLUMN;
+
+                continue;
+            }
+
+            $mapping[] = $key;
+            $taken[] = $key;
+        }
+
+        return $mapping;
     }
 
+    /**
+     * Letters and digits only, with the accuracy marker ("+/-" or "±") kept
+     * as "pm", so "+/-Gpen" and "± Gpen" still differ from "Gpen".
+     */
     private function normalizeKey(string $value): string
     {
+        $value = str_replace(['+/-', '±'], 'pm', trim($value));
+
         return mb_strtolower(
-            preg_replace('/[^a-z0-9]+/i', '', trim($value)) ?? ''
+            preg_replace('/[^a-z0-9]+/i', '', $value) ?? ''
         );
     }
 

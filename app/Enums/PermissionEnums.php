@@ -55,6 +55,7 @@ enum PermissionEnums: string
     case UPLOAD_QUEUE_MANAGE_ALL = 'upload_queue.manage.all';
 
     case PREDICTION_DATASET_MANAGE_ALL = 'prediction_dataset.manage.all';
+    case PREDICTIONS_MANAGE = 'predictions.manage';
 
     case USERS_VIEW = 'users.view';
     case USERS_EDIT = 'users.edit';
@@ -84,6 +85,7 @@ enum PermissionEnums: string
             self::UPLOAD_QUEUE_MANAGE_OWN => 'Can upload and manage own upload queue records',
             self::UPLOAD_QUEUE_MANAGE_ALL => 'Can manage any upload queue records',
             self::PREDICTION_DATASET_MANAGE_ALL => 'Can view and manage any prediction dataset',
+            self::PREDICTIONS_MANAGE => 'Can manage predictions, prediction methods, structures and stats in the admin panel',
             self::MEMBRANE_METHOD_VIEW => 'Can view membranes and methods',
             self::MEMBRANE_METHOD_EDIT => 'Can manage membranes and methods',
             self::MEMBRANE_METHOD_EDIT_OWN => 'Can manage own membranes and methods',

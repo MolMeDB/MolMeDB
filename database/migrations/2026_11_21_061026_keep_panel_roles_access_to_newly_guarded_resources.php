@@ -13,6 +13,10 @@ use Spatie\Permission\PermissionRegistrar;
  * so nobody loses access they had, and administrators can now take it away
  * per role. Roles created later get them only when assigned explicitly.
  *
+ * predictions.manage is new rather than prediction_dataset.manage.all, which
+ * also opens every user's prediction datasets and the prediction admin
+ * notifications, and so must not be handed out with it.
+ *
  * The permissions are also created when missing: a missing permission row
  * would make every admin page fail (Spatie throws PermissionDoesNotExist).
  */
@@ -24,7 +28,7 @@ return new class extends Migration
     private array $permissions = [
         PermissionEnums::SETTINGS_VIEW,
         PermissionEnums::SETTINGS_EDIT,
-        PermissionEnums::PREDICTION_DATASET_MANAGE_ALL,
+        PermissionEnums::PREDICTIONS_MANAGE,
     ];
 
     public function up(): void

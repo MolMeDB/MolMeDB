@@ -24,6 +24,7 @@ use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
+use Modules\PredictionWorkers\Models\PredictionDataset;
 use Spatie\Permission\PermissionRegistrar;
 
 /*
@@ -197,8 +198,8 @@ test('nobody can change or delete activity log entries', function () {
         ->and(Gate::allows('create', $activity::class))->toBeFalse();
 });
 
-test('prediction managers can list every prediction resource', function (string $listPage) {
-    $this->actingAs(createPanelUser([PermissionEnums::PREDICTION_DATASET_MANAGE_ALL]));
+test('predictions.manage holders can list every prediction resource', function (string $listPage) {
+    $this->actingAs(createPanelUser([PermissionEnums::PREDICTIONS_MANAGE]));
 
     Livewire::test($listPage)->assertOk();
 })->with([
@@ -226,21 +227,31 @@ test('the migration keeps every role that may enter the panel its access to the 
     Role::findByName(RoleEnums::ADMIN->value)->givePermissionTo(PermissionEnums::ADMIN_PANEL->value);
     Role::findByName(RoleEnums::MANAGER->value)->givePermissionTo([PermissionEnums::ADMIN_PANEL->value, PermissionEnums::DATASET_EDIT->value]);
     Role::findByName(RoleEnums::EDITOR->value)->givePermissionTo(PermissionEnums::ADMIN_PANEL->value);
+    Role::findByName(RoleEnums::VIEWER->value)->givePermissionTo(PermissionEnums::DATASET_VIEW->value);
 
     $migration = require database_path('migrations/2026_11_21_061026_keep_panel_roles_access_to_newly_guarded_resources.php');
+    $migration->up();
     $migration->up();
 
     $granted = [
         PermissionEnums::SETTINGS_VIEW->value,
         PermissionEnums::SETTINGS_EDIT->value,
-        PermissionEnums::PREDICTION_DATASET_MANAGE_ALL->value,
+        PermissionEnums::PREDICTIONS_MANAGE->value,
     ];
 
     foreach ([RoleEnums::ADMIN, RoleEnums::MANAGER, RoleEnums::EDITOR] as $panelRole) {
         expect(Role::findByName($panelRole->value)->refresh()->hasAllPermissions($granted))->toBeTrue();
     }
 
-    expect(Role::findByName(RoleEnums::VIEWER->value)->refresh()->hasAnyPermission($granted))->toBeFalse();
+    expect(Role::findByName(RoleEnums::VIEWER->value)->refresh()->hasAnyPermission($granted))->toBeFalse()
+        ->and(Role::findByName(RoleEnums::MANAGER->value)->hasPermissionTo(PermissionEnums::PREDICTION_DATASET_MANAGE_ALL->value))->toBeFalse()
+        ->and(Role::findByName(RoleEnums::MANAGER->value)->permissions()->count())->toBe(5);
+});
+
+test('predictions.manage does not open the prediction datasets of other users', function () {
+    $this->actingAs(createPanelUser([PermissionEnums::PREDICTIONS_MANAGE]));
+
+    expect(Gate::allows('viewAny', PredictionDataset::class))->toBeFalse();
 });
 
 test('dashboard widgets follow the policies of the records they show', function () {
@@ -252,7 +263,7 @@ test('dashboard widgets follow the policies of the records they show', function 
     $this->actingAs(createPanelUser([PermissionEnums::SETTINGS_VIEW]));
     expect(LatestActivityLogsWidget::canView())->toBeTrue();
 
-    $this->actingAs(createPanelUser([PermissionEnums::PREDICTION_DATASET_MANAGE_ALL]));
+    $this->actingAs(createPanelUser([PermissionEnums::PREDICTIONS_MANAGE]));
     expect(PredictionLiveStatsWidget::canView())->toBeTrue();
 });
 

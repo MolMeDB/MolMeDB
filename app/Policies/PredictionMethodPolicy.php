@@ -5,17 +5,17 @@ namespace App\Policies;
 use App\Enums\PermissionEnums;
 
 /**
- * Prediction methods configure the remote calculations, managed by prediction managers only.
+ * Prediction methods configure the remote calculations, managed by holders of predictions.manage only.
  */
 class PredictionMethodPolicy extends PermissionGatedPolicy
 {
     protected function viewPermission(): PermissionEnums
     {
-        return PermissionEnums::PREDICTION_DATASET_MANAGE_ALL;
+        return PermissionEnums::PREDICTIONS_MANAGE;
     }
 
     protected function managePermission(): PermissionEnums
     {
-        return PermissionEnums::PREDICTION_DATASET_MANAGE_ALL;
+        return PermissionEnums::PREDICTIONS_MANAGE;
     }
 }

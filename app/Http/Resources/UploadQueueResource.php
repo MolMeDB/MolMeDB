@@ -9,6 +9,42 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class UploadQueueResource extends JsonResource
 {
     /**
+     * The parts of a log's payload the uploader may see. A payload is an
+     * internal record (database ids, sample rows, the address a notification
+     * went to), and these responses also go to anyone holding a tracking
+     * link, so a key is published only when it is listed here.
+     */
+    private const PUBLIC_LOG_PAYLOAD_KEYS = [
+        'dataset_type',
+        'dataset_name',
+        'publication_pmid',
+        'comment',
+        'file_name',
+        'file_size',
+        'file_mime',
+        'file_deleted',
+        'validated_rows',
+        'processed_rows',
+        'prepared_rows',
+        'created_rows',
+        'skipped_rows',
+        'next_line',
+        'retry_delay_seconds',
+        'retry_at',
+        'service',
+        'irreversible_notice',
+        'admin_review_approved',
+        'reason',
+    ];
+
+    /**
+     * Lists of validation messages, published up to this many entries each.
+     */
+    private const PUBLIC_LOG_PAYLOAD_LISTS = ['errors', 'warnings'];
+
+    private const PUBLIC_LOG_PAYLOAD_LIST_LIMIT = 100;
+
+    /**
      * Transform the resource into an array.
      *
      * @return array<string, mixed>
@@ -41,13 +77,44 @@ class UploadQueueResource extends JsonResource
                 'state_label' => $log->state !== null
                     ? (UploadQueue::$ui_enum_states[$log->state] ?? UploadQueue::enumState($log->state))
                     : null,
-                'payload' => $log->payload,
+                'payload' => $this->publicLogPayload($log->payload),
                 'timestamp' => $log->timestamp,
                 'user_id' => $log->user_id,
             ])->values(),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $payload
+     * @return array<string, mixed>|null
+     */
+    private function publicLogPayload(?array $payload): ?array
+    {
+        if ($payload === null) {
+            return null;
+        }
+
+        $public = [];
+
+        foreach (self::PUBLIC_LOG_PAYLOAD_KEYS as $key) {
+            if (array_key_exists($key, $payload) && (is_scalar($payload[$key]) || $payload[$key] === null)) {
+                $public[$key] = $payload[$key];
+            }
+        }
+
+        foreach (self::PUBLIC_LOG_PAYLOAD_LISTS as $key) {
+            if (is_array($payload[$key] ?? null)) {
+                $public[$key] = array_slice(
+                    array_values(array_filter($payload[$key], is_string(...))),
+                    0,
+                    self::PUBLIC_LOG_PAYLOAD_LIST_LIMIT,
+                );
+            }
+        }
+
+        return $public === [] ? null : $public;
     }
 
     /**

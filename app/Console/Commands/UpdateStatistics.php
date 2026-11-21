@@ -69,11 +69,12 @@ class UpdateStatistics extends Command
         $minDate = Date::parse(Structure::min('created_at'))->addMonth()->startOfMonth();
         $maxDate = now()->startOfMonth();
 
-        $totalMonths = $minDate->diffInMonths($maxDate) + 1;
-        $step = floor($totalMonths
-                      / 22); // Maximum number of bars
+        $totalMonths = (int) $minDate->diffInMonths($maxDate) + 1;
+        // Aim for about 22 bars, but at least one month per step, so a history shorter than 22 months still works.
+        $step = max(1, intdiv($totalMonths, 22));
 
-        $steps = range(0, $totalMonths, $step);
+        // Months from the first one up to the current month, never a future one.
+        $steps = $totalMonths > 0 ? range(0, $totalMonths - 1, $step) : [];
         $data = [];
 
         foreach ($steps as $i) {
@@ -109,8 +110,8 @@ class UpdateStatistics extends Command
         $data = [];
         foreach ($databases as $type => $name) {
             $count = Identifier::where('type', $type)
-                ->select('structure_id')
-                ->distinct()->count();
+                ->distinct()
+                ->count('structure_id');
             $data[] = BarChart::makeItem(
                 $name,
                 $count
@@ -164,12 +165,14 @@ class UpdateStatistics extends Command
         // Update publication by year stats
         $this->warn('... 5) Updating publication by year stats');
         $minYear = Publication::min('year');
-        $minYear = $minYear - ($minYear % 5);
         $maxYear = date('Y');
 
         $data = [];
 
-        foreach (range($minYear, $maxYear, 5) as $year) {
+        // Without any publication year there is nothing to chart.
+        $years = $minYear === null ? [] : range($minYear - ($minYear % 5), $maxYear, 5);
+
+        foreach ($years as $year) {
             $this->info('... ## Processing year: '.$year);
             $data[] = LineChart::makeItem(
                 "$year - ".$year + 4,
@@ -212,7 +215,7 @@ class UpdateStatistics extends Command
         }
 
         usort($data, function ($a, $b) {
-            return $a->value1 < $b->value1;
+            return $b->value1 <=> $a->value1;
         });
 
         $data = array_filter($data, function ($item) {

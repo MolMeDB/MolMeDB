@@ -149,7 +149,7 @@ class LegacyStructureLinksPreprocessor
 
     protected function generateAvailableRootIdentifier(int $ignoreStructureId): string
     {
-        $maxFromStructures = (int) Structure::query()
+        $maxFromStructures = (int) Structure::withTrashed()
             ->where('identifier', 'like', Identifiers::PREFIX.'%')
             ->selectRaw("MAX((substring(split_part(identifier, '.', 1) from '[0-9]+$'))::int) as max_number")
             ->value('max_number');
@@ -180,7 +180,7 @@ class LegacyStructureLinksPreprocessor
 
     protected function identifierExistsAnywhere(string $identifier, ?int $ignoreStructureId = null): bool
     {
-        $usedByStructure = Structure::query()
+        $usedByStructure = Structure::withTrashed()
             ->where('identifier', $identifier)
             ->when(
                 $ignoreStructureId,

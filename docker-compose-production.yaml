@@ -64,8 +64,6 @@ services:
     container_name: molmedb-backend
     volumes:
       - ./storage:/var/www/storage
-      # Not part of the image; Laravel reads it as a file as well.
-      - ./.env:/var/www/.env:ro
     env_file:
       - .env
     environment:
@@ -105,8 +103,6 @@ services:
     working_dir: /var/www
     volumes:
       - ./storage:/var/www/storage
-      # Not part of the image; Laravel reads it as a file as well.
-      - ./.env:/var/www/.env:ro
     networks:
       - molmedb-network
     depends_on:
@@ -144,8 +140,6 @@ services:
     working_dir: /var/www
     volumes:
       - ./storage:/var/www/storage
-      # Not part of the image; Laravel reads it as a file as well.
-      - ./.env:/var/www/.env:ro
     networks:
       - molmedb-network
     depends_on:
@@ -181,8 +175,6 @@ services:
     working_dir: /var/www
     volumes:
       - ./storage:/var/www/storage
-      # Not part of the image; Laravel reads it as a file as well.
-      - ./.env:/var/www/.env:ro
     networks:
       - molmedb-network
     depends_on:
@@ -219,14 +211,15 @@ services:
         condition: service_started
 
   db:
-    # PostgreSQL with the Bingo cartridge. It has a version of its own, so a
-    # release of the application does not restart the databases.
+    # PostgreSQL with the Bingo cartridge. It has a version of its own and
+    # gets only its own settings (no env_file: MOLMEDB_VERSION in .env would
+    # otherwise change its configuration), so a release of the application
+    # does not restart the databases.
     image: ghcr.io/molmedb/molmedb-db:${MOLMEDB_DB_VERSION:-15}
     restart: unless-stopped
     platform: linux/amd64
     privileged: true
     container_name: molmedb-dev-db
-    env_file: ./.env
     environment:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
@@ -245,14 +238,15 @@ services:
       - molmedb-network
 
   db-predictions:
-    # PostgreSQL with the Bingo cartridge. It has a version of its own, so a
-    # release of the application does not restart the databases.
+    # PostgreSQL with the Bingo cartridge. It has a version of its own and
+    # gets only its own settings (no env_file: MOLMEDB_VERSION in .env would
+    # otherwise change its configuration), so a release of the application
+    # does not restart the databases.
     image: ghcr.io/molmedb/molmedb-db:${MOLMEDB_DB_VERSION:-15}
     restart: unless-stopped
     platform: linux/amd64
     privileged: true
     container_name: molmedb-predictions-db
-    env_file: ./.env
     environment:
       POSTGRES_DB: ${DB_PREDICTIONS_DATABASE}
       POSTGRES_USER: ${DB_PREDICTIONS_USERNAME}

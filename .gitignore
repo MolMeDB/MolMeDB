@@ -41,3 +41,4 @@ frontend/tsconfig.tsbuildinfo
 **/*.composer
 **__pycache__
 /coverage
+.env.deploy*

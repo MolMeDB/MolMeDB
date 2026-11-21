@@ -22,7 +22,9 @@ concurrency:
 
 jobs:
   # Only what was merged into main is released: a tag on any other commit
-  # would publish code that skipped the pull request to main.
+  # would publish code that skipped the pull request to main. This guards
+  # against a mistake, not against intent (the workflow runs from the tagged
+  # commit); who may create v* tags is restricted by a tag ruleset on GitHub.
   on-main:
     name: Tag is on main
     runs-on: ubuntu-latest
@@ -122,5 +124,6 @@ jobs:
             NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
             NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=${{ vars.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID }}
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
-          cache-from: type=gha,scope=release-${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=release-${{ matrix.name }}
+          # A cache written for a tag can only be read by that tag again, so
+          # none is written; the layers come from the build validation on main.
+          cache-from: type=gha,scope=${{ matrix.name }}-image

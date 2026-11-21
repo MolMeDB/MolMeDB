@@ -10,6 +10,8 @@ use App\Models\Structure;
 use App\Models\UploadQueue;
 use App\Models\User;
 use App\Services\LabUploadAdminDigestQueue;
+use App\Services\UploadQueueDetailedValidator;
+use App\Services\UploadQueueDuplicateInteractionChecker;
 use App\ValueObjects\UploadQueueConfig;
 
 /*
@@ -216,4 +218,57 @@ test('reverting an imported upload removes the interactions of its dataset', fun
     expect($record->refresh()->state)->toBe(UploadQueue::STATE_CONFIGURED)
         ->and(InteractionPassive::withTrashed()->where('dataset_id', $record->dataset_id)->count())->toBe(0)
         ->and(Structure::query()->where('canonical_smiles', 'canon:CCO')->exists())->toBeTrue();
+});
+
+test('a validation resumed from a checkpoint keeps the errors found before it', function () {
+    $record = createConfiguredUpload("SMILES,Gpen\nCCN,low\nCCO,-12.3\nCCC,-1\n", ['smiles', 'g_pen']);
+    $validator = app(UploadQueueDetailedValidator::class);
+
+    $first = $validator->validate($record, now()->subSecond());
+
+    expect($first['deferred'] ?? false)->toBeTrue();
+
+    $resumed = $validator->validate($record->refresh());
+
+    expect($resumed['ok'])->toBeFalse()
+        ->and($resumed['errors'])->toContain('Line 2: Column Gpen must be a number.');
+});
+
+test('the same compound in another membrane is not a duplicate', function () {
+    $first = createConfiguredUpload(PASSIVE_UPLOAD_CSV, PASSIVE_UPLOAD_COLUMNS, config: approvedUploadConfig());
+    ProcessUploadQueueRecord::dispatchSync($first->id);
+
+    $publication = $first->dataset->publications()->first();
+    $otherMembrane = createApiDataset(['publication' => $publication, 'method' => $first->dataset->method]);
+    $sameMembraneAndMethod = createApiDataset([
+        'publication' => $publication,
+        'membrane' => $first->dataset->membrane,
+        'method' => $first->dataset->method,
+    ]);
+
+    $intoOtherMembrane = createConfiguredUpload(PASSIVE_UPLOAD_CSV, PASSIVE_UPLOAD_COLUMNS, dataset: $otherMembrane);
+    ProcessUploadQueueRecord::dispatchSync($intoOtherMembrane->id);
+
+    $intoSameMembrane = createConfiguredUpload(PASSIVE_UPLOAD_CSV, PASSIVE_UPLOAD_COLUMNS, dataset: $sameMembraneAndMethod);
+    ProcessUploadQueueRecord::dispatchSync($intoSameMembrane->id);
+
+    expect($intoOtherMembrane->refresh()->state)->toBe(UploadQueue::STATE_REVIEW_REQUIRED)
+        ->and($intoSameMembrane->refresh()->state)->toBe(UploadQueue::STATE_ERROR)
+        ->and(uploadLogMessages($intoSameMembrane))->toContain('There is nothing to import.');
+});
+
+test('a row whose publication is not in the database yet is never a duplicate', function () {
+    $first = createConfiguredUpload(PASSIVE_UPLOAD_CSV, PASSIVE_UPLOAD_COLUMNS, config: approvedUploadConfig());
+    ProcessUploadQueueRecord::dispatchSync($first->id);
+
+    $existing = InteractionPassive::query()->where('dataset_id', $first->dataset_id)->firstOrFail();
+
+    $duplicate = app(UploadQueueDuplicateInteractionChecker::class)->check($first->refresh(), [
+        'structure_id' => $existing->structure_id,
+        'publication_id' => -1,
+        'temperature' => $existing->temperature,
+        'gpen' => 1.0,
+    ], ['gpen']);
+
+    expect($duplicate)->toBeNull();
 });

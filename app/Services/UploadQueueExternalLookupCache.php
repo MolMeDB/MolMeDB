@@ -11,6 +11,13 @@ class UploadQueueExternalLookupCache
 {
     private const TTL_SECONDS = 172800;
 
+    /**
+     * A negative answer may come from an outage of the external service
+     * rather than from invalid input (the clients return null/false for
+     * both), so it is kept only briefly.
+     */
+    private const NEGATIVE_TTL_SECONDS = 600;
+
     public function canonicalSmiles(string $smiles): ?string
     {
         $smiles = trim($smiles);
@@ -66,15 +73,18 @@ class UploadQueueExternalLookupCache
 
     private function remember(string $namespace, string $input, callable $callback, bool $caseSensitive = false): mixed
     {
-        $payload = Cache::memo(config('cache.upload_lookup_store'))->remember(
-            $this->key($namespace, $input, $caseSensitive),
-            self::TTL_SECONDS,
-            fn (): array => ['value' => $callback()],
-        );
+        $store = Cache::memo(config('cache.upload_lookup_store'));
+        $key = $this->key($namespace, $input, $caseSensitive);
+        $payload = $store->get($key);
 
-        return is_array($payload) && array_key_exists('value', $payload)
-            ? $payload['value']
-            : null;
+        if (is_array($payload) && array_key_exists('value', $payload)) {
+            return $payload['value'];
+        }
+
+        $value = $callback();
+        $store->put($key, ['value' => $value], $value ? self::TTL_SECONDS : self::NEGATIVE_TTL_SECONDS);
+
+        return $value;
     }
 
     private function key(string $namespace, string $input, bool $caseSensitive): string

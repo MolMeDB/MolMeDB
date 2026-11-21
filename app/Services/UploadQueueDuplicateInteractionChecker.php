@@ -78,6 +78,12 @@ class UploadQueueDuplicateInteractionChecker
             return null;
         }
 
+        // -1: the row's publication reference is not in the database yet (the
+        // import creates it), so no stored interaction can share it.
+        if (($payload['publication_id'] ?? null) === -1) {
+            return null;
+        }
+
         $cacheKey = $this->candidatesCacheKey($record, $payload);
 
         if (! array_key_exists($cacheKey, $this->candidatesCache)) {
@@ -88,12 +94,19 @@ class UploadQueueDuplicateInteractionChecker
             $this->whereNullable($query, 'structure_id', $payload['structure_id'] ?? null);
             $this->whereNullable($query, 'charge', $payload['charge'] ?? null);
 
-            if (($payload['publication_id'] ?? null) !== -1) {
-                $this->whereNullable($query, 'publication_id', $payload['publication_id'] ?? null);
-            }
+            $this->whereNullable($query, 'publication_id', $payload['publication_id'] ?? null);
 
             if ($record->type === UploadQueue::TYPE_ACTIVE_DATASET) {
                 $this->whereNullable($query, 'protein_id', $payload['protein_id'] ?? null);
+            } else {
+                // A passive measurement belongs to a membrane and a method, which
+                // are kept on its dataset: the same compound in another membrane
+                // or by another method is a different interaction.
+                [$membraneId, $methodId] = $this->membraneAndMethod($record);
+                $query->whereHas('dataset', function (Builder $dataset) use ($membraneId, $methodId): void {
+                    $this->whereNullable($dataset, 'membrane_id', $membraneId);
+                    $this->whereNullable($dataset, 'method_id', $methodId);
+                });
             }
 
             $this->candidatesCache[$cacheKey] = $query->get();
@@ -113,14 +126,28 @@ class UploadQueueDuplicateInteractionChecker
             (string) $record->type,
             $this->keyPart($payload['structure_id'] ?? null),
             $this->keyPart($payload['charge'] ?? null),
-            ($payload['publication_id'] ?? null) !== -1 ? $this->keyPart($payload['publication_id'] ?? null) : 'any',
+            $this->keyPart($payload['publication_id'] ?? null),
         ];
 
         if ($record->type === UploadQueue::TYPE_ACTIVE_DATASET) {
             $parts[] = $this->keyPart($payload['protein_id'] ?? null);
+        } else {
+            [$membraneId, $methodId] = $this->membraneAndMethod($record);
+            $parts[] = $this->keyPart($membraneId);
+            $parts[] = $this->keyPart($methodId);
         }
 
         return implode('|', $parts);
+    }
+
+    /**
+     * @return array{0: int|null, 1: int|null}
+     */
+    private function membraneAndMethod(UploadQueue $record): array
+    {
+        $dataset = $record->dataset()->withTrashed()->first();
+
+        return [$dataset?->membrane_id, $dataset?->method_id];
     }
 
     private function keyPart(mixed $value): string

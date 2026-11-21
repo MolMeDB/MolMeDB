@@ -25,7 +25,10 @@ test('a canonical SMILES is looked up once and then served from the cache', func
     $cache->canonicalSmiles('CCO');
     $cache->canonicalSmiles(' CCO ');
 
-    Http::assertSentCount(2); // the RDKit reachability test and one canonicalization
+    $canonicalizations = collect(Http::recorded())
+        ->filter(fn (array $exchange): bool => str_contains($exchange[0]->url(), '/structure/canonize'));
+
+    expect($canonicalizations)->toHaveCount(1);
 });
 
 test('invalid or empty SMILES have no canonical form', function (string $smiles) {
@@ -42,4 +45,20 @@ test('UniChem identifiers exist only when UniChem returns a compound with an InC
         ->and($cache->unichemIdentifierExists(Unichem::SOURCE_CHEMBL, 'CHEMBL25'))->toBeTrue()
         ->and($cache->unichemIdentifierExists(Unichem::SOURCE_PUBCHEM, '999999999'))->toBeFalse()
         ->and($cache->unichemIdentifierExists(Unichem::SOURCE_PUBCHEM, ' '))->toBeFalse();
+});
+
+test('a failed lookup is retried after ten minutes instead of being cached for two days', function () {
+    fakeUploadChemistryServices(invalidSmiles: ['CCO']);
+    expect(app(UploadQueueExternalLookupCache::class)->canonicalSmiles('CCO'))->toBeNull();
+
+    // Each queue job starts with an empty in-memory layer (Cache::memo() is a
+    // scoped binding), so only the shared store decides from here on.
+    fakeUploadChemistryServices();
+    $this->travel(5)->minutes();
+    app()->forgetScopedInstances();
+    expect(app(UploadQueueExternalLookupCache::class)->canonicalSmiles('CCO'))->toBeNull();
+
+    $this->travel(6)->minutes();
+    app()->forgetScopedInstances();
+    expect(app(UploadQueueExternalLookupCache::class)->canonicalSmiles('CCO'))->toBe('canon:CCO');
 });

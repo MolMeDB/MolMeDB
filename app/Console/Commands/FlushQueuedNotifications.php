@@ -11,6 +11,7 @@ use App\Services\NotificationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 /**
  * Drains batched NotificationType queues (see NotificationBatcher::queue()):
@@ -21,6 +22,8 @@ use Illuminate\Support\HtmlString;
  */
 class FlushQueuedNotifications extends Command
 {
+    private const LABEL_LIMIT = 120;
+
     protected $signature = 'notifications:flush-queued';
 
     protected $description = 'Sends batched notifications whose window has elapsed, clustering same-type events for the same recipient into one message.';
@@ -105,13 +108,29 @@ class FlushQueuedNotifications extends Command
                 $label = collect([$data['dataset_name'] ?? null, $data['comment'] ?? null, $data['label'] ?? null])->first(fn (mixed $value): bool => filled($value))
                     ?? (isset($data['record_id']) ? '#'.$data['record_id'] : (NotificationType::tryFrom((string) $item->event)?->label() ?? (string) $item->event));
                 $url = $data['manage_url'] ?? $data['dataset_url'] ?? $data['admin_url'] ?? null;
+                $label = self::escapeLabel((string) $label);
 
-                $content = $url ? sprintf('<a href="%s">%s</a>', e($url), e($label)) : e($label);
+                $content = is_string($url) && preg_match('#^https?://#i', $url) === 1
+                    ? sprintf('<a href="%s">%s</a>', e($url), $label)
+                    : $label;
 
                 return "<li>{$content}</li>";
             })
-            ->implode('');
+            ->implode("\n");
 
-        return new HtmlString('<ul style="padding-left:20px;margin:8px 0;">'.$rows.'</ul>');
+        return new HtmlString("<ul style=\"padding-left:20px;margin:8px 0;\">\n".$rows."\n</ul>");
+    }
+
+    /**
+     * Labels come from user input (dataset names, comments) and the e-mail is
+     * rendered as Markdown: without line breaks and with the Markdown
+     * characters as entities a label cannot leave its list row or become a
+     * link or an image.
+     */
+    private static function escapeLabel(string $label): string
+    {
+        $escaped = e(Str::limit(Str::squish($label), self::LABEL_LIMIT));
+
+        return preg_replace_callback('/[\\\\`*_\\[\\]()!]/', fn (array $match): string => '&#'.ord($match[0]).';', $escaped) ?? '';
     }
 }

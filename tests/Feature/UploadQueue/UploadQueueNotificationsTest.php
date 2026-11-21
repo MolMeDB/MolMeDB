@@ -164,22 +164,26 @@ test('the admin digest goes to upload queue managers at most once every two hour
 
     $this->artisan(SendUploadQueueAdminDigest::class)->assertSuccessful();
 
-    // The digest is a batched notification type, so it is queued for each
-    // manager and sent by FlushQueuedNotifications.
-    expect(queuedAdminDigestsFor($manager))->toBe(1)
-        ->and(queuedAdminDigestsFor($bystander))->toBe(0)
+    // The digest is a summary already, so it is sent at once with its content.
+    Notification::assertSentToTimes($manager, TemplatedNotification::class, 1);
+    Notification::assertSentTo($manager, TemplatedNotification::class, fn (TemplatedNotification $notification): bool => filled($notification->emailMessage)
+        && ! str_contains((string) $notification->emailMessage, '{{'));
+    Notification::assertNotSentTo($bystander, TemplatedNotification::class);
+
+    expect(queuedAdminDigestsFor($manager))->toBe(0)
         ->and(QueuedNotification::query()->forGroup(LabUploadAdminDigestQueue::GROUP)->pending()->count())->toBe(0);
 
     app(LabUploadAdminDigestQueue::class)->push(LabUploadAdminDigestQueue::EVENT_PROCESSING_ERROR, $record, 'Import failed.');
     $this->artisan(SendUploadQueueAdminDigest::class)->assertSuccessful();
 
-    expect(queuedAdminDigestsFor($manager))->toBe(1)
-        ->and(QueuedNotification::query()->forGroup(LabUploadAdminDigestQueue::GROUP)->pending()->count())->toBe(1);
+    Notification::assertSentToTimes($manager, TemplatedNotification::class, 1);
+    expect(QueuedNotification::query()->forGroup(LabUploadAdminDigestQueue::GROUP)->pending()->count())->toBe(1);
 
     $this->travel(121)->minutes();
     $this->artisan(SendUploadQueueAdminDigest::class)->assertSuccessful();
 
-    expect(queuedAdminDigestsFor($manager))->toBe(2);
+    Notification::assertSentToTimes($manager, TemplatedNotification::class, 2);
+    expect(queuedAdminDigestsFor($manager))->toBe(0);
 });
 
 function queuedAdminDigestsFor(User $user): int

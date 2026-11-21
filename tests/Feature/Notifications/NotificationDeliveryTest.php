@@ -282,5 +282,67 @@ test('batched items without a name are labelled by their record, not by the reci
 
     expect($html)->toContain('#42')
         ->and($html)->toContain('Export failed')
-        ->and($html)->not->toContain('#'.$user->id.'<');
+        ->and($html)->not->toContain('<li>'.$user->id.'</li>');
+});
+
+test('a template that counts the events itself gets no list in the e-mail', function () {
+    useNotificationTemplate(NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, [
+        'notification_title' => 'Jobs finished',
+        'notification_body' => 'Jobs finished.',
+        'email_message' => '<p>{{ count }} jobs finished.</p>',
+    ]);
+    $user = User::factory()->create();
+    $service = app(NotificationService::class);
+    $service->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, finishedPredictionData('Ethanol run'));
+    $service->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, finishedPredictionData('Caffeine run'));
+
+    $this->travel(11)->minutes();
+    $this->artisan(FlushQueuedNotifications::class)->assertSuccessful();
+
+    Notification::assertSentTo($user, TemplatedNotification::class, fn (TemplatedNotification $notification): bool => (string) $notification->emailMessage === '<p>2 jobs finished.</p>');
+});
+
+test('a batched label cannot inject markup, Markdown or an unsafe link into the e-mail', function () {
+    // A template that does not start with a block tag is parsed as Markdown.
+    useNotificationTemplate(NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, [
+        'notification_title' => 'Job finished',
+        'notification_body' => 'Job finished.',
+        'email_message' => 'Job finished.',
+    ]);
+    $user = User::factory()->create();
+    $service = app(NotificationService::class);
+    $service->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, [
+        ...finishedPredictionData('first'),
+        'comment' => "x\n\n[click me](https://evil.example) ![i](https://evil.example/p.png) <b>bold</b>",
+        'dataset_url' => 'javascript:alert(1)',
+    ]);
+    $service->send($user, NotificationTemplate::KEY_PREDICTION_JOB_FINISHED, [
+        ...finishedPredictionData('second'),
+        'comment' => '[inline](https://evil.example/inline) '.str_repeat('a', 500),
+    ]);
+
+    $this->travel(11)->minutes();
+    $this->artisan(FlushQueuedNotifications::class)->assertSuccessful();
+
+    Notification::assertSentTo($user, TemplatedNotification::class, function (TemplatedNotification $notification) use ($user): bool {
+        $html = (string) $notification->toMail($user)->render();
+
+        expect($html)->toContain('This message summarizes 2 notifications')
+            ->and($html)->toContain('href="https://molmedb.test/lab/running-predictions?token=second"')
+            ->and($html)->not->toContain('evil.example"')
+            ->and($html)->not->toContain('<img src="https://evil.example')
+            ->and($html)->not->toContain('<b>bold</b>')
+            ->and($html)->not->toContain('javascript:')
+            ->and($html)->not->toContain(str_repeat('a', 200));
+
+        return true;
+    });
+});
+
+test('batched items with an empty name fall back to the record number', function () {
+    $items = collect([
+        new QueuedNotification(['event' => 'upload.status_update', 'notifiable_id' => 1, 'data' => ['dataset_name' => '', 'record_id' => 7]]),
+    ]);
+
+    expect(FlushQueuedNotifications::formatItemsList($items)->toHtml())->toContain('<li>#7</li>');
 });

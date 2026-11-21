@@ -280,12 +280,14 @@ class NotificationService
      */
     private function withBatchedItemsList(string $rendered, string $template, int $batchedCount, array $data): string
     {
-        if ($batchedCount < 2 || $this->templateUses($template, 'items')) {
+        if ($batchedCount < 2 || $this->templateUses($template, 'items') || $this->templateUses($template, 'count')) {
             return $rendered;
         }
 
+        // The blank line makes the list an HTML block of its own in the
+        // Markdown mail, whatever the template ends with.
         return $rendered
-            .'<p>This message summarizes '.$batchedCount.' notifications:</p>'
+            ."\n\n<p>This message summarizes ".$batchedCount." notifications:</p>\n"
             .$data['items']->toHtml();
     }
 

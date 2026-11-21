@@ -168,7 +168,10 @@ enum NotificationType: string
             // Scheduled reports are summaries already; batching would merge
             // e.g. Monday's day and week reports into one and lose the first.
             self::PREDICTION_JOB_DAILY_PROGRESS,
-            self::PREDICTION_ADMIN_STATS_REPORT => NotificationDeliveryMode::IMMEDIATE,
+            self::PREDICTION_ADMIN_STATS_REPORT,
+            // Throttled by its own command; its HTML summary would not
+            // survive the JSON payload of the batching queue either.
+            self::UPLOAD_ADMIN_DIGEST => NotificationDeliveryMode::IMMEDIATE,
             default => NotificationDeliveryMode::BATCHED,
         };
     }

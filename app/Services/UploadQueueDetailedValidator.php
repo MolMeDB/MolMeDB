@@ -433,23 +433,29 @@ class UploadQueueDetailedValidator
     private function buildColumnMapping(UploadQueue $record, array $headers): array
     {
         $options = $this->validatorClasses($record);
-        $lookup = [];
+        // Normalizing drops the "+/-" of accuracy labels ("+/- Gpen" becomes "gpen"),
+        // so an exact name wins and the first column claims a normalized name.
+        $exactLookup = [];
+        $normalizedLookup = [];
         foreach ($options as $className) {
             if (! property_exists($className, 'key')) {
                 continue;
             }
 
             $key = $className::$key;
-            $lookup[$this->normalizeKey($key)] = $key;
-            if (property_exists($className, 'label')) {
-                $lookup[$this->normalizeKey($className::$label)] = $key;
+            $names = property_exists($className, 'label') ? [$key, $className::$label] : [$key];
+            foreach ($names as $name) {
+                $exactLookup[mb_strtolower(trim($name))] ??= $key;
+                $normalizedLookup[$this->normalizeKey($name)] ??= $key;
             }
         }
 
-        return array_map(function ($header) use ($lookup) {
-            $normalized = $this->normalizeKey((string) $header);
+        return array_map(function ($header) use ($exactLookup, $normalizedLookup) {
+            $header = (string) $header;
 
-            return $lookup[$normalized] ?? self::IGNORE_COLUMN;
+            return $exactLookup[mb_strtolower(trim($header))]
+                ?? $normalizedLookup[$this->normalizeKey($header)]
+                ?? self::IGNORE_COLUMN;
         }, $headers);
     }
 

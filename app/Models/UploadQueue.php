@@ -316,7 +316,7 @@ class UploadQueue extends Model
      */
     public function deleteUploadedFileAndCancel(?User $user, ?string $guestToken = null): array
     {
-        if (! $this->canDeleteUploadedFile($user, $guestToken)) {
+        if (! $this->isAccessibleBy($user, $guestToken)) {
             throw new AuthorizationException('Only the upload owner can delete this upload.');
         }
 

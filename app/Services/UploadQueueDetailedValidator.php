@@ -252,9 +252,11 @@ class UploadQueueDetailedValidator
         fclose($stream);
 
         if ($processedRows < 1) {
+            // When every row failed, its line errors explain why; the generic
+            // message is only for a file without data rows.
             return [
                 'ok' => false,
-                'errors' => ['File does not contain rows for validation.'],
+                'errors' => $errors !== [] ? $errors : ['File does not contain rows for validation.'],
                 'warnings' => [],
                 'config' => null,
             ];

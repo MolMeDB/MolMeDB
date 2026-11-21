@@ -26,6 +26,20 @@ function fakeUploadChemistryServices(
     array $knownUnichemIds = [],
     bool $unichemReachable = true,
 ): void {
+    // The fake reads its settings from config at request time, so calling this
+    // again within a test changes them (another Http::fake() callback would
+    // never be reached, the first registered one answers).
+    config()->set('testing.upload_chemistry', [
+        'invalid_smiles' => $invalidSmiles,
+        'known_unichem_ids' => $knownUnichemIds,
+        'unichem_reachable' => $unichemReachable,
+    ]);
+
+    if (config('testing.upload_chemistry_faked')) {
+        return;
+    }
+
+    config()->set('testing.upload_chemistry_faked', true);
     config()->set('services.rdkit.url', 'https://rdkit.test');
     config()->set('services.cdk_depict_url', 'https://cdk-depict.test');
     config()->set('services.unichem.base_api_url', 'https://unichem.test/api');
@@ -34,7 +48,12 @@ function fakeUploadChemistryServices(
     resetApiRouteRdkitState();
     resetApiRouteCdkDepictState();
 
-    Http::fake(function (Request $request) use ($invalidSmiles, $knownUnichemIds, $unichemReachable) {
+    Http::fake(function (Request $request) {
+        [
+            'invalid_smiles' => $invalidSmiles,
+            'known_unichem_ids' => $knownUnichemIds,
+            'unichem_reachable' => $unichemReachable,
+        ] = config('testing.upload_chemistry');
         $url = $request->url();
 
         if (str_starts_with($url, 'https://rdkit.test/structure/canonize')) {
@@ -95,6 +114,7 @@ function createConfiguredUpload(
         'owner' => $owner,
         'type' => $type === UploadQueue::TYPE_ACTIVE_DATASET ? Dataset::TYPE_ACTIVE : Dataset::TYPE_PASSIVE,
     ]);
+    $dataset->loadMissing('publications');
 
     return UploadQueue::query()->create([
         'type' => $type,
@@ -107,6 +127,8 @@ function createConfiguredUpload(
             UploadQueueConfig::SKIP_FIRST_ROW => 1,
             UploadQueueConfig::ATTRIBUTES => $columns,
             UploadQueueConfig::QUICK_VALIDATION_OK => true,
+            // LabUploadController stores the publication picked in the form here.
+            'source_publication_id' => $dataset->publications->first()?->id,
             ...$config,
         ],
         ...$attributes,

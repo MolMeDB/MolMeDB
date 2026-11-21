@@ -397,7 +397,19 @@ class RunPredictionsWorker extends Command
                 continue;
             }
 
-            if (! $structureValidator->passes($prediction)) {
+            try {
+                $structureIsValid = $structureValidator->passes($prediction);
+            } catch (Throwable $throwable) {
+                // The validation service is down: leave the prediction
+                // prepared for the next run instead of aborting the whole run,
+                // which would also stop result downloads and status checks.
+                $this->submissionErrors++;
+                $this->warn("Prediction {$prediction->getKey()} was not submitted, structure validation is unavailable: {$throwable->getMessage()}");
+
+                break;
+            }
+
+            if (! $structureIsValid) {
                 $this->rejectedStructures++;
                 $this->warn("Prediction {$prediction->getKey()} was not submitted: {$prediction->remote_error_message}");
 

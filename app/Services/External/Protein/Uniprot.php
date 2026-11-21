@@ -2,6 +2,7 @@
 
 namespace App\Services\External\Protein;
 
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -45,11 +46,16 @@ class Uniprot
             ]),
         ]);
 
-        if (empty($response)) {
+        // Any other 200 body (a proxy or maintenance page) is not an entry.
+        if (empty($response) || ! is_string($response['primaryAccession'] ?? null)) {
             return null;
         }
 
-        return UniprotRecord::fromApiResponse($response);
+        try {
+            return UniprotRecord::fromApiResponse($response);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function makeFieldParam(array $fields): array
@@ -67,7 +73,8 @@ class Uniprot
                 ->withHeaders([
                     'Accept' => 'application/json',
                 ])
-                ->retry(2, 100)
+                // A 4xx answer is final; only an outage is worth a second try.
+                ->retry(2, 100, fn (Throwable $exception): bool => ! $exception instanceof RequestException || $exception->response->serverError(), throw: false)
                 ->get($url, $params);
 
             if ($response->successful()) {

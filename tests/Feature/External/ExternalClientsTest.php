@@ -3,6 +3,7 @@
 use App\Rules\UploadFile\ActiveInteractions\ColumnTarget;
 use App\Services\External\Chemical\Chebi\Chebi;
 use App\Services\External\Chemical\Unichem\Unichem;
+use App\Services\External\Chemical\Unichem\UnichemUnavailableException;
 use App\Services\External\Protein\Uniprot;
 use App\Services\UploadQueueExternalLookupCache;
 use Illuminate\Http\Client\ConnectionException;
@@ -76,8 +77,40 @@ test('UniProt has no record when the service answers with an error or not at all
     'server error' => [fn () => Http::response('Bad gateway', 502)],
     'empty body' => [fn () => Http::response('', 200)],
     'not JSON' => [fn () => Http::response('<html>maintenance</html>', 200)],
+    'JSON that is no entry' => [fn () => Http::response(['error' => 'maintenance'], 200)],
+    'an entry of the wrong shape' => [fn () => Http::response(['primaryAccession' => 'P08183', 'entryType' => ['x']], 200)],
     'no connection' => [fn () => failingConnection()],
 ]);
+
+test('the target column looks up the accession without its version or chain suffix', function (string $value, string $requested) {
+    Http::fake(['https://uniprot.test/*' => Http::response(externalFixture('uniprot-P08183'))]);
+
+    $failures = [];
+    ColumnTarget::make()->validate('target', $value, function (string $message) use (&$failures): void {
+        $failures[] = $message;
+    });
+
+    expect($failures)->toBe([]);
+    Http::assertSent(fn (Request $request): bool => str_starts_with($request->url(), "https://uniprot.test/uniprotkb/{$requested}?"));
+})->with([
+    'plain' => ['P08183', 'P08183'],
+    'version' => ['P08183.3', 'P08183'],
+    'isoform' => ['P08183-2', 'P08183-2'],
+    'chain' => ['P08183#PRO_0000093332', 'P08183'],
+    'isoform with a chain' => ['P08183-2#PRO_0000093332', 'P08183-2'],
+]);
+
+test('the target column does not ask UniProt about a value that is no accession', function () {
+    Http::fake();
+
+    $failures = [];
+    ColumnTarget::make()->validate('target', 'not an accession', function (string $message) use (&$failures): void {
+        $failures[] = $message;
+    });
+
+    expect($failures)->toHaveCount(1);
+    Http::assertNothingSent();
+});
 
 test('a UniProt record with missing parts is read without errors', function () {
     Http::fake(['https://uniprot.test/*' => Http::response([
@@ -125,6 +158,7 @@ test('the target column accepts only complete UniProt accessions', function (str
     'comma instead of a letter' => ['A1,,,1', false],
     'lower case' => ['p08183', false],
     'too short' => ['P0818', false],
+    'trailing line break' => ["P08183\n", false],
 ]);
 
 // ChEBI
@@ -167,6 +201,8 @@ test('ChEBI has no record when the service answers with an error or not at all',
     'server error' => [fn () => Http::response('Service unavailable', 503)],
     'empty body' => [fn () => Http::response('', 200)],
     'a JSON string' => [fn () => Http::response('"maintenance"', 200)],
+    'JSON that is no compound' => [fn () => Http::response(['error' => 'maintenance'], 200)],
+    'a compound of the wrong shape' => [fn () => Http::response(['chebi_accession' => 'CHEBI:1', 'id' => 'abc'], 200)],
     'no connection' => [fn () => failingConnection()],
 ]);
 
@@ -249,11 +285,45 @@ test('UniChem has no compound when the service answers with an error or not at a
 })->with([
     'unknown identifier' => [fn () => Http::response(externalFixture('unichem-not-found'))],
     'bad request' => [fn () => Http::response(['error' => 'bad request'], 400)],
-    'server error' => [fn () => Http::response('Internal error', 500)],
     'empty body' => [fn () => Http::response('', 200)],
     'compounds is not a list' => [fn () => Http::response(['compounds' => 'none'])],
+    'a compound of the wrong shape' => [fn () => Http::response(['compounds' => [['inchi' => ['inchi' => ['x']]]]])],
+]);
+
+test('a UniChem outage is reported instead of being read as an unknown identifier', function (Closure $response) {
+    Http::fake(['https://unichem.test/*' => $response()]);
+
+    expect(fn () => (new Unichem)->getChemicalBySourceId(Unichem::SOURCE_CHEMBL, 'CHEMBL25'))
+        ->toThrow(UnichemUnavailableException::class);
+
+    // The lookup of a validated upload fails with it, so nothing is cached
+    // and the upload is not told that its identifiers do not exist.
+    expect(fn () => app(UploadQueueExternalLookupCache::class)->unichemIdentifierExists(Unichem::SOURCE_CHEMBL, 'CHEMBL25'))
+        ->toThrow(UnichemUnavailableException::class);
+
+    Http::fake(['https://unichem.test/*' => Http::response(externalFixture('unichem-compound-chembl25'))]);
+})->with([
+    'server error' => [fn () => Http::response('Internal error', 500)],
+    'bad gateway' => [fn () => Http::response('', 502)],
+    'rate limited' => [fn () => Http::response('', 429)],
     'no connection' => [fn () => failingConnection()],
 ]);
+
+test('an unknown identifier is asked once', function () {
+    Http::fake(['https://unichem.test/*' => Http::response(['error' => 'bad request'], 400)]);
+
+    (new Unichem)->getChemicalBySourceId(Unichem::SOURCE_CHEMBL, 'CHEMBL25');
+
+    Http::assertSentCount(1);
+});
+
+test('a failing service is asked a second time', function () {
+    Http::fake(['https://uniprot.test/*' => Http::response('', 503)]);
+
+    (new Uniprot)->getById('P08183');
+
+    Http::assertSentCount(2);
+});
 
 test('a UniChem compound without an InChI or sources is read without errors', function () {
     Http::fake(['https://unichem.test/*' => Http::response(['compounds' => [['uci' => 1, 'sources' => [['id' => 1], 'unexpected']]]])]);

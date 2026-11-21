@@ -2,6 +2,8 @@
 
 namespace App\Services\External\Chemical\Unichem;
 
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -39,6 +41,9 @@ class Unichem
         $this->apiUrl = (string) config('services.unichem.base_api_url');
     }
 
+    /**
+     * @throws UnichemUnavailableException when UniChem gives no usable answer
+     */
     public function getChemicalBySourceId(int $source, string $sourceIdentifier): ?UnichemChemical
     {
         $record = $this->makeRequest('compounds', [
@@ -53,7 +58,11 @@ class Unichem
             return null;
         }
 
-        return UnichemChemical::fromRawData($record);
+        try {
+            return UnichemChemical::fromRawData($record);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     public function is_reachable(int $timeout = 5): bool
@@ -84,17 +93,22 @@ class Unichem
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ])
-                ->retry(2, 100)
+                // A 4xx answer is final; only an outage is worth a second try.
+                ->retry(2, 100, fn (Throwable $exception): bool => ! $exception instanceof RequestException || $exception->response->serverError(), throw: false)
                 ->post($url, $params);
 
-            if ($response->successful()) {
-                return $response->json();
-            }
-
-            return null;
-        } catch (Throwable) {
-            // retry() throws once a 4xx/5xx answer is final; an outage is "no answer" here.
-            return null;
+        } catch (ConnectionException $exception) {
+            throw new UnichemUnavailableException('UniChem did not answer.', previous: $exception);
         }
+
+        // "Not found" is an answer; an outage is not, and must not be read
+        // (or cached) as an identifier that does not exist.
+        if ($response->serverError() || $response->status() === 429) {
+            throw new UnichemUnavailableException('UniChem answered with HTTP '.$response->status().'.');
+        }
+
+        $data = $response->successful() ? $response->json() : null;
+
+        return is_array($data) ? $data : null;
     }
 }

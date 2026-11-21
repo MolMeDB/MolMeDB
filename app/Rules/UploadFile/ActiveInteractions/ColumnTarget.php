@@ -17,7 +17,7 @@ class ColumnTarget implements ColumnTypeInterface
     /**
      * UniProtKB accession with the optional version, isoform and chain suffix.
      */
-    const string REGEXP = '/^(?:[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2}|[OPQ][0-9][A-Z0-9]{3}[0-9])(\.\d+)?(-\d+)?(#PRO_\d+)?$/';
+    const string REGEXP = '/^(?:[A-NR-Z][0-9](?:[A-Z][A-Z0-9]{2}[0-9]){1,2}|[OPQ][0-9][A-Z0-9]{3}[0-9])(\.\d+)?(-\d+)?(#PRO_\d+)?$/D';
 
     public static function make(): static
     {
@@ -26,9 +26,14 @@ class ColumnTarget implements ColumnTypeInterface
 
     public function validate(string $attribute, $value, Closure $fail): void
     {
-        $this->validate_fast($attribute, $value, $fail);
+        $valid = true;
+        $this->validate_fast($attribute, $value, function (string $message) use ($fail, &$valid): void {
+            $valid = false;
+            $fail($message);
+        });
 
-        if (! $this->exists_remotely($value)) {
+        // A value that is no accession is not sent to UniProt at all.
+        if ($valid && ! $this->exists_remotely($value)) {
             $fail('Column '.self::$label." contains Uniprot ID that does not exist: $value.");
         }
     }
@@ -47,8 +52,10 @@ class ColumnTarget implements ColumnTypeInterface
 
     public function exists_remotely(string $value): mixed
     {
-        $uniprot = new Uniprot;
+        // UniProt looks up an accession or an isoform; it knows no entry for
+        // a version (P08183.3) or a chain (P08183#PRO_0000093332) suffix.
+        $accession = (string) preg_replace('/(\.\d+)?(-\d+)?(#PRO_\d+)?$/D', '$2', $value);
 
-        return $uniprot->existsById($value);
+        return (new Uniprot)->existsById($accession);
     }
 }

@@ -77,7 +77,10 @@
                 {
                     "context": "string",
                     "message": "string",
-                    "payload": "null",
+                    "payload": {
+                        "file_name": "string",
+                        "file_size": "number"
+                    },
                     "state": "number",
                     "state_label": "string",
                     "timestamp": "string",

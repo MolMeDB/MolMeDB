@@ -125,7 +125,7 @@ class Structure extends BaseModel
             return;
         }
 
-        $existsInStructures = self::query()
+        $existsInStructures = self::withTrashed()
             ->where('identifier', $newIdentifier)
             ->where('id', '!=', $this->id)
             ->exists();

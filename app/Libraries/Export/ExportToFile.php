@@ -128,7 +128,7 @@ class ExportToFile
         }
 
         if (! $this->isHeaderWritten) {
-            $this->writeRow($this->header->as_array());
+            fputcsv($this->fileHandler, $this->header->as_array(), ';', '"', '\\');
             $this->isHeaderWritten = true;
         }
 
@@ -267,7 +267,7 @@ class ExportToFile
             return $this;
         }
 
-        $existing = glob($this->getTargetFolder().'/*.zip');
+        $existing = glob(self::$storage->path($this->getTargetFolder()).'/*.zip');
 
         if (empty($existing)) {
             return $this;
@@ -285,7 +285,7 @@ class ExportToFile
                 $lastContent = $zipExisting->getFromIndex(0);
                 $zipExisting->close();
 
-                if (md5($lastContent) === md5_file($this->fullFilePath)) {
+                if (md5($lastContent) === md5_file(self::$storage->path($this->fullFilePath))) {
                     unlink($zip);
                 }
             }

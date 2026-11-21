@@ -1,7 +1,7 @@
 <?php
+
 namespace Modules\References\CrossRef;
 
-use Dotenv\Dotenv;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -14,22 +14,22 @@ class CrossRef
 
     public function __construct()
     {
-        if (file_exists( __DIR__ . '/.env')) {
-            $dotenv = Dotenv::createImmutable(__DIR__);
-            $dotenv->load();
+        // From config, not env(): env() is empty once the configuration is
+        // cached, and tests can point config at a fake host reliably.
+        $this->baseUrl = rtrim((string) config('services.crossref.endpoint'), '/');
+
+        if (! $this->baseUrl) {
+            throw new Exception('CrossRef endpoint is not set (services.crossref.endpoint).');
         }
-
-        $this->baseUrl = env('CROSSREF_ENDPOINT', '');
-
-        if(!$this->baseUrl) throw new Exception("CrossRef endpoint is not set. Check your .env file.");
     }
 
-
-    public function url() {
+    public function url()
+    {
         return $this->baseUrl;
     }
 
-    public function connected() {
+    public function connected()
+    {
         return $this->work('10.1093/database/baz078') !== null;
     }
 
@@ -37,60 +37,52 @@ class CrossRef
      * Returns record by doi
      */
     public function work(
-        string $doi, 
-    ) : Record | null
-    {
-        try
-        {
+        string $doi,
+    ): ?Record {
+        try {
             $response = Http::timeout(10)
                 ->acceptJson()
                 ->get("{$this->baseUrl}/works/$doi");
 
             $response = $this->processResponse($response);
 
-            if(!$response) return null;
+            if (! $response) {
+                return null;
+            }
 
             $validator = Validator::make($response, [
                 'status' => 'required|string',
-                'message.DOI' => 'required|string'
+                'message.DOI' => 'required|string',
             ]);
 
-            if($validator->fails() || $response['status'] != 'ok'){
+            if ($validator->fails() || $response['status'] != 'ok') {
                 return null;
             }
 
             return Record::fromCrossRefResponse($response['message']);
-        }
-        catch(\Exception $e)
-        {
+        } catch (\Exception $e) {
             Log::error($e->getMessage(), ['DOI' => $doi]);
+
             return null;
         }
     }
 
     public function processResponse(\Illuminate\Http\Client\Response $response)
     {
-        if($response->successful())
-        {
+        if ($response->successful()) {
             return $response->json();
-        }
-        elseif ($response->clientError())
-        {
-            Log::error('Client error. Code:' . $response->status());
+        } elseif ($response->clientError()) {
+            Log::error('Client error. Code:'.$response->status());
+
             return null;
-        }
-        elseif ($response->serverError())
-        {
-            Log::error('Server error. Code:' . $response->status());
+        } elseif ($response->serverError()) {
+            Log::error('Server error. Code:'.$response->status());
+
             return null;
-        }
-        else 
-        {
-            Log::error('Unknown error. Code:' . $response->status());
+        } else {
+            Log::error('Unknown error. Code:'.$response->status());
+
             return null;
         }
     }
 }
-
-
-

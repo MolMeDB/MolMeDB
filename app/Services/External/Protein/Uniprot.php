@@ -1,10 +1,9 @@
-<?php 
+<?php
 
 namespace App\Services\External\Protein;
 
-use Exception;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class Uniprot
 {
@@ -14,24 +13,30 @@ class Uniprot
      * Uniprot request fields.
      */
     const FIELD_ACCESSION = 'accession';
+
     const FIELD_PROTEIN_NAME = 'protein_name';
+
     const FIELD_CC_FUNCTION = 'cc_function';
+
     const FIELD_FT_BINDING = 'ft_binding';
 
     public function __construct()
     {
         $this->apiUrl = (string) config('services.uniprot.base_api_url');
-    }   
+    }
 
+    /**
+     * A deleted accession still answers with an "Inactive" entry, so only an
+     * active record counts as an existing protein.
+     */
     public function existsById(string $uniprotId): bool
     {
-        $record = $this->getById($uniprotId);
-        return $record !== null;
+        return $this->getById($uniprotId)?->isActive() ?? false;
     }
 
     public function getById(string $uniprotId): ?UniprotRecord
     {
-        $response = $this->makeRequest("/uniprotkb/$uniprotId", [
+        $response = $this->makeRequest('/uniprotkb/'.rawurlencode($uniprotId), [
             ...$this->makeFieldParam([
                 self::FIELD_ACCESSION,
                 self::FIELD_PROTEIN_NAME,
@@ -40,7 +45,7 @@ class Uniprot
             ]),
         ]);
 
-        if(empty($response)) {
+        if (empty($response)) {
             return null;
         }
 
@@ -70,7 +75,7 @@ class Uniprot
             }
 
             return null;
-        } catch (Exception | ConnectionException $e) {
+        } catch (Throwable) {
             return null;
         }
     }

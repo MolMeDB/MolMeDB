@@ -2,8 +2,8 @@
 
 namespace App\Services\External\Chemical\Unichem;
 
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class Unichem
 {
@@ -47,11 +47,11 @@ class Unichem
             'sourceID' => $source,
         ]);
 
-        if ($record === null || ! array_key_exists('compounds', $record) || empty($record['compounds'])) {
+        $record = $record['compounds'][0] ?? null;
+
+        if (! is_array($record)) {
             return null;
         }
-
-        $record = $record['compounds'][0];
 
         return UnichemChemical::fromRawData($record);
     }
@@ -68,7 +68,7 @@ class Unichem
                 ])
                 ->get($url)
                 ->successful();
-        } catch (ConnectionException) {
+        } catch (Throwable) {
             return false;
         }
     }
@@ -92,7 +92,8 @@ class Unichem
             }
 
             return null;
-        } catch (ConnectionException) {
+        } catch (Throwable) {
+            // retry() throws once a 4xx/5xx answer is final; an outage is "no answer" here.
             return null;
         }
     }

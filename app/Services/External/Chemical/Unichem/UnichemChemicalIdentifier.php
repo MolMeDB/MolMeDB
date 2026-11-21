@@ -4,16 +4,16 @@ namespace App\Services\External\Chemical\Unichem;
 
 class UnichemChemicalIdentifier
 {
-    public ?string $compoundId;
+    public ?string $compoundId = null;
 
-    public ?int $unichemSourceId;
+    public ?int $unichemSourceId = null;
 
-    public ?string $url;
+    public ?string $url = null;
 
     public function __construct(private readonly array $raw_data = [])
     {
         if (! empty($raw_data)) {
-            $this->compoundId = $raw_data['compoundID'] ?? null;
+            $this->compoundId = $raw_data['compoundId'] ?? null;
             $this->unichemSourceId = $raw_data['id'] ?? null;
             $this->url = $raw_data['url'] ?? null;
         }

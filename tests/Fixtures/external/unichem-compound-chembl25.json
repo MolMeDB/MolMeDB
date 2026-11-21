@@ -1,0 +1,84 @@
+{
+  "compounds": [
+    {
+      "inchi": {
+        "charge": "",
+        "connections": "1-6(10)13-8-5-3-2-4-7(8)9(11)12",
+        "formula": "C9H8O4",
+        "hAtoms": "2-5H,1H3,(H,11,12)",
+        "inchi": "InChI=1S/C9H8O4/c1-6(10)13-8-5-3-2-4-7(8)9(11)12/h2-5H,1H3,(H,11,12)",
+        "isotopicAtoms": "",
+        "isotopicExchangeableH": "",
+        "protons": "",
+        "stereoDbond": "",
+        "stereoSP3": "",
+        "stereoSP3inverted": "",
+        "stereoType": "",
+        "version": "1S"
+      },
+      "sources": [
+        {
+          "baseIDURLAvailable": true,
+          "compoundId": "CHEMBL25",
+          "id": 1,
+          "longName": "ChEMBL",
+          "shortName": "chembl",
+          "url": "https://www.ebi.ac.uk/chembldb/compound/inspect/CHEMBL25"
+        },
+        {
+          "baseIDURLAvailable": true,
+          "compoundId": "DB00945",
+          "id": 2,
+          "longName": "DrugBank",
+          "shortName": "drugbank",
+          "url": "https://go.drugbank.com/drugs/DB00945"
+        },
+        {
+          "baseIDURLAvailable": true,
+          "compoundId": "AIN",
+          "id": 3,
+          "longName": "RCSB PDB",
+          "shortName": "rcsb_pdb",
+          "url": "https://www.rcsb.org/ligand/AIN"
+        },
+        {
+          "baseIDURLAvailable": true,
+          "compoundId": "CHEBI:15365",
+          "id": 7,
+          "longName": "ChEBI",
+          "shortName": "chebi",
+          "url": "https://www.ebi.ac.uk/chebi/CHEBI:15365"
+        },
+        {
+          "baseIDURLAvailable": true,
+          "compoundId": "2244",
+          "id": 22,
+          "longName": "PubChem Compounds",
+          "shortName": "pubchem",
+          "url": "https://pubchem.ncbi.nlm.nih.gov/compound/2244"
+        },
+        {
+          "baseIDURLAvailable": true,
+          "compoundId": "4139",
+          "id": 4,
+          "longName": "Guide to Pharmacology",
+          "shortName": "gtopdb",
+          "url": "https://www.guidetopharmacology.org/GRAC/LigandDisplayForward?ligandId=4139"
+        },
+        {
+          "baseIDURLAvailable": true,
+          "compoundId": "R16CO5Y76E",
+          "id": 14,
+          "longName": "FDA/USP Substance Registration System (SRS)",
+          "shortName": "fdasrs",
+          "url": "https://d20b1koi85gdl2.cloudfront.net/uniisearch/srs/unii/R16CO5Y76E"
+        }
+      ],
+      "standardInchiKey": "BSYNRYMUTXBXSQ-UHFFFAOYSA-N",
+      "uci": 161671
+    }
+  ],
+  "notFound": [],
+  "response": "Success",
+  "totalCompounds": 1
+}

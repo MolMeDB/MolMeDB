@@ -1,0 +1,6 @@
+{
+  "url": "http://rest.uniprot.org/uniprotkb/P99999999",
+  "messages": [
+    "The 'accession' value has invalid format. It should be a valid UniProtKB accession"
+  ]
+}

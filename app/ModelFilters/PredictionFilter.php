@@ -35,11 +35,19 @@ class PredictionFilter extends ModelFilter
 
     public function datasetId($id)
     {
+        if (! FilterInput::isId($id)) {
+            return $this->whereRaw('1 = 0');
+        }
+
         return $this->whereRelation('predictionDatasets', 'datasets.id', $id);
     }
 
     public function structureId($id)
     {
+        if (! FilterInput::isId($id)) {
+            return $this->whereRaw('1 = 0');
+        }
+
         return $this->whereRelation('predictionStructure', 'structures.id', $id);
     }
 

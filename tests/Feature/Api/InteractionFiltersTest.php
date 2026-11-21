@@ -237,8 +237,27 @@ test('malformed list parameters answer normally instead of failing', function (s
     'sort direction as a list' => 'sort_by=id&sort_by_direction[]=asc',
     'search text as a list' => 'query[]=x',
     'id beyond bigint' => 'membrane_ids[]=99999999999999999999&query=id:99999999999999999999',
+    'id beyond integer' => 'membrane_ids[]=99999999999&method_ids[]=999999999999999999&query=id:2147483648',
 ]);
 
 test('search texts given as a list are ignored', function (string $endpoint) {
     $this->getJson(apiRoutePath($endpoint).'?query[]=x')->assertOk();
 })->with(['api/search/membranes', 'api/search/methods', 'api/search/proteins', 'api/search/datasets']);
+
+test('a category that is not an id matches nothing instead of failing', function (string $endpoint, string $category) {
+    createApiMembrane();
+
+    $this->getJson($endpoint.'?'.$category)
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+})->with([
+    '/api/search/membranes',
+    '/api/search/methods',
+    '/api/search/proteins',
+    '/api/v1/membranes',
+    '/api/v1/methods',
+])->with([
+    'text' => 'category_id=abc',
+    'list' => 'category_id[0][]=1',
+    'beyond integer' => 'category_id=99999999999',
+]);

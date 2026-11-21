@@ -19,6 +19,10 @@ class MembraneFilter extends ModelFilter
 
     public function category($id)
     {
+        if (! FilterInput::isId($id)) {
+            return $this->whereRaw('1 = 0');
+        }
+
         return $this->whereHas('categories', fn ($q) => $q->where('categories.id', $id));
     }
 

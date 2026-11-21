@@ -43,7 +43,7 @@ class PredictionDatasetFilter extends ModelFilter
         if (str_starts_with($comment, 'id:')) {
             $id = trim(str_replace('id:', '', $comment));
 
-            return ctype_digit($id) && strlen($id) <= 18 ? $this->where('id', $id) : $this->whereRaw('1 = 0');
+            return FilterInput::isId($id) ? $this->where('id', $id) : $this->whereRaw('1 = 0');
         }
 
         return $this->whereRaw('LOWER(comment) LIKE ?', ['%'.$comment.'%'])

@@ -34,6 +34,10 @@ class PredictionStructureFilter extends ModelFilter
 
     public function datasetId($id)
     {
+        if (! FilterInput::isId($id)) {
+            return $this->whereRaw('1 = 0');
+        }
+
         return $this->whereHas('predictions.predictionDatasets', function ($q) use ($id) {
             $q->where('datasets.id', $id);
         });

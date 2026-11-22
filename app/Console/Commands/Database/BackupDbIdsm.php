@@ -120,12 +120,14 @@ class BackupDbIdsm extends Command
      * database: a dump of selected tables has no extensions, so the citext
      * extension of the identifier columns is created first; the Bingo index
      * (an access method of the private bingo schema) and foreign keys to
-     * tables left out of the dump are dropped, and so is a setting that
-     * servers older than the pg_dump that made the dump reject.
+     * tables left out of the dump are dropped, and so are the triggers (their
+     * functions are not part of a dump of tables; the only one guards the
+     * Bingo index) and a setting that servers older than the pg_dump that
+     * made the dump reject.
      *
      * pg_dump starts every object with a comment header such as
      * "-- Name: x; Type: FK CONSTRAINT; Schema: public; Owner: y", so whole
-     * objects are kept or dropped. Only indexes and foreign keys are held in
+     * objects are kept or dropped. Only indexes, foreign keys and triggers are held in
      * memory; table data streams through.
      *
      * @param  iterable<int, string>  $lines  pg_dump output, line by line with line endings
@@ -151,7 +153,7 @@ class BackupDbIdsm extends Command
                     $heldBlock = null;
                     $heldType = null;
 
-                    if (preg_match('/^-- (?:Data for )?Name: .*; Type: (INDEX|FK CONSTRAINT);/', $line, $match) === 1) {
+                    if (preg_match('/^-- (?:Data for )?Name: .*; Type: (INDEX|FK CONSTRAINT|TRIGGER);/', $line, $match) === 1) {
                         $heldType = $match[1];
                         $heldBlock = $separator.$line;
                         $separator = null;
@@ -201,6 +203,10 @@ class BackupDbIdsm extends Command
     {
         if ($type === 'INDEX') {
             return ! str_contains($block, 'USING bingo_idx');
+        }
+
+        if ($type === 'TRIGGER') {
+            return false;
         }
 
         if (preg_match('/REFERENCES\s+("?[\w]+"?)\.("?[\w]+"?)\s*\(/', $block, $match) !== 1) {

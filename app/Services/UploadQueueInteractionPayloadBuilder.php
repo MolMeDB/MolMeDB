@@ -65,10 +65,15 @@ class UploadQueueInteractionPayloadBuilder
      */
     public function passivePayload(UploadQueue $record, array $row, bool $createMissingRecords = true): array
     {
+        // The publication may be looked up at an external service; it comes
+        // first, since storing a structure holds the lock of the structure
+        // index until the row is committed.
+        $publicationId = $this->resolvePublicationId($record, $row, $createMissingRecords);
+
         return [
             'dataset_id' => $record->dataset_id,
             'structure_id' => $this->resolveStructureId($row, $record, $createMissingRecords),
-            'publication_id' => $this->resolvePublicationId($record, $row, $createMissingRecords),
+            'publication_id' => $publicationId,
             ...$this->interactionValues($row, $this->columns->commonValueColumns()),
             ...$this->interactionValues($row, $this->columns->interactionValueColumns($record)),
         ];
@@ -80,11 +85,14 @@ class UploadQueueInteractionPayloadBuilder
      */
     public function activePayload(UploadQueue $record, array $row, bool $createMissingRecords = true): array
     {
+        // See passivePayload() for the order.
+        $publicationId = $this->resolvePublicationId($record, $row, $createMissingRecords);
+
         $payload = [
             'dataset_id' => $record->dataset_id,
             'structure_id' => $this->resolveStructureId($row, $record, $createMissingRecords),
             'protein_id' => $this->resolveProteinId($row, $record, $createMissingRecords),
-            'publication_id' => $this->resolvePublicationId($record, $row, $createMissingRecords),
+            'publication_id' => $publicationId,
             ...$this->interactionValues($row, $this->columns->commonValueColumns()),
             ...$this->interactionValues($row, $this->columns->interactionValueColumns($record)),
         ];

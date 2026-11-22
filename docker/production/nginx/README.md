@@ -64,6 +64,8 @@ Then deploy a release:
 
 The script checks that all images of the version exist, in a deployment directory downloads the `compose.yaml` of that release (`MOLMEDB_KEEP_COMPOSE=1` keeps the one that is there), pulls the images, writes `MOLMEDB_VERSION` into `.env` and restarts the application. The application container runs the migrations when it starts; the script watches it for a minute and, if it does not stay up, shows its log and points `.env` back to the previous version. To go back, run it with the previous version (it prints it); migrations are not rolled back. Only the images of the release are pulled: the databases, Redis and CDK Depict keep the image they run until you pull them yourself (`docker compose pull <service>`). `docker compose …` works as usual afterwards, since Compose reads the version from `.env` (in a checkout add `-f docker-compose-production.yaml`). In a deployment directory `deploy.sh` itself is not replaced by a deployment; download it from the release again when a release changes it.
 
+Both database containers get five minutes to shut down (`stop_grace_period`, and `--timeout 300` when a deployment replaces them): the Bingo index was found damaged on production once, and a database killed in the middle of a write is the likeliest cause. A reboot of the host is not covered by that alone, because systemd gives the Docker service 90 seconds; to cover it, add a drop-in for `docker.service` with `TimeoutStopSec=330`.
+
 The databases use `ghcr.io/molmedb/molmedb-db:15` (PostgreSQL with Bingo). It is published from `main` when `database/extensions/bingo` changes, not with every release, so a deployment does not restart them. Set `MOLMEDB_DB_VERSION` in `.env` to pin a build.
 
 ### Moving a checkout into a deployment directory

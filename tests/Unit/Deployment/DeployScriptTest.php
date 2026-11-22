@@ -63,7 +63,7 @@ test('a deployment directory gets the compose file of the release and the new ve
     $calls = file_get_contents($sandbox['log']);
 
     expect($calls)->toContain('/releases/download/v1.4.0/compose.yaml')
-        ->toContain('compose -f compose.yaml up -d')
+        ->toContain('compose -f compose.yaml up -d --timeout 300')
         ->toMatch('/compose -f \.compose\.deploy\.\w+ pull web /');
 });
 

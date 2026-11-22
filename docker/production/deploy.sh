@@ -225,7 +225,10 @@ write_version "$version"
 if [[ -n ${DEPLOY_MARKER:-} ]]; then
   : > "$DEPLOY_MARKER"
 fi
-"${compose[@]}" up -d
+# The time is for a database that this release replaces (its image or its
+# settings changed): without it the old container is killed after the ten
+# seconds it was created with.
+"${compose[@]}" up -d --timeout 300
 
 # `up` returns as soon as the containers are started. A failing migration
 # makes the application container restart over and over, so it is watched

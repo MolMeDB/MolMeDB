@@ -15,6 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Modules\PredictionWorkers\Enums\RemotePredictionStatus;
 use Modules\PredictionWorkers\Exceptions\RemotePredictionDisabledException;
+use Modules\PredictionWorkers\Exceptions\RemotePredictionException;
 use Modules\PredictionWorkers\Models\Prediction;
 use Modules\PredictionWorkers\Models\PredictionDataset;
 use Modules\PredictionWorkers\Models\PredictionStat;
@@ -28,6 +29,27 @@ class RunPredictionsWorker extends Command
     private int $downloadErrors = 0;
 
     private const MAX_VALIDATION_FAILURES_PER_RUN = 3;
+
+    /**
+     * How many times in a row the remote service may refuse a prediction as
+     * such (not an outage) before it is marked as failed. Until then it keeps
+     * its place among the predictions to activate, and with it one of the
+     * few remote slots.
+     */
+    public const MAX_REJECTED_SUBMISSION_ATTEMPTS = 5;
+
+    private const REJECTED_SUBMISSION_LOG_TYPE = 'REMOTE SUBMIT';
+
+    /**
+     * No more predictions than this are given up in one day. A fault of the
+     * service or of its settings can look like a refusal of every prediction;
+     * the limit keeps it from failing the whole backlog before anybody looks.
+     */
+    public const MAX_GIVEN_UP_SUBMISSIONS_PER_DAY = 50;
+
+    private int $givenUpSubmissions = 0;
+
+    private bool $giveUpLimitReached = false;
 
     private int $submissionErrors = 0;
 
@@ -169,6 +191,16 @@ class RunPredictionsWorker extends Command
                 );
             }
 
+            if ($this->giveUpLimitReached) {
+                $activityLogger->logThrottled(
+                    event: 'prediction_worker_give_up_limit_reached',
+                    description: 'The remote prediction service keeps refusing predictions and the daily limit of those marked as failed is used up; the rest waits. Check the service and its settings.',
+                    properties: ['limit' => self::MAX_GIVEN_UP_SUBMISSIONS_PER_DAY],
+                    throttleKey: 'prediction-worker-give-up-limit',
+                    seconds: 6 * 3600,
+                );
+            }
+
             if ($processedCount > 0 || $errorCount > 0) {
                 $description = sprintf(
                     'Prediction worker submitted %d, resumed %d and downloaded %d prediction(s); encountered %d error(s).',
@@ -190,6 +222,7 @@ class RunPredictionsWorker extends Command
                     'submission_errors' => $this->submissionErrors,
                     'reconciliation_errors' => $this->reconciliationErrors,
                     'rejected_structures' => $this->rejectedStructures,
+                    'given_up_submissions' => $this->givenUpSubmissions,
                 ];
 
                 if ($errorCount > 0) {
@@ -443,6 +476,9 @@ class RunPredictionsWorker extends Command
                         : null,
                     'remote_last_status_at' => now(),
                     'remote_error_message' => $throwable->getMessage(),
+                    ...($this->isRejectedByRemoteService($throwable)
+                        ? $this->rejectedSubmissionAttributes($prediction, $throwable)
+                        : []),
                 ])->save();
 
                 $this->warn("Prediction {$prediction->getKey()} submit failed: {$throwable->getMessage()}");
@@ -456,6 +492,95 @@ class RunPredictionsWorker extends Command
             'attempts' => $attempts,
             'submitted' => $submitted,
             'resumed' => $resumed,
+        ];
+    }
+
+    /**
+     * Whether the remote service refused this very prediction: its structure
+     * or its membrane. Sending it again gives the same answer, unlike an
+     * outage, a refused login or a full queue, which pass by themselves.
+     */
+    private function isRejectedByRemoteService(Throwable $throwable): bool
+    {
+        if (! $throwable instanceof RemotePredictionException) {
+            return false;
+        }
+
+        // Which status the service gives its refusals is not known for all
+        // of them, so the two it is known to answer are told by their text:
+        // a structure it cannot read, and a membrane it does not know while
+        // there is no definition file to upload
+        // (Prediction::submitToRemotePrediction()).
+        $message = strtolower($throwable->getMessage());
+
+        return in_array($throwable->statusCode, [400, 422], true)
+            || str_contains($message, 'unknown membrane key')
+            || str_contains($message, 'invalid smiles');
+    }
+
+    /**
+     * Takes one of the day's given-up predictions, if any is left.
+     */
+    private function mayGiveUpSubmission(): bool
+    {
+        $key = 'prediction-worker:given-up-submissions:'.now()->toDateString();
+
+        Cache::add($key, 0, now()->addDay());
+
+        if ((int) Cache::get($key, 0) >= self::MAX_GIVEN_UP_SUBMISSIONS_PER_DAY) {
+            $this->giveUpLimitReached = true;
+
+            return false;
+        }
+
+        Cache::increment($key);
+
+        return true;
+    }
+
+    /**
+     * A refused prediction stays prepared, so it is among the first ones on
+     * every run. Left there for good, a handful of them takes all the remote
+     * slots and nothing else is ever sent; so after a few refusals in a row
+     * it is marked as failed, with the reason kept.
+     *
+     * @return array{logs?: array<int, mixed>, state?: int}
+     */
+    private function rejectedSubmissionAttributes(Prediction $prediction, Throwable $throwable): array
+    {
+        $attempts = 1;
+
+        foreach (array_reverse(is_array($prediction->logs) ? $prediction->logs : []) as $entry) {
+            if (! is_array($entry)
+                || ($entry['type'] ?? null) !== self::REJECTED_SUBMISSION_LOG_TYPE
+                || ($entry['context'] ?? null) !== 'error') {
+                break;
+            }
+
+            $attempts++;
+        }
+
+        if ($attempts >= self::MAX_REJECTED_SUBMISSION_ATTEMPTS && ! $this->mayGiveUpSubmission()) {
+            // Waits for tomorrow as it is; another line in its log each
+            // minute would only push the older ones out.
+            return [];
+        }
+
+        $givenUp = $attempts >= self::MAX_REJECTED_SUBMISSION_ATTEMPTS;
+        $this->givenUpSubmissions += $givenUp ? 1 : 0;
+        $message = 'The remote prediction service refused the prediction: '.$throwable->getMessage();
+
+        return [
+            'logs' => $prediction->logsWithWorkerEvent(
+                $givenUp ? $message.' Given up after repeated attempts; the prediction is marked as failed.' : $message,
+                [
+                    'attempt' => $attempts,
+                    'status_code' => $throwable instanceof RemotePredictionException ? $throwable->statusCode : null,
+                ],
+                self::REJECTED_SUBMISSION_LOG_TYPE,
+                'error',
+            ),
+            ...($givenUp ? ['state' => Prediction::STATE_ERROR] : []),
         ];
     }
 

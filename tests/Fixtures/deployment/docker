@@ -108,10 +108,12 @@ case "$1" in
       *"pg_restore --list"*)
         cat > /dev/null
         printf '%s\n' \
+          ';' \
+          '; Archive created at 2026-11-22 13:24:01 UTC' \
           '215; 1259 20301 TABLE public structures molmedb' \
-          '310; 1259 30780 TABLE bingo structures_canonical_smiles_bingo_index_shadow molmedb' \
+          '310; 1259 30780 TABLE public structures_canonical_smiles_bingo_index_shadow molmedb' \
           '4210; 0 20301 TABLE DATA public structures molmedb' \
-          '4211; 0 30780 TABLE DATA bingo structures_canonical_smiles_bingo_index_shadow molmedb' \
+          '4211; 0 30780 TABLE DATA public structures_canonical_smiles_bingo_index_shadow molmedb' \
           '3972; 1259 30701 INDEX public structures_name_index molmedb' \
           '3973; 1259 30779 INDEX public structures_canonical_smiles_bingo_index molmedb'
         ;;
@@ -146,11 +148,15 @@ case "$1" in
           echo "unexpected query: $query" >&2
           exit 1
         fi
+        # The shadow table of a Bingo index also keeps the entries of rows
+        # that are gone; an index built anew has only those of the rows left.
         rows=5
+        shadow=9
         if [[ $all == *"restore_test"* ]]; then
           rows=${FAKE_RESTORED_ROWS:-5}
+          shadow=5
         fi
-        printf 'public.structures|%s\npublic.users|3\n' "$rows"
+        printf 'public.structures|%s\npublic.structures_canonical_smiles_bingo_index_shadow|%s\npublic.users|3\n' "$rows" "$shadow"
         ;;
     esac
     ;;

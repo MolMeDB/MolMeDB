@@ -211,6 +211,7 @@ test('Bingo indexes are left out of the restore and created afterwards', functio
     // pg_restore empties the search path, with which Bingo cannot build an index.
     $restored = file_get_contents($installation['backups'].'/main-db.restore-test.list');
     expect($restored)
+        ->toContain('; Archive created at')
         ->toContain('TABLE public structures molmedb')
         ->toContain('INDEX public structures_name_index molmedb')
         ->not->toContain('structures_canonical_smiles_bingo_index')
@@ -220,33 +221,68 @@ test('Bingo indexes are left out of the restore and created afterwards', functio
         ->and(positionOfCall($installation['log'], 'psql: CREATE INDEX'))->toBeGreaterThan(positionOfCall($installation['log'], '--use-list=/tmp/restore.list'));
 });
 
+/**
+ * @param  array{old: string, new: string, backups: string, log: string, state: string, env: array<string, string>}  $installation
+ */
+function restoreBackupsAgain(array $installation, string $backups): Process
+{
+    $process = new Process([deploymentScript('move-to-standalone.sh')], null, ['RESTORE_TEST_ONLY' => $backups] + $installation['env']);
+    $process->run();
+
+    return $process;
+}
+
 test('backups that are already there can be restored again while the site runs', function () {
     $installation = installationToMove();
     moveInstallation($installation, ['BACKUP_ONLY' => '1', 'SKIP_RESTORE_TEST' => '1']);
-    $stopsBefore = count(dockerCalls($installation['log'], 'docker stop'));
+    $callsBefore = substr_count(file_get_contents($installation['log']), "\n");
 
-    $process = moveInstallation($installation, [
-        'RESTORE_TEST_ONLY' => $installation['backups'],
-        'BACKUP_DIR' => $installation['backups'].'-unused',
-    ]);
+    $process = restoreBackupsAgain($installation, $installation['backups']);
+
+    $calls = implode("\n", array_slice(explode("\n", file_get_contents($installation['log'])), $callsBefore));
 
     expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput())
-        ->and($process->getOutput())->toContain('Both dumps restore')
-        ->and(dockerCalls($installation['log'], 'docker stop'))->toHaveCount($stopsBefore)
-        ->and(dockerCalls($installation['log'], '--use-list=/tmp/restore.list'))->toHaveCount(2)
+        ->and($process->getOutput())->toContain('Both dumps restore')->toContain('2 tables restored')
+        // Nothing but the restore: no stop, no pull, no download, no probe.
+        ->and($calls)->not->toContain('docker stop')
+        ->not->toContain(' pull ')
+        ->not->toContain('curl')
+        ->not->toContain('--entrypoint')
+        ->toContain('--use-list=/tmp/restore.list')
         ->and(filesize($installation['backups'].'/main-db.restored.counts'))->toBeGreaterThan(0)
-        ->and(file_exists($installation['backups'].'-unused'))->toBeFalse()
         ->and(file_exists($installation['new']))->toBeFalse();
+
+    // The checksums follow what the test wrote.
+    $check = Process::fromShellCommandline('(command -v sha256sum > /dev/null && sha256sum -c SHA256SUMS) || shasum -a 256 -c SHA256SUMS', $installation['backups']);
+    $check->run();
+
+    expect($check->getExitCode())->toBe(0, $check->getOutput().$check->getErrorOutput())
+        ->and(file_get_contents($installation['backups'].'/SHA256SUMS'))->toContain('main-db.restored.counts');
+});
+
+test('the shadow tables of a Bingo index are not compared', function () {
+    $installation = installationToMove();
+
+    $process = moveInstallation($installation, ['BACKUP_ONLY' => '1']);
+
+    // The real table holds entries of rows that are gone, the rebuilt one does not.
+    expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput())
+        ->and(file_get_contents($installation['backups'].'/main-db.counts'))->toContain('bingo_index_shadow|9')
+        ->and(file_get_contents($installation['backups'].'/main-db.restored.counts'))->toContain('bingo_index_shadow|5')
+        ->and(file_get_contents($installation['backups'].'/main-db.bingo-indexes.sql'))
+        ->toBe("CREATE INDEX structures_canonical_smiles_bingo_index ON public.structures USING bingo_idx (canonical_smiles bingo.molecule) WHERE (canonical_smiles IS NOT NULL);\n");
 });
 
 test('a restore of backups that are not there is refused', function () {
     $installation = installationToMove();
 
-    $process = moveInstallation($installation, ['RESTORE_TEST_ONLY' => $installation['old']]);
+    $process = restoreBackupsAgain($installation, $installation['old']);
 
     expect($process->getExitCode())->toBe(1)
         ->and($process->getErrorOutput())->toContain('No backups of this script')
-        ->and(dockerCalls($installation['log'], 'docker stop'))->toBe([]);
+        ->and(file_get_contents($installation['log']))->toBe('')
+        ->and(file_exists($installation['new']))->toBeFalse()
+        ->and(file_exists($installation['backups']))->toBeFalse();
 });
 
 test('a failure while the databases are stopped starts them, Redis and the application again', function () {

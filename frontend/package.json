@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@amcharts/amcharts5": "^5.13.3",
-    "@heroui/react": "^2.8.1",
+    "@heroui/react": "^3.2.7",
     "@react-stately/data": "^3.13.1",
     "@types/dompurify": "^3.0.5",
     "dompurify": "^3.4.15",

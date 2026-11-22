@@ -12,12 +12,14 @@ use App\Models\User;
 use App\Notifications\TemplatedNotification;
 use App\Services\NotificationBatcher;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Modules\PredictionWorkers\Models\Prediction;
+use Spatie\Activitylog\Models\Activity;
 
 /*
  * The scheduled remote prediction worker, with the remote service and the
@@ -203,9 +205,18 @@ test('paused predictions are resumed while structure validation is down', functi
  */
 function fakeRefusingRemotePredictionService(int $status, string $detail): void
 {
+    // A fake registered later does not replace an earlier one, so the answer
+    // is kept aside and may be changed during a test.
+    $registered = isset(test()->remoteAnswer);
+    test()->remoteAnswer = [$status, $detail];
+
+    if ($registered) {
+        return;
+    }
+
     Http::fake(fn (Request $request) => str_starts_with($request->url(), 'https://rdkit.test/')
         ? Http::response(['data' => ['valid' => true, 'canonical_smiles' => 'CCO', 'errors' => []]])
-        : Http::response(['detail' => $detail], $status));
+        : Http::response(['detail' => test()->remoteAnswer[1]], test()->remoteAnswer[0]));
 }
 
 test('a prediction the remote service refuses is marked as failed after repeated attempts', function (int $status, string $detail) {
@@ -231,6 +242,7 @@ test('a prediction the remote service refuses is marked as failed after repeated
     'a structure the service cannot read' => [400, 'Invalid SMILES according to Bingo: dearomatization: non-unique dearomatization'],
     'a request that does not validate' => [422, 'Temperature out of range.'],
     'a membrane the service does not know' => [404, 'Unknown membrane key: dppcdppgchol'],
+    'a structure refused under another status' => [409, 'Invalid SMILES according to Bingo: element: cannot calculate implicit hydrogens on aromatic S'],
 ]);
 
 test('a prediction is not given up while the remote service is failing or busy', function (int $status) {
@@ -251,21 +263,72 @@ test('a prediction is not given up while the remote service is failing or busy',
     'forbidden' => [403],
 ]);
 
-test('refusals are counted in a row only', function () {
+test('a failed prediction sent back by an administrator starts counting anew', function () {
     ['prediction' => $prediction] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED]);
 
     $prediction->forceFill(['logs' => [
-        ...array_fill(0, RunPredictionsWorker::MAX_REJECTED_SUBMISSION_ATTEMPTS - 1, [
+        ...array_fill(0, RunPredictionsWorker::MAX_REJECTED_SUBMISSION_ATTEMPTS, [
             'type' => 'REMOTE SUBMIT', 'context' => 'error', 'message' => 'Refused.', 'payload' => [], 'timestamp' => now()->toIso8601String(),
         ]),
-        // Something else happened to it since (it was prepared again).
-        ['type' => 'WORKER', 'context' => 'success', 'message' => 'Prepared again.', 'payload' => [], 'timestamp' => now()->toIso8601String()],
-    ]])->save();
+    ], 'state' => Prediction::STATE_ERROR])->save();
+
+    // An administrator sends the failed prediction back; it has no remote
+    // job, so nothing is asked of the remote service.
     fakeRefusingRemotePredictionService(400, 'Invalid SMILES.');
+    expect($prediction->requeueAndStoreRemotePrediction())->toBeNull();
+    Http::assertNothingSent();
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_PREPARED)
+        ->and($prediction->remote_error_message)->toBeNull();
 
     runWorker(['--skip-results' => true]);
 
+    // Counted from one again.
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_PREPARED)
+        ->and(collect($prediction->logs)->last()['payload']['attempt'])->toBe(1);
+});
+
+test('refusals with an outage between them still add up', function () {
+    ['prediction' => $prediction] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED]);
+
+    foreach (range(1, RunPredictionsWorker::MAX_REJECTED_SUBMISSION_ATTEMPTS - 1) as $attempt) {
+        fakeRefusingRemotePredictionService(400, 'Invalid SMILES.');
+        runWorker(['--skip-results' => true]);
+        fakeRefusingRemotePredictionService(503, 'Down.');
+        runWorker(['--skip-results' => true]);
+    }
+
     expect($prediction->refresh()->state)->toBe(Prediction::STATE_PREPARED);
+
+    fakeRefusingRemotePredictionService(400, 'Invalid SMILES.');
+    runWorker(['--skip-results' => true]);
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_ERROR);
+});
+
+test('no more than the daily limit of refused predictions is marked as failed', function () {
+    Cache::put('prediction-worker:given-up-submissions:'.now()->toDateString(), RunPredictionsWorker::MAX_GIVEN_UP_SUBMISSIONS_PER_DAY - 1, now()->addDay());
+
+    $refusals = array_fill(0, RunPredictionsWorker::MAX_REJECTED_SUBMISSION_ATTEMPTS - 1, [
+        'type' => 'REMOTE SUBMIT', 'context' => 'error', 'message' => 'Refused.', 'payload' => [], 'timestamp' => now()->toIso8601String(),
+    ]);
+    ['prediction' => $first] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED, 'priority' => Prediction::PRIORITY_HIGH, 'logs' => $refusals]);
+    ['prediction' => $second] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED, 'logs' => $refusals]);
+    fakeRefusingRemotePredictionService(422, 'The request does not validate.');
+
+    runWorker(['--skip-results' => true]);
+
+    // The last one of the day is given up, the next one waits untouched.
+    expect($first->refresh()->state)->toBe(Prediction::STATE_ERROR)
+        ->and($second->refresh()->state)->toBe(Prediction::STATE_PREPARED)
+        ->and($second->logs)->toHaveCount(count($refusals))
+        ->and(Activity::query()->where('event', 'prediction_worker_give_up_limit_reached')->count())->toBe(1);
+
+    // On the next day there is room again.
+    $this->travel(1)->days();
+    runWorker(['--skip-results' => true]);
+
+    expect($second->refresh()->state)->toBe(Prediction::STATE_ERROR);
 });
 
 test('predictions the remote service refuses stop holding the slots of the others', function () {

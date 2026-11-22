@@ -462,9 +462,28 @@ class Prediction extends PredictionBaseModel
         ?RemotePredictionStep $step = null,
         bool $force = false,
         ?RemotePredictionClient $client = null,
-    ): RemotePredictionJobSnapshot {
+    ): ?RemotePredictionJobSnapshot {
         if ($force && $step === null) {
             throw new RuntimeException('A target step is required for force requeue.');
+        }
+
+        // Never accepted by the remote service (refused at submission, or its
+        // structure did not validate): there is no remote job to requeue, so
+        // the prediction goes back among those the worker submits.
+        if (! $force && $this->remote_calculation_id === null) {
+            $this->forceFill([
+                'remote_last_status_at' => null,
+                'remote_error_message' => null,
+                'state' => self::STATE_PREPARED,
+                'step' => self::STEP_PENDING,
+                'logs' => $this->logsWithWorkerEvent(
+                    'Prepared for submission again.',
+                    ['previous_error' => $this->remote_error_message],
+                    'REMOTE REQUEUE',
+                ),
+            ])->save();
+
+            return null;
         }
 
         if ($force && ! array_key_exists($step->value, $this->forceRequeueStepOptions($client))) {

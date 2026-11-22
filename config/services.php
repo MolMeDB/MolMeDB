@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\ServiceUrl;
+
 return [
 
     /*
@@ -38,7 +40,7 @@ return [
     'cdk_depict_internal_url' => env('CDK_DEPICT_INTERNAL_URL'),
 
     'rdkit' => [
-        'url' => rtrim(env('RDKIT_HOST') ?? '', '/'),
+        'url' => ServiceUrl::fromHost(env('RDKIT_HOST')),
     ],
 
     /**

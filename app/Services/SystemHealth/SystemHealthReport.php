@@ -33,6 +33,12 @@ class SystemHealthReport
 
     private const BINGO_INDEX = 'structures_canonical_smiles_bingo_index';
 
+    /**
+     * Comparing the index with the structures reads every structure: 140 s
+     * for half a million of them on production, and their number grows.
+     */
+    private const BINGO_CHECK_TIMEOUT_SECONDS = 900;
+
     /** Waiting predictions whose logs are read for the reasons of failed imports. */
     private const IMPORT_ERRORS_SAMPLE = 300;
 
@@ -288,9 +294,10 @@ class SystemHealthReport
 
         try {
             $indexed = DB::transaction(function (): ?array {
-                // The comparison reads every structure; it must not hold a
-                // connection for long when the database is busy.
-                DB::statement("SET LOCAL statement_timeout = '120s'");
+                // The comparison reads every structure, so it gets a limit
+                // of its own: a busy database must not keep it, and the read
+                // lock it holds on the structures, for longer than that.
+                DB::statement("SET LOCAL statement_timeout = '".self::BINGO_CHECK_TIMEOUT_SECONDS."s'");
 
                 if (! DB::scalar("SELECT to_regclass('public.".self::BINGO_INDEX."') IS NOT NULL")) {
                     return null;

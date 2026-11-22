@@ -94,9 +94,10 @@ class UploadQueueImporter
         $result = $this->forEachMappedRow(
             $record,
             function (array $row, int $lineNumber) use ($record, &$summary, &$importedStructureIds, &$rowsSinceProgressSave, &$deferred, &$nextLine, $deadline): bool {
-                $payload = $this->payloadBuilder->passivePayload($record, $row);
-
-                DB::transaction(function () use ($record, $payload, &$summary, &$importedStructureIds): void {
+                // The structure, protein and publication a row creates are stored
+                // with its interaction or not at all.
+                DB::transaction(function () use ($record, $row, &$summary, &$importedStructureIds): void {
+                    $payload = $this->payloadBuilder->passivePayload($record, $row);
                     $summary['prepared_rows']++;
 
                     if ($this->skipDuplicate($record, $payload, $summary)) {
@@ -186,9 +187,10 @@ class UploadQueueImporter
         $result = $this->forEachMappedRow(
             $record,
             function (array $row, int $lineNumber) use ($record, &$summary, &$importedStructureIds, &$rowsSinceProgressSave, &$deferred, &$nextLine, $deadline): bool {
-                $payload = $this->payloadBuilder->activePayload($record, $row);
-
-                DB::transaction(function () use ($record, $payload, &$summary, &$importedStructureIds): void {
+                // The structure, protein and publication a row creates are stored
+                // with its interaction or not at all.
+                DB::transaction(function () use ($record, $row, &$summary, &$importedStructureIds): void {
+                    $payload = $this->payloadBuilder->activePayload($record, $row);
                     $summary['prepared_rows']++;
 
                     if ($this->skipDuplicate($record, $payload, $summary)) {

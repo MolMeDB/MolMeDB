@@ -393,9 +393,13 @@ class UploadQueue extends Model
             $this->config->detailedValidationPassed();
     }
 
+    /**
+     * Approves the data the administrator has seen: a record that has left
+     * the review since (taken back, reconfigured, imported) is not approved.
+     */
     public function approveAdminReview(?int $userId = null): void
     {
-        if (! $this->canBeReviewedByAdmin()) {
+        if (! $this->shouldBeDecidedByAdmin()) {
             return;
         }
 

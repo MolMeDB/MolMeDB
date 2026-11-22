@@ -15,6 +15,8 @@ use App\Models\Structure;
 use App\Models\UploadQueue;
 use App\Models\User;
 use App\Services\LabUploadAdminDigestQueue;
+use Illuminate\Bus\UniqueLock;
+use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -106,14 +108,23 @@ function configureAndEnqueueUpload(User $uploader, UploadQueue $record, array $c
 }
 
 /**
- * Runs the job the queue holds for the record, the way a worker would.
+ * Runs the job the queue holds for the record, the way a worker would. Every
+ * run needs a job of its own: one that was queued for an earlier step does
+ * not count.
  */
 function runUploadWorker(UploadQueue $record): ProcessUploadQueueRecord
 {
-    Queue::assertPushed(ProcessUploadQueueRecord::class, fn (ProcessUploadQueueRecord $job): bool => $job->uniqueId() === (string) $record->id);
+    $runs = config('testing.upload_worker_runs', 0) + 1;
+    config()->set('testing.upload_worker_runs', $runs);
+
+    expect(Queue::pushed(ProcessUploadQueueRecord::class, fn (ProcessUploadQueueRecord $job): bool => $job->uniqueId() === (string) $record->id))
+        ->toHaveCount($runs);
 
     $job = (new ProcessUploadQueueRecord($record->id))->withFakeQueueInteractions();
     app()->call([$job, 'handle']);
+
+    // A worker releases the lock that keeps the record from being queued twice.
+    (new UniqueLock(app(Cache::class)))->release($job);
 
     return $job;
 }
@@ -194,15 +205,15 @@ function adminDigestEvents(UploadQueue $record): array
 }
 
 /**
- * Makes the insert of the compound fail like a broken structure index does,
- * until the returned switch is turned off.
+ * Fails the upload right after the compound was stored, until the returned
+ * switch is turned off, with the error a broken structure index gives.
  */
 function failStructureInsertOf(string $smiles): object
 {
     $switch = new stdClass;
     $switch->on = true;
 
-    Structure::creating(function (Structure $structure) use ($smiles, $switch): void {
+    Structure::created(function (Structure $structure) use ($smiles, $switch): void {
         if ($switch->on && $structure->canonical_smiles === $smiles) {
             throw new QueryException(
                 'pgsql',
@@ -335,6 +346,9 @@ test('a database error while storing a structure fails the upload, which then fi
     expect($record->state)->toBe(UploadQueue::STATE_ERROR)
         ->and(importedSmiles($record))->toBe(['CCO', 'c1ccccc1'])
         ->and(Structure::query()->where('canonical_smiles', 'CCOP(=S)(OCC)SCn1nnc2ccccc2c1=O')->exists())->toBeFalse()
+        ->and(Structure::query()->count())->toBe(2)
+        ->and(Identifier::query()->where('value', 'Azinphos-ethyl')->exists())->toBeFalse()
+        ->and(Protein::query()->where('uniprot_id', 'Q9UNQ0')->exists())->toBeFalse()
         ->and(uploadStateShownToUploader($uploader, $record))->toBe(UploadQueue::STATE_ERROR);
 
     // The uploader is told what happened without the SQL, the administrators get it all.
@@ -391,11 +405,7 @@ test('a file that fails the detailed validation is replaced by a corrected one a
         ->postJson(apiRoutePath("api/lab/upload/{$record->id}/enqueue"))
         ->assertOk();
 
-    try {
-        runUploadWorker($record);
-    } catch (RuntimeException) {
-        // A sync queue lets the failure of the job through.
-    }
+    runUploadWorker($record)->assertFailed();
 
     $record->refresh();
 
@@ -479,9 +489,41 @@ test('a reverted import can be sent through the queue again', function (int $typ
 
     approveUploadAndImport($record);
 
+    // The names the revert removed are back on the structures that stayed.
     expect($record->refresh()->state)->toBe(UploadQueue::STATE_DONE)
         ->and(importedSmiles($record))->toBe(WORKFLOW_SMILES)
-        ->and(Structure::query()->count())->toBe(3);
+        ->and(Structure::query()->count())->toBe(3)
+        ->and(Identifier::query()
+            ->where('type', Identifier::TYPE_NAME)
+            ->where('source_type', Dataset::class)
+            ->where('source_id', $record->dataset_id)
+            ->orderBy('value')
+            ->pluck('value')
+            ->all())->toBe(['Azinphos-ethyl', 'Benzene', 'Ethanol']);
+})->with('upload kinds');
+
+test('an approval of data the uploader has taken back since is not an approval', function (int $type, string $csv, array $columns) {
+    $uploader = User::factory()->create();
+    $record = takeUploadToReview($uploader, $type, $csv, $columns);
+    $openedByAdministrator = UploadQueue::query()->findOrFail($record->id);
+
+    test()->actingAs($uploader)
+        ->postJson(apiRoutePath("api/lab/upload/{$record->id}/revert"))
+        ->assertOk();
+
+    $openedByAdministrator->refresh()->approveAdminReview(User::factory()->create()->id);
+
+    expect($record->refresh()->state)->toBe(UploadQueue::STATE_CONFIGURED)
+        ->and($record->config->adminReviewApproved())->toBeFalse()
+        ->and(importedSmiles($record))->toBe([]);
+
+    // Neither is a second approval of an upload that is already imported.
+    configureAndEnqueueUpload($uploader, $record, $columns);
+    runUploadWorker($record);
+    approveUploadAndImport($record);
+    $record->refresh()->approveAdminReview(User::factory()->create()->id);
+
+    expect($record->refresh()->state)->toBe(UploadQueue::STATE_DONE);
 })->with('upload kinds');
 
 test('an uploader takes a waiting upload back to change its configuration', function (int $type, string $csv, array $columns) {

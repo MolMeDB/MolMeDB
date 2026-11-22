@@ -152,6 +152,7 @@ class UploadQueueInteractionPayloadBuilder
         }
 
         $structure = null;
+        $matchedBySmiles = false;
         $smiles = trim($row['smiles'] ?? '');
 
         if ($smiles !== '') {
@@ -162,6 +163,7 @@ class UploadQueueInteractionPayloadBuilder
             $structure = Structure::withTrashed()
                 ->where('canonical_smiles', $smiles)
                 ->first();
+            $matchedBySmiles = $structure !== null;
         }
 
         foreach ($identifierColumns as $column => $type) {
@@ -185,20 +187,52 @@ class UploadQueueInteractionPayloadBuilder
             $structure = Structure::create([
                 'canonical_smiles' => trim($smiles),
             ]);
+            $matchedBySmiles = true;
+        }
 
-            $structure->identifiers()->createMany(array_map(
-                fn (string $column): array => [
-                    'type' => $identifierColumns[$column],
-                    'value' => trim($row[$column]),
-                    'state' => Identifier::STATE_NEW,
-                    'source_id' => $record?->dataset_id,
-                    'source_type' => $record ? Dataset::class : null,
-                ],
-                array_filter(array_keys($identifierColumns), fn (string $column): bool => ! empty($row[$column] ?? null))
-            ));
+        // A structure found by one of its identifiers keeps what it has: the
+        // other identifiers of the row may belong to a different compound.
+        if ($structure && $createMissingStructure && ($matchedBySmiles || $smiles === '')) {
+            $this->addMissingIdentifiers($structure, $row, $identifierColumns, $record);
         }
 
         return $this->structureResolutionCache[$cacheKey] = $structure ? (int) $structure->id : null;
+    }
+
+    /**
+     * Adds the identifiers of the row the structure does not have yet, also
+     * the withdrawn ones: a reverted upload removes the identifiers it added,
+     * and importing it again has to bring them back.
+     *
+     * @param  array<string, string>  $row
+     * @param  array<string, int>  $identifierColumns
+     */
+    private function addMissingIdentifiers(Structure $structure, array $row, array $identifierColumns, ?UploadQueue $record): void
+    {
+        foreach ($identifierColumns as $column => $type) {
+            $value = trim($row[$column] ?? '');
+            if ($value === '') {
+                continue;
+            }
+
+            $exists = Identifier::withTrashed()
+                ->where('structure_id', $structure->id)
+                ->where('type', $type)
+                ->where('value', $value)
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            $structure->identifiers()->create([
+                'type' => $type,
+                'value' => $value,
+                'state' => Identifier::STATE_NEW,
+                'source_id' => $record?->dataset_id,
+                'source_type' => $record ? Dataset::class : null,
+            ]);
+        }
     }
 
     private function canonizeSmiles(string $smiles): string

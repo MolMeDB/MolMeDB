@@ -29,7 +29,7 @@ Inside Docker, the frontend calls the backend at `http://web` (`NEXT_BACKEND_URL
 
 ## 1. The stack
 
-The images are built on GitHub and pulled from its container registry (`ghcr.io/molmedb/molmedb-*`); nothing is built on the server. The server needs this repository only for `docker-compose-production.yaml`, the deploy script, the two `.env` files and the `./storage` directory.
+The images are built on GitHub and pulled from its container registry (`ghcr.io/molmedb/molmedb-*`); nothing is built on the server. The server does not need the repository: a deployment directory holds only `compose.yaml` and `deploy.sh` (both attached to every release on GitHub), the two `.env` files and `storage/`. A checkout works as well; there the files are `docker-compose-production.yaml` and `docker/production/deploy.sh`.
 
 Set these values in `.env`:
 
@@ -48,7 +48,7 @@ MOLMEDB_ADMIN_HOST=admin.molmedb.upol.cz
 MOLMEDB_RDF_HOST=rdf.molmedb.upol.cz
 ```
 
-`.env` is not part of any image; Compose passes its values to the application containers when it creates them, so after editing it run `docker compose -f docker-compose-production.yaml up -d` to recreate them. The databases get only their own settings from it. The frontend reads `frontend/.env` when it runs; its `NEXT_PUBLIC_*` values are compiled into the image by the release (see below), so changing them on the server has no effect.
+`.env` is not part of any image; Compose passes its values to the application containers when it creates them, so after editing it run `docker compose up -d` in the deployment directory (in a checkout: `docker compose -f docker-compose-production.yaml up -d`) to recreate them. The databases get only their own settings from it. The frontend reads `frontend/.env` when it runs; its `NEXT_PUBLIC_*` values are compiled into the image by the release (see below), so changing them on the server has no effect.
 
 If the packages are private, log the server in to the registry once, with a GitHub token that has only the `read:packages` scope:
 
@@ -59,19 +59,36 @@ docker login ghcr.io -u <github user>      # sudo docker login … if docker run
 Then deploy a release:
 
 ```bash
-docker/production/deploy.sh 1.4.0          # DOCKER="sudo docker" docker/production/deploy.sh 1.4.0
+./deploy.sh 1.4.0                          # DOCKER="sudo docker" ./deploy.sh 1.4.0; in a checkout: docker/production/deploy.sh 1.4.0
 ```
 
-The script checks that all images of the version exist, pulls them, writes `MOLMEDB_VERSION` into `.env` and restarts the application. The application container runs the migrations when it starts; the script watches it for a minute and, if it does not stay up, shows its log and points `.env` back to the previous version. To go back, run it with the previous version (it prints it); migrations are not rolled back. Only the images of the release are pulled: the databases, Redis and CDK Depict keep the image they run until you pull them yourself (`docker compose -f docker-compose-production.yaml pull <service>`). `docker compose -f docker-compose-production.yaml …` works as usual afterwards, since Compose reads the version from `.env`.
+The script checks that all images of the version exist, pulls them, in a deployment directory downloads the `compose.yaml` of that release (`MOLMEDB_KEEP_COMPOSE=1` keeps the one that is there), writes `MOLMEDB_VERSION` into `.env` and restarts the application. The application container runs the migrations when it starts; the script watches it for a minute and, if it does not stay up, shows its log and points `.env` back to the previous version. To go back, run it with the previous version (it prints it); migrations are not rolled back. Only the images of the release are pulled: the databases, Redis and CDK Depict keep the image they run until you pull them yourself (`docker compose -f docker-compose-production.yaml pull <service>`). `docker compose -f docker-compose-production.yaml …` works as usual afterwards, since Compose reads the version from `.env`.
 
 The databases use `ghcr.io/molmedb/molmedb-db:15` (PostgreSQL with Bingo). It is published from `main` when `database/extensions/bingo` changes, not with every release, so a deployment does not restart them. Set `MOLMEDB_DB_VERSION` in `.env` to pin a build.
 
-### Moving from images built on the server
+### Moving a checkout into a deployment directory
 
-Once, before the first deployment from the registry:
-- delete the old `docker-compose.yaml` copy in the checkout (it still has `build:` sections, and a plain `docker compose up -d` would use it);
-- keep `./storage` and the Docker volumes: the containers are recreated from the new images under the same names, and the data stays in the volumes (`docker volume ls` shows `…_molmedb-db` and `…_molmedb-predictions-db`). Run the commands from the same directory as before, so the project name and with it the volume names stay the same;
-- drop the local edits of `.dockerignore` and `docker/common/php-fpm/Dockerfile` (`git checkout -- .dockerignore docker/common/php-fpm/Dockerfile`); they are no longer used.
+`move-to-standalone.sh` (attached to every release) moves an installation that runs from a checkout, with images built on the server, into a directory of its own. Run it as root:
+
+```bash
+curl -fLO https://github.com/MolMeDB/MolMeDB/releases/download/v1.4.0/move-to-standalone.sh
+chmod +x move-to-standalone.sh
+
+# A rehearsal first: makes and proves the backups, then starts the old installation again.
+BACKUP_ONLY=1 ./move-to-standalone.sh 1.4.0 /var/www/MolMeDB-api /srv/app/MolMeDB
+
+# The move itself.
+./move-to-standalone.sh 1.4.0 /var/www/MolMeDB-api /srv/app/MolMeDB
+```
+
+The site is down while it runs. The script:
+1. checks, while the site still runs, that the release and its images exist, that the new compose file resolves to the database volumes that are in use (it writes `COMPOSE_PROJECT_NAME` into the new `.env` when they carry another prefix than `molmedb-api`) and that there is enough free space;
+2. stops the application;
+3. backs up both databases as a `pg_dump` and, with the databases stopped for a moment, as an exact archive of their volumes, then Redis, `storage/`, both `.env` files and the old compose file (into `<new directory>-backup-<time>`, or `BACKUP_DIR`);
+4. proves the backups: checksums, archive listings, and a restore of both dumps into throw-away databases whose row counts per table must match the real ones (`SKIP_RESTORE_TEST=1` leaves the restore out);
+5. copies `storage/` and the configuration into the new directory and deploys the release from there.
+
+Any failure before step 5 starts the old installation again. The databases are not moved, they stay in their volumes; the old directory is not modified. `ROLLBACK.txt` next to the backups lists the commands that bring the old installation back, with the databases as they were before the new release migrated them. Keep the old directory, its images and the backups until the new installation has proven itself, and copy the backups off the server.
 
 ### Publishing a release
 

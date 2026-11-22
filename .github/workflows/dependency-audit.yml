@@ -4,11 +4,13 @@ name: Dependency audit
 # workflows install exactly those versions and only run when code changes,
 # so nothing else would notice an advisory:
 #   - on a pull request and a push, for a lock file that changed;
-#   - every morning on the default branch, for an advisory published
-#     against versions that are already released. GitHub e-mails a failed
-#     scheduled run to whoever last changed the schedule below.
+#   - every morning for main and develop, for an advisory published against
+#     versions that are already released or about to be. GitHub e-mails a
+#     failed scheduled run to whoever last changed the schedule below.
 #
 # A high or critical advisory fails the job; lower ones are listed.
+# Development packages are audited too: they run on the machines and in the
+# workflows that build what is released.
 on:
   pull_request:
     branches: [develop, main]
@@ -23,10 +25,18 @@ permissions:
 
 jobs:
   composer:
-    name: PHP packages
+    name: PHP packages${{ matrix.ref && format(' ({0})', matrix.ref) || '' }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # A scheduled run starts on the default branch only, so it checks
+        # out both branches itself; any other run audits what triggered it.
+        ref: ${{ fromJSON(github.event_name == 'schedule' && '["main", "develop"]' || '[""]') }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -43,12 +53,13 @@ jobs:
         run: composer audit --locked --abandoned=report || true
 
   npm:
-    name: npm packages (${{ matrix.name }})
+    name: npm packages (${{ matrix.project.name }}${{ matrix.ref && format(', {0}', matrix.ref) || '' }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
+        ref: ${{ fromJSON(github.event_name == 'schedule' && '["main", "develop"]' || '[""]') }}
+        project:
           - name: frontend
             directory: frontend
           # The asset build of the administration.
@@ -56,6 +67,8 @@ jobs:
             directory: .
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -64,5 +77,5 @@ jobs:
       # Reads package-lock.json only. Everything found is printed; the exit
       # status follows the level.
       - name: High and critical advisories
-        working-directory: ${{ matrix.directory }}
+        working-directory: ${{ matrix.project.directory }}
         run: npm audit --package-lock-only --audit-level=high

@@ -5,7 +5,13 @@
 #
 # Security updates (a pull request as soon as an advisory is published) are
 # switched on in the repository settings, not here:
-# Settings -> Advanced Security -> Dependabot security updates.
+# Settings -> Advanced Security -> Dependabot security updates. Those go
+# against the default branch, whatever target-branch says below.
+#
+# This file is read from the default branch only. A pull request that
+# updates Filament or its plugins needs `php artisan filament:assets` run
+# and committed with it; Backend CI says so when it is missing. Nothing in
+# CI builds the root npm project, so its updates are not tested.
 version: 2
 
 updates:
@@ -62,3 +68,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # A new major version of a base image is a migration, not an update: the
+    # database image is published under the tag of its PostgreSQL version
+    # and opens the data directory production already has.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

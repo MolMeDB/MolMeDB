@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\ServiceUrl;
+use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Http;
 use Modules\Rdkit\Rdkit;
 use Modules\Rdkit\Response\ResponseInfo;
@@ -75,4 +77,34 @@ test('rdkit returns null when service is not connected', function () {
 
     expect($client->get_fingerprint('CCO'))->toBeNull()
         ->and($client->get_general_info('CCO'))->toBeNull();
+});
+
+test('rdkit set by its bare service name is reached over plain http', function () {
+    config()->set('services.rdkit.url', ServiceUrl::fromHost('rdkit'));
+
+    Http::fake([
+        'http://rdkit/test' => Http::response([], 200),
+        'http://rdkit/structure/canonize*' => Http::response(['data' => 'CCO'], 200),
+    ]);
+
+    expect((new Rdkit)->canonize_smiles('OCC'))->toBe('CCO');
+
+    Http::assertSent(fn ($request): bool => str_starts_with($request->url(), 'http://rdkit/structure/canonize'));
+});
+
+test('the configured rdkit address always carries a scheme', function () {
+    $repository = Env::getRepository();
+    $before = $repository->get('RDKIT_HOST');
+    $repository->clear('RDKIT_HOST');
+    $repository->set('RDKIT_HOST', 'rdkit');
+
+    try {
+        expect((require config_path('services.php'))['rdkit']['url'])->toBe('http://rdkit');
+    } finally {
+        $repository->clear('RDKIT_HOST');
+
+        if ($before !== null) {
+            $repository->set('RDKIT_HOST', $before);
+        }
+    }
 });

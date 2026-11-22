@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Middleware\NegotiatePublicApiFormat;
 use App\Http\Middleware\NormalizeLivewireUploadUrl;
 use App\Http\Middleware\PublicApiCors;
+use App\Services\ApplicationErrorRecorder;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -57,5 +58,9 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Besides the log, every reported error is counted for the daily
+        // system health report (ApplicationErrorRecorder).
+        $exceptions->report(function (Throwable $exception): void {
+            app(ApplicationErrorRecorder::class)->record($exception);
+        });
     })->create();

@@ -62,13 +62,13 @@ Then deploy a release:
 ./deploy.sh 1.4.0                          # DOCKER="sudo docker" ./deploy.sh 1.4.0; in a checkout: docker/production/deploy.sh 1.4.0
 ```
 
-The script checks that all images of the version exist, pulls them, in a deployment directory downloads the `compose.yaml` of that release (`MOLMEDB_KEEP_COMPOSE=1` keeps the one that is there), writes `MOLMEDB_VERSION` into `.env` and restarts the application. The application container runs the migrations when it starts; the script watches it for a minute and, if it does not stay up, shows its log and points `.env` back to the previous version. To go back, run it with the previous version (it prints it); migrations are not rolled back. Only the images of the release are pulled: the databases, Redis and CDK Depict keep the image they run until you pull them yourself (`docker compose -f docker-compose-production.yaml pull <service>`). `docker compose -f docker-compose-production.yaml …` works as usual afterwards, since Compose reads the version from `.env`.
+The script checks that all images of the version exist, in a deployment directory downloads the `compose.yaml` of that release (`MOLMEDB_KEEP_COMPOSE=1` keeps the one that is there), pulls the images, writes `MOLMEDB_VERSION` into `.env` and restarts the application. The application container runs the migrations when it starts; the script watches it for a minute and, if it does not stay up, shows its log and points `.env` back to the previous version. To go back, run it with the previous version (it prints it); migrations are not rolled back. Only the images of the release are pulled: the databases, Redis and CDK Depict keep the image they run until you pull them yourself (`docker compose -f docker-compose-production.yaml pull <service>`). `docker compose -f docker-compose-production.yaml …` works as usual afterwards, since Compose reads the version from `.env`.
 
 The databases use `ghcr.io/molmedb/molmedb-db:15` (PostgreSQL with Bingo). It is published from `main` when `database/extensions/bingo` changes, not with every release, so a deployment does not restart them. Set `MOLMEDB_DB_VERSION` in `.env` to pin a build.
 
 ### Moving a checkout into a deployment directory
 
-`move-to-standalone.sh` (attached to every release) moves an installation that runs from a checkout, with images built on the server, into a directory of its own. Run it as root:
+`move-to-standalone.sh` (attached to every release) moves an installation that runs from a checkout, with images built on the server, into a directory of its own. Run it as root, inside `tmux` or `screen`: the site is down while it works, and it must not depend on the connection to the server.
 
 ```bash
 curl -fLO https://github.com/MolMeDB/MolMeDB/releases/download/v1.4.0/move-to-standalone.sh
@@ -81,14 +81,21 @@ BACKUP_ONLY=1 ./move-to-standalone.sh 1.4.0 /var/www/MolMeDB-api /srv/app/MolMeD
 ./move-to-standalone.sh 1.4.0 /var/www/MolMeDB-api /srv/app/MolMeDB
 ```
 
-The site is down while it runs. The script:
-1. checks, while the site still runs, that the release and its images exist, that the new compose file resolves to the database volumes that are in use (it writes `COMPOSE_PROJECT_NAME` into the new `.env` when they carry another prefix than `molmedb-api`) and that there is enough free space;
-2. stops the application;
-3. backs up both databases as a `pg_dump` and, with the databases stopped for a moment, as an exact archive of their volumes, then Redis, `storage/`, both `.env` files and the old compose file (into `<new directory>-backup-<time>`, or `BACKUP_DIR`);
-4. proves the backups: checksums, archive listings, and a restore of both dumps into throw-away databases whose row counts per table must match the real ones (`SKIP_RESTORE_TEST=1` leaves the restore out);
-5. copies `storage/` and the configuration into the new directory and deploys the release from there.
+The rehearsal also takes the site down for as long as the backups and the restore test take; it tells how long the move will be.
 
-Any failure before step 5 starts the old installation again. The databases are not moved, they stay in their volumes; the old directory is not modified. `ROLLBACK.txt` next to the backups lists the commands that bring the old installation back, with the databases as they were before the new release migrated them. Keep the old directory, its images and the backups until the new installation has proven itself, and copy the backups off the server.
+The script:
+1. while the site still runs: checks that the release and its images exist, that the given directory is the one the containers were started from, that the new compose file resolves to the database volumes that are in use (it writes `COMPOSE_PROJECT_NAME` into the new `.env` when they carry another prefix than `molmedb-api`) and that there is enough free space; pulls all images; compares the published database image with the one in use;
+2. stops the application;
+3. backs up both databases as a `pg_dump` and, with the databases stopped for a moment, as an exact archive of their volumes, then Redis, `storage/`, both `.env` files and the old compose file (into `<new directory>-backup-<time>`, or `BACKUP_DIR`; readable by root only);
+4. proves the backups: archive listings, a restore of both dumps into throw-away databases whose row counts per table must match the real ones (`SKIP_RESTORE_TEST=1` leaves the restore out; the tables Bingo keeps for itself are not compared), and checksums of everything in `SHA256SUMS`;
+5. copies `storage/` and the configuration into the new directory;
+6. deploys the release from there and asks the site for a page.
+
+Whatever ends the script before the new containers are started (an error, Ctrl-C, a lost connection), the old installation is started again and the new directory is emptied. The databases are not moved, they stay in their volumes, and the old directory is not modified.
+
+The database containers are replaced as well: the image built on the server gives way to `ghcr.io/molmedb/molmedb-db`. Step 1 refuses another PostgreSQL major version and, unless `MOVE_ALLOW_LIBC_CHANGE=1`, another C library (text indexes would then need `REINDEX`).
+
+After the move, `ROLLBACK.txt` next to the backups lists the commands that bring the old installation back, with the databases as they were before the new release migrated them. Keep the old directory, its images and the backups until the new installation has proven itself, and copy the backups off the server. The new directory belongs to root, so later deployments run as root too.
 
 ### Publishing a release
 

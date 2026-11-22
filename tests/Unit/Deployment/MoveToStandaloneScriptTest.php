@@ -12,7 +12,7 @@ require_once __DIR__.'/deployment_test_helpers.php';
  */
 
 /**
- * @return array{old: string, new: string, backups: string, log: string, env: array<string, string>}
+ * @return array{old: string, new: string, backups: string, log: string, state: string, env: array<string, string>}
  */
 function installationToMove(): array
 {
@@ -33,12 +33,16 @@ function installationToMove(): array
         'new' => $fakes['base'].'/srv/app/MolMeDB',
         'backups' => $fakes['base'].'/backups',
         'log' => $fakes['log'],
-        'env' => $fakes['env'] + ['BACKUP_DIR' => $fakes['base'].'/backups'],
+        'state' => $fakes['base'].'/state',
+        'env' => $fakes['env'] + [
+            'BACKUP_DIR' => $fakes['base'].'/backups',
+            'FAKE_WORKING_DIR' => realpath($old),
+        ],
     ];
 }
 
 /**
- * @param  array{old: string, new: string, backups: string, log: string, env: array<string, string>}  $installation
+ * @param  array{old: string, new: string, backups: string, log: string, state: string, env: array<string, string>}  $installation
  * @param  array<string, string>  $env
  */
 function moveInstallation(array $installation, array $env = [], string $version = '1.4.0'): Process
@@ -108,8 +112,14 @@ test('the installation is backed up, proven and then started from the new direct
         ->and(file_get_contents($backups.'/SHA256SUMS'))->toContain('main-db.dump')->toContain('storage.tar')
         ->and(file_get_contents($backups.'/ROLLBACK.txt'))
         ->toContain('molmedb-api_molmedb-db:/data')
-        ->toContain('main-db.volume.tar')
-        ->toContain('cd '.realpath($installation['old']));
+        ->toContain('tar -tf /backup/main-db.volume.tar > /dev/null && find /data -mindepth 1 -delete')
+        ->toContain('predictions-db.volume.tar')
+        ->toContain('molmedb-api_molmedb-redis:/data')
+        ->toContain('sha256:0123abcd')
+        ->toContain('cd '.realpath($installation['old']).' && docker compose -p molmedb-api -f '.realpath($installation['old']).'/docker-compose.yaml up -d --no-build');
+
+    // The checksums cover everything, the way back included.
+    expect(file_get_contents($backups.'/SHA256SUMS'))->toContain('ROLLBACK.txt')->toContain('main-db.restored.counts');
 
     // The old installation stays as it was: it is the way back.
     expect(file_get_contents($installation['old'].'/.env'))->toBe("APP_NAME=MolMeDB\nDB_PASSWORD=secret\n")
@@ -119,8 +129,13 @@ test('the installation is backed up, proven and then started from the new direct
     // installation starts only after the restore was compared.
     $log = $installation['log'];
     expect(positionOfCall($log, 'docker stop molmedb-nginx'))->toBeGreaterThan(positionOfCall($log, 'manifest inspect'))
+        // Everything from the network and every check of the images comes while the site still runs.
+        ->and(positionOfCall($log, 'docker stop molmedb-nginx'))->toBeGreaterThan(positionOfCall($log, '/compose.yaml pull'))
+        ->and(positionOfCall($log, 'docker stop molmedb-nginx'))->toBeGreaterThan(positionOfCall($log, 'probe.tar'))
+        ->and(positionOfCall($log, 'docker stop molmedb-nginx'))->toBeGreaterThan(positionOfCall($log, '--entrypoint ldd ghcr.io/molmedb/molmedb-db:15'))
         ->and(positionOfCall($log, 'pg_dump '))->toBeGreaterThan(positionOfCall($log, 'docker stop molmedb-backend'))
-        ->and(positionOfCall($log, '--entrypoint tar'))->toBeGreaterThan(positionOfCall($log, 'docker stop molmedb-dev-db molmedb-predictions-db'))
+        ->and(positionOfCall($log, 'main-db.volume.tar'))->toBeGreaterThan(positionOfCall($log, 'docker stop -t 300 molmedb-dev-db molmedb-predictions-db'))
+        ->and(dockerCalls($log, '--name molmedb-restore-test --network none'))->toHaveCount(2)
         ->and(positionOfCall($log, 'up -d'))->toBeGreaterThan(positionOfCall($log, '-d restore_test'))
         ->and(dockerCalls($log, 'compose -f compose.yaml up -d'))->toHaveCount(1)
         // deploy.sh used the compose file that was checked, not a second download.
@@ -174,15 +189,145 @@ test('a failed backup starts the old installation again and moves nothing', func
         ->and(file_exists($installation['new'].'/compose.yaml'))->toBeFalse();
 
     // Every container that was stopped runs again.
-    foreach (['molmedb-nginx', 'molmedb-frontend', 'molmedb-backend', 'molmedb-queue-worker', 'molmedb-dev-db'] as $container) {
-        expect(dockerCalls($installation['log'], 'docker start '))->not->toBe([])
-            ->and(glob(dirname($installation['backups']).'/state/'.$container))->toBe([], $container);
-    }
+    expect(glob($installation['state'].'/*'))->toBe([])
+        ->and(dockerCalls($installation['log'], 'docker start molmedb-backend'))->toHaveCount(1)
+        ->and(dockerCalls($installation['log'], 'docker start molmedb-nginx'))->toHaveCount(1);
 })->with([
     'pg_dump fails' => [['FAKE_DUMP_FAILS' => '1'], 'The move did not finish'],
     'pg_restore fails' => [['FAKE_RESTORE_FAILS' => '1'], 'pg_restore reported errors for main-db'],
     'a restored table has other rows' => [['FAKE_RESTORED_ROWS' => '4'], 'the restored database differs from the real one'],
 ]);
+
+test('a failure while the databases are stopped starts them, Redis and the application again', function () {
+    $installation = installationToMove();
+
+    $process = moveInstallation($installation, ['FAKE_ARCHIVE_FAILS' => '1']);
+
+    $log = $installation['log'];
+    expect($process->getExitCode())->not->toBe(0)
+        ->and($process->getErrorOutput())->toContain('Nothing was moved')
+        ->and(glob($installation['state'].'/*'))->toBe([])
+        ->and(positionOfCall($log, 'docker start molmedb-dev-db molmedb-predictions-db'))
+        ->toBeGreaterThan(positionOfCall($log, 'docker stop -t 300 molmedb-dev-db molmedb-predictions-db'))
+        ->and(dockerCalls($log, 'docker start molmedb-redis'))->toHaveCount(1)
+        ->and(positionOfCall($log, 'docker start molmedb-backend'))->toBeGreaterThan(positionOfCall($log, 'docker start molmedb-dev-db'))
+        ->and(dockerCalls($log, 'up -d'))->toBe([]);
+});
+
+test('the old installation is started again even when its output can no longer be written', function () {
+    $installation = installationToMove();
+
+    // The reader of the output goes away right after the application was
+    // stopped, as a lost connection or a closed `| tee` would.
+    $process = new Process(
+        ['bash', '-c', '"$@" 2>&1 | sed "/stopped molmedb-backend/q" > /dev/null', 'move', deploymentScript('move-to-standalone.sh'), '1.4.0', $installation['old'], $installation['new']],
+        null,
+        ['FAKE_DUMP_SLEEP' => '1'] + $installation['env'],
+    );
+    $process->run();
+
+    expect(dockerCalls($installation['log'], 'docker stop molmedb-backend'))->toHaveCount(1)
+        ->and(dockerCalls($installation['log'], 'docker start molmedb-backend'))->toHaveCount(1)
+        ->and(dockerCalls($installation['log'], 'docker start molmedb-nginx'))->toHaveCount(1)
+        ->and(dockerCalls($installation['log'], 'up -d'))->toBe([])
+        ->and(glob($installation['state'].'/*'))->toBe([]);
+});
+
+test('an interrupted move starts the old installation again', function () {
+    $installation = installationToMove();
+
+    $process = new Process(
+        [deploymentScript('move-to-standalone.sh'), '1.4.0', $installation['old'], $installation['new']],
+        null,
+        ['FAKE_DUMP_SLEEP' => '2'] + $installation['env'],
+    );
+    $process->start();
+    $process->waitUntil(fn (): bool => str_contains(file_get_contents($installation['log']), 'pg_dump '));
+    $process->signal(SIGTERM);
+    $process->wait();
+
+    expect($process->getExitCode())->toBe(130)
+        ->and($process->getErrorOutput())->toContain('Nothing was moved')
+        ->and(glob($installation['state'].'/*'))->toBe([])
+        ->and(dockerCalls($installation['log'], 'docker start molmedb-nginx'))->toHaveCount(1)
+        ->and(dockerCalls($installation['log'], 'up -d'))->toBe([]);
+});
+
+test('a deployment that fails before it replaces a container starts the old installation again', function () {
+    $installation = installationToMove();
+
+    // The first pull is the one made while the site still runs; the second is deploy.sh's.
+    $process = moveInstallation($installation, ['FAKE_PULL_FAILS_ON' => '2']);
+
+    expect($process->getExitCode())->not->toBe(0)
+        ->and($process->getErrorOutput())
+        ->toContain('before any container was replaced')
+        ->toContain('Nothing was moved')
+        ->not->toContain('ROLLBACK.txt')
+        ->and(dockerCalls($installation['log'], 'up -d'))->toBe([])
+        ->and(glob($installation['state'].'/*'))->toBe([])
+        ->and(dockerCalls($installation['log'], 'docker start molmedb-backend'))->toHaveCount(1)
+        // The new directory is empty again, so the move can be repeated.
+        ->and(array_diff(scandir($installation['new']), ['.', '..']))->toBe([]);
+
+    $second = moveInstallation(['backups' => $installation['backups'].'-2'] + $installation, ['BACKUP_DIR' => $installation['backups'].'-2']);
+
+    expect($second->getExitCode())->toBe(0, $second->getOutput().$second->getErrorOutput());
+});
+
+test('nothing is stopped when the move cannot be prepared', function (array $env, string $message) {
+    $installation = installationToMove();
+
+    $process = moveInstallation($installation, $env);
+
+    expect($process->getExitCode())->toBe(1)
+        ->and($process->getErrorOutput())->toContain($message)
+        ->and(dockerCalls($installation['log'], 'docker stop'))->toBe([]);
+})->with([
+    'the images cannot be pulled' => [['FAKE_PULL_FAILS' => '1'], ''],
+    'the published database image has another C library' => [['FAKE_NEW_LIBC' => '2.41-12'], 'another C library'],
+    'a container cannot write the backups' => [['FAKE_PROBE_FAILS' => '1'], 'cannot write into'],
+    'the site runs from another directory' => [['FAKE_WORKING_DIR' => '/var/www/other'], "was started from '/var/www/other'"],
+]);
+
+test('another C library in the database image can be accepted', function () {
+    $installation = installationToMove();
+
+    $process = moveInstallation($installation, ['FAKE_NEW_LIBC' => '2.41-12', 'MOVE_ALLOW_LIBC_CHANGE' => '1']);
+
+    expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput());
+});
+
+test('a storage directory that is a link is refused', function () {
+    $installation = installationToMove();
+    rename($installation['old'].'/storage', $installation['old'].'/real-storage');
+    symlink($installation['old'].'/real-storage', $installation['old'].'/storage');
+
+    $process = moveInstallation($installation);
+
+    expect($process->getExitCode())->toBe(1)
+        ->and($process->getErrorOutput())->toContain('must be a real directory')
+        ->and(file_get_contents($installation['log']))->toBe('');
+});
+
+test('backups are not put into the directory that is moved', function () {
+    $installation = installationToMove();
+
+    $process = moveInstallation($installation, ['BACKUP_DIR' => $installation['old'].'/storage/backups']);
+
+    expect($process->getExitCode())->toBe(1)
+        ->and($process->getErrorOutput())->toContain('must not be inside the old directory');
+});
+
+test('the backups can be read by nobody else', function () {
+    $installation = installationToMove();
+
+    moveInstallation($installation, ['BACKUP_ONLY' => '1']);
+
+    foreach (['', '/main-db.dump', '/main-db.globals.sql', '/config/env', '/storage.tar'] as $file) {
+        expect(fileperms($installation['backups'].$file) & 0077)->toBe(0, $file);
+    }
+});
 
 test('a rehearsal makes and proves the backups and leaves the old installation running', function () {
     $installation = installationToMove();
@@ -192,10 +337,12 @@ test('a rehearsal makes and proves the backups and leaves the old installation r
     expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput())
         ->and($process->getOutput())->toContain('nothing was moved')
         ->and(filesize($installation['backups'].'/main-db.dump'))->toBeGreaterThan(0)
-        ->and(file_exists($installation['backups'].'/ROLLBACK.txt'))->toBeTrue()
+        ->and(file_get_contents($installation['backups'].'/SHA256SUMS'))->toContain('main-db.volume.tar')
+        // Nothing was moved, so there is no way back to describe.
+        ->and(file_exists($installation['backups'].'/ROLLBACK.txt'))->toBeFalse()
         ->and(file_exists($installation['new']))->toBeFalse()
         ->and(dockerCalls($installation['log'], 'up -d'))->toBe([])
-        ->and(glob(dirname($installation['backups']).'/state/*'))->toBe([]);
+        ->and(glob($installation['state'].'/*'))->toBe([]);
 });
 
 test('the dumps are not restored when that is asked for', function () {

@@ -31,6 +31,9 @@
 #                         use the one that is there
 #   RELEASE_URL           where the release files are downloaded from
 #                         (default: https://github.com/MolMeDB/MolMeDB/releases/download)
+#   DEPLOY_MARKER         a file that is created right before the containers
+#                         are replaced; until it exists, a failed deployment
+#                         has changed nothing that runs
 set -euo pipefail
 
 script_dir=$(cd "$(dirname "$0")" && pwd)
@@ -78,12 +81,50 @@ if [[ ! -f .env ]]; then
   exit 1
 fi
 
-remove_download() {
+# A deployment that was killed leaves these behind. Putting them back later
+# would bring in settings from another day, so a person decides.
+for leftover in "$backup" "$compose_backup"; do
+  if [[ -e $leftover ]]; then
+    echo "Found $(pwd)/$leftover: an earlier deployment did not finish." >&2
+    echo "Compare it with the file it is a copy of, keep the right one and remove the copy. Then run this again." >&2
+    exit 1
+  fi
+done
+
+# 1 from the moment .env or the compose file may differ from what runs.
+changing=0
+
+# Whatever ends the script, the settings must not point at a release that
+# did not come up.
+on_exit() {
+  local status=$?
+  set +e
+  trap '' INT TERM HUP PIPE
+  trap - EXIT
+
   if [[ -n $new_compose ]]; then
     rm -f "$new_compose"
   fi
+
+  if (( changing )); then
+    echo >&2
+    echo "Deployment of $version did not finish; .env points back to ${previous:-no version}." >&2
+    echo "Containers that were already replaced keep running $version: check \`docker compose ps\` and deploy a working version." >&2
+    if [[ -f $backup ]]; then
+      cat "$backup" > .env && rm -f "$backup"
+    fi
+    if [[ -f $compose_backup ]]; then
+      cat "$compose_backup" > "$compose_file" && rm -f "$compose_backup"
+    fi
+    (( status )) || status=1
+  fi
+
+  exit "$status"
 }
-trap remove_download EXIT
+trap on_exit EXIT
+trap 'exit 130' INT TERM HUP
+# Output piped into a program that is gone (`| tee`, a closed pager).
+trap 'exit 141' PIPE
 
 # A release whose workflow failed half-way has only some of its images; the
 # running stack must not be touched in that case.
@@ -166,25 +207,11 @@ write_version() {
   rm -f "$tmp"
 }
 
-restore_previous() {
-  trap - ERR INT TERM HUP
-  echo >&2
-  echo "Deployment of $version did not finish; .env points back to ${previous:-no version}." >&2
-  echo "Containers that were already replaced keep running $version: check \`docker compose ps\` and deploy a working version." >&2
-  cat "$backup" > .env
-  rm -f "$backup"
-  if [[ -f $compose_backup ]]; then
-    cat "$compose_backup" > "$compose_file"
-    rm -f "$compose_backup"
-  fi
-  exit 1
-}
-
 cp -p .env "$backup"
 if (( download_compose )) && [[ -f $compose_file ]]; then
   cp -p "$compose_file" "$compose_backup"
 fi
-trap restore_previous ERR INT TERM HUP
+changing=1
 
 if (( download_compose )); then
   # Compared after writing: on a full disk the file comes out short, and the
@@ -194,6 +221,10 @@ if (( download_compose )); then
 fi
 
 write_version "$version"
+
+if [[ -n ${DEPLOY_MARKER:-} ]]; then
+  : > "$DEPLOY_MARKER"
+fi
 "${compose[@]}" up -d
 
 # `up` returns as soon as the containers are started. A failing migration
@@ -210,7 +241,7 @@ for _ in {1..12}; do
   fi
 done
 
-trap - ERR INT TERM HUP
+changing=0
 rm -f "$backup" "$compose_backup"
 
 echo

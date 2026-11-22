@@ -3,14 +3,16 @@
 # Moves a MolMeDB installation that runs from a checkout of the repository
 # into a directory of its own, which holds only compose.yaml, deploy.sh,
 # .env, frontend/.env and storage/, and runs images pulled from the registry.
-# Run once, on the server, as root.
+# Run once, on the server, as root, inside tmux or screen: the site is down
+# while it works, and it must not depend on the connection to the server.
 #
 # Usage: move-to-standalone.sh <version> <old directory> <new directory>
 #   e.g. move-to-standalone.sh 1.4.0 /var/www/MolMeDB-api /srv/app/MolMeDB
 #
 # What it does, in this order:
-#   1. checks everything that can be checked while the site still runs: the
-#      release and its images, the names of the database volumes, free space;
+#   1. does everything that can be done while the site still runs: checks
+#      the release, the names of the database volumes, the database images
+#      and free space, and pulls all images;
 #   2. stops the application (the site is down from here on);
 #   3. backs up both databases twice (a pg_dump and, with the databases
 #      stopped for a moment, an exact archive of their volumes), Redis,
@@ -21,11 +23,15 @@
 #   6. deploys the release from the new directory and looks at the result.
 #
 # The databases are not moved: they stay in the Docker volumes they are in,
-# and the new compose file is checked to use exactly those volumes.
+# and the new compose file is checked to use exactly those volumes. Their
+# containers are replaced, though: the image built on this server gives way
+# to the published one (ghcr.io/molmedb/molmedb-db), which step 1 compares
+# with the old one.
 #
-# Until step 6, any failure starts the old installation again and changes
-# nothing. The old directory is never modified, and how to go back after
-# step 6 is written to ROLLBACK.txt next to the backups.
+# Until the new containers are started in step 6, any failure starts the
+# old installation again and changes nothing. The old directory is never
+# modified, and how to go back afterwards is written to ROLLBACK.txt next to
+# the backups.
 #
 # Environment:
 #   BACKUP_DIR         where the backups go (default: <new directory>-backup-<time>)
@@ -38,7 +44,13 @@
 #                      (default: https://github.com/MolMeDB/MolMeDB/releases/download)
 #   MOVE_ALLOW_NON_ROOT  1 = run without being root (owners of the files in
 #                      storage/ are then not kept)
+#   MOVE_ALLOW_LIBC_CHANGE  1 = go on although the published database image
+#                      has another C library than the one in use (text
+#                      indexes must then be rebuilt with REINDEX)
 set -euo pipefail
+
+# The backups hold passwords and the data itself.
+umask 077
 
 version=${1:-}
 version=${version#v}
@@ -89,6 +101,8 @@ old_dir=$(cd "$old_dir" && pwd -P)
 for required in .env frontend/.env storage; do
   [[ -e $old_dir/$required ]] || fail "Not found: $old_dir/$required — is $old_dir the directory the site runs from?"
 done
+# A link would be archived and copied as a link, not as the files behind it.
+[[ -d $old_dir/storage && ! -L $old_dir/storage ]] || fail "$old_dir/storage must be a real directory, not a link."
 
 if [[ -e $new_dir && ! -d $new_dir ]]; then
   fail "Not a directory: $new_dir"
@@ -104,10 +118,11 @@ case $old_dir/ in "$new_dir"/*) fail "The old directory must not be inside the n
 
 backup_dir=${BACKUP_DIR:-$new_dir-backup-$(date +%Y%m%d-%H%M%S)}
 mkdir -p "$backup_dir"
-chmod 700 "$backup_dir"
 backup_dir=$(cd "$backup_dir" && pwd -P)
 case $backup_dir/ in "$new_dir"/*) fail "The backups must not be inside the new directory." ;; esac
+case $backup_dir/ in "$old_dir"/*) fail "The backups must not be inside the old directory." ;; esac
 [[ -z $(ls -A "$backup_dir") ]] || fail "$backup_dir is not empty."
+chmod 700 "$backup_dir"
 
 "${docker[@]}" info > /dev/null 2>&1 || fail "\`${docker[*]} info\` fails: is docker running, and may this user use it?"
 
@@ -128,6 +143,15 @@ project=$("${docker[@]}" inspect -f '{{index .Config.Labels "com.docker.compose.
 data_volume() {
   "${docker[@]}" inspect -f '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}' "$1"
 }
+
+# The directory given must be the one the containers were started from, or
+# the storage and settings of another copy would be moved to these databases.
+working_dir=$("${docker[@]}" inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$main_db")
+if [[ ! -d $working_dir || $(cd "$working_dir" && pwd -P) != "$old_dir" ]]; then
+  fail "The running installation was started from '$working_dir', not from $old_dir."
+fi
+# The compose file(s) it was started with, for the way back.
+old_compose_files=$("${docker[@]}" inspect -f '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$main_db")
 
 main_volume=$(data_volume "$main_db")
 predictions_volume=$(data_volume "$predictions_db")
@@ -152,6 +176,9 @@ done
 
 staging=$(mktemp -d)
 chmod 700 "$staging"
+# What this script put into the new directory; taken away again when the
+# move is given up, so that it can be run once more.
+created=()
 
 # 1 while the application is stopped and still belongs to the old
 # installation: whatever ends the script then, the old installation is
@@ -163,25 +190,33 @@ stopped=()
 # Brings the old installation back as it was. The databases first: the
 # application waits for them.
 resume() {
-  local index
+  local index path
   echo >&2
   echo "The move did not finish. Starting the old installation again…" >&2
-  "${docker[@]}" start "$main_db" "$predictions_db" > /dev/null 2>&1 || true
+  "${docker[@]}" start "$main_db" "$predictions_db" > /dev/null 2>&1
   if (( redis_stopped )); then
-    "${docker[@]}" start "$redis" > /dev/null 2>&1 || true
+    "${docker[@]}" start "$redis" > /dev/null 2>&1
   fi
   # In reverse: the application before the workers and the entry point.
   for (( index = ${#stopped[@]} - 1; index >= 0; index-- )); do
     "${docker[@]}" start "${stopped[index]}" > /dev/null || echo "Could not start ${stopped[index]}; start it by hand." >&2
   done
+  for path in ${created[@]+"${created[@]}"}; do
+    rm -rf "$path"
+  done
   echo "Nothing was moved; $old_dir is untouched. Backups made so far: $backup_dir" >&2
 }
 
+# Runs whatever ends the script. Nothing in it may stop it: a message that
+# cannot be written (the terminal is gone) must not keep the site down, and
+# a second Ctrl-C must not interrupt the restart.
 on_exit() {
   local status=$?
-  trap - EXIT INT TERM HUP
+  set +e
+  trap '' INT TERM HUP PIPE
+  trap - EXIT
   rm -rf "$staging"
-  "${docker[@]}" rm -fv "$restore_container" > /dev/null 2>&1 || true
+  "${docker[@]}" rm -fv "$restore_container" > /dev/null 2>&1
   if (( site_down )); then
     resume
     (( status )) || status=1
@@ -190,6 +225,8 @@ on_exit() {
 }
 trap on_exit EXIT
 trap 'exit 130' INT TERM HUP
+# Output piped into a program that is gone (`| tee`, a closed pager).
+trap 'exit 141' PIPE
 
 for file in compose.yaml deploy.sh; do
   curl --fail --silent --show-error --location --retry 3 \
@@ -222,6 +259,53 @@ for volume in "$main_volume" "$predictions_volume"; do
 done
 echo "The new compose file uses the existing database volumes."
 
+step "Pulling the images (the site still runs)"
+
+# Everything the new installation starts, the databases and Redis included:
+# once the site is down, nothing has to come from the network any more.
+MOLMEDB_VERSION=$version "${docker[@]}" compose -f "$staging/compose.yaml" pull
+
+step "Comparing the database images"
+
+# By id: the name of an image built here moves to the next build.
+main_image=$("${docker[@]}" inspect -f '{{.Image}}' "$main_db")
+predictions_image=$("${docker[@]}" inspect -f '{{.Image}}' "$predictions_db")
+new_db_image=$(sed -n 's/^[[:space:]]*image: \(ghcr\.io\/molmedb\/molmedb-db:.*\)$/\1/p' <<< "$resolved" | head -n 1)
+[[ -n $new_db_image ]] || fail "Cannot find the database image in the compose file of $version."
+
+# The new image takes over the data directory of the old one as it is.
+image_answer() {
+  local image=$1
+  shift
+  "${docker[@]}" run --rm --network none --entrypoint "$1" "$image" "${@:2}" 2> /dev/null | head -n 1
+}
+
+old_postgres=$(image_answer "$main_image" postgres --version)
+new_postgres=$(image_answer "$new_db_image" postgres --version)
+old_libc=$(image_answer "$main_image" ldd --version)
+new_libc=$(image_answer "$new_db_image" ldd --version)
+
+echo "in use:    $old_postgres; $old_libc"
+echo "published: $new_postgres ($new_db_image); $new_libc"
+
+major() { sed -n 's/.* \([0-9][0-9]*\)\.[0-9].*/\1/p' <<< "$1"; }
+if [[ -z $(major "$old_postgres") || $(major "$old_postgres") != "$(major "$new_postgres")" ]]; then
+  fail "The published database image is another PostgreSQL major version; it cannot open this data directory."
+fi
+if [[ $old_libc != "$new_libc" && ${MOVE_ALLOW_LIBC_CHANGE:-0} != 1 ]]; then
+  fail "The published database image has another C library. Text is sorted by it, so indexes on text can become wrong without notice. Rebuild $new_db_image on the same base, or run again with MOVE_ALLOW_LIBC_CHANGE=1 and REINDEX both databases after the move."
+fi
+
+# The archive of a volume is made by a container of the old image that
+# writes into the backup directory. Tried now, on a file that every data
+# directory has, so that it cannot fail for the first time with the site down.
+"${docker[@]}" run --rm --network none --entrypoint tar \
+  -v "$main_volume:/data:ro" -v "$backup_dir:/backup" \
+  "$main_image" -C /data -cf /backup/probe.tar PG_VERSION \
+  || fail "A container cannot write into $backup_dir (SELinux? user namespaces?). Nothing was changed."
+[[ -s $backup_dir/probe.tar ]] || fail "A container wrote nothing into $backup_dir. Nothing was changed."
+rm -f "$backup_dir/probe.tar"
+
 step "Checking free space"
 
 # In kilobytes.
@@ -236,9 +320,10 @@ predictions_kb=$(( $(psql_value "$predictions_db" 'SELECT pg_database_size(curre
 free_kb() { df -Pk "$1" | awk 'NR == 2 {print $4}'; }
 filesystem() { df -Pk "$1" | awk 'NR == 2 {print $1}'; }
 
-# A dump and an archive of the volume for each database, and storage/ once.
-backup_need=$(( storage_kb + 2 * (main_kb + predictions_kb) ))
-new_need=$storage_kb
+# A dump and an archive of the volume for each database, and storage/ once;
+# a tenth on top, for what a volume holds besides the database itself.
+backup_need=$(( (storage_kb + 2 * (main_kb + predictions_kb)) * 11 / 10 ))
+new_need=$(( storage_kb * 11 / 10 ))
 if [[ ${BACKUP_ONLY:-0} == 1 ]]; then
   new_need=0
 fi
@@ -255,6 +340,16 @@ else
     || fail "Not enough space in $new_dir: $(( new_need / 1024 )) MB needed, $(( $(free_kb "$new_dir") / 1024 )) MB free."
 fi
 
+# The restore test fills a database of the same size inside Docker, on the
+# disk the real databases live on.
+if [[ ${SKIP_RESTORE_TEST:-0} != 1 ]]; then
+  docker_root=$("${docker[@]}" info -f '{{.DockerRootDir}}')
+  restore_need=$(( (main_kb > predictions_kb ? main_kb : predictions_kb) * 2 ))
+  if [[ -d $docker_root ]] && (( $(free_kb "$docker_root") <= restore_need )); then
+    fail "Not enough space in $docker_root for the restore test: $(( restore_need / 1024 )) MB needed, $(( $(free_kb "$docker_root") / 1024 )) MB free. Free some, or run with SKIP_RESTORE_TEST=1."
+  fi
+fi
+
 # ------------------------------------------------------------ 2. stopping
 
 step "Stopping the application (the site is down from now on)"
@@ -263,11 +358,15 @@ site_down=1
 
 for container in "${app_containers[@]}"; do
   if running "$container"; then
-    "${docker[@]}" stop "$container" > /dev/null
+    # Noted first: an interrupted stop is then undone as well.
     stopped+=("$container")
+    "${docker[@]}" stop "$container" > /dev/null
     echo "stopped $container"
   fi
 done
+if (( ${#stopped[@]} == 0 )); then
+  echo "None of the application containers was running."
+fi
 
 # ------------------------------------------------------------- 3. backups
 
@@ -320,14 +419,13 @@ step "Backing up the databases"
 dump_database "$main_db" main-db
 dump_database "$predictions_db" predictions-db
 
-main_image=$("${docker[@]}" inspect -f '{{.Config.Image}}' "$main_db")
-predictions_image=$("${docker[@]}" inspect -f '{{.Config.Image}}' "$predictions_db")
-
 if running "$redis"; then
-  "${docker[@]}" stop "$redis" > /dev/null
   redis_stopped=1
+  "${docker[@]}" stop "$redis" > /dev/null
 fi
-"${docker[@]}" stop "$main_db" "$predictions_db" > /dev/null
+# Time to finish the last checkpoint: the archive is to be of a database
+# that was shut down, not of one that was killed.
+"${docker[@]}" stop -t 300 "$main_db" "$predictions_db" > /dev/null
 
 archive_volume "$main_volume" "$main_image" main-db
 archive_volume "$predictions_volume" "$predictions_image" predictions-db
@@ -361,13 +459,6 @@ chmod -R go-rwx "$backup_dir/config"
 
 step "Checking the backups"
 
-(
-  cd "$backup_dir"
-  find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 "${sha256[@]}" > SHA256SUMS
-  "${sha256[@]}" -c SHA256SUMS > /dev/null
-)
-echo "checksums written and read back"
-
 archived=$(tar -tf "$backup_dir/storage.tar" | wc -l | tr -d ' ')
 present=$(cd "$old_dir" && find storage | wc -l | tr -d ' ')
 if [[ $archived != "$present" ]]; then
@@ -395,8 +486,9 @@ restore_test() {
 
   echo "$name: restoring the dump into a temporary database (this can take a while)"
   "${docker[@]}" rm -fv "$restore_container" > /dev/null 2>&1 || true
-  "${docker[@]}" run -d --name "$restore_container" --privileged --shm-size 1g \
-    -e POSTGRES_PASSWORD=restore-test "$image" > /dev/null
+  # Without a network: a copy of the real data, reachable by nobody.
+  "${docker[@]}" run -d --name "$restore_container" --network none --shm-size 1g \
+    -e POSTGRES_PASSWORD="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')" "$image" > /dev/null
 
   # Over TCP: the server that only prepares the data directory listens on
   # the socket alone, the final one on both.
@@ -438,6 +530,52 @@ else
   restore_test predictions-db "$predictions_image"
 fi
 
+# The checksums come last and cover everything written above, so a copy of
+# the backups taken elsewhere can be checked as a whole.
+write_checksums() {
+  (
+    cd "$backup_dir"
+    find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 "${sha256[@]}" > SHA256SUMS
+    "${sha256[@]}" -c SHA256SUMS > /dev/null
+  )
+  echo "checksums written and read back: $backup_dir/SHA256SUMS"
+}
+
+if [[ ${BACKUP_ONLY:-0} == 1 ]]; then
+  write_checksums
+  step "Rehearsal finished"
+  for (( index = ${#stopped[@]} - 1; index >= 0; index-- )); do
+    "${docker[@]}" start "${stopped[index]}" > /dev/null
+  done
+  site_down=0
+  rmdir "$new_dir" 2> /dev/null || true
+  echo "The backups are complete and checked: $backup_dir"
+  echo "The old installation runs again; nothing was moved."
+  exit 0
+fi
+
+# The old installation is started the way it was started: with its project
+# name and its compose file(s).
+old_compose_options="-p $(printf '%q' "$project")"
+IFS=, read -r -a old_compose_list <<< "$old_compose_files"
+for file in ${old_compose_list[@]+"${old_compose_list[@]}"}; do
+  old_compose_options+=" -f $(printf '%q' "$file")"
+done
+
+q_old=$(printf '%q' "$old_dir")
+q_new=$(printf '%q' "$new_dir")
+q_backup=$(printf '%q' "$backup_dir")
+
+# Each command reads the archive before it empties the volume: a backup
+# directory that was moved or mistyped must not cost the data that is there.
+restore_volume_command() {
+  local volume=$1 image=$2 archive=$3
+  cat << COMMAND
+     ${docker[*]} run --rm --network none --entrypoint sh -v $volume:/data -v $q_backup:/backup:ro $image \\
+       -c 'tar -tf /backup/$archive > /dev/null && find /data -mindepth 1 -delete && tar -C /data -xf /backup/$archive'
+COMMAND
+}
+
 cat > "$backup_dir/ROLLBACK.txt" << TEXT
 Backups of the MolMeDB installation in $old_dir, taken $(date) before the
 move to $new_dir (release $version).
@@ -450,45 +588,40 @@ move to $new_dir (release $version).
   storage.tar                         $old_dir/storage
   config/                             .env, frontend/.env, the compose files
   *.counts                            rows per table when the backup was made
-  SHA256SUMS                          check with: ${sha256[*]} -c SHA256SUMS
+  SHA256SUMS                          checksums of all of the above
 
 Going back to the old installation
 ----------------------------------
 The new release migrated the databases; the old code needs them as they
 were. $old_dir was not modified and its images are still on this server
-(do not run \`docker image prune -a\` before you are sure).
+(do not run \`docker image prune -a\` before you are sure). The image ids
+below are those the old database containers ran.
 
-1. Stop the new installation (volumes are kept):
-     cd $new_dir && ${docker[*]} compose down
+0. Check that the backups are complete:
+     cd $q_backup && ${sha256[*]} -c SHA256SUMS
 
-2. Put both database volumes back exactly as they were:
-     ${docker[*]} run --rm --entrypoint sh -v $main_volume:/data -v $backup_dir:/backup:ro $main_image \\
-       -c 'find /data -mindepth 1 -delete && tar -C /data -xf /backup/main-db.volume.tar'
-     ${docker[*]} run --rm --entrypoint sh -v $predictions_volume:/data -v $backup_dir:/backup:ro $predictions_image \\
-       -c 'find /data -mindepth 1 -delete && tar -C /data -xf /backup/predictions-db.volume.tar'
+1. Stop and remove the containers of the new installation (volumes are kept):
+     cd $q_new && ${docker[*]} compose down
+
+2. Put the volumes back exactly as they were:
+$(restore_volume_command "$main_volume" "$main_image" main-db.volume.tar)
+$(restore_volume_command "$predictions_volume" "$predictions_image" predictions-db.volume.tar)
+$(if [[ -f $backup_dir/redis.volume.tar ]]; then restore_volume_command "$redis_volume" "$main_image" redis.volume.tar; fi)
 
 3. Start the old installation:
-     cd $old_dir && ${docker[*]} compose up -d --no-build
+     cd $q_old && ${docker[*]} compose $old_compose_options up -d --no-build
 
 Files uploaded after the move live in $new_dir/storage; the old
 installation uses $old_dir/storage.
 TEXT
 
-if [[ ${BACKUP_ONLY:-0} == 1 ]]; then
-  step "Rehearsal finished"
-  for (( index = ${#stopped[@]} - 1; index >= 0; index-- )); do
-    "${docker[@]}" start "${stopped[index]}" > /dev/null
-  done
-  site_down=0
-  rmdir "$new_dir" 2> /dev/null || true
-  echo "The backups are complete and checked: $backup_dir"
-  echo "The old installation runs again; nothing was moved."
-  exit 0
-fi
+write_checksums
 
 # ------------------------------------------------------ 5. the new directory
 
 step "Preparing $new_dir"
+
+created=("$new_dir/storage" "$new_dir/frontend" "$new_dir/.env" "$new_dir/compose.yaml" "$new_dir/deploy.sh" "$new_dir/.env.deploy-backup")
 
 cp -a "$old_dir/storage" "$new_dir/storage"
 copied=$(cd "$new_dir" && find storage | wc -l | tr -d ' ')
@@ -509,20 +642,34 @@ fi
 
 cp "$staging/compose.yaml" "$new_dir/compose.yaml"
 cp "$staging/deploy.sh" "$new_dir/deploy.sh"
+chmod 644 "$new_dir/compose.yaml"
 chmod 755 "$new_dir/deploy.sh"
 
 # ----------------------------------------------------------- 6. deployment
 
 step "Deploying $version from $new_dir"
 
-# From here on the containers belong to the new installation; starting the
-# old ones again would no longer bring back what was there.
-site_down=0
+# deploy.sh creates the marker right before it replaces the containers.
+# Until then the old ones are only stopped and can simply be started again;
+# after that they are gone, and the way back is ROLLBACK.txt.
+marker=$staging/containers-replaced
 
 # The compose file is already there, checked against the real volumes.
-if ! DOCKER="${docker[*]}" MOLMEDB_KEEP_COMPOSE=1 "$new_dir/deploy.sh" "$version"; then
+deployed=1
+DOCKER="${docker[*]}" MOLMEDB_KEEP_COMPOSE=1 DEPLOY_MARKER=$marker "$new_dir/deploy.sh" "$version" || deployed=0
+
+if [[ ! -e $marker ]]; then
   echo >&2
-  echo "The deployment from $new_dir failed. The databases may already be migrated." >&2
+  echo "The deployment stopped before any container was replaced." >&2
+  exit 1
+fi
+
+# From here on the containers belong to the new installation.
+site_down=0
+
+if (( ! deployed )); then
+  echo >&2
+  echo "The deployment from $new_dir failed after the containers were replaced. The databases may already be migrated." >&2
   echo "To go back to the old installation follow $backup_dir/ROLLBACK.txt." >&2
   exit 1
 fi

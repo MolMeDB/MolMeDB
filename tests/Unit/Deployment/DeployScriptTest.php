@@ -114,6 +114,43 @@ test('an application that does not stay up brings back the previous version and 
         ->and(glob($sandbox['root'].'/{,.}*deploy*', GLOB_BRACE))->toBe([$sandbox['root'].'/deploy.sh']);
 });
 
+test('a failure while .env is written brings back the previous compose file', function () {
+    $sandbox = deploymentSandbox();
+    chmod($sandbox['root'].'/.env', 0444);
+
+    $process = runDeployment($sandbox, '1.4.0');
+
+    expect($process->getExitCode())->not->toBe(0)
+        ->and(file_get_contents($sandbox['root'].'/compose.yaml'))->toContain('previous compose')
+        ->and(file_get_contents($sandbox['root'].'/.env'))->toContain('MOLMEDB_VERSION=1.3.0')
+        ->and(file_get_contents($sandbox['log']))->not->toContain('up -d');
+})->skip(fn () => function_exists('posix_geteuid') && posix_geteuid() === 0, 'root writes to read-only files');
+
+test('what an interrupted deployment left behind is not put back by the next one', function () {
+    $sandbox = deploymentSandbox();
+    file_put_contents($sandbox['root'].'/.env.deploy-backup', "MOLMEDB_VERSION=0.9.0\n");
+
+    $process = runDeployment($sandbox, '1.4.0');
+
+    expect($process->getExitCode())->toBe(1)
+        ->and($process->getErrorOutput())->toContain('an earlier deployment did not finish')
+        ->and(file_get_contents($sandbox['root'].'/.env'))->toContain('MOLMEDB_VERSION=1.3.0')
+        ->and(file_get_contents($sandbox['log']))->toBe('');
+});
+
+test('a marker tells whether the containers were touched', function (array $env, bool $touched) {
+    $sandbox = deploymentSandbox();
+    $marker = $sandbox['root'].'/../marker';
+
+    runDeployment($sandbox, '1.4.0', $env + ['DEPLOY_MARKER' => $marker]);
+
+    expect(file_exists($marker))->toBe($touched);
+})->with([
+    'a deployment that went through' => [[], true],
+    'an application that did not stay up' => [['FAKE_APP_STATE' => 'restarting 2'], true],
+    'images that could not be pulled' => [['FAKE_PULL_FAILS' => '1'], false],
+]);
+
 test('the first deployment into a directory without a compose file creates it', function () {
     $sandbox = deploymentSandbox();
     unlink($sandbox['root'].'/compose.yaml');

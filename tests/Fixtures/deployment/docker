@@ -10,6 +10,12 @@
 #   FAKE_MISSING_IMAGE       an image the registry does not have
 #   FAKE_INVALID_COMPOSE     compose config fails
 #   FAKE_PULL_FAILS          compose pull fails
+#   FAKE_PULL_FAILS_ON       the number of the compose pull that fails (1 = the first)
+#   FAKE_WORKING_DIR         directory the running installation was started from
+#   FAKE_NEW_LIBC            C library of the published database image
+#   FAKE_PROBE_FAILS         a container cannot write into the backup directory
+#   FAKE_ARCHIVE_FAILS       archiving a volume fails
+#   FAKE_DUMP_SLEEP          seconds pg_dump takes
 #   FAKE_APP_STATE           what the application container reports after `up`
 #   FAKE_DUMP_FAILS          pg_dump fails
 #   FAKE_RESTORE_FAILS       pg_restore into the temporary database fails
@@ -21,6 +27,11 @@ state=${FAKE_STATE_DIR:-/nonexistent}
 all=" $* "
 
 case "$1" in
+  info)
+    # info -f '{{.DockerRootDir}}'
+    [[ $all != *"DockerRootDir"* ]] || echo "$state"
+    ;;
+
   manifest)
     if [[ -n ${FAKE_MISSING_IMAGE:-} && $3 == *"$FAKE_MISSING_IMAGE"* ]]; then
       echo "manifest unknown" >&2
@@ -30,6 +41,10 @@ case "$1" in
 
   stop)
     shift
+    # stop [-t <seconds>] <container>...
+    if [[ $1 == -t ]]; then
+      shift 2
+    fi
     for name in "$@"; do touch "$state/$name"; done
     ;;
 
@@ -42,6 +57,8 @@ case "$1" in
     name=${*: -1}
     case "$all" in
       *".State.Running"*) [[ -e $state/$name ]] && echo false || echo true ;;
+      *"com.docker.compose.project.working_dir"*) echo "${FAKE_WORKING_DIR:-}" ;;
+      *"com.docker.compose.project.config_files"*) echo "${FAKE_WORKING_DIR:-}/docker-compose.yaml" ;;
       *"com.docker.compose.project"*) echo "$project" ;;
       *".Mounts"*)
         if [[ $name == molmedb-predictions-db ]]; then
@@ -50,7 +67,7 @@ case "$1" in
           echo "${FAKE_MAIN_VOLUME:-${project}_molmedb-db}"
         fi
         ;;
-      *".Config.Image"*) echo "local/molmedb-db:built-here" ;;
+      *"{{.Image}}"*) echo "sha256:0123abcd" ;;
       *".State.Status"*) echo "${FAKE_APP_STATE:-running 0}" ;;
     esac
     ;;
@@ -64,10 +81,15 @@ case "$1" in
         # wins over the name written in it.
         name=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$(dirname "$file")/.env" 2> /dev/null | tail -n 1)
         name=${name:-molmedb-api}
-        printf 'name: %s\nvolumes:\n  molmedb-db:\n    name: %s_molmedb-db\n  molmedb-predictions-db:\n    name: %s_molmedb-predictions-db\n' \
+        printf 'name: %s\nservices:\n  db:\n    image: ghcr.io/molmedb/molmedb-db:15\nvolumes:\n  molmedb-db:\n    name: %s_molmedb-db\n  molmedb-predictions-db:\n    name: %s_molmedb-predictions-db\n' \
           "$name" "$name" "$name"
         ;;
-      *" pull "*) [[ -z ${FAKE_PULL_FAILS:-} ]] || exit 1 ;;
+      *" pull "*)
+        [[ -z ${FAKE_PULL_FAILS:-} ]] || exit 1
+        if [[ -n ${FAKE_PULL_FAILS_ON:-} && $(grep -c ' pull' "$FAKE_LOG") == "$FAKE_PULL_FAILS_ON" ]]; then
+          exit 1
+        fi
+        ;;
       *" up -d "*) rm -f "$state"/* 2> /dev/null ;;
     esac
     ;;
@@ -78,6 +100,7 @@ case "$1" in
       *"pg_dumpall"*) echo "CREATE ROLE molmedb;" ;;
       *"pg_dump "*)
         [[ -z ${FAKE_DUMP_FAILS:-} ]] || exit 1
+        [[ -z ${FAKE_DUMP_SLEEP:-} ]] || sleep "$FAKE_DUMP_SLEEP"
         echo "PGDMP of $2"
         ;;
       *"pg_restore --list"*) cat > /dev/null ;;
@@ -89,7 +112,13 @@ case "$1" in
         fi
         ;;
       *"psql "*)
-        cat > /dev/null
+        # The counting query: one generated statement per table, the tables
+        # of Bingo left out.
+        query=$(cat)
+        if [[ $query != *"\\gexec"* || $query != *"'bingo'"* ]]; then
+          echo "unexpected query: $query" >&2
+          exit 1
+        fi
         rows=5
         if [[ $all == *"restore_test"* ]]; then
           rows=${FAKE_RESTORED_ROWS:-5}
@@ -101,7 +130,17 @@ case "$1" in
 
   run)
     # run --rm --entrypoint tar -v <volume>:/data:ro -v <backups>:/backup <image> -C /data -cf /backup/<file> .
-    if [[ $all == *" --entrypoint tar "* ]]; then
+    if [[ $all == *" --entrypoint postgres "* ]]; then
+      echo "postgres (PostgreSQL) 15.8 (Debian 15.8-1.pgdg120+1)"
+    elif [[ $all == *" --entrypoint ldd "* ]]; then
+      if [[ $all == *"ghcr.io/"* ]]; then
+        echo "ldd (Debian GLIBC ${FAKE_NEW_LIBC:-2.36-9}) 2.36"
+      else
+        echo "ldd (Debian GLIBC 2.36-9) 2.36"
+      fi
+    elif [[ $all == *" --entrypoint tar "* ]]; then
+      [[ -z ${FAKE_PROBE_FAILS:-} || $all != *"probe.tar"* ]] || exit 1
+      [[ -z ${FAKE_ARCHIVE_FAILS:-} || $all != *".volume.tar"* ]] || exit 1
       backups=
       target=
       for argument in "$@"; do

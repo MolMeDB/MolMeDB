@@ -4,6 +4,7 @@ use App\Console\Commands\Cron\RunDailyCommands;
 use App\Console\Commands\Cron\RunPredictionsWorker;
 use App\Console\Commands\Cron\SendPredictionAdminStatsNotification;
 use App\Console\Commands\Cron\SendPredictionProgressNotifications;
+use App\Console\Commands\Cron\SendSystemHealthReport;
 use App\Console\Commands\ExportPredictionCosmo;
 use App\Console\Commands\FlushQueuedNotifications;
 use App\Console\Commands\ProcessFrontendUploads;
@@ -121,4 +122,10 @@ Schedule::command(SendPredictionAdminStatsNotification::class, ['month'])
 
 Schedule::command(SendPredictionAdminStatsNotification::class, ['year'])
     ->yearlyOn(1, 1, '07:15')
+    ->withoutOverlapping(60);
+
+// After the nightly commands and backups, so that their failures are in it.
+// Looks at the previous day; sent on a good day too.
+Schedule::command(SendSystemHealthReport::class)
+    ->dailyAt('07:30')
     ->withoutOverlapping(60);

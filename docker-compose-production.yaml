@@ -227,6 +227,11 @@ services:
     platform: linux/amd64
     privileged: true
     container_name: molmedb-dev-db
+    # Docker kills a container that has not stopped after 10 seconds. The
+    # Bingo index is not written through PostgreSQL's log, so a database
+    # killed while it writes can leave the index damaged: it gets the time
+    # to shut down properly.
+    stop_grace_period: 5m
     environment:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
@@ -254,6 +259,11 @@ services:
     platform: linux/amd64
     privileged: true
     container_name: molmedb-predictions-db
+    # Docker kills a container that has not stopped after 10 seconds. The
+    # Bingo index is not written through PostgreSQL's log, so a database
+    # killed while it writes can leave the index damaged: it gets the time
+    # to shut down properly.
+    stop_grace_period: 5m
     environment:
       POSTGRES_DB: ${DB_PREDICTIONS_DATABASE}
       POSTGRES_USER: ${DB_PREDICTIONS_USERNAME}

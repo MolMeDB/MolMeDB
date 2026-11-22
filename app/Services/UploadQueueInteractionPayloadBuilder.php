@@ -190,9 +190,9 @@ class UploadQueueInteractionPayloadBuilder
             $matchedBySmiles = true;
         }
 
-        // A structure found by one of its identifiers keeps what it has: the
-        // other identifiers of the row may belong to a different compound.
-        if ($structure && $createMissingStructure && ($matchedBySmiles || $smiles === '')) {
+        // Only a structure the SMILES of the row names is given identifiers:
+        // one found through an identifier may be a different compound.
+        if ($structure && $createMissingStructure && $matchedBySmiles) {
             $this->addMissingIdentifiers($structure, $row, $identifierColumns, $record);
         }
 
@@ -200,9 +200,11 @@ class UploadQueueInteractionPayloadBuilder
     }
 
     /**
-     * Adds the identifiers of the row the structure does not have yet, also
-     * the withdrawn ones: a reverted upload removes the identifiers it added,
-     * and importing it again has to bring them back.
+     * Gives the structure the identifiers of the row of the kinds it has none
+     * of. A new structure gets them all, and so does one whose identifiers a
+     * reverted upload took away. What a structure already has is never
+     * joined by a second name or a second external id from an upload, and an
+     * external id that belongs to another structure stays with it.
      *
      * @param  array<string, string>  $row
      * @param  array<string, int>  $identifierColumns
@@ -215,13 +217,18 @@ class UploadQueueInteractionPayloadBuilder
                 continue;
             }
 
-            $exists = Identifier::withTrashed()
+            $hasKind = Identifier::withTrashed()
                 ->where('structure_id', $structure->id)
                 ->where('type', $type)
-                ->where('value', $value)
                 ->exists();
 
-            if ($exists) {
+            $takenElsewhere = $type !== Identifier::TYPE_NAME && Identifier::withTrashed()
+                ->where('type', $type)
+                ->where('value', $value)
+                ->where('structure_id', '!=', $structure->id)
+                ->exists();
+
+            if ($hasKind || $takenElsewhere) {
                 continue;
             }
 

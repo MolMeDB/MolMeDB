@@ -385,6 +385,91 @@ test('a database error while storing a structure fails the upload, which then fi
         ->and(Structure::query()->count())->toBe(3);
 })->with('upload kinds');
 
+test('a row whose interaction cannot be stored leaves none of its records behind', function (int $type, string $csv, array $columns) {
+    $uploader = User::factory()->create();
+    $record = takeUploadToReview($uploader, $type, $csv, $columns);
+    $model = $type === Dataset::TYPE_ACTIVE ? InteractionActive::class : InteractionPassive::class;
+    $structuresBefore = 0;
+
+    // By now the row has made its structure, names and protein.
+    $model::creating(function () use (&$structuresBefore): void {
+        if (Structure::query()->count() === 3) {
+            $structuresBefore = 3;
+
+            throw new RuntimeException('The interaction could not be stored.');
+        }
+    });
+
+    approveUploadAndImport($record)->assertFailed();
+
+    expect($structuresBefore)->toBe(3)
+        ->and($record->refresh()->state)->toBe(UploadQueue::STATE_ERROR)
+        ->and(importedSmiles($record))->toBe(['CCO', 'c1ccccc1'])
+        ->and(Structure::query()->count())->toBe(2)
+        ->and(Identifier::query()->where('value', 'Azinphos-ethyl')->exists())->toBeFalse()
+        ->and(Protein::query()->where('uniprot_id', 'Q9UNQ0')->exists())->toBeFalse()
+        ->and(ProteinIdentifier::query()->where('value', 'BCRP')->exists())->toBeFalse();
+})->with('upload kinds');
+
+test('an upload does not rename a compound the database already knows', function (int $type, string $csv, array $columns) {
+    $uploader = User::factory()->create();
+    $ethanol = Structure::query()->create(['canonical_smiles' => 'CCO']);
+    $ethanol->identifiers()->create(['type' => Identifier::TYPE_NAME, 'value' => 'Ethyl alcohol', 'state' => Identifier::STATE_VALIDATED]);
+
+    $record = takeUploadToReview($uploader, $type, $csv, $columns);
+    approveUploadAndImport($record);
+
+    expect($record->refresh()->state)->toBe(UploadQueue::STATE_DONE)
+        ->and(Structure::query()->count())->toBe(3)
+        ->and($ethanol->identifiers()->where('type', Identifier::TYPE_NAME)->pluck('value')->all())->toBe(['Ethyl alcohol']);
+})->with('upload kinds');
+
+test('a compound found by its name only gets no identifiers from the row', function () {
+    $uploader = User::factory()->create();
+    $known = Structure::query()->create(['canonical_smiles' => 'OCC']);
+    $known->identifiers()->create(['type' => Identifier::TYPE_NAME, 'value' => 'Ethanol', 'state' => Identifier::STATE_VALIDATED]);
+    $elsewhere = Structure::query()->create(['canonical_smiles' => 'CCC']);
+    $elsewhere->identifiers()->create(['type' => Identifier::TYPE_DRUGBANK, 'value' => 'DB00898', 'state' => Identifier::STATE_VALIDATED]);
+
+    $benzene = Structure::query()->create(['canonical_smiles' => 'c1ccccc1']);
+
+    // The first row names a known compound with a SMILES written otherwise;
+    // the second brings an id that already belongs to another structure.
+    $record = takeUploadToReview(
+        $uploader,
+        Dataset::TYPE_PASSIVE,
+        "Name,SMILES,DrugBank,Gpen\nEthanol,CCO,DB09999,-1.5\nBenzene,c1ccccc1,DB00898,-2.5\n",
+        ['name', 'smiles', 'drugbank', 'g_pen'],
+    );
+    approveUploadAndImport($record);
+
+    expect($record->refresh()->state)->toBe(UploadQueue::STATE_DONE)
+        ->and(Structure::query()->count())->toBe(3)
+        ->and($known->identifiers()->where('type', '!=', Identifier::TYPE_MOLMEDB)->pluck('value')->all())->toBe(['Ethanol'])
+        ->and(Identifier::query()->where('value', 'DB09999')->exists())->toBeFalse()
+        ->and($benzene->identifiers()->where('type', '!=', Identifier::TYPE_MOLMEDB)->pluck('value')->all())->toBe(['Benzene'])
+        ->and(Identifier::query()->where('value', 'DB00898')->count())->toBe(1);
+});
+
+test('an upload that has left the review is neither approved nor rejected', function (int $state) {
+    $uploader = User::factory()->create();
+    $record = takeUploadToReview($uploader, Dataset::TYPE_PASSIVE, WORKFLOW_PASSIVE_CSV, WORKFLOW_PASSIVE_COLUMNS);
+    UploadQueue::query()->whereKey($record->id)->update(['state' => $state]);
+    $record->refresh();
+
+    expect($record->approveAdminReview())->toBeFalse()
+        ->and($record->rejectAdminReview('Too late.'))->toBeFalse()
+        ->and($record->refresh()->state)->toBe($state)
+        ->and($record->config->adminReviewApproved())->toBeFalse()
+        ->and($record->config->adminReviewRejectedReason())->toBeNull();
+})->with([
+    'configured' => UploadQueue::STATE_CONFIGURED,
+    'running' => UploadQueue::STATE_RUNNING,
+    'done' => UploadQueue::STATE_DONE,
+    'error' => UploadQueue::STATE_ERROR,
+    'canceled' => UploadQueue::STATE_CANCELED,
+]);
+
 test('a file that fails the detailed validation is replaced by a corrected one and imported', function (int $type, string $csv, array $columns) {
     $uploader = User::factory()->create();
     $brokenCsv = str_replace('c1ccccc1', 'not-a-smiles', $csv);

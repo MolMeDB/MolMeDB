@@ -294,8 +294,9 @@ class SystemHealthReport
 
         try {
             $indexed = DB::transaction(function (): ?array {
-                // The comparison reads every structure; it must not hold a
-                // connection for long when the database is busy.
+                // The comparison reads every structure, so it gets a limit
+                // of its own: a busy database must not keep it, and the read
+                // lock it holds on the structures, for longer than that.
                 DB::statement("SET LOCAL statement_timeout = '".self::BINGO_CHECK_TIMEOUT_SECONDS."s'");
 
                 if (! DB::scalar("SELECT to_regclass('public.".self::BINGO_INDEX."') IS NOT NULL")) {

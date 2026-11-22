@@ -96,7 +96,12 @@ test('the configured rdkit address always carries a scheme', function () {
     $repository = Env::getRepository();
     $before = $repository->get('RDKIT_HOST');
     $repository->clear('RDKIT_HOST');
-    $repository->set('RDKIT_HOST', 'rdkit');
+
+    // A variable of the real environment (inside the app container) cannot
+    // be replaced; there the test would check the container, not the code.
+    if (! $repository->set('RDKIT_HOST', 'rdkit') || $repository->get('RDKIT_HOST') !== 'rdkit') {
+        $this->markTestSkipped('RDKIT_HOST is set in the real environment.');
+    }
 
     try {
         expect((require config_path('services.php'))['rdkit']['url'])->toBe('http://rdkit');

@@ -19,6 +19,13 @@ use RuntimeException;
 class PredictionResultImporter
 {
     /**
+     * Imports of a prediction whose own result cannot be used that are tried
+     * before the prediction is marked as failed. More than one, because the
+     * result is read from a remote storage that can be out of reach.
+     */
+    public const MAX_UNUSABLE_RESULT_ATTEMPTS = 5;
+
+    /**
      * @return 'imported'|'duplicate'|'error'
      */
     public function import(Prediction $prediction, ?PredictionMethod $method): string
@@ -44,13 +51,13 @@ class PredictionResultImporter
         $logPerm = $this->extractLogPerm($prediction);
 
         if ($logPerm === null) {
-            return $this->fail($prediction, 'Could not extract LogPerm from the parsed result data.');
+            return $this->failUnusableResult($prediction, 'Could not extract LogPerm from the parsed result data.');
         }
 
         $predictionStructure = $prediction->predictionStructure;
 
         if (! $predictionStructure || trim((string) $predictionStructure->canonical_smiles) === '') {
-            return $this->fail($prediction, 'Prediction structure has no canonical SMILES.');
+            return $this->failUnusableResult($prediction, 'Prediction structure has no canonical SMILES.');
         }
 
         $structure = $this->resolveStructure($predictionStructure);
@@ -121,6 +128,40 @@ class PredictionResultImporter
     {
         $prediction->forceFill([
             'logs' => $prediction->logsWithWorkerEvent($message, [], 'RESULT IMPORT', 'error'),
+        ])->save();
+
+        return 'error';
+    }
+
+    /**
+     * For what is wrong with the prediction itself (its result or its
+     * structure), not with the configuration around it: nothing an
+     * administrator sets up later makes such an import succeed, so after a
+     * few attempts the prediction is marked as failed instead of being tried
+     * every minute forever. A missing method or membrane mapping stays with
+     * fail(): those imports go through once the mapping is there.
+     */
+    private function failUnusableResult(Prediction $prediction, string $message): string
+    {
+        $attempts = 1 + collect(is_array($prediction->logs) ? $prediction->logs : [])
+            ->filter(fn (mixed $entry): bool => is_array($entry)
+                && ($entry['type'] ?? null) === 'RESULT IMPORT'
+                && ($entry['context'] ?? null) === 'error'
+                && ($entry['message'] ?? null) === $message)
+            ->count();
+
+        if ($attempts < self::MAX_UNUSABLE_RESULT_ATTEMPTS) {
+            return $this->fail($prediction, $message);
+        }
+
+        $prediction->forceFill([
+            'state' => Prediction::STATE_ERROR,
+            'logs' => $prediction->logsWithWorkerEvent(
+                "{$message} Given up after {$attempts} attempts; the prediction is marked as failed.",
+                ['attempts' => $attempts],
+                'RESULT IMPORT',
+                'error',
+            ),
         ])->save();
 
         return 'error';

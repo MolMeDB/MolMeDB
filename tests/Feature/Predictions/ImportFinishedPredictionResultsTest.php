@@ -147,3 +147,44 @@ test('failing imports rotate to the back of the batch instead of starving newer 
     expect($broken->refresh()->step)->toBe(Prediction::STEP_RESULT_PARSE)
         ->and($good->refresh()->step)->toBe(Prediction::STEP_RESULT_DB_STORE);
 });
+
+test('a prediction whose result cannot be read is given up after a few attempts', function () {
+    $prediction = createFinishedPrediction();
+    $prediction->predictionResult->update(['data' => [['solutes' => [['logPerm' => null]]]]]);
+    $job = fn () => (new ImportFinishedPredictionResults)->handle(app(PredictionResultImporter::class));
+
+    foreach (range(1, PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS - 1) as $ignored) {
+        $job();
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_FINISHED)
+        ->and($prediction->logs)->toHaveCount(PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS - 1);
+
+    $job();
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_ERROR)
+        ->and($prediction->step)->toBe(Prediction::STEP_RESULT_PARSE)
+        ->and(collect($prediction->logs)->last()['message'])
+        ->toBe('Could not extract LogPerm from the parsed result data. Given up after 5 attempts; the prediction is marked as failed.')
+        ->and(InteractionPassive::query()->count())->toBe(0);
+
+    // It is no longer picked up: nothing is added to its log.
+    $job();
+
+    expect($prediction->refresh()->logs)->toHaveCount(PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS);
+});
+
+test('a prediction that waits for a mapping is tried for as long as it takes', function () {
+    PredictionMethod::query()->findOrFail('cosmoperm')->update(['remote_id' => null]);
+    $prediction = createFinishedPrediction();
+
+    foreach (range(1, PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS + 2) as $ignored) {
+        importPrediction($prediction->refresh());
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_FINISHED);
+
+    PredictionMethod::query()->findOrFail('cosmoperm')->update(['remote_id' => $this->method->id]);
+
+    expect(importPrediction($prediction->refresh()))->toBe('imported');
+});

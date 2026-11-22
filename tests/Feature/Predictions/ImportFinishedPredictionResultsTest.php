@@ -165,7 +165,7 @@ test('a prediction whose result cannot be read is given up after a few attempts'
     expect($prediction->refresh()->state)->toBe(Prediction::STATE_ERROR)
         ->and($prediction->step)->toBe(Prediction::STEP_RESULT_PARSE)
         ->and(collect($prediction->logs)->last()['message'])
-        ->toBe('Could not extract LogPerm from the parsed result data. Given up after 5 attempts; the prediction is marked as failed.')
+        ->toBe('Could not extract LogPerm from the parsed result data. Given up after repeated attempts; the prediction is marked as failed.')
         ->and(InteractionPassive::query()->count())->toBe(0);
 
     // It is no longer picked up: nothing is added to its log.
@@ -187,4 +187,42 @@ test('a prediction that waits for a mapping is tried for as long as it takes', f
     PredictionMethod::query()->findOrFail('cosmoperm')->update(['remote_id' => $this->method->id]);
 
     expect(importPrediction($prediction->refresh()))->toBe('imported');
+});
+
+test('a prediction that already failed many times is given up at once', function () {
+    $prediction = createFinishedPrediction();
+    $prediction->predictionResult->update(['data' => [['solutes' => [['logPerm' => null]]]]]);
+    // As on production, where the same predictions were tried every minute for months.
+    $logs = [['type' => 'WORKER', 'context' => 'success', 'message' => 'COSMO files stored.', 'payload' => [], 'timestamp' => now()->toIso8601String()]];
+    foreach (range(1, 99) as $ignored) {
+        $logs[] = ['type' => 'RESULT IMPORT', 'context' => 'error', 'message' => 'Could not extract LogPerm from the parsed result data.', 'payload' => [], 'timestamp' => now()->toIso8601String()];
+    }
+    $prediction->forceFill(['logs' => $logs])->save();
+
+    expect(importPrediction($prediction->refresh()))->toBe('error')
+        ->and($prediction->refresh()->state)->toBe(Prediction::STATE_ERROR);
+});
+
+test('a result that cannot be loaded is tried for as long as it takes', function () {
+    $prediction = createFinishedPrediction();
+    // An older result: nothing parsed in the database, and its file is out of reach.
+    $prediction->predictionResult->update(['data' => null]);
+
+    foreach (range(1, PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS + 2) as $ignored) {
+        expect(importPrediction($prediction->refresh()))->toBe('error');
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_FINISHED)
+        ->and(collect($prediction->logs)->last()['message'])->toBe('The parsed result data could not be loaded.');
+});
+
+test('a prediction without a structure to import is given up after a few attempts', function () {
+    $prediction = createFinishedPrediction(smiles: ' ');
+
+    foreach (range(1, PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS) as $ignored) {
+        importPrediction($prediction->refresh());
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_ERROR)
+        ->and(collect($prediction->logs)->last()['message'])->toStartWith('Prediction structure has no canonical SMILES. Given up');
 });

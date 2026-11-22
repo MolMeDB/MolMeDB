@@ -22,7 +22,7 @@
         "predis/predis": "^2.0",
         "pxlrbt/filament-activity-log": "^2.0",
         "solution-forest/filament-tree": "^4.0",
-        "spatie/laravel-activitylog": "^4.12",
+        "spatie/laravel-activitylog": "^5.1",
         "spatie/laravel-backup": "^10.2",
         "spatie/laravel-permission": "^7.3",
         "spatie/laravel-sitemap": "^8.2",

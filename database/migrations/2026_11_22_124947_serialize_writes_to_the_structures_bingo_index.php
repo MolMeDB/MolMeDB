@@ -13,7 +13,9 @@ use Illuminate\Support\Facades\DB;
  * statement that inserts or updates structures, whoever runs it (the upload
  * worker, the administration, a console command, plain SQL), so that only one
  * transaction writes to the index at a time. The index is rebuilt once, to
- * repair what earlier concurrent writes have left in it.
+ * repair what earlier concurrent writes have left in it: until the migration
+ * is committed, the rebuild keeps every query on structures waiting, so it
+ * belongs to a quiet hour.
  */
 return new class extends Migration
 {
@@ -25,8 +27,21 @@ return new class extends Migration
 
         DB::unprepared(<<<'SQL'
             CREATE OR REPLACE FUNCTION structures_bingo_write_lock() RETURNS trigger AS $$
+            DECLARE
+                session_timeout text := current_setting('lock_timeout');
             BEGIN
+                -- A writer stuck in its transaction must not hang every
+                -- other one for good: without a timeout of its own, a
+                -- session gives up after half a minute.
+                IF session_timeout = '0' THEN
+                    PERFORM set_config('lock_timeout', '30s', true);
+                END IF;
+
                 PERFORM pg_advisory_xact_lock(hashtext('structures_canonical_smiles_bingo_index'));
+
+                IF session_timeout = '0' THEN
+                    PERFORM set_config('lock_timeout', session_timeout, true);
+                END IF;
 
                 RETURN NULL;
             END;

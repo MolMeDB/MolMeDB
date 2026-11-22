@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Structure;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -25,20 +26,45 @@ function otherDatabaseSession(): PDO
     return $session;
 }
 
-test('a session waits with its structure while another one is storing its own', function (Closure $write) {
-    $existing = Structure::query()->create(['canonical_smiles' => 'CCO']);
-
+test('a session waits with its structure while another one is storing its own', function () {
     // The transaction of the test holds the lock from its first write on.
-    $write($existing);
+    Structure::query()->create(['canonical_smiles' => 'CCO']);
 
     $other = otherDatabaseSession();
+    $other->beginTransaction();
 
-    expect(fn () => $other->exec("INSERT INTO structures (canonical_smiles) VALUES ('c1ccccc1')"))
-        ->toThrow(PDOException::class, 'lock timeout');
-})->with([
-    'an insert' => [fn (Structure $existing) => Structure::query()->create(['canonical_smiles' => 'CCN'])],
-    'an update' => [fn (Structure $existing) => $existing->update(['canonical_smiles' => 'CCC'])],
-])->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'The structure index needs PostgreSQL with Bingo.');
+    try {
+        expect(fn () => $other->exec("INSERT INTO structures (canonical_smiles) VALUES ('c1ccccc1')"))
+            ->toThrow(PDOException::class, 'lock timeout');
+    } finally {
+        $other->rollBack();
+    }
+})->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'The structure index needs PostgreSQL with Bingo.');
+
+test('an update of structures takes the lock like an insert does', function () {
+    $other = otherDatabaseSession();
+    $other->beginTransaction();
+    $other->exec('UPDATE structures SET canonical_smiles = canonical_smiles WHERE id < 0');
+
+    try {
+        DB::statement("SET LOCAL lock_timeout = '300ms'");
+
+        // In a savepoint, so the failed statement does not end the transaction of the test.
+        expect(fn () => DB::transaction(fn () => Structure::query()->create(['canonical_smiles' => 'CCO'])))
+            ->toThrow(QueryException::class, 'lock timeout');
+    } finally {
+        $other->rollBack();
+    }
+
+    expect(Structure::query()->create(['canonical_smiles' => 'CCO'])->exists)->toBeTrue();
+})->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'The structure index needs PostgreSQL with Bingo.');
+
+test('a session without a timeout of its own gives up after half a minute and keeps its setting', function () {
+    Structure::query()->create(['canonical_smiles' => 'CCO']);
+
+    expect(DB::scalar("SELECT current_setting('lock_timeout')"))->toBe('0')
+        ->and(DB::scalar("SELECT prosrc FROM pg_proc WHERE proname = 'structures_bingo_write_lock'"))->toContain("'30s'");
+})->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'The structure index needs PostgreSQL with Bingo.');
 
 test('reading structures and writing other tables do not wait for the lock', function () {
     Structure::query()->create(['canonical_smiles' => 'CCO']);

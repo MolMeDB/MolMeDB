@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+#
+# A docker that only writes down what it was asked to do and answers the way
+# the deployment scripts expect. Used by tests/Unit/Deployment.
+#
+#   FAKE_LOG                 file the calls are appended to
+#   FAKE_STATE_DIR           directory that remembers which containers are stopped
+#   FAKE_PROJECT             Compose project of the running containers
+#   FAKE_MAIN_VOLUME         volume of the main database (default: <project>_molmedb-db)
+#   FAKE_MISSING_IMAGE       an image the registry does not have
+#   FAKE_INVALID_COMPOSE     compose config fails
+#   FAKE_PULL_FAILS          compose pull fails
+#   FAKE_APP_STATE           what the application container reports after `up`
+#   FAKE_DUMP_FAILS          pg_dump fails
+#   FAKE_RESTORE_FAILS       pg_restore into the temporary database fails
+#   FAKE_RESTORED_ROWS       rows of public.structures after the restore
+echo "docker $*" >> "$FAKE_LOG"
+
+project=${FAKE_PROJECT:-molmedb-api}
+state=${FAKE_STATE_DIR:-/nonexistent}
+all=" $* "
+
+case "$1" in
+  manifest)
+    if [[ -n ${FAKE_MISSING_IMAGE:-} && $3 == *"$FAKE_MISSING_IMAGE"* ]]; then
+      echo "manifest unknown" >&2
+      exit 1
+    fi
+    ;;
+
+  stop)
+    shift
+    for name in "$@"; do touch "$state/$name"; done
+    ;;
+
+  start)
+    shift
+    for name in "$@"; do rm -f "$state/$name"; done
+    ;;
+
+  inspect)
+    name=${*: -1}
+    case "$all" in
+      *".State.Running"*) [[ -e $state/$name ]] && echo false || echo true ;;
+      *"com.docker.compose.project"*) echo "$project" ;;
+      *".Mounts"*)
+        if [[ $name == molmedb-predictions-db ]]; then
+          echo "${project}_molmedb-predictions-db"
+        else
+          echo "${FAKE_MAIN_VOLUME:-${project}_molmedb-db}"
+        fi
+        ;;
+      *".Config.Image"*) echo "local/molmedb-db:built-here" ;;
+      *".State.Status"*) echo "${FAKE_APP_STATE:-running 0}" ;;
+    esac
+    ;;
+
+  compose)
+    file=$3
+    case "$all" in
+      *" config "*|*" config")
+        [[ -z ${FAKE_INVALID_COMPOSE:-} ]] || exit 1
+        # Like Compose: COMPOSE_PROJECT_NAME in the .env next to the file
+        # wins over the name written in it.
+        name=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$(dirname "$file")/.env" 2> /dev/null | tail -n 1)
+        name=${name:-molmedb-api}
+        printf 'name: %s\nvolumes:\n  molmedb-db:\n    name: %s_molmedb-db\n  molmedb-predictions-db:\n    name: %s_molmedb-predictions-db\n' \
+          "$name" "$name" "$name"
+        ;;
+      *" pull "*) [[ -z ${FAKE_PULL_FAILS:-} ]] || exit 1 ;;
+      *" up -d "*) rm -f "$state"/* 2> /dev/null ;;
+    esac
+    ;;
+
+  exec)
+    case "$all" in
+      *"pg_database_size"*) echo 10485760 ;;
+      *"pg_dumpall"*) echo "CREATE ROLE molmedb;" ;;
+      *"pg_dump "*)
+        [[ -z ${FAKE_DUMP_FAILS:-} ]] || exit 1
+        echo "PGDMP of $2"
+        ;;
+      *"pg_restore --list"*) cat > /dev/null ;;
+      *"pg_restore "*)
+        cat > /dev/null
+        if [[ -n ${FAKE_RESTORE_FAILS:-} ]]; then
+          echo "pg_restore: error: could not execute query" >&2
+          exit 1
+        fi
+        ;;
+      *"psql "*)
+        cat > /dev/null
+        rows=5
+        if [[ $all == *"restore_test"* ]]; then
+          rows=${FAKE_RESTORED_ROWS:-5}
+        fi
+        printf 'public.structures|%s\npublic.users|3\n' "$rows"
+        ;;
+    esac
+    ;;
+
+  run)
+    # run --rm --entrypoint tar -v <volume>:/data:ro -v <backups>:/backup <image> -C /data -cf /backup/<file> .
+    if [[ $all == *" --entrypoint tar "* ]]; then
+      backups=
+      target=
+      for argument in "$@"; do
+        case "$argument" in
+          *:/backup) backups=${argument%:/backup} ;;
+          /backup/*) target=${argument#/backup/} ;;
+        esac
+      done
+      empty=$(mktemp -d)
+      tar -C "$empty" -cf "$backups/$target" .
+      rmdir "$empty"
+    fi
+    ;;
+esac
+
+exit 0

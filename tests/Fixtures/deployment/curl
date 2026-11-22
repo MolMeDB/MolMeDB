@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# A curl that serves the files of a release and answers for the site. Used by
+# tests/Unit/Deployment.
+#
+#   FAKE_LOG             file the calls are appended to
+#   FAKE_DEPLOY_SCRIPT   the deploy.sh a release would carry
+#   FAKE_DOWNLOAD_FAILS  the release files cannot be downloaded
+#   FAKE_SITE_DOWN       the site does not answer
+echo "curl $*" >> "$FAKE_LOG"
+
+output=
+url=${*: -1}
+while (( $# )); do
+  if [[ $1 == --output ]]; then
+    output=$2
+  fi
+  shift
+done
+
+case "$url" in
+  */compose.yaml)
+    [[ -z ${FAKE_DOWNLOAD_FAILS:-} ]] || exit 22
+    printf 'services: {} # release compose\n' > "$output"
+    ;;
+  */deploy.sh)
+    [[ -z ${FAKE_DOWNLOAD_FAILS:-} ]] || exit 22
+    cat "$FAKE_DEPLOY_SCRIPT" > "$output"
+    ;;
+  *)
+    [[ -z ${FAKE_SITE_DOWN:-} ]] || exit 7
+    ;;
+esac
+
+exit 0

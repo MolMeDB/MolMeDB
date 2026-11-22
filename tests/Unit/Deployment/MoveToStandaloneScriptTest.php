@@ -198,7 +198,56 @@ test('a failed backup starts the old installation again and moves nothing', func
     'pg_dump fails' => [['FAKE_DUMP_FAILS' => '1'], 'The move did not finish'],
     'pg_restore fails' => [['FAKE_RESTORE_FAILS' => '1'], 'pg_restore reported errors for main-db'],
     'a restored table has other rows' => [['FAKE_RESTORED_ROWS' => '4'], 'the restored database differs from the real one'],
+    'a Bingo index cannot be created' => [['FAKE_BINGO_INDEX_FAILS' => '1'], 'A Bingo index could not be created in the restored main-db'],
 ]);
+
+test('Bingo indexes are left out of the restore and created afterwards', function () {
+    $installation = installationToMove();
+
+    $process = moveInstallation($installation, ['BACKUP_ONLY' => '1']);
+
+    expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput());
+
+    // pg_restore empties the search path, with which Bingo cannot build an index.
+    $restored = file_get_contents($installation['backups'].'/main-db.restore-test.list');
+    expect($restored)
+        ->toContain('TABLE public structures molmedb')
+        ->toContain('INDEX public structures_name_index molmedb')
+        ->not->toContain('structures_canonical_smiles_bingo_index')
+        ->and(dockerCalls($installation['log'], '--use-list=/tmp/restore.list'))->toHaveCount(2)
+        ->and(dockerCalls($installation['log'], 'psql: CREATE INDEX structures_canonical_smiles_bingo_index ON public.structures USING bingo_idx'))->toHaveCount(2)
+        ->and(dockerCalls($installation['log'], 'psql: CREATE INDEX structures_name_index'))->toBe([])
+        ->and(positionOfCall($installation['log'], 'psql: CREATE INDEX'))->toBeGreaterThan(positionOfCall($installation['log'], '--use-list=/tmp/restore.list'));
+});
+
+test('backups that are already there can be restored again while the site runs', function () {
+    $installation = installationToMove();
+    moveInstallation($installation, ['BACKUP_ONLY' => '1', 'SKIP_RESTORE_TEST' => '1']);
+    $stopsBefore = count(dockerCalls($installation['log'], 'docker stop'));
+
+    $process = moveInstallation($installation, [
+        'RESTORE_TEST_ONLY' => $installation['backups'],
+        'BACKUP_DIR' => $installation['backups'].'-unused',
+    ]);
+
+    expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput())
+        ->and($process->getOutput())->toContain('Both dumps restore')
+        ->and(dockerCalls($installation['log'], 'docker stop'))->toHaveCount($stopsBefore)
+        ->and(dockerCalls($installation['log'], '--use-list=/tmp/restore.list'))->toHaveCount(2)
+        ->and(filesize($installation['backups'].'/main-db.restored.counts'))->toBeGreaterThan(0)
+        ->and(file_exists($installation['backups'].'-unused'))->toBeFalse()
+        ->and(file_exists($installation['new']))->toBeFalse();
+});
+
+test('a restore of backups that are not there is refused', function () {
+    $installation = installationToMove();
+
+    $process = moveInstallation($installation, ['RESTORE_TEST_ONLY' => $installation['old']]);
+
+    expect($process->getExitCode())->toBe(1)
+        ->and($process->getErrorOutput())->toContain('No backups of this script')
+        ->and(dockerCalls($installation['log'], 'docker stop'))->toBe([]);
+});
 
 test('a failure while the databases are stopped starts them, Redis and the application again', function () {
     $installation = installationToMove();

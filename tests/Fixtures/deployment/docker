@@ -21,6 +21,7 @@
 #   FAKE_DUMP_FAILS          pg_dump fails
 #   FAKE_RESTORE_FAILS       pg_restore into the temporary database fails
 #   FAKE_RESTORED_ROWS       rows of public.structures after the restore
+#   FAKE_BINGO_INDEX_FAILS   the Bingo index cannot be created in the restored database
 echo "docker $*" >> "$FAKE_LOG"
 
 project=${FAKE_PROJECT:-molmedb-api}
@@ -104,7 +105,23 @@ case "$1" in
         [[ -z ${FAKE_DUMP_SLEEP:-} ]] || sleep "$FAKE_DUMP_SLEEP"
         echo "PGDMP of $2"
         ;;
-      *"pg_restore --list"*) cat > /dev/null ;;
+      *"pg_restore --list"*)
+        cat > /dev/null
+        printf '%s\n' \
+          '215; 1259 20301 TABLE public structures molmedb' \
+          '310; 1259 30780 TABLE bingo structures_canonical_smiles_bingo_index_shadow molmedb' \
+          '4210; 0 20301 TABLE DATA public structures molmedb' \
+          '4211; 0 30780 TABLE DATA bingo structures_canonical_smiles_bingo_index_shadow molmedb' \
+          '3972; 1259 30701 INDEX public structures_name_index molmedb' \
+          '3973; 1259 30779 INDEX public structures_canonical_smiles_bingo_index molmedb'
+        ;;
+      *"--section=post-data"*)
+        cat > /dev/null
+        printf '%s\n' \
+          'CREATE INDEX structures_name_index ON public.structures USING btree (name);' \
+          'CREATE INDEX structures_canonical_smiles_bingo_index ON public.structures USING bingo_idx (canonical_smiles bingo.molecule) WHERE (canonical_smiles IS NOT NULL);'
+        ;;
+      *"cat > /tmp/restore.list"*) cat > /dev/null ;;
       *"pg_restore "*)
         cat > /dev/null
         if [[ -n ${FAKE_RESTORE_FAILS:-} ]]; then
@@ -116,6 +133,15 @@ case "$1" in
         # The counting query: one generated statement per table, the tables
         # of Bingo left out.
         query=$(cat)
+        # The Bingo indexes, created after the restore in a session of their own.
+        if [[ $query == "CREATE INDEX "*" USING bingo_idx "* ]]; then
+          echo "psql: $query" >> "$FAKE_LOG"
+          if [[ -n ${FAKE_BINGO_INDEX_FAILS:-} ]]; then
+            echo "ERROR:  error: bingo-postgres: internal error" >&2
+            exit 1
+          fi
+          exit 0
+        fi
         if [[ $query != *"\\gexec"* || $query != *"'bingo'"* ]]; then
           echo "unexpected query: $query" >&2
           exit 1

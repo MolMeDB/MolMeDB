@@ -39,6 +39,8 @@
 #                      is started again and nothing is moved
 #   SKIP_RESTORE_TEST  1 = do not restore the dumps in step 4 (it can take
 #                      long on a large database)
+#   RESTORE_TEST_ONLY  a directory of backups from an earlier run: only the
+#                      restore of step 4 is done on them, with the site running
 #   DOCKER             docker command (default: docker)
 #   RELEASE_URL        where the release files are downloaded from
 #                      (default: https://github.com/MolMeDB/MolMeDB/releases/download)
@@ -393,6 +395,10 @@ new_need=$(( storage_kb * 11 / 10 ))
 if [[ ${BACKUP_ONLY:-0} == 1 ]]; then
   new_need=0
 fi
+if [[ -n ${RESTORE_TEST_ONLY:-} ]]; then
+  backup_need=0
+  new_need=0
+fi
 
 echo "storage/: $(( storage_kb / 1024 )) MB, databases: $(( (main_kb + predictions_kb) / 1024 )) MB"
 
@@ -416,6 +422,115 @@ if [[ ${SKIP_RESTORE_TEST:-0} != 1 ]]; then
   fi
 fi
 
+# One line per table: its name and the number of rows. Bingo keeps its own
+# tables in the schema "bingo" and names them after internal ids, which a
+# restore creates anew, so they cannot be compared by name.
+count_sql=$(cat << 'SQL'
+SELECT format('SELECT %L, count(*) FROM %I.%I', schemaname || '.' || tablename, schemaname, tablename)
+FROM pg_tables
+WHERE schemaname NOT IN ('pg_catalog', 'information_schema', 'bingo')
+ORDER BY schemaname, tablename \gexec
+SQL
+)
+
+# table_counts <container> <shell command that runs psql>
+table_counts() {
+  "${docker[@]}" exec -i "$1" sh -c "$2" <<< "$count_sql"
+}
+
+# Restores a dump into a database of a throw-away container that runs the
+# image of the real one, and compares the number of rows in every table.
+restore_test() {
+  local name=$1 image=$2 attempt post_data bingo_statements bingo_indexes index pattern
+  local dump=$backup_dir/$name.dump list=$backup_dir/$name.restore-test.list log=$backup_dir/$name.restore-test.log
+
+  echo "$name: restoring the dump into a temporary database (this can take a while)"
+  "${docker[@]}" rm -fv "$restore_container" > /dev/null 2>&1 || true
+  # Without a network: a copy of the real data, reachable by nobody.
+  "${docker[@]}" run -d --name "$restore_container" --network none --shm-size 1g \
+    -e POSTGRES_PASSWORD="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')" "$image" > /dev/null
+
+  # Over TCP: the server that only prepares the data directory listens on
+  # the socket alone, the final one on both.
+  for attempt in {1..60}; do
+    if "${docker[@]}" exec "$restore_container" pg_isready -q -h 127.0.0.1 -U postgres; then
+      break
+    fi
+    sleep "${MOVE_WAIT_INTERVAL:-2}"
+  done
+  "${docker[@]}" exec "$restore_container" pg_isready -q -h 127.0.0.1 -U postgres
+
+  # A Bingo index cannot be created by pg_restore: Bingo builds it with
+  # queries that need "public" on the search path, and pg_restore empties
+  # the path. So the dump is restored without those indexes and the tables
+  # Bingo keeps for them (it makes them anew), and the indexes are created
+  # afterwards in an ordinary session, with the statements from the dump.
+  post_data=$("${docker[@]}" exec -i "$restore_container" pg_restore -f - --section=post-data < "$dump")
+  bingo_statements=$(grep -E '^CREATE INDEX [^ ]+ ON .* USING bingo_idx ' <<< "$post_data" || true)
+  bingo_indexes=$(sed -n 's/^CREATE INDEX \([^ ]*\) ON .* USING bingo_idx .*/\1/p' <<< "$post_data")
+
+  "${docker[@]}" exec -i "$restore_container" pg_restore --list < "$dump" > "$list.all"
+  pattern=
+  for index in $bingo_indexes; do
+    pattern+="${pattern:+|} $index( |\$)|${index}_shadow"
+  done
+  if [[ -n $pattern ]]; then
+    grep -vE "$pattern" "$list.all" > "$list"
+  else
+    cp "$list.all" "$list"
+  fi
+  rm -f "$list.all"
+  "${docker[@]}" exec -i "$restore_container" sh -c 'cat > /tmp/restore.list' < "$list"
+
+  # template0: nothing in it yet, everything comes from the dump.
+  "${docker[@]}" exec "$restore_container" createdb -U postgres -T template0 restore_test
+  if ! "${docker[@]}" exec -i "$restore_container" \
+        pg_restore -U postgres -d restore_test --no-owner --no-privileges --use-list=/tmp/restore.list \
+        < "$dump" 2> "$log"; then
+    echo "pg_restore reported errors for $name; see $log:" >&2
+    tail -n 20 "$log" >&2
+    false
+  fi
+
+  if [[ -n $bingo_statements ]]; then
+    echo "$name: creating $(wc -l <<< "$bingo_statements" | tr -d ' ') Bingo index(es)"
+    if ! "${docker[@]}" exec -i "$restore_container" \
+          psql -X -q -v ON_ERROR_STOP=1 -U postgres -d restore_test <<< "$bingo_statements" 2>> "$log"; then
+      echo "A Bingo index could not be created in the restored $name; see $log:" >&2
+      tail -n 20 "$log" >&2
+      false
+    fi
+  fi
+
+  table_counts "$restore_container" 'psql -X -At -v ON_ERROR_STOP=1 -U postgres -d restore_test' \
+    > "$backup_dir/$name.restored.counts"
+
+  if ! cmp --silent "$backup_dir/$name.counts" "$backup_dir/$name.restored.counts"; then
+    echo "$name: the restored database differs from the real one:" >&2
+    diff "$backup_dir/$name.counts" "$backup_dir/$name.restored.counts" | head -n 20 >&2 || true
+    false
+  fi
+
+  echo "$name: $(wc -l < "$backup_dir/$name.counts" | tr -d ' ') tables restored, all row counts match"
+  "${docker[@]}" rm -fv "$restore_container" > /dev/null
+}
+
+# Only the restore test, on backups that a run of this script already made.
+# The site keeps running: nothing is stopped and nothing is written but the
+# results of the test.
+if [[ -n ${RESTORE_TEST_ONLY:-} ]]; then
+  [[ -s $RESTORE_TEST_ONLY/main-db.dump && -s $RESTORE_TEST_ONLY/main-db.counts ]] \
+    || fail "No backups of this script in $RESTORE_TEST_ONLY."
+  rmdir "$backup_dir" "$new_dir" 2> /dev/null || true
+  backup_dir=$(cd "$RESTORE_TEST_ONLY" && pwd -P)
+
+  step "Restoring the dumps in $backup_dir (the site keeps running)"
+  restore_test main-db "$main_image"
+  restore_test predictions-db "$predictions_image"
+  echo "Both dumps restore into databases with the row counts of the real ones."
+  exit 0
+fi
+
 # ------------------------------------------------------------ 2. stopping
 
 step "Stopping the application (the site is down from now on)"
@@ -435,22 +550,6 @@ if (( ${#stopped[@]} == 0 )); then
 fi
 
 # ------------------------------------------------------------- 3. backups
-
-# One line per table: its name and the number of rows. Bingo keeps its own
-# tables in the schema "bingo" and names them after internal ids, which a
-# restore creates anew, so they cannot be compared by name.
-count_sql=$(cat << 'SQL'
-SELECT format('SELECT %L, count(*) FROM %I.%I', schemaname || '.' || tablename, schemaname, tablename)
-FROM pg_tables
-WHERE schemaname NOT IN ('pg_catalog', 'information_schema', 'bingo')
-ORDER BY schemaname, tablename \gexec
-SQL
-)
-
-# table_counts <container> <shell command that runs psql>
-table_counts() {
-  "${docker[@]}" exec -i "$1" sh -c "$2" <<< "$count_sql"
-}
 
 source_psql='psql -X -At -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
@@ -547,50 +646,6 @@ done
 "${docker[@]}" exec -i "$predictions_db" pg_restore --list < "$backup_dir/predictions-db.dump" > /dev/null
 echo "both dumps: readable"
 
-# Restores a dump into a database of a throw-away container that runs the
-# image of the real one, and compares the number of rows in every table.
-restore_test() {
-  local name=$1 image=$2 attempt
-
-  echo "$name: restoring the dump into a temporary database (this can take a while)"
-  "${docker[@]}" rm -fv "$restore_container" > /dev/null 2>&1 || true
-  # Without a network: a copy of the real data, reachable by nobody.
-  "${docker[@]}" run -d --name "$restore_container" --network none --shm-size 1g \
-    -e POSTGRES_PASSWORD="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')" "$image" > /dev/null
-
-  # Over TCP: the server that only prepares the data directory listens on
-  # the socket alone, the final one on both.
-  for attempt in {1..60}; do
-    if "${docker[@]}" exec "$restore_container" pg_isready -q -h 127.0.0.1 -U postgres; then
-      break
-    fi
-    sleep "${MOVE_WAIT_INTERVAL:-2}"
-  done
-  "${docker[@]}" exec "$restore_container" pg_isready -q -h 127.0.0.1 -U postgres
-
-  # template0: nothing in it yet, everything comes from the dump.
-  "${docker[@]}" exec "$restore_container" createdb -U postgres -T template0 restore_test
-  if ! "${docker[@]}" exec -i "$restore_container" \
-        pg_restore -U postgres -d restore_test --no-owner --no-privileges \
-        < "$backup_dir/$name.dump" 2> "$backup_dir/$name.restore-test.log"; then
-    echo "pg_restore reported errors for $name; see $backup_dir/$name.restore-test.log:" >&2
-    tail -n 20 "$backup_dir/$name.restore-test.log" >&2
-    false
-  fi
-
-  table_counts "$restore_container" 'psql -X -At -v ON_ERROR_STOP=1 -U postgres -d restore_test' \
-    > "$backup_dir/$name.restored.counts"
-
-  if ! cmp --silent "$backup_dir/$name.counts" "$backup_dir/$name.restored.counts"; then
-    echo "$name: the restored database differs from the real one:" >&2
-    diff "$backup_dir/$name.counts" "$backup_dir/$name.restored.counts" | head -n 20 >&2 || true
-    false
-  fi
-
-  echo "$name: $(wc -l < "$backup_dir/$name.counts" | tr -d ' ') tables restored, all row counts match"
-  "${docker[@]}" rm -fv "$restore_container" > /dev/null
-}
-
 if [[ ${SKIP_RESTORE_TEST:-0} == 1 ]]; then
   echo "SKIP_RESTORE_TEST=1: the dumps were not restored."
 else
@@ -654,6 +709,10 @@ Backups of the MolMeDB installation in $old_dir, taken $(date) before the
 move to $new_dir (release $version).
 
   main-db.dump, predictions-db.dump   pg_dump --format=custom of both databases
+                                      (pg_restore cannot create a Bingo index:
+                                      leave it out and create it afterwards,
+                                      as *.restore-test.list and the restore
+                                      test of this script do)
   *.globals.sql                       the roles of both database servers
   *.volume.tar                        exact copies of the Docker volumes
                                       ($main_volume,

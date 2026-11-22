@@ -98,7 +98,7 @@ export default function Compound2D3DStructure(props: { compound: IStructure }) {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col justify-center items-center pt-8 px-8 relative h-[305px] w-full overflow-hidden">
+          <div className="relative h-[305px] w-full overflow-hidden">
             <MolStar
               sdfPath={props.compound.structure_3d_url}
               onError={() => setStructure3DError(true)}

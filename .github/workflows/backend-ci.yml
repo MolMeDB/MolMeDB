@@ -18,6 +18,8 @@ on:
       - "phpunit.xml"
       - ".github/workflows/backend-ci.yml"
       - ".github/scripts/coverage-summary.php"
+      # The deployment scripts are run by tests/Unit/Deployment.
+      - "docker/production/*.sh"
   push:
     branches: [develop, main]
     paths: *backend_paths
@@ -196,6 +198,19 @@ jobs:
       - run: composer install --no-interaction --prefer-dist --no-progress
 
       - run: php artisan migrate --force
+
+      # public/ holds the assets Filament and its plugins publish, and the
+      # production image is built without running composer's scripts. An
+      # update of those packages that does not come with the republished
+      # assets (a Dependabot pull request, for one) would serve old ones.
+      - name: Published Filament assets are current
+        run: |
+          php artisan filament:assets
+          if [ -n "$(git status --porcelain -- public)" ]; then
+            git status --short -- public
+            echo "::error::The published assets in public/ do not match the installed packages. Run \`php artisan filament:assets\` and commit the result."
+            exit 1
+          fi
 
       # Coverage is measured and reported, not enforced: there is no minimum
       # a run could fail on. Asked for coverage without a driver, PHPUnit

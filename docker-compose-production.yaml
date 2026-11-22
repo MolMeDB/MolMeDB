@@ -4,6 +4,13 @@
 # the release — docker/production/deploy.sh sets it, pulls and restarts.
 # Setup and deployment: docker/production/nginx/README.md.
 
+# The project name prefixes the volumes that hold the databases
+# (molmedb-api_molmedb-db, ...). Without it Compose takes the name of the
+# directory, so the same file started from another directory would create
+# new, empty databases. A server whose volumes carry another prefix sets
+# COMPOSE_PROJECT_NAME in .env, which wins over this line.
+name: molmedb-api
+
 x-backend: &backend
   image: ghcr.io/molmedb/molmedb-backend:${MOLMEDB_VERSION:?Set MOLMEDB_VERSION in .env (docker/production/deploy.sh does)}
 
@@ -220,6 +227,13 @@ services:
     platform: linux/amd64
     privileged: true
     container_name: molmedb-dev-db
+    # Docker kills a container that has not stopped after 10 seconds. The
+    # Bingo index was found damaged on production once, and it is believed
+    # not to be written through PostgreSQL's log, so a database killed while
+    # it writes may be what damages it: it gets the time to shut down. The
+    # value is fixed when a container is created; deploy.sh therefore also
+    # passes the time to `up`, for containers created before this line.
+    stop_grace_period: 5m
     environment:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
@@ -247,6 +261,13 @@ services:
     platform: linux/amd64
     privileged: true
     container_name: molmedb-predictions-db
+    # Docker kills a container that has not stopped after 10 seconds. The
+    # Bingo index was found damaged on production once, and it is believed
+    # not to be written through PostgreSQL's log, so a database killed while
+    # it writes may be what damages it: it gets the time to shut down. The
+    # value is fixed when a container is created; deploy.sh therefore also
+    # passes the time to `up`, for containers created before this line.
+    stop_grace_period: 5m
     environment:
       POSTGRES_DB: ${DB_PREDICTIONS_DATABASE}
       POSTGRES_USER: ${DB_PREDICTIONS_USERNAME}

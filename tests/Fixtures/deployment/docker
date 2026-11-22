@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+#
+# A docker that only writes down what it was asked to do and answers the way
+# the deployment scripts expect. Used by tests/Unit/Deployment.
+#
+#   FAKE_LOG                 file the calls are appended to
+#   FAKE_STATE_DIR           directory that remembers which containers are stopped
+#   FAKE_PROJECT             Compose project of the running containers
+#   FAKE_MAIN_VOLUME         volume of the main database (default: <project>_molmedb-db)
+#   FAKE_MISSING_IMAGE       an image the registry does not have
+#   FAKE_INVALID_COMPOSE     compose config fails
+#   FAKE_PULL_FAILS          compose pull fails
+#   FAKE_PULL_FAILS_ON       the number of the compose pull that fails (1 = the first)
+#   FAKE_WORKING_DIR         directory the running installation was started from
+#   FAKE_NEW_LIBC            version of the C library in the published database image
+#   FAKE_CONFIG_PROJECT      project name the compose file resolves to, whatever .env says
+#   FAKE_PROBE_FAILS         a container cannot write into the backup directory
+#   FAKE_ARCHIVE_FAILS       archiving a volume fails
+#   FAKE_DUMP_SLEEP          seconds pg_dump takes
+#   FAKE_APP_STATE           what the application container reports after `up`
+#   FAKE_DUMP_FAILS          pg_dump fails
+#   FAKE_RESTORE_FAILS       pg_restore into the temporary database fails
+#   FAKE_RESTORED_ROWS       rows of public.structures after the restore
+#   FAKE_BINGO_INDEX_FAILS   the Bingo index cannot be created in the restored database
+echo "docker $*" >> "$FAKE_LOG"
+
+project=${FAKE_PROJECT:-molmedb-api}
+state=${FAKE_STATE_DIR:-/nonexistent}
+all=" $* "
+
+case "$1" in
+  info)
+    # info -f '{{.DockerRootDir}}'
+    [[ $all != *"DockerRootDir"* ]] || echo "$state"
+    ;;
+
+  manifest)
+    if [[ -n ${FAKE_MISSING_IMAGE:-} && $3 == *"$FAKE_MISSING_IMAGE"* ]]; then
+      echo "manifest unknown" >&2
+      exit 1
+    fi
+    ;;
+
+  stop)
+    shift
+    # stop [-t <seconds>] <container>...
+    if [[ $1 == -t ]]; then
+      shift 2
+    fi
+    for name in "$@"; do touch "$state/$name"; done
+    ;;
+
+  start)
+    shift
+    for name in "$@"; do rm -f "$state/$name"; done
+    ;;
+
+  inspect)
+    name=${*: -1}
+    case "$all" in
+      *".State.Running"*) [[ -e $state/$name ]] && echo false || echo true ;;
+      *"com.docker.compose.project.working_dir"*) echo "${FAKE_WORKING_DIR:-}" ;;
+      *"com.docker.compose.project.config_files"*) echo "${FAKE_WORKING_DIR:-}/docker-compose.yaml" ;;
+      *"com.docker.compose.project"*) echo "$project" ;;
+      *".Mounts"*)
+        if [[ $name == molmedb-predictions-db ]]; then
+          echo "${project}_molmedb-predictions-db"
+        else
+          echo "${FAKE_MAIN_VOLUME:-${project}_molmedb-db}"
+        fi
+        ;;
+      *"{{.Image}}"*) echo "sha256:0123abcd" ;;
+      *".State.Status"*) echo "${FAKE_APP_STATE:-running 0}" ;;
+    esac
+    ;;
+
+  compose)
+    file=$3
+    case "$all" in
+      *" config "*|*" config")
+        [[ -z ${FAKE_INVALID_COMPOSE:-} ]] || exit 1
+        # Like Compose: COMPOSE_PROJECT_NAME in the .env next to the file
+        # wins over the name written in it.
+        name=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$(dirname "$file")/.env" 2> /dev/null | tail -n 1)
+        name=${FAKE_CONFIG_PROJECT:-${name:-molmedb-api}}
+        printf 'name: %s\nservices:\n  db:\n    image: ghcr.io/molmedb/molmedb-db:15\nvolumes:\n  molmedb-db:\n    name: %s_molmedb-db\n  molmedb-predictions-db:\n    name: %s_molmedb-predictions-db\n' \
+          "$name" "$name" "$name"
+        ;;
+      *" pull "*)
+        [[ -z ${FAKE_PULL_FAILS:-} ]] || exit 1
+        if [[ -n ${FAKE_PULL_FAILS_ON:-} && $(grep -c ' pull' "$FAKE_LOG") == "$FAKE_PULL_FAILS_ON" ]]; then
+          exit 1
+        fi
+        ;;
+      *" up -d "*) rm -f "$state"/* 2> /dev/null ;;
+    esac
+    ;;
+
+  exec)
+    case "$all" in
+      *"pg_database_size"*) echo 10485760 ;;
+      *"pg_dumpall"*) echo "CREATE ROLE molmedb;" ;;
+      *"pg_dump "*)
+        [[ -z ${FAKE_DUMP_FAILS:-} ]] || exit 1
+        [[ -z ${FAKE_DUMP_SLEEP:-} ]] || sleep "$FAKE_DUMP_SLEEP"
+        echo "PGDMP of $2"
+        ;;
+      *"pg_restore --list"*)
+        cat > /dev/null
+        printf '%s\n' \
+          ';' \
+          '; Archive created at 2026-11-22 13:24:01 UTC' \
+          '215; 1259 20301 TABLE public structures molmedb' \
+          '310; 1259 30780 TABLE public structures_canonical_smiles_bingo_index_shadow molmedb' \
+          '4210; 0 20301 TABLE DATA public structures molmedb' \
+          '4211; 0 30780 TABLE DATA public structures_canonical_smiles_bingo_index_shadow molmedb' \
+          '3972; 1259 30701 INDEX public structures_name_index molmedb' \
+          '3973; 1259 30779 INDEX public structures_canonical_smiles_bingo_index molmedb'
+        ;;
+      *"--section=post-data"*)
+        cat > /dev/null
+        printf '%s\n' \
+          'CREATE INDEX structures_name_index ON public.structures USING btree (name);' \
+          'CREATE INDEX structures_canonical_smiles_bingo_index ON public.structures USING bingo_idx (canonical_smiles bingo.molecule) WHERE (canonical_smiles IS NOT NULL);'
+        ;;
+      *"cat > /tmp/restore.list"*) cat > /dev/null ;;
+      *"pg_restore "*)
+        cat > /dev/null
+        if [[ -n ${FAKE_RESTORE_FAILS:-} ]]; then
+          echo "pg_restore: error: could not execute query" >&2
+          exit 1
+        fi
+        ;;
+      *"psql "*)
+        # The counting query: one generated statement per table, the tables
+        # of Bingo left out.
+        query=$(cat)
+        # The Bingo indexes, created after the restore in a session of their own.
+        if [[ $query == "CREATE INDEX "*" USING bingo_idx "* ]]; then
+          echo "psql: $query" >> "$FAKE_LOG"
+          if [[ -n ${FAKE_BINGO_INDEX_FAILS:-} ]]; then
+            echo "ERROR:  error: bingo-postgres: internal error" >&2
+            exit 1
+          fi
+          exit 0
+        fi
+        if [[ $query != *"\\gexec"* || $query != *"'bingo'"* ]]; then
+          echo "unexpected query: $query" >&2
+          exit 1
+        fi
+        # The shadow table of a Bingo index also keeps the entries of rows
+        # that are gone; an index built anew has only those of the rows left.
+        rows=5
+        shadow=9
+        if [[ $all == *"restore_test"* ]]; then
+          rows=${FAKE_RESTORED_ROWS:-5}
+          shadow=5
+        fi
+        printf 'public.structures|%s\npublic.structures_canonical_smiles_bingo_index_shadow|%s\npublic.users|3\n' "$rows" "$shadow"
+        ;;
+    esac
+    ;;
+
+  run)
+    # run --rm --entrypoint tar -v <volume>:/data:ro -v <backups>:/backup <image> -C /data -cf /backup/<file> .
+    if [[ $all == *" --entrypoint postgres "* ]]; then
+      echo "postgres (PostgreSQL) 15.8 (Debian 15.8-1.pgdg120+1)"
+    elif [[ $all == *" --entrypoint ldd "* ]]; then
+      # The same library in another revision of its package, unless asked otherwise.
+      if [[ $all == *"ghcr.io/"* ]]; then
+        echo "ldd (Debian GLIBC ${FAKE_NEW_LIBC:-2.36}-9+deb12u10) ${FAKE_NEW_LIBC:-2.36}"
+      else
+        echo "ldd (Debian GLIBC 2.36-9+deb12u7) 2.36"
+      fi
+      echo "Copyright (C) Free Software Foundation, Inc."
+    elif [[ $all == *" --entrypoint tar "* ]]; then
+      [[ -z ${FAKE_PROBE_FAILS:-} || $all != *"probe.tar"* ]] || exit 1
+      [[ -z ${FAKE_ARCHIVE_FAILS:-} || $all != *".volume.tar"* ]] || exit 1
+      backups=
+      target=
+      for argument in "$@"; do
+        case "$argument" in
+          *:/backup) backups=${argument%:/backup} ;;
+          /backup/*) target=${argument#/backup/} ;;
+        esac
+      done
+      empty=$(mktemp -d)
+      tar -C "$empty" -cf "$backups/$target" .
+      rmdir "$empty"
+    fi
+    ;;
+esac
+
+exit 0

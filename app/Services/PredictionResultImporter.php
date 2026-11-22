@@ -19,6 +19,12 @@ use RuntimeException;
 class PredictionResultImporter
 {
     /**
+     * Imports of a prediction whose own result cannot be used that are tried
+     * before the prediction is marked as failed.
+     */
+    public const MAX_UNUSABLE_RESULT_ATTEMPTS = 5;
+
+    /**
      * @return 'imported'|'duplicate'|'error'
      */
     public function import(Prediction $prediction, ?PredictionMethod $method): string
@@ -41,16 +47,24 @@ class PredictionResultImporter
             return $this->fail($prediction, "Prediction membrane [{$prediction->membrane_id}] has no real Membrane mapped (remote_id is empty).");
         }
 
-        $logPerm = $this->extractLogPerm($prediction);
+        $resultData = $this->resultData($prediction);
+
+        // The result could not be loaded (its file is read from a storage
+        // that can be out of reach): tried again for as long as it takes.
+        if ($resultData === null) {
+            return $this->fail($prediction, 'The parsed result data could not be loaded.');
+        }
+
+        $logPerm = $this->extractLogPerm($resultData);
 
         if ($logPerm === null) {
-            return $this->fail($prediction, 'Could not extract LogPerm from the parsed result data.');
+            return $this->failUnusableResult($prediction, 'Could not extract LogPerm from the parsed result data.');
         }
 
         $predictionStructure = $prediction->predictionStructure;
 
         if (! $predictionStructure || trim((string) $predictionStructure->canonical_smiles) === '') {
-            return $this->fail($prediction, 'Prediction structure has no canonical SMILES.');
+            return $this->failUnusableResult($prediction, 'Prediction structure has no canonical SMILES.');
         }
 
         $structure = $this->resolveStructure($predictionStructure);
@@ -127,6 +141,40 @@ class PredictionResultImporter
     }
 
     /**
+     * For what is wrong with the prediction itself (its result or its
+     * structure), not with the configuration around it: nothing an
+     * administrator sets up later makes such an import succeed, so after a
+     * few attempts the prediction is marked as failed instead of being tried
+     * every minute forever. A missing method or membrane mapping stays with
+     * fail(): those imports go through once the mapping is there.
+     */
+    private function failUnusableResult(Prediction $prediction, string $message): string
+    {
+        $attempts = 1 + collect(is_array($prediction->logs) ? $prediction->logs : [])
+            ->filter(fn (mixed $entry): bool => is_array($entry)
+                && ($entry['type'] ?? null) === 'RESULT IMPORT'
+                && ($entry['context'] ?? null) === 'error'
+                && ($entry['message'] ?? null) === $message)
+            ->count();
+
+        if ($attempts < self::MAX_UNUSABLE_RESULT_ATTEMPTS) {
+            return $this->fail($prediction, $message);
+        }
+
+        $prediction->forceFill([
+            'state' => Prediction::STATE_ERROR,
+            'logs' => $prediction->logsWithWorkerEvent(
+                "{$message} Given up after repeated attempts; the prediction is marked as failed.",
+                ['attempts_in_log' => $attempts],
+                'RESULT IMPORT',
+                'error',
+            ),
+        ])->save();
+
+        return 'error';
+    }
+
+    /**
      * PredictionResult.data is the COSMO XML parsed into [{solutes: [{logPerm, ...}]}]
      * (see CosmoXmlParser/SoluteResult). Each prediction is scoped to a single
      * structure, so the first job's first solute is taken as the value.
@@ -135,8 +183,10 @@ class PredictionResultImporter
      * back to lazily parsing the stored XML file via loadParsedResults(), which
      * returns the same shape as a PredictionResultJson DTO (jsonSerialize()
      * normalizes it back to the plain array shape the `data` column would hold).
+     *
+     * @return array<int|string, mixed>|null null when there is no result or it could not be loaded
      */
-    private function extractLogPerm(Prediction $prediction): ?float
+    private function resultData(Prediction $prediction): ?array
     {
         $result = $prediction->predictionResult;
 
@@ -151,10 +201,17 @@ class PredictionResultImporter
             $data = $parsed instanceof JsonSerializable ? $parsed->jsonSerialize() : null;
         }
 
-        if (! is_array($data)) {
-            return null;
-        }
+        return is_array($data) ? $data : null;
+    }
 
+    /**
+     * Each prediction is scoped to a single structure, so the first job's
+     * first solute is taken as the value.
+     *
+     * @param  array<int|string, mixed>  $data
+     */
+    private function extractLogPerm(array $data): ?float
+    {
         $logPerm = $data[0]['solutes'][0]['logPerm'] ?? null;
 
         // Match the manual upload pipeline's normalizeInteractionValue(), which

@@ -112,6 +112,8 @@ test('the installation is backed up, proven and then started from the new direct
         ->and(file_get_contents($backups.'/SHA256SUMS'))->toContain('main-db.dump')->toContain('storage.tar')
         ->and(file_get_contents($backups.'/ROLLBACK.txt'))
         ->toContain('molmedb-api_molmedb-db:/data')
+        ->toContain('docker rm -f molmedb-nginx molmedb-frontend')
+        ->toContain('[ -z "$(docker ps -aq --filter volume=molmedb-api_molmedb-db)" ] && \\')
         ->toContain('tar -tf /backup/main-db.volume.tar > /dev/null && find /data -mindepth 1 -delete')
         ->toContain('predictions-db.volume.tar')
         ->toContain('molmedb-api_molmedb-redis:/data')
@@ -207,8 +209,9 @@ test('a failure while the databases are stopped starts them, Redis and the appli
     expect($process->getExitCode())->not->toBe(0)
         ->and($process->getErrorOutput())->toContain('Nothing was moved')
         ->and(glob($installation['state'].'/*'))->toBe([])
-        ->and(positionOfCall($log, 'docker start molmedb-dev-db molmedb-predictions-db'))
+        ->and(positionOfCall($log, 'docker start molmedb-dev-db'))
         ->toBeGreaterThan(positionOfCall($log, 'docker stop -t 300 molmedb-dev-db molmedb-predictions-db'))
+        ->and(dockerCalls($log, 'docker start molmedb-predictions-db'))->toHaveCount(1)
         ->and(dockerCalls($log, 'docker start molmedb-redis'))->toHaveCount(1)
         ->and(positionOfCall($log, 'docker start molmedb-backend'))->toBeGreaterThan(positionOfCall($log, 'docker start molmedb-dev-db'))
         ->and(dockerCalls($log, 'up -d'))->toBe([]);
@@ -268,11 +271,41 @@ test('a deployment that fails before it replaces a container starts the old inst
         ->and(glob($installation['state'].'/*'))->toBe([])
         ->and(dockerCalls($installation['log'], 'docker start molmedb-backend'))->toHaveCount(1)
         // The new directory is empty again, so the move can be repeated.
-        ->and(array_diff(scandir($installation['new']), ['.', '..']))->toBe([]);
+        ->and(array_diff(scandir($installation['new']), ['.', '..']))->toBe([])
+        // Nothing was moved, so the backups do not describe a way back.
+        ->and(file_exists($installation['backups'].'/ROLLBACK.txt'))->toBeFalse()
+        ->and(file_get_contents($installation['backups'].'/SHA256SUMS'))->toContain('main-db.dump')->not->toContain('ROLLBACK');
 
     $second = moveInstallation(['backups' => $installation['backups'].'-2'] + $installation, ['BACKUP_DIR' => $installation['backups'].'-2']);
 
     expect($second->getExitCode())->toBe(0, $second->getOutput().$second->getErrorOutput());
+});
+
+test('a move cut short after the containers were replaced does not start the old ones or empty the new directory', function () {
+    $installation = installationToMove();
+
+    // deploy.sh watches the new application for a few seconds; the signal arrives meanwhile.
+    $process = new Process(
+        [deploymentScript('move-to-standalone.sh'), '1.4.0', $installation['old'], $installation['new']],
+        null,
+        ['DEPLOY_WATCH_INTERVAL' => '0.2'] + $installation['env'],
+    );
+    $process->start();
+    $process->waitUntil(fn (): bool => str_contains(file_get_contents($installation['log']), 'up -d'));
+    $process->signal(SIGTERM);
+    $process->wait();
+
+    expect($process->getExitCode())->toBe(130)
+        ->and($process->getErrorOutput())
+        ->toContain('after the containers were replaced')
+        ->toContain('ROLLBACK.txt')
+        ->not->toContain('Nothing was moved')
+        ->and(dockerCalls($installation['log'], 'docker start molmedb-nginx'))->toBe([])
+        ->and(dockerCalls($installation['log'], 'docker start molmedb-backend'))->toBe([])
+        ->and(file_exists($installation['new'].'/storage/app/public/export.csv'))->toBeTrue()
+        ->and(file_exists($installation['new'].'/compose.yaml'))->toBeTrue()
+        ->and(file_get_contents($installation['new'].'/.env'))->toContain('DB_PASSWORD=secret')
+        ->and(file_exists($installation['backups'].'/ROLLBACK.txt'))->toBeTrue();
 });
 
 test('nothing is stopped when the move cannot be prepared', function (array $env, string $message) {
@@ -285,7 +318,8 @@ test('nothing is stopped when the move cannot be prepared', function (array $env
         ->and(dockerCalls($installation['log'], 'docker stop'))->toBe([]);
 })->with([
     'the images cannot be pulled' => [['FAKE_PULL_FAILS' => '1'], ''],
-    'the published database image has another C library' => [['FAKE_NEW_LIBC' => '2.41-12'], 'another C library'],
+    'the new compose file names other volumes' => [['FAKE_CONFIG_PROJECT' => 'molmedb'], 'would not use the volume molmedb-api_molmedb-db'],
+    'the published database image has another C library' => [['FAKE_NEW_LIBC' => '2.41'], 'another C library'],
     'a container cannot write the backups' => [['FAKE_PROBE_FAILS' => '1'], 'cannot write into'],
     'the site runs from another directory' => [['FAKE_WORKING_DIR' => '/var/www/other'], "was started from '/var/www/other'"],
 ]);
@@ -293,7 +327,7 @@ test('nothing is stopped when the move cannot be prepared', function (array $env
 test('another C library in the database image can be accepted', function () {
     $installation = installationToMove();
 
-    $process = moveInstallation($installation, ['FAKE_NEW_LIBC' => '2.41-12', 'MOVE_ALLOW_LIBC_CHANGE' => '1']);
+    $process = moveInstallation($installation, ['FAKE_NEW_LIBC' => '2.41', 'MOVE_ALLOW_LIBC_CHANGE' => '1']);
 
     expect($process->getExitCode())->toBe(0, $process->getOutput().$process->getErrorOutput());
 });

@@ -12,7 +12,8 @@
 #   FAKE_PULL_FAILS          compose pull fails
 #   FAKE_PULL_FAILS_ON       the number of the compose pull that fails (1 = the first)
 #   FAKE_WORKING_DIR         directory the running installation was started from
-#   FAKE_NEW_LIBC            C library of the published database image
+#   FAKE_NEW_LIBC            version of the C library in the published database image
+#   FAKE_CONFIG_PROJECT      project name the compose file resolves to, whatever .env says
 #   FAKE_PROBE_FAILS         a container cannot write into the backup directory
 #   FAKE_ARCHIVE_FAILS       archiving a volume fails
 #   FAKE_DUMP_SLEEP          seconds pg_dump takes
@@ -80,7 +81,7 @@ case "$1" in
         # Like Compose: COMPOSE_PROJECT_NAME in the .env next to the file
         # wins over the name written in it.
         name=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$(dirname "$file")/.env" 2> /dev/null | tail -n 1)
-        name=${name:-molmedb-api}
+        name=${FAKE_CONFIG_PROJECT:-${name:-molmedb-api}}
         printf 'name: %s\nservices:\n  db:\n    image: ghcr.io/molmedb/molmedb-db:15\nvolumes:\n  molmedb-db:\n    name: %s_molmedb-db\n  molmedb-predictions-db:\n    name: %s_molmedb-predictions-db\n' \
           "$name" "$name" "$name"
         ;;
@@ -133,11 +134,13 @@ case "$1" in
     if [[ $all == *" --entrypoint postgres "* ]]; then
       echo "postgres (PostgreSQL) 15.8 (Debian 15.8-1.pgdg120+1)"
     elif [[ $all == *" --entrypoint ldd "* ]]; then
+      # The same library in another revision of its package, unless asked otherwise.
       if [[ $all == *"ghcr.io/"* ]]; then
-        echo "ldd (Debian GLIBC ${FAKE_NEW_LIBC:-2.36-9}) 2.36"
+        echo "ldd (Debian GLIBC ${FAKE_NEW_LIBC:-2.36}-9+deb12u10) ${FAKE_NEW_LIBC:-2.36}"
       else
-        echo "ldd (Debian GLIBC 2.36-9) 2.36"
+        echo "ldd (Debian GLIBC 2.36-9+deb12u7) 2.36"
       fi
+      echo "Copyright (C) Free Software Foundation, Inc."
     elif [[ $all == *" --entrypoint tar "* ]]; then
       [[ -z ${FAKE_PROBE_FAILS:-} || $all != *"probe.tar"* ]] || exit 1
       [[ -z ${FAKE_ARCHIVE_FAILS:-} || $all != *".volume.tar"* ]] || exit 1

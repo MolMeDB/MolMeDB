@@ -5,7 +5,15 @@
 # restarts the application. Nothing is built here. The application container
 # runs the database migrations itself when it starts.
 #
-# Usage: docker/production/deploy.sh <version>      e.g. 1.4.0 or v1.4.0
+# Usage: deploy.sh <version>      e.g. 1.4.0 or v1.4.0
+#
+# The script works in two places:
+#   - in a deployment directory that holds nothing but compose.yaml, .env,
+#     frontend/.env, storage/ and this script. The compose file of the
+#     release is then downloaded from the release on GitHub, so the services
+#     always match the images;
+#   - in a checkout of the repository, as docker/production/deploy.sh. The
+#     checkout's docker-compose-production.yaml is used as it is.
 #
 # A rollback is the same command with the previous version (printed at the
 # end of every deployment). Migrations are not rolled back.
@@ -15,11 +23,27 @@
 # `docker compose pull <service>`.
 #
 # Environment:
-#   COMPOSE_FILE   compose file to use (default: docker-compose-production.yaml)
-#   DOCKER         docker command (default: docker; e.g. DOCKER="sudo docker")
+#   COMPOSE_FILE          compose file to use (default: compose.yaml in a
+#                         deployment directory, docker-compose-production.yaml
+#                         in a checkout)
+#   DOCKER                docker command (default: docker; e.g. DOCKER="sudo docker")
+#   MOLMEDB_KEEP_COMPOSE  1 = do not download the compose file of the release,
+#                         use the one that is there
+#   RELEASE_URL           where the release files are downloaded from
+#                         (default: https://github.com/MolMeDB/MolMeDB/releases/download)
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
+script_dir=$(cd "$(dirname "$0")" && pwd)
+
+if [[ -f $script_dir/../../docker-compose-production.yaml && ! -f $script_dir/compose.yaml ]]; then
+  standalone=0
+  cd "$script_dir/../.."
+  compose_file=${COMPOSE_FILE:-docker-compose-production.yaml}
+else
+  standalone=1
+  cd "$script_dir"
+  compose_file=${COMPOSE_FILE:-compose.yaml}
+fi
 
 version=${1:-}
 version=${version#v}
@@ -29,16 +53,23 @@ if [[ ! $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 2
 fi
 
-compose_file=${COMPOSE_FILE:-docker-compose-production.yaml}
 read -r -a docker <<< "${DOCKER:-docker}"
+release_url=${RELEASE_URL:-https://github.com/MolMeDB/MolMeDB/releases/download}
 images=(backend nginx frontend rdkit)
 # The services that run those images.
 release_services=(web storage-init app app-scheduler-worker app-queue-worker app-predictions-queue-worker frontend rdkit)
 app_container=molmedb-backend
 backup=.env.deploy-backup
+compose_backup=$compose_file.deploy-backup
+new_compose=
 
-if [[ ! -f $compose_file ]]; then
-  echo "Compose file not found: $compose_file" >&2
+download_compose=0
+if (( standalone )) && [[ ${MOLMEDB_KEEP_COMPOSE:-0} != 1 ]]; then
+  download_compose=1
+fi
+
+if (( ! download_compose )) && [[ ! -f $compose_file ]]; then
+  echo "Compose file not found: $(pwd)/$compose_file" >&2
   exit 1
 fi
 
@@ -46,6 +77,13 @@ if [[ ! -f .env ]]; then
   echo ".env not found in $(pwd)." >&2
   exit 1
 fi
+
+remove_download() {
+  if [[ -n $new_compose ]]; then
+    rm -f "$new_compose"
+  fi
+}
+trap remove_download EXIT
 
 # A release whose workflow failed half-way has only some of its images; the
 # running stack must not be touched in that case.
@@ -61,11 +99,36 @@ done
 
 previous=$(sed -n 's/^MOLMEDB_VERSION=//p' .env | tail -n 1 | tr -d '\r')
 
-compose=("${docker[@]}" compose -f "$compose_file")
+# The compose file belongs to the release like the images do: a release may
+# add a service or change how one is started. It is downloaded next to the
+# current one (relative paths in it are read from its directory) and only
+# takes its place once the images are here.
+pull_file=$compose_file
+if (( download_compose )); then
+  echo "Downloading the compose file of $version…"
+  new_compose=$(mktemp .compose.deploy.XXXXXX)
+  chmod 600 "$new_compose"
 
-# Pulled before .env changes: an interrupted or failed download leaves the
-# server exactly as it was.
-MOLMEDB_VERSION=$version "${compose[@]}" pull "${release_services[@]}"
+  if ! curl --fail --silent --show-error --location --retry 3 \
+        --output "$new_compose" "$release_url/v$version/compose.yaml"; then
+    echo "Could not download $release_url/v$version/compose.yaml." >&2
+    echo "Nothing was changed. To deploy with the compose file that is here: MOLMEDB_KEEP_COMPOSE=1 $0 $version" >&2
+    exit 1
+  fi
+
+  if ! MOLMEDB_VERSION=$version "${docker[@]}" compose -f "$new_compose" config --quiet; then
+    echo "The downloaded compose file is not valid; nothing was changed." >&2
+    exit 1
+  fi
+
+  pull_file=$new_compose
+fi
+
+# Pulled before anything changes: an interrupted or failed download leaves
+# the server exactly as it was.
+MOLMEDB_VERSION=$version "${docker[@]}" compose -f "$pull_file" pull "${release_services[@]}"
+
+compose=("${docker[@]}" compose -f "$compose_file")
 
 # The version lives in .env, which Compose reads on its own: plain
 # `docker compose up -d` later starts the same release again.
@@ -110,11 +173,25 @@ restore_previous() {
   echo "Containers that were already replaced keep running $version: check \`docker compose ps\` and deploy a working version." >&2
   cat "$backup" > .env
   rm -f "$backup"
+  if [[ -f $compose_backup ]]; then
+    cat "$compose_backup" > "$compose_file"
+    rm -f "$compose_backup"
+  fi
   exit 1
 }
 
 cp -p .env "$backup"
+if (( download_compose )) && [[ -f $compose_file ]]; then
+  cp -p "$compose_file" "$compose_backup"
+fi
 trap restore_previous ERR INT TERM HUP
+
+if (( download_compose )); then
+  # Compared after writing: on a full disk the file comes out short, and the
+  # previous one is then put back like after any other failure.
+  cat "$new_compose" > "$compose_file"
+  cmp --silent "$new_compose" "$compose_file"
+fi
 
 write_version "$version"
 "${compose[@]}" up -d
@@ -134,7 +211,7 @@ for _ in {1..12}; do
 done
 
 trap - ERR INT TERM HUP
-rm -f "$backup"
+rm -f "$backup" "$compose_backup"
 
 echo
 "${compose[@]}" ps

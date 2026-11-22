@@ -158,6 +158,7 @@ test('datasets relation manager can load for membrane owner record', function ()
     $user = createRelationManagerAdmin([
         PermissionEnums::MEMBRANE_METHOD_VIEW->value,
         PermissionEnums::MEMBRANE_METHOD_EDIT->value,
+        PermissionEnums::DATASET_VIEW->value,
     ]);
     $membrane = createDatasetDependenciesForRelationManager()['membrane'];
 
@@ -168,6 +169,24 @@ test('datasets relation manager can load for membrane owner record', function ()
         'pageClass' => EditMembrane::class,
     ])
         ->assertOk();
+});
+
+// Filament refuses a relation manager whose records the user may not list
+// (since 5.12 also when the component is addressed directly).
+test('datasets relation manager is refused to a user who may not view datasets', function () {
+    $user = createRelationManagerAdmin([
+        PermissionEnums::MEMBRANE_METHOD_VIEW->value,
+        PermissionEnums::MEMBRANE_METHOD_EDIT->value,
+    ]);
+    $membrane = createDatasetDependenciesForRelationManager()['membrane'];
+
+    $this->actingAs($user);
+
+    Livewire::test(DatasetsRelationManager::class, [
+        'ownerRecord' => $membrane,
+        'pageClass' => EditMembrane::class,
+    ])
+        ->assertForbidden();
 });
 
 test('datasets relation manager shows datasets related to membrane only', function () {

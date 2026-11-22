@@ -1,0 +1,64 @@
+# Pull requests with updates of the dependencies, once a week and against
+# develop, so that the versions do not stand still between releases. Minor
+# and patch updates of one ecosystem come together in one pull request; a
+# major version comes alone, because it needs reading.
+#
+# Security updates (a pull request as soon as an advisory is published) are
+# switched on in the repository settings, not here:
+# Settings -> Advanced Security -> Dependabot security updates.
+version: 2
+
+updates:
+  - package-ecosystem: composer
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      php-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      frontend-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      administration-assets-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories:
+      - /docker/production/frontend
+      - /docker/production/nginx
+      - /docker/common/rdkit
+      - /database/extensions/bingo
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday

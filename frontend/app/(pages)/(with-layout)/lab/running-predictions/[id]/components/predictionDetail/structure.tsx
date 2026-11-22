@@ -31,7 +31,7 @@ export default function Compound2DStructure(props: { compound: IPrediction }) {
           <Image
             onClick={onOpen2D}
             onLoad={() => setIsLoading(false)}
-            className={`max-h-48 w-auto max-w-full transition-opacity duration-500 cursor-pointer ${
+            className={`max-h-48 w-auto max-w-full object-contain transition-opacity duration-500 cursor-pointer ${
               isLoading ? "opacity-0" : "opacity-100"
             }`}
             src={props.compound.structure.structure_2d_url}
@@ -50,6 +50,7 @@ export default function Compound2DStructure(props: { compound: IPrediction }) {
                 <Image
                   alt="2D Structure"
                   fetchPriority="low"
+                  className="max-h-[75vh] max-w-full object-contain"
                   src={props.compound.structure.structure_2d_url_big}
                 />
               )}

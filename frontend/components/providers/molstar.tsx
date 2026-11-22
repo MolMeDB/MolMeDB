@@ -101,7 +101,7 @@ export default function MolStar(props: { sdfPath: string; onError?: () => void }
   }, [props.sdfPath]);
 
   return (
-    <div className="w-full h-full">
+    <div className="relative w-full h-full min-h-0 overflow-hidden">
       <Head>
         <script src="/js/pdbe-molstar-plugin.js" defer />
         <link rel="stylesheet" type="text/css" href="/css/pdbe-molstar.css" />
@@ -110,7 +110,7 @@ export default function MolStar(props: { sdfPath: string; onError?: () => void }
       <div
         ref={viewerRef}
         style={{ height: "100%", width: "100%" }}
-        className="flex items-center justify-center"
+        className="relative flex items-center justify-center overflow-hidden"
       >
         <Spinner variant="wave" label="Loading..." />
       </div>

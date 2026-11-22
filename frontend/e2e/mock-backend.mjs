@@ -36,6 +36,9 @@ const SAMPLE_VALUES = {
   slug: "sample-article",
   content: "<p>Sample content</p>",
   description: "<p>Sample description</p>",
+  // Answered by the tests themselves (page.route), with drawings of any shape.
+  structure_2d_url: "/e2e/structure-2d.svg",
+  structure_2d_url_big: "/e2e/structure-2d-big.svg",
 };
 
 function sampleString(key) {

@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Modules\PredictionWorkers\Exceptions\RemotePredictionException;
 use Modules\PredictionWorkers\Models\Prediction;
 use Spatie\Activitylog\Models\Activity;
 
@@ -261,6 +262,7 @@ test('a prediction is not given up while the remote service is failing or busy',
     'too many requests' => [429],
     'not found' => [404],
     'forbidden' => [403],
+    'unauthorized' => [401],
 ]);
 
 test('a failed prediction sent back by an administrator starts counting anew', function () {
@@ -287,6 +289,21 @@ test('a failed prediction sent back by an administrator starts counting anew', f
     expect($prediction->refresh()->state)->toBe(Prediction::STATE_PREPARED)
         ->and(collect($prediction->logs)->last()['payload']['attempt'])->toBe(1);
 });
+
+test('only a failed prediction without a remote job and a result is prepared again', function (array $attributes) {
+    ['prediction' => $prediction] = createPredictionDataset(User::factory()->create(), ['remote_calculation_id' => null, ...$attributes]);
+    Http::fake(['*' => Http::response(['detail' => 'No such job.'], 404)]);
+
+    expect($prediction->canBePreparedForSubmissionAgain())->toBeFalse();
+
+    // It goes the way of a remote requeue, as before.
+    expect(fn () => $prediction->requeueAndStoreRemotePrediction())->toThrow(RemotePredictionException::class);
+    expect($prediction->refresh()->state)->toBe($attributes['state']);
+})->with([
+    'stopped' => [['state' => Prediction::STATE_STOPPED]],
+    'removed' => [['state' => Prediction::STATE_REMOVE]],
+    'with a remote job' => [['state' => Prediction::STATE_ERROR, 'remote_calculation_id' => 'calc-7']],
+]);
 
 test('refusals with an outage between them still add up', function () {
     ['prediction' => $prediction] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED]);

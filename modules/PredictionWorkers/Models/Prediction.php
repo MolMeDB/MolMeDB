@@ -458,6 +458,18 @@ class Prediction extends PredictionBaseModel
         );
     }
 
+    /**
+     * A failed prediction the remote service never accepted: refused at
+     * submission, or its structure did not validate. Stopped and removed
+     * ones are left as they are, and so is one that has a result.
+     */
+    public function canBePreparedForSubmissionAgain(): bool
+    {
+        return $this->state === self::STATE_ERROR
+            && $this->remote_calculation_id === null
+            && $this->result_id === null;
+    }
+
     public function requeueAndStoreRemotePrediction(
         ?RemotePredictionStep $step = null,
         bool $force = false,
@@ -467,10 +479,9 @@ class Prediction extends PredictionBaseModel
             throw new RuntimeException('A target step is required for force requeue.');
         }
 
-        // Never accepted by the remote service (refused at submission, or its
-        // structure did not validate): there is no remote job to requeue, so
-        // the prediction goes back among those the worker submits.
-        if (! $force && $this->remote_calculation_id === null) {
+        // There is no remote job to requeue, so the prediction goes back
+        // among those the worker submits.
+        if (! $force && $this->canBePreparedForSubmissionAgain()) {
             $this->forceFill([
                 'remote_last_status_at' => null,
                 'remote_error_message' => null,

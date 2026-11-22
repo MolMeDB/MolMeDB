@@ -23,10 +23,13 @@ class EditPrediction extends EditRecord
                 ->label('Requeue')
                 ->icon(IconEnums::RELOAD->value)
                 ->color('warning')
-                ->disabled(fn (): bool => blank($this->record->remote_calculation_id))
+                ->disabled(fn (): bool => blank($this->record->remote_calculation_id)
+                    && ! $this->record->canBePreparedForSubmissionAgain())
                 ->requiresConfirmation()
                 ->modalHeading('Requeue prediction request')
-                ->modalDescription('The remote service will automatically find the first failed step and run it again.')
+                ->modalDescription(fn (): string => $this->record->canBePreparedForSubmissionAgain()
+                    ? 'The remote service never accepted this prediction. It will be prepared again and submitted on the next run of the worker.'
+                    : 'The remote service will automatically find the first failed step and run it again.')
                 ->action(function (): void {
                     $this->requeuePrediction($this->record);
                 }),
@@ -62,15 +65,17 @@ class EditPrediction extends EditRecord
         bool $force = false,
     ): void {
         try {
-            $record->requeueAndStoreRemotePrediction($step, $force);
+            $snapshot = $record->requeueAndStoreRemotePrediction($step, $force);
             $this->record = $record->refresh();
             $this->fillForm();
 
             Notification::make()
                 ->title($force ? 'Prediction force requeued' : 'Prediction requeued')
-                ->body($force
-                    ? 'Remote step: '.$step?->label()
-                    : 'The first failed remote step was queued again.')
+                ->body(match (true) {
+                    $force => 'Remote step: '.$step?->label(),
+                    $snapshot === null => 'The prediction was prepared again and will be submitted on the next run of the worker.',
+                    default => 'The first failed remote step was queued again.',
+                })
                 ->success()
                 ->send();
         } catch (Throwable $throwable) {

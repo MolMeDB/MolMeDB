@@ -4,6 +4,13 @@
 # the release — docker/production/deploy.sh sets it, pulls and restarts.
 # Setup and deployment: docker/production/nginx/README.md.
 
+# The project name prefixes the volumes that hold the databases
+# (molmedb-api_molmedb-db, ...). Without it Compose takes the name of the
+# directory, so the same file started from another directory would create
+# new, empty databases. A server whose volumes carry another prefix sets
+# COMPOSE_PROJECT_NAME in .env, which wins over this line.
+name: molmedb-api
+
 x-backend: &backend
   image: ghcr.io/molmedb/molmedb-backend:${MOLMEDB_VERSION:?Set MOLMEDB_VERSION in .env (docker/production/deploy.sh does)}
 

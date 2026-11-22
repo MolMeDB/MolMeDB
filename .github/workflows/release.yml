@@ -3,7 +3,9 @@ name: Release
 # A version tag (v1.2.3) runs the test suites and, when they pass, builds the
 # production images and publishes them to the GitHub container registry as
 # ghcr.io/molmedb/molmedb-{backend,nginx,frontend,rdkit}:1.2.3.
-# The server only pulls them: docker/production/deploy.sh 1.2.3
+# It then creates the release on GitHub and attaches what a server needs
+# besides the images: the compose file and the deployment scripts.
+# The server only pulls them: deploy.sh 1.2.3
 # (see docker/production/nginx/README.md).
 #
 # The database image (molmedb-db) has a version of its own and is published
@@ -127,3 +129,32 @@ jobs:
           # A cache written for a tag can only be read by that tag again, so
           # none is written; the layers come from the build validation on main.
           cache-from: type=gha,scope=${{ matrix.name }}-image
+
+  # A server that runs from a directory of its own (no checkout) downloads
+  # the compose file from here, so it has to describe exactly these images.
+  # The job waits for all four of them: a release without its images would
+  # be offered to a server that cannot run it.
+  release:
+    name: GitHub release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Attach the compose file and the deployment scripts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir release-files
+          cp docker-compose-production.yaml release-files/compose.yaml
+          cp docker/production/deploy.sh docker/production/move-to-standalone.sh release-files/
+
+          # A re-run of the workflow finds the release already there.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release-files/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release-files/* \
+              --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+          fi

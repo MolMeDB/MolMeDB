@@ -16,6 +16,7 @@ use App\Services\SystemActivityLogger;
 use App\Services\SystemHealth\HealthCheckResult;
 use App\Services\SystemHealth\SystemHealthReport;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Modules\PredictionWorkers\Models\Prediction;
@@ -235,11 +236,15 @@ test('predictions whose import keeps failing are reported with the reasons', fun
         ]);
 });
 
-test('the structure search index is only checked where it exists', function () {
+test('the structure search index is compared with the structures where the database has one', function () {
     $check = healthCheck('Structure search index');
 
+    // The index keeps entries of rows that are gone, so more entries than
+    // structures are fine; on a database without Bingo there is no index.
     expect($check->status)->toBe(HealthCheckResult::STATUS_OK)
-        ->and($check->summary)->toBe('Not checked: the database is not PostgreSQL.');
+        ->and($check->summary)->toMatch(DB::getDriverName() === 'pgsql'
+            ? '/^\d+ entries in the index, \d+ structures that belong in it\.$/'
+            : '/^Not checked: the database is not PostgreSQL\.$/');
 });
 
 test('logs and disk space are reported', function () {

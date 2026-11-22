@@ -65,6 +65,7 @@ class BackupDbIdsm extends Command
         'bingo.bingo_config',
         'bingo.bingo_tau_config',
         'public.activity_log',
+        'public.application_errors',
         'public.authors',
         'public.cache',
         'public.cache_locks',

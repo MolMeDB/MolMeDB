@@ -7,6 +7,7 @@ use App\Models\BaseModel;
 use App\Services\ApplicationErrorRecorder;
 use App\Services\SystemActivityLogger;
 use Carbon\CarbonInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
@@ -32,6 +33,9 @@ class SystemHealthReport
 
     private const BINGO_INDEX = 'structures_canonical_smiles_bingo_index';
 
+    /** Waiting predictions whose logs are read for the reasons of failed imports. */
+    private const IMPORT_ERRORS_SAMPLE = 300;
+
     /**
      * @return list<HealthCheckResult>
      */
@@ -39,7 +43,7 @@ class SystemHealthReport
     {
         $checks = [
             'Application errors' => fn (): HealthCheckResult => $this->applicationErrors($day),
-            'Failed jobs and scheduled tasks' => fn (): HealthCheckResult => $this->systemEvents($day),
+            'Recorded failures' => fn (): HealthCheckResult => $this->recordedFailures($day),
             'Prediction import' => fn (): HealthCheckResult => $this->predictionImport($day),
             'Structure search index' => fn (): HealthCheckResult => $this->bingoIndex(),
             'Logs and disk space' => fn (): HealthCheckResult => $this->storage(),
@@ -168,19 +172,23 @@ class SystemHealthReport
     }
 
     /**
-     * Failed queue jobs, scheduled tasks, backups and notifications, as the
-     * system activity log holds them. The log is throttled per job or task,
-     * so the numbers say that something failed, not how many times.
+     * What the system activity log holds as failed: queue jobs, scheduled
+     * tasks, backups, exports, the prediction worker. The log is throttled
+     * per job or task, so the numbers say that something failed, not how
+     * many times.
      */
-    private function systemEvents(CarbonInterface $day): HealthCheckResult
+    private function recordedFailures(CarbonInterface $day): HealthCheckResult
     {
-        $label = 'Failed jobs and scheduled tasks';
+        $label = 'Recorded failures';
         $events = Activity::query()
             ->where('log_name', BaseModel::ACTIVITY_LOG_SYSTEM)
             ->whereBetween('created_at', [$day->copy()->startOfDay(), $day->copy()->endOfDay()])
             ->where('properties->severity', SystemActivityLogger::SEVERITY_ERROR)
+            // Already in the report, under the application errors.
+            ->where('event', '!=', 'application_error_repeated')
             ->get(['description'])
-            ->countBy('description')
+            // "3 predictions failed" and "5 predictions failed" are one line.
+            ->countBy(fn (Activity $activity): string => preg_replace('/\d+/', '#', (string) $activity->description))
             ->sortDesc();
 
         if ($events->isEmpty()) {
@@ -205,28 +213,59 @@ class SystemHealthReport
 
     /**
      * The import job never fails as a whole: it notes an error on each
-     * prediction and ends. So a queue that only grows is looked for here.
+     * prediction and ends. So two things are looked for here: a queue that
+     * stands (predictions that waited through the whole day while nothing
+     * was imported), and predictions whose last attempt ended in an error,
+     * with the reasons.
      */
     private function predictionImport(CarbonInterface $day): HealthCheckResult
     {
         $label = 'Prediction import';
-
-        $waiting = Prediction::query()
+        $waiting = fn () => Prediction::query()
             ->where('step', Prediction::STEP_RESULT_PARSE)
-            ->where('state', Prediction::STATE_FINISHED)
-            ->count();
+            ->where('state', Prediction::STATE_FINISHED);
 
+        $waitingCount = $waiting()->count();
+        // Untouched since before the day began: neither imported nor tried.
+        $standing = $waiting()->where('updated_at', '<', $day->copy()->startOfDay())->count();
         $imported = Prediction::query()
             ->where('step', Prediction::STEP_RESULT_DB_STORE)
             ->whereBetween('updated_at', [$day->copy()->startOfDay(), $day->copy()->endOfDay()])
             ->count();
 
-        $summary = $waiting.' '.Str::plural('prediction', $waiting).' waiting for import, '.$imported.' imported on '.$day->toDateString().'.';
+        // A failed attempt touches the prediction, so the failing ones are
+        // among those touched last.
+        $reasons = $waiting()
+            ->orderByDesc('updated_at')
+            ->limit(self::IMPORT_ERRORS_SAMPLE)
+            ->get(['id', 'logs'])
+            ->map(function (Prediction $prediction): ?string {
+                $logs = is_array($prediction->logs) ? $prediction->logs : [];
+                $last = $logs === [] ? null : $logs[array_key_last($logs)];
 
-        if ($waiting > 0 && $imported === 0) {
+                return is_array($last) && ($last['type'] ?? null) === 'RESULT IMPORT' && ($last['context'] ?? null) === 'error'
+                    ? preg_replace(['/\[[^\]]*\]/', '/\d+/'], ['[…]', '#'], Str::limit((string) ($last['message'] ?? ''), 200))
+                    : null;
+            })
+            ->filter()
+            ->countBy()
+            ->sortDesc();
+
+        $summary = $waitingCount.' '.Str::plural('prediction', $waitingCount).' waiting for import, '.$imported.' imported on '.$day->toDateString().'.';
+        $details = $reasons->take(5)
+            ->map(fn (int $count, string $reason): string => $count.'× '.$reason)
+            ->values()
+            ->all();
+
+        if ($standing > 0 && $imported === 0) {
             return HealthCheckResult::problem($label, $summary, [
-                'Nothing was imported although predictions are waiting: the reason is in their logs (RESULT IMPORT).',
+                $standing.' of them waited through the whole day and nothing was imported: the import does not move.',
+                ...$details,
             ]);
+        }
+
+        if ($reasons->isNotEmpty()) {
+            return HealthCheckResult::warning($label, $summary.' The last import of '.$reasons->sum().' failed.', $details);
         }
 
         return HealthCheckResult::ok($label, $summary);
@@ -234,8 +273,10 @@ class SystemHealthReport
 
     /**
      * Structures that the Bingo index of the structure search should hold
-     * but does not. More entries than structures are not counted against it:
-     * the index also keeps entries of rows that were changed since.
+     * but does not. This does not see a damaged index: that one refuses
+     * writes, which shows among the application errors. More entries than
+     * structures are not counted against the index either, since it keeps
+     * the entries of rows that were changed since it was built.
      */
     private function bingoIndex(): HealthCheckResult
     {
@@ -245,22 +286,30 @@ class SystemHealthReport
             return HealthCheckResult::ok($label, 'Not checked: the database is not PostgreSQL.');
         }
 
-        $indexed = DB::transaction(function (): ?array {
-            // The comparison reads every structure; it must not hold a
-            // connection for long when the database is busy.
-            DB::statement("SET LOCAL statement_timeout = '120s'");
+        try {
+            $indexed = DB::transaction(function (): ?array {
+                // The comparison reads every structure; it must not hold a
+                // connection for long when the database is busy.
+                DB::statement("SET LOCAL statement_timeout = '120s'");
 
-            $exists = DB::scalar("SELECT to_regclass('public.".self::BINGO_INDEX."') IS NOT NULL");
+                if (! DB::scalar("SELECT to_regclass('public.".self::BINGO_INDEX."') IS NOT NULL")) {
+                    return null;
+                }
 
-            if (! $exists) {
-                return null;
-            }
+                return [
+                    'in_index' => (int) DB::scalar("SELECT bingo.getindexstructurescount('public.".self::BINGO_INDEX."'::regclass)"),
+                    'expected' => (int) DB::scalar('SELECT count(*) FROM structures WHERE canonical_smiles IS NOT NULL AND bingo.checkmolecule(canonical_smiles::text) IS NULL'),
+                ];
+            });
+        } catch (QueryException $exception) {
+            $error = ApplicationErrorRecorder::summarize($exception);
 
-            return [
-                'in_index' => (int) DB::scalar("SELECT bingo.getindexstructurescount('public.".self::BINGO_INDEX."'::regclass)"),
-                'expected' => (int) DB::scalar('SELECT count(*) FROM structures WHERE canonical_smiles IS NOT NULL AND bingo.checkmolecule(canonical_smiles::text) IS NULL'),
-            ];
-        });
+            // Out of time says nothing about the index; anything else it
+            // answers with an error is the index itself.
+            return str_contains($error, 'statement timeout')
+                ? HealthCheckResult::warning($label, 'Not checked: comparing the index with the structures took too long.')
+                : HealthCheckResult::problem($label, 'The index could not be read: '.$error);
+        }
 
         if ($indexed === null) {
             return HealthCheckResult::problem($label, 'The index '.self::BINGO_INDEX.' does not exist.');

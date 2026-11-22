@@ -25,7 +25,6 @@ class ApplicationError extends Model
     protected function casts(): array
     {
         return [
-            'day' => 'date',
             'occurrences' => 'integer',
             'first_seen_at' => 'datetime',
             'last_seen_at' => 'datetime',

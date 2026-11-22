@@ -43,6 +43,7 @@ enum NotificationType: string
     case SYSTEM_ADMIN_COSMO_EXPORT_FINISHED = 'system.admin.cosmo_export_finished';
     case SYSTEM_ADMIN_COSMO_EXPORT_FAILED = 'system.admin.cosmo_export_failed';
     case SYSTEM_ADMIN_HEALTH_REPORT = 'system.admin.health_report';
+    case SYSTEM_ADMIN_ERROR_REPEATED = 'system.admin.error_repeated';
 
     /**
      * @return array<self>
@@ -101,7 +102,8 @@ enum NotificationType: string
             self::SYSTEM_ADMIN_NOTIFICATION_FAILURE,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED,
-            self::SYSTEM_ADMIN_HEALTH_REPORT => NotificationAudience::ADMIN,
+            self::SYSTEM_ADMIN_HEALTH_REPORT,
+            self::SYSTEM_ADMIN_ERROR_REPEATED => NotificationAudience::ADMIN,
         };
     }
 
@@ -128,7 +130,8 @@ enum NotificationType: string
             self::SYSTEM_ADMIN_NOTIFICATION_FAILURE,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED,
-            self::SYSTEM_ADMIN_HEALTH_REPORT => PermissionEnums::SYSTEM_MONITOR,
+            self::SYSTEM_ADMIN_HEALTH_REPORT,
+            self::SYSTEM_ADMIN_ERROR_REPEATED => PermissionEnums::SYSTEM_MONITOR,
 
             default => null,
         };
@@ -167,6 +170,7 @@ enum NotificationType: string
             self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED,
             self::SYSTEM_ADMIN_HEALTH_REPORT,
+            self::SYSTEM_ADMIN_ERROR_REPEATED,
             self::PREDICTION_ADMIN_REMOTE_SERVICE_DOWN,
             self::FEEDBACK_ADMIN_NEW_SUBMISSION,
             // Scheduled reports are summaries already; batching would merge
@@ -229,7 +233,8 @@ enum NotificationType: string
             self::SYSTEM_ADMIN_NOTIFICATION_FAILURE,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED,
-            self::SYSTEM_ADMIN_HEALTH_REPORT => 'Administration – system health',
+            self::SYSTEM_ADMIN_HEALTH_REPORT,
+            self::SYSTEM_ADMIN_ERROR_REPEATED => 'Administration – system health',
         };
     }
 

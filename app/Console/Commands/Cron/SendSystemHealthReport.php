@@ -5,9 +5,11 @@ namespace App\Console\Commands\Cron;
 use App\Enums\PermissionEnums;
 use App\Models\ApplicationError;
 use App\Models\NotificationTemplate;
+use App\Models\User;
 use App\Services\NotificationService;
 use App\Services\SystemHealth\SystemHealthReport;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 class SendSystemHealthReport extends Command
 {
@@ -23,6 +25,8 @@ class SendSystemHealthReport extends Command
         $day = now()->subDay()->startOfDay();
         $results = $report->run($day);
         $status = $report->status($results);
+
+        $recipients = User::query()->permission(PermissionEnums::SYSTEM_MONITOR->value)->count();
 
         // Sent on a good day as well: a report that stops coming says that
         // the reporting itself is broken.
@@ -45,7 +49,13 @@ class SendSystemHealthReport extends Command
             $this->line(sprintf('[%s] %s: %s', $result->status, $result->label, $result->summary));
         }
 
-        $this->info("System health report for {$day->toDateString()} sent: {$status}.");
+        if ($recipients === 0) {
+            $this->warn("System health for {$day->toDateString()}: {$status}. Nobody holds the permission ".PermissionEnums::SYSTEM_MONITOR->value.', so the report was sent to no one.');
+
+            return Command::SUCCESS;
+        }
+
+        $this->info("System health report for {$day->toDateString()} sent to {$recipients} ".Str::plural('user', $recipients).": {$status}.");
 
         return Command::SUCCESS;
     }

@@ -55,6 +55,8 @@ class NotificationTemplate extends Model
 
     public const KEY_SYSTEM_ADMIN_HEALTH_REPORT = 'system.admin.health_report';
 
+    public const KEY_SYSTEM_ADMIN_ERROR_REPEATED = 'system.admin.error_repeated';
+
     public const KEY_PREDICTION_ADMIN_REMOTE_SERVICE_DOWN = 'prediction.admin.remote_service_down';
 
     protected $guarded = [];
@@ -89,6 +91,7 @@ class NotificationTemplate extends Model
             self::KEY_SYSTEM_ADMIN_COSMO_EXPORT_FINISHED => 'System admin: weekly COSMO export finished',
             self::KEY_SYSTEM_ADMIN_COSMO_EXPORT_FAILED => 'System admin: weekly COSMO export failed',
             self::KEY_SYSTEM_ADMIN_HEALTH_REPORT => 'System admin: daily system health report',
+            self::KEY_SYSTEM_ADMIN_ERROR_REPEATED => 'System admin: an application error keeps repeating',
             self::KEY_PREDICTION_ADMIN_REMOTE_SERVICE_DOWN => 'Prediction admin: remote service unavailable',
         ];
     }

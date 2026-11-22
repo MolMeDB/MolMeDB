@@ -140,41 +140,74 @@ test('only the most frequent kinds of errors are listed', function () {
         ->and($details[10])->toBe('… and 2 more kinds.');
 });
 
-test('failed jobs and scheduled tasks of the day are listed', function () {
+test('what the system recorded as failed that day is listed', function () {
     $logger = app(SystemActivityLogger::class);
 
     $this->travelTo('2026-11-22 03:00:00');
     $logger->log('scheduled_task_failed', 'Scheduled task failed: cron:predictions-worker.', [], SystemActivityLogger::SEVERITY_ERROR);
     $logger->log('scheduled_task_failed', 'Scheduled task failed: cron:predictions-worker.', [], SystemActivityLogger::SEVERITY_ERROR);
     $logger->log('queue_job_failed', 'Queue job failed: ProcessUploadQueueRecord.', [], SystemActivityLogger::SEVERITY_ERROR);
+    $logger->log('prediction_worker_completed_with_errors', '3 predictions failed.', [], SystemActivityLogger::SEVERITY_ERROR);
+    $logger->log('prediction_worker_completed_with_errors', '12 predictions failed.', [], SystemActivityLogger::SEVERITY_ERROR);
+    // Listed among the application errors already.
+    $logger->log('application_error_repeated', 'Application error repeated 25× today: QueryException.', [], SystemActivityLogger::SEVERITY_ERROR);
     $logger->log('backup_finished', 'Backup finished.', [], SystemActivityLogger::SEVERITY_INFO);
     $this->travelTo('2026-11-21 03:00:00');
     $logger->log('queue_job_failed', 'Queue job failed: TheDayBefore.', [], SystemActivityLogger::SEVERITY_ERROR);
     $this->travelTo('2026-11-23 07:30:00');
 
-    $check = healthCheck('Failed jobs and scheduled tasks');
+    $check = healthCheck('Recorded failures');
 
     expect($check->status)->toBe(HealthCheckResult::STATUS_PROBLEM)
-        ->and($check->summary)->toBe('3 failures recorded.')
-        ->and($check->details)->toBe([
+        ->and($check->summary)->toBe('5 failures recorded.')
+        ->and($check->details)->toEqualCanonicalizing([
             '2× Scheduled task failed: cron:predictions-worker.',
+            '2× # predictions failed.',
             '1× Queue job failed: ProcessUploadQueueRecord.',
         ]);
 });
 
-test('predictions that wait while nothing is imported are a problem', function () {
-    createPredictionDataset(null, ['step' => Prediction::STEP_RESULT_PARSE, 'state' => Prediction::STATE_FINISHED]);
-    createPredictionDataset(null, ['step' => Prediction::STEP_RESULT_PARSE, 'state' => Prediction::STATE_FINISHED]);
+/**
+ * A prediction whose result is parsed and waits to be imported.
+ *
+ * @param  list<string>  $importErrors
+ */
+function predictionWaitingForImport(string $touchedAt, array $importErrors = []): Prediction
+{
+    $prediction = createPredictionDataset(null, ['step' => Prediction::STEP_RESULT_PARSE, 'state' => Prediction::STATE_FINISHED])['prediction'];
+
+    foreach ($importErrors as $message) {
+        $prediction->logs = $prediction->logsWithWorkerEvent($message, [], 'RESULT IMPORT', 'error');
+    }
+
+    Prediction::query()->whereKey($prediction->id)->update(['logs' => json_encode($prediction->logs ?? []), 'updated_at' => $touchedAt]);
+
+    return $prediction;
+}
+
+test('predictions that waited through the whole day while nothing was imported are a problem', function () {
+    predictionWaitingForImport('2026-11-20 10:00:00');
+    predictionWaitingForImport('2026-11-21 23:59:00');
     createPredictionDataset(null, ['step' => Prediction::STEP_COSMO, 'state' => Prediction::STATE_RUNNING]);
 
     $check = healthCheck('Prediction import');
 
     expect($check->status)->toBe(HealthCheckResult::STATUS_PROBLEM)
-        ->and($check->summary)->toBe('2 predictions waiting for import, 0 imported on 2026-11-22.');
+        ->and($check->summary)->toBe('2 predictions waiting for import, 0 imported on 2026-11-22.')
+        ->and($check->details[0])->toBe('2 of them waited through the whole day and nothing was imported: the import does not move.');
+});
+
+test('results that arrived this morning after a quiet day are not a problem', function () {
+    predictionWaitingForImport('2026-11-23 06:50:00');
+
+    $check = healthCheck('Prediction import');
+
+    expect($check->status)->toBe(HealthCheckResult::STATUS_OK)
+        ->and($check->summary)->toBe('1 prediction waiting for import, 0 imported on 2026-11-22.');
 });
 
 test('predictions that wait while others are imported are a queue, not a problem', function () {
-    createPredictionDataset(null, ['step' => Prediction::STEP_RESULT_PARSE, 'state' => Prediction::STATE_FINISHED]);
+    predictionWaitingForImport('2026-11-20 10:00:00');
     $imported = createPredictionDataset(null, ['step' => Prediction::STEP_RESULT_DB_STORE, 'state' => Prediction::STATE_FINISHED])['prediction'];
     Prediction::query()->whereKey($imported->id)->update(['updated_at' => '2026-11-22 14:00:00']);
 
@@ -182,6 +215,24 @@ test('predictions that wait while others are imported are a queue, not a problem
 
     expect($check->status)->toBe(HealthCheckResult::STATUS_OK)
         ->and($check->summary)->toBe('1 prediction waiting for import, 1 imported on 2026-11-22.');
+});
+
+test('predictions whose import keeps failing are reported with the reasons', function () {
+    predictionWaitingForImport('2026-11-23 07:29:00', ['Could not extract LogPerm from the parsed result data.']);
+    predictionWaitingForImport('2026-11-23 07:29:10', ['Could not extract LogPerm from the parsed result data.']);
+    predictionWaitingForImport('2026-11-23 07:29:20', ['Prediction membrane [17] has no real Membrane mapped (remote_id is empty).']);
+    predictionWaitingForImport('2026-11-23 07:29:30');
+    $imported = createPredictionDataset(null, ['step' => Prediction::STEP_RESULT_DB_STORE, 'state' => Prediction::STATE_FINISHED])['prediction'];
+    Prediction::query()->whereKey($imported->id)->update(['updated_at' => '2026-11-22 14:00:00']);
+
+    $check = healthCheck('Prediction import');
+
+    expect($check->status)->toBe(HealthCheckResult::STATUS_WARNING)
+        ->and($check->summary)->toBe('4 predictions waiting for import, 1 imported on 2026-11-22. The last import of 3 failed.')
+        ->and($check->details)->toBe([
+            '2× Could not extract LogPerm from the parsed result data.',
+            '1× Prediction membrane […] has no real Membrane mapped (remote_id is empty).',
+        ]);
 });
 
 test('the structure search index is only checked where it exists', function () {
@@ -226,6 +277,14 @@ test('what the checks found is escaped in the e-mail', function () {
     expect($html)->toContain('One &lt;b&gt;error&lt;/b&gt;.')
         ->toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
         ->not->toContain('<script>');
+});
+
+test('a report that nobody can receive says so', function () {
+    $this->artisan(SendSystemHealthReport::class)
+        ->expectsOutputToContain('so the report was sent to no one')
+        ->assertSuccessful();
+
+    expect(UserNotification::query()->count())->toBe(0);
 });
 
 test('counted errors are kept for a month', function () {

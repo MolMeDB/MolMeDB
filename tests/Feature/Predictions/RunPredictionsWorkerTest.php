@@ -197,3 +197,101 @@ test('paused predictions are resumed while structure validation is down', functi
     expect($prepared->refresh()->remote_calculation_id)->toBeNull()
         ->and($paused->refresh()->remote_paused_at)->toBeNull();
 });
+
+/**
+ * The remote service refuses every job with the given answer.
+ */
+function fakeRefusingRemotePredictionService(int $status, string $detail): void
+{
+    Http::fake(fn (Request $request) => str_starts_with($request->url(), 'https://rdkit.test/')
+        ? Http::response(['data' => ['valid' => true, 'canonical_smiles' => 'CCO', 'errors' => []]])
+        : Http::response(['detail' => $detail], $status));
+}
+
+test('a prediction the remote service refuses is marked as failed after repeated attempts', function (int $status, string $detail) {
+    ['prediction' => $prediction] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED]);
+    fakeRefusingRemotePredictionService($status, $detail);
+
+    foreach (range(1, RunPredictionsWorker::MAX_REJECTED_SUBMISSION_ATTEMPTS - 1) as $attempt) {
+        runWorker(['--skip-results' => true]);
+
+        // Not yet: one refusal may be a slip of the service.
+        expect($prediction->refresh()->state)->toBe(Prediction::STATE_PREPARED)
+            ->and($prediction->remote_error_message)->toBe($detail)
+            ->and(collect($prediction->logs)->where('type', 'REMOTE SUBMIT')->count())->toBe($attempt);
+    }
+
+    runWorker(['--skip-results' => true]);
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_ERROR)
+        ->and($prediction->remote_error_message)->toBe($detail)
+        ->and($prediction->remote_calculation_id)->toBeNull()
+        ->and(collect($prediction->logs)->last()['message'])->toContain($detail)->toContain('marked as failed');
+})->with([
+    'a structure the service cannot read' => [400, 'Invalid SMILES according to Bingo: dearomatization: non-unique dearomatization'],
+    'a request that does not validate' => [422, 'Temperature out of range.'],
+    'a membrane the service does not know' => [404, 'Unknown membrane key: dppcdppgchol'],
+]);
+
+test('a prediction is not given up while the remote service is failing or busy', function (int $status) {
+    ['prediction' => $prediction] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED]);
+    fakeRefusingRemotePredictionService($status, 'Not now.');
+
+    foreach (range(1, RunPredictionsWorker::MAX_REJECTED_SUBMISSION_ATTEMPTS + 1) as $attempt) {
+        runWorker(['--skip-results' => true]);
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_PREPARED)
+        ->and(collect($prediction->logs)->where('type', 'REMOTE SUBMIT'))->toBeEmpty();
+})->with([
+    'server error' => [500],
+    'unavailable' => [503],
+    'too many requests' => [429],
+    'not found' => [404],
+    'forbidden' => [403],
+]);
+
+test('refusals are counted in a row only', function () {
+    ['prediction' => $prediction] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED]);
+
+    $prediction->forceFill(['logs' => [
+        ...array_fill(0, RunPredictionsWorker::MAX_REJECTED_SUBMISSION_ATTEMPTS - 1, [
+            'type' => 'REMOTE SUBMIT', 'context' => 'error', 'message' => 'Refused.', 'payload' => [], 'timestamp' => now()->toIso8601String(),
+        ]),
+        // Something else happened to it since (it was prepared again).
+        ['type' => 'WORKER', 'context' => 'success', 'message' => 'Prepared again.', 'payload' => [], 'timestamp' => now()->toIso8601String()],
+    ]])->save();
+    fakeRefusingRemotePredictionService(400, 'Invalid SMILES.');
+
+    runWorker(['--skip-results' => true]);
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_PREPARED);
+});
+
+test('predictions the remote service refuses stop holding the slots of the others', function () {
+    ['prediction' => $refused] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED, 'priority' => Prediction::PRIORITY_HIGH]);
+    ['prediction' => $waiting] = createPredictionDataset(User::factory()->create(), ['state' => Prediction::STATE_PREPARED]);
+    $refusedSmiles = $refused->predictionStructure->canonical_smiles;
+
+    Http::fake(function (Request $request) use ($refusedSmiles) {
+        if (str_starts_with($request->url(), 'https://rdkit.test/structure/predictions/validate')) {
+            return Http::response(['data' => ['valid' => true, 'canonical_smiles' => $request->data()['smi'], 'errors' => []]]);
+        }
+
+        return str_contains(json_encode($request->data()), $refusedSmiles)
+            ? Http::response(['detail' => 'Invalid SMILES according to Bingo.'], 400)
+            : Http::response(['molecule_id' => 'mol-2', 'calculation_id' => 'calc-2', 'calculation_status' => 'queued']);
+    });
+
+    // One slot only: the refused prediction comes first on every run.
+    foreach (range(1, RunPredictionsWorker::MAX_REJECTED_SUBMISSION_ATTEMPTS) as $attempt) {
+        expect($waiting->refresh()->remote_calculation_id)->toBeNull();
+        runWorker(['--skip-results' => true, '--max-submit' => 1]);
+    }
+
+    expect($refused->refresh()->state)->toBe(Prediction::STATE_ERROR);
+
+    runWorker(['--skip-results' => true, '--max-submit' => 1]);
+
+    expect($waiting->refresh()->remote_calculation_id)->toBe('calc-2');
+});

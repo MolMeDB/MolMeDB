@@ -14,7 +14,7 @@
     "@react-stately/data": "^3.13.1",
     "@types/dompurify": "^3.0.5",
     "dompurify": "^3.4.15",
-    "framer-motion": "^12.23.6",
+    "framer-motion": "^14.14.0",
     "jsonwebtoken": "^9.0.2",
     "ketcher-core": "^3.15.0",
     "ketcher-react": "^3.15.0",

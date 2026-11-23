@@ -35,7 +35,7 @@ jobs:
     name: Pint (changed files)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -44,7 +44,7 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           coverage: none
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor
           key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
@@ -178,7 +178,7 @@ jobs:
       REDIS_PORT: 6379
       REDIS_CLIENT: predis
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -189,7 +189,7 @@ jobs:
           # source code as well.
           ini-values: pcov.directory=., pcov.exclude="~/(vendor|node_modules|frontend|storage)/~"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: vendor
           key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
@@ -230,7 +230,7 @@ jobs:
         continue-on-error: true
         run: php .github/scripts/coverage-summary.php coverage/clover.xml >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() && hashFiles('coverage/clover.xml') != '' }}
         continue-on-error: true
         with:

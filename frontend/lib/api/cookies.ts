@@ -15,8 +15,7 @@ function secretKey(): string {
   }
   return key;
 }
-// Read when asked for, like the secret above: the image is built without the
-// runtime settings, and a name fixed at build time would be empty for good.
+// Read when asked for, like the secret above.
 function userSessionKey(): string | undefined {
   return process.env.COOKIES_FRONTEND_SESSION_USER_KEY || undefined;
 }

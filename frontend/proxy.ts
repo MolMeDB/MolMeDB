@@ -24,7 +24,11 @@ export async function proxy(request: NextRequest) {
   // nothing.
   if (request.nextUrl.pathname === LOGOUT_PATH) {
     return isPrefetch(request)
-      ? new NextResponse(null, { status: 204 })
+      ? // Not to be kept and reused for the click that follows.
+        new NextResponse(null, {
+          status: 204,
+          headers: { "Cache-Control": "no-store" },
+        })
       : NextResponse.next();
   }
 

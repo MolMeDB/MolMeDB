@@ -200,11 +200,24 @@ test.describe("session", () => {
     for (const file of sourceFiles(root)) {
       const source = readFileSync(file, "utf8");
 
-      for (const match of source.matchAll(
-        /<([A-Za-z.]+)\b[^<>]*?"\/api\/logout"[^<>]*?>/g,
-      )) {
-        const [tag, name] = match;
+      for (const match of source.matchAll(/href="\/api\/logout"/g)) {
+        // The element the attribute belongs to: the last one opened before
+        // it, leaving out complete elements given as other attributes
+        // (startContent={<Icon />}).
+        const before = source
+          .slice(0, match.index)
+          .replace(/<[A-Za-z.]+[^<>]*\/>/g, "");
+        const opened = [...before.matchAll(/<([A-Za-z.]+)\b/g)].pop();
+
+        if (!opened) {
+          continue;
+        }
+
+        const name = opened[1];
+        const rest = source.slice(match.index).split(/\/>|>\s*\n/)[0];
+        const tag = before.slice(opened.index) + rest;
         links++;
+
         const plain =
           name === "a" ||
           name === "DropdownItem" ||

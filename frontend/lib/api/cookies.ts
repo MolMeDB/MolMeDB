@@ -15,8 +15,11 @@ function secretKey(): string {
   }
   return key;
 }
-const USER_SESSION_KEY = process.env
-  .COOKIES_FRONTEND_SESSION_USER_KEY as string;
+// Read when asked for, like the secret above: the image is built without the
+// runtime settings, and a name fixed at build time would be empty for good.
+function userSessionKey(): string | undefined {
+  return process.env.COOKIES_FRONTEND_SESSION_USER_KEY || undefined;
+}
 const DEFAULT_COOKIE_MAX_AGE = 60 * 60 * 24;
 
 export const DEFAULT_COOKIES_CONFIG = {
@@ -97,15 +100,16 @@ function normalizeUserData(data: unknown): UserSession | null {
 async function setUserData(data: object, options: UserCookieOptions = {}) {
   "use server";
   const user = normalizeUserData(data);
+  const key = userSessionKey();
 
-  if (!user || !USER_SESSION_KEY) {
+  if (!user || !key) {
     return;
   }
 
   const cookiesStore = await cookies();
   const maxAge = userCookieMaxAge(options);
 
-  cookiesStore.set(USER_SESSION_KEY, sign(user, maxAge), {
+  cookiesStore.set(key, sign(user, maxAge), {
     ...DEFAULT_COOKIES_CONFIG,
     maxAge,
   });
@@ -113,12 +117,19 @@ async function setUserData(data: object, options: UserCookieOptions = {}) {
 
 async function getUserData() {
   "use server";
-  if (!USER_SESSION_KEY) {
+  // The request is read before anything else. A page that asks who is
+  // signed in must be rendered for each request; returning early here let
+  // the build render such pages once, for nobody, and serve that to
+  // everybody: a header without the user, and account settings that only
+  // ever redirected to the login.
+  const cookiesStore = await cookies();
+  const key = userSessionKey();
+
+  if (!key) {
     return null;
   }
 
-  const cookiesStore = await cookies();
-  const cookieValue = cookiesStore.get(USER_SESSION_KEY)?.value as string;
+  const cookieValue = cookiesStore.get(key)?.value as string;
   if (!cookieValue) {
     return null;
   }

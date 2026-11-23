@@ -9,6 +9,8 @@ use App\Models\InteractionPassive;
 use App\Models\Structure;
 use App\Models\User;
 use App\Services\PredictionResultImporter;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Storage;
 use Modules\PredictionWorkers\Models\Prediction;
 use Modules\PredictionWorkers\Models\PredictionFile;
 use Modules\PredictionWorkers\Models\PredictionMethod;
@@ -203,7 +205,8 @@ test('a prediction that already failed many times is given up at once', function
         ->and($prediction->refresh()->state)->toBe(Prediction::STATE_ERROR);
 });
 
-test('a result that cannot be loaded is tried for as long as it takes', function () {
+test('a result whose file cannot be read is tried for as long as it takes, with the reason in the log', function () {
+    Storage::fake('predictions');
     $prediction = createFinishedPrediction();
     // An older result: nothing parsed in the database, and its file is out of reach.
     $prediction->predictionResult->update(['data' => null]);
@@ -213,7 +216,91 @@ test('a result that cannot be loaded is tried for as long as it takes', function
     }
 
     expect($prediction->refresh()->state)->toBe(Prediction::STATE_FINISHED)
+        ->and(collect($prediction->logs)->last()['message'])->toStartWith('The result file could not be read: COSMO XML file not found on disk [predictions]');
+});
+
+test('an error of the storage is tried for as long as it takes and stays out of the log of the prediction', function () {
+    $prediction = createFinishedPrediction();
+    $prediction->predictionResult->update(['data' => null]);
+    Storage::shouldReceive('disk')->with('predictions')->andThrow(new RuntimeException('Unable to connect to host storage.internal'));
+    Exceptions::fake();
+
+    foreach (range(1, PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS + 2) as $ignored) {
+        expect(importPrediction($prediction->refresh()))->toBe('error');
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_FINISHED)
+        ->and(collect($prediction->logs)->last()['message'])->toBe('The result file could not be read: the storage reported an error.')
+        ->and(json_encode($prediction->logs))->not->toContain('storage.internal');
+
+    Exceptions::assertReported(fn (RuntimeException $exception): bool => str_contains($exception->getMessage(), 'storage.internal'));
+});
+
+test('a result file the storage read only in part is tried for as long as it takes', function () {
+    $prediction = createFinishedPrediction();
+    $prediction->predictionResult->update(['data' => null]);
+    $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
+    $disk->shouldReceive('exists')->andReturn(true);
+    $disk->shouldReceive('get')->andReturn('');
+    $disk->shouldReceive('size')->andReturn(4096);
+    Storage::shouldReceive('disk')->with('predictions')->andReturn($disk);
+
+    foreach (range(1, PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS + 2) as $ignored) {
+        expect(importPrediction($prediction->refresh()))->toBe('error');
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_FINISHED)
+        ->and(collect($prediction->logs)->last()['message'])->toContain('read only in part (0 of 4096 bytes)');
+});
+
+test('a result without a file is tried for as long as it takes', function () {
+    $prediction = createFinishedPrediction();
+    $prediction->predictionResult->update(['data' => null, 'file_id' => null]);
+
+    foreach (range(1, PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS + 2) as $ignored) {
+        expect(importPrediction($prediction->refresh()))->toBe('error');
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_FINISHED)
         ->and(collect($prediction->logs)->last()['message'])->toBe('The parsed result data could not be loaded.');
+});
+
+test('a result file that is not a COSMO result is given up after a few attempts, with the reason in the log', function () {
+    Storage::fake('predictions');
+    $prediction = createFinishedPrediction();
+    $prediction->predictionResult->update(['data' => null]);
+    // What the remote service leaves behind when its calculation stops half way.
+    Storage::disk('predictions')->put(
+        $prediction->predictionResult->file->path,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<micoutput>\n  <joblist>\n\n",
+    );
+
+    foreach (range(1, PredictionResultImporter::MAX_UNUSABLE_RESULT_ATTEMPTS - 1) as $ignored) {
+        expect(importPrediction($prediction->refresh()))->toBe('error');
+    }
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_FINISHED)
+        ->and(collect($prediction->logs)->last()['message'])->toStartWith('The result file is not a valid COSMO result: The file is not well-formed XML (line ');
+
+    expect(importPrediction($prediction->refresh()))->toBe('error');
+
+    expect($prediction->refresh()->state)->toBe(Prediction::STATE_ERROR)
+        ->and(collect($prediction->logs)->last()['message'])->toContain('not well-formed XML')->toContain('Given up after repeated attempts')
+        ->and(InteractionPassive::query()->count())->toBe(0);
+});
+
+test('a result file read from the storage is imported when nothing parsed is stored', function () {
+    Storage::fake('predictions');
+    $prediction = createFinishedPrediction();
+    $prediction->predictionResult->update(['data' => null]);
+    Storage::disk('predictions')->put($prediction->predictionResult->file->path, <<<'XML'
+        <micoutput><joblist><job><temperature>310.15</temperature><layerposition>0.0</layerposition><solutelist><solute>
+        <meanposition>1.5</meanposition><logP_micelle_water>2.75</logP_micelle_water><logPerm_membrane_cm_s>-3.21</logPerm_membrane_cm_s><distribution>0.5</distribution>
+        </solute></solutelist></job></joblist></micoutput>
+        XML);
+
+    expect(importPrediction($prediction->refresh()))->toBe('imported')
+        ->and((float) InteractionPassive::query()->sole()->logperm)->toBe(-3.21);
 });
 
 test('a prediction without a structure to import is given up after a few attempts', function () {

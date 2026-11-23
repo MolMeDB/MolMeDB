@@ -6,40 +6,86 @@ use Illuminate\Support\Facades\Storage;
 use Modules\PredictionWorkers\DTO\JobResult;
 use Modules\PredictionWorkers\DTO\PredictionResultJson;
 use Modules\PredictionWorkers\DTO\SoluteResult;
+use Modules\PredictionWorkers\Exceptions\InvalidCosmoResultException;
+use Modules\PredictionWorkers\Exceptions\UnreadableCosmoResultException;
 use Modules\PredictionWorkers\Models\PredictionFile;
-use RuntimeException;
 
 class CosmoXmlParser
 {
+    /**
+     * @throws UnreadableCosmoResultException when the file could not be read as a whole
+     * @throws InvalidCosmoResultException when the file was read and is not a COSMO result
+     */
     public function parse(PredictionFile $file): PredictionResultJson
     {
+        $where = "on disk [{$file->storage}] path [{$file->path}]";
         $disk = Storage::disk($file->storage);
 
         if (! $disk->exists($file->path)) {
-            throw new RuntimeException(
-                "COSMO XML file not found on disk [{$file->storage}] path [{$file->path}]"
-            );
+            throw new UnreadableCosmoResultException("COSMO XML file not found {$where}");
         }
 
         $content = $disk->get($file->path);
 
-        if (! $content) {
-            throw new RuntimeException('Unable to read COSMO XML file.');
+        if ($content === null) {
+            throw new UnreadableCosmoResultException("Unable to read COSMO XML file {$where}");
+        }
+
+        // A read the storage gave up half way comes back as a shorter (or
+        // empty) text, not as an error: only a file read to its full size is
+        // judged by its content.
+        $size = $disk->size($file->path);
+
+        if (strlen($content) !== $size) {
+            throw new UnreadableCosmoResultException(
+                'COSMO XML file was read only in part ('.strlen($content)." of {$size} bytes) {$where}"
+            );
+        }
+
+        // Results were also stored as the downloaded archive with the XML inside.
+        if (str_starts_with($content, "PK\x03\x04")) {
+            throw new UnreadableCosmoResultException("The stored result is an archive, not a COSMO XML file, {$where}");
+        }
+
+        if (trim($content) === '') {
+            throw new InvalidCosmoResultException('The file is empty.');
         }
 
         return $this->parseString($content);
     }
 
+    /**
+     * @throws InvalidCosmoResultException when the content is not a COSMO result
+     */
     public function parseString(string $content): PredictionResultJson
     {
-        $xml = simplexml_load_string($content);
+        $collectedBefore = libxml_use_internal_errors(true);
+        $errorsBefore = count(libxml_get_errors());
 
-        if (! $xml || $xml->getName() !== 'micoutput') {
-            throw new RuntimeException('Invalid root element. Expected <micoutput>.');
+        try {
+            $xml = simplexml_load_string($content);
+            $xmlError = array_slice(libxml_get_errors(), $errorsBefore)[0] ?? null;
+        } finally {
+            // Errors a caller collects for itself are left to it.
+            if (! $collectedBefore) {
+                libxml_clear_errors();
+            }
+
+            libxml_use_internal_errors($collectedBefore);
+        }
+
+        if ($xml === false) {
+            throw new InvalidCosmoResultException(
+                'The file is not well-formed XML'.($xmlError ? ' (line '.$xmlError->line.': '.trim($xmlError->message).')' : '').'.'
+            );
+        }
+
+        if ($xml->getName() !== 'micoutput') {
+            throw new InvalidCosmoResultException('Invalid root element. Expected <micoutput>.');
         }
 
         if (! isset($xml->joblist)) {
-            throw new RuntimeException('Missing <joblist> element.');
+            throw new InvalidCosmoResultException('Missing <joblist> element.');
         }
 
         $jobs = [];

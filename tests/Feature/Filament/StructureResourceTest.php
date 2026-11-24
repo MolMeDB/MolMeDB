@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/../Structures/structure_rdkit_test_helpers.php';
+
 use App\Enums\PermissionEnums;
 use App\Enums\RoleEnums;
 use App\Filament\Resources\Structures\Pages\CreateStructure;
@@ -65,6 +67,10 @@ function createStructureRecord(User $owner, array $attributes = []): Structure
         ...$attributes,
     ]);
 }
+
+afterEach(function () {
+    resetApiRouteRdkitState();
+});
 
 test('user with structure view permission can load the structures list page', function () {
     $user = createStructureAdmin([
@@ -155,6 +161,16 @@ test('user with structure edit own permission can create a structure', function 
     ]);
 
     $this->actingAs($user);
+
+    // Saving computes the structure by RDKit, whatever the form holds.
+    fakeRdkitService();
+    FakeRdkitService::$info = ['CCO' => [
+        'canonized_smiles' => 'CCO',
+        'inchi' => 'InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3',
+        'inchikey' => 'LFQSCWFLJHTTHZ-UHFFFAOYSA-N',
+        'MW' => 46.0684,
+        'LogP' => -0.3081,
+    ]];
 
     Livewire::test(CreateStructure::class)
         ->fillForm([

@@ -19,6 +19,14 @@ class CosmoXmlParser
     public const MAX_ARCHIVED_XML_BYTES = 32 * 1024 * 1024;
 
     /**
+     * Not an archive, an inconsistent one, an unexpected end and (35, named
+     * ER_TRUNCATED_ZIP by newer versions of libzip only) a truncated one.
+     *
+     * @var array<int, int>
+     */
+    private const ERRORS_OF_THE_ARCHIVE_ITSELF = [ZipArchive::ER_NOZIP, ZipArchive::ER_INCONS, ZipArchive::ER_EOF, 35];
+
+    /**
      * @throws UnreadableCosmoResultException when the file could not be read as a whole
      * @throws InvalidCosmoResultException when the file was read and is not a COSMO result
      */
@@ -50,12 +58,12 @@ class CosmoXmlParser
 
         // Results were also stored as the downloaded archive with the XML inside.
         if (str_starts_with($content, "PK\x03\x04")) {
-            if (! class_exists(ZipArchive::class)) {
-                throw new UnreadableCosmoResultException("The stored result is an archive and PHP cannot open archives here, {$where}");
+            try {
+                $content = $this->xmlFromArchive($content, strict: true)
+                    ?? throw new InvalidCosmoResultException('The stored archive holds no COSMO XML file.');
+            } catch (UnreadableCosmoResultException $exception) {
+                throw new UnreadableCosmoResultException("{$exception->getMessage()} {$where}", previous: $exception);
             }
-
-            $content = $this->xmlFromArchive($content)
-                ?? throw new InvalidCosmoResultException('The stored archive holds no COSMO XML file.');
         }
 
         if (trim($content) === '') {
@@ -67,46 +75,97 @@ class CosmoXmlParser
 
     /**
      * The COSMO XML packed in a result archive: the remote service zips the
-     * whole calculation directory. Null when the content is no archive that
-     * can be opened or none of its XML files is a COSMO result.
+     * whole calculation directory. Null when the content is no archive or
+     * none of its XML files is a COSMO result.
+     *
+     * What keeps this server from unpacking an archive (no room for the
+     * temporary file, an archive it cannot open for a reason of its own) says
+     * nothing about the result. With $strict that is told apart by an
+     * exception; without it the answer is null as well.
+     *
+     * @throws UnreadableCosmoResultException with $strict, when the archive could not be unpacked here
+     * @throws InvalidCosmoResultException with $strict, when the result in the archive is too large to be one
      */
-    public function xmlFromArchive(string $contents): ?string
+    public function xmlFromArchive(string $contents, bool $strict = false): ?string
     {
-        if (! str_starts_with($contents, 'PK') || ! class_exists(ZipArchive::class)) {
+        try {
+            return $this->unpackedXml($contents);
+        } catch (UnreadableCosmoResultException|InvalidCosmoResultException $exception) {
+            return $strict ? throw $exception : null;
+        }
+    }
+
+    /**
+     * @throws UnreadableCosmoResultException
+     * @throws InvalidCosmoResultException
+     */
+    private function unpackedXml(string $contents): ?string
+    {
+        if (! str_starts_with($contents, 'PK')) {
             return null;
+        }
+
+        if (! class_exists(ZipArchive::class)) {
+            throw new UnreadableCosmoResultException('The stored result is an archive and PHP cannot open archives here,');
         }
 
         $temporaryPath = tempnam(sys_get_temp_dir(), 'prediction-result-');
 
-        if ($temporaryPath === false || file_put_contents($temporaryPath, $contents) === false) {
-            return null;
+        if ($temporaryPath === false || file_put_contents($temporaryPath, $contents) !== strlen($contents)) {
+            if ($temporaryPath !== false && file_exists($temporaryPath)) {
+                unlink($temporaryPath);
+            }
+
+            throw new UnreadableCosmoResultException('The stored archive could not be copied to a temporary file to unpack it,');
         }
 
         $archive = new ZipArchive;
         $isOpen = false;
 
         try {
-            if ($archive->open($temporaryPath, ZipArchive::RDONLY) !== true) {
-                return null;
+            $opened = $archive->open($temporaryPath, ZipArchive::RDONLY);
+
+            if ($opened !== true) {
+                // Only these say the content itself is no (sound) archive.
+                return in_array($opened, self::ERRORS_OF_THE_ARCHIVE_ITSELF, true)
+                    ? null
+                    : throw new UnreadableCosmoResultException("The stored archive could not be opened (zip error {$opened}),");
             }
 
             $isOpen = true;
+            $tooLarge = null;
 
             for ($index = 0; $index < $archive->numFiles; $index++) {
                 $entry = $archive->statIndex($index);
                 $entryName = is_array($entry) ? (string) ($entry['name'] ?? '') : '';
 
+                if (! str_ends_with(strtolower($entryName), '.xml')) {
+                    continue;
+                }
+
                 // The size is the one the archive declares: a file that would
                 // unpack into more is not a result and is not unpacked.
-                if (! str_ends_with(strtolower($entryName), '.xml') || (int) ($entry['size'] ?? 0) > self::MAX_ARCHIVED_XML_BYTES) {
+                if ((int) ($entry['size'] ?? 0) > self::MAX_ARCHIVED_XML_BYTES) {
+                    $tooLarge ??= $entryName;
+
                     continue;
                 }
 
                 $xml = $archive->getFromIndex($index, self::MAX_ARCHIVED_XML_BYTES);
 
-                if (is_string($xml) && str_contains($xml, '<micoutput')) {
+                if ($xml === false) {
+                    throw new UnreadableCosmoResultException("[{$entryName}] could not be unpacked from the stored archive,");
+                }
+
+                if (str_contains($xml, '<micoutput')) {
                     return $xml;
                 }
+            }
+
+            if ($tooLarge !== null) {
+                throw new InvalidCosmoResultException(
+                    "The XML file [{$tooLarge}] in the stored archive is larger than a COSMO result (".intdiv(self::MAX_ARCHIVED_XML_BYTES, 1024 * 1024).' MB).'
+                );
             }
 
             return null;

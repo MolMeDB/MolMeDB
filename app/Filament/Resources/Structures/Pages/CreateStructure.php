@@ -31,7 +31,9 @@ class CreateStructure extends CreateRecord
         $data['user_id'] = Auth::user()->id;
 
         // The entered SMILES is not a column; the canonical one is stored.
-        unset($data['smiles']);
+        // The charge and the pH range are shown as computed, but nothing
+        // computes them here: they are not taken from the browser.
+        unset($data['smiles'], $data['charge'], $data['ph_start'], $data['ph_end']);
 
         return $data;
     }
@@ -105,7 +107,7 @@ class CreateStructure extends CreateRecord
      * cannot be stored: RDKit is out of reach or refuses it, or the structure
      * is already in the database.
      *
-     * @return array{canonical_smiles: string, molecular_weight: float, logp: float, inchikey: string|null}|null
+     * @return array{canonical_smiles: string, molecular_weight: float, logp: float, inchikey: string|null, inchi: string|null}|null
      */
     private function computedProperties(mixed $smiles): ?array
     {
@@ -167,6 +169,7 @@ class CreateStructure extends CreateRecord
             'molecular_weight' => round($info->mw, 2) + 0.0,
             'logp' => round($info->logp, 2) + 0.0,
             'inchikey' => $info->inchikey,
+            'inchi' => $info->inchi,
         ];
     }
 

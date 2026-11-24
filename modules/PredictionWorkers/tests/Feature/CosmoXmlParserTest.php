@@ -159,12 +159,39 @@ test('cosmo xml parser gives up an archive without a result', function (Closure 
     'a result cut short inside' => [fn (): string => cosmoResultArchive(['cosmo.xml' => "<micoutput>\n  <joblist>\n"]), 'not well-formed XML'],
 ]);
 
-test('an XML file that would unpack into more than the limit is left in the archive', function () {
+test('an XML file that would unpack into more than the limit is not unpacked', function () {
     $parser = app(CosmoXmlParser::class);
-    $large = '<micoutput>'.str_repeat(' ', CosmoXmlParser::MAX_ARCHIVED_XML_BYTES).'</micoutput>';
+    $archive = cosmoResultArchive(['cosmo.xml' => '<micoutput>'.str_repeat(' ', CosmoXmlParser::MAX_ARCHIVED_XML_BYTES).'</micoutput>']);
 
-    expect($parser->xmlFromArchive(cosmoResultArchive(['cosmo.xml' => $large])))->toBeNull()
+    expect($parser->xmlFromArchive($archive))->toBeNull()
         ->and($parser->xmlFromArchive('<micoutput/>'))->toBeNull();
+
+    Storage::fake('predictions-test');
+    Storage::disk('predictions-test')->put('results/cosmo.xml', $archive);
+
+    expect(fn () => $parser->parse(new PredictionFile(['storage' => 'predictions-test', 'path' => 'results/cosmo.xml'])))
+        ->toThrow(InvalidCosmoResultException::class, 'is larger than a COSMO result');
+});
+
+test('an archive this server cannot unpack is not judged', function () {
+    // An encrypted entry: the archive is sound, only it cannot be unpacked here.
+    $path = tempnam(sys_get_temp_dir(), 'cosmo-archive-test-');
+    $archive = new ZipArchive;
+    $archive->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $archive->addFromString('cosmo.xml', '<micoutput><joblist/></micoutput>');
+    $archive->setEncryptionName('cosmo.xml', ZipArchive::EM_AES_256, 'secret');
+    $archive->close();
+    $bytes = file_get_contents($path);
+    unlink($path);
+
+    Storage::fake('predictions-test');
+    Storage::disk('predictions-test')->put('results/cosmo.xml', $bytes);
+    $parser = app(CosmoXmlParser::class);
+
+    expect(fn () => $parser->parse(new PredictionFile(['storage' => 'predictions-test', 'path' => 'results/cosmo.xml'])))
+        ->toThrow(UnreadableCosmoResultException::class, 'could not be unpacked from the stored archive, on disk [predictions-test]');
+
+    expect($parser->xmlFromArchive($bytes))->toBeNull();
 });
 
 test('cosmo xml parser leaves the XML error reporting of the application as it was', function () {

@@ -263,3 +263,16 @@ test('a new remote prediction token replaces the stored one and is not shown bac
         ->assertFormSet(['value' => null])
         ->assertDontSee('tok_replacement_456');
 });
+
+test('a config value that is no text is refused', function () {
+    Config::set(Config::KEY_REMOTE_PREDICTION_TOKEN, 'tok_secret_value_123');
+
+    $this->actingAs(configPanelUser([PermissionEnums::CONFIG_EDIT]));
+
+    Livewire::test(EditConfig::class, ['record' => Config::KEY_REMOTE_PREDICTION_TOKEN])
+        ->set('data.value', ['x'])
+        ->call('save')
+        ->assertHasFormErrors(['value']);
+
+    expect(Config::get(Config::KEY_REMOTE_PREDICTION_TOKEN))->toBe('tok_secret_value_123');
+});

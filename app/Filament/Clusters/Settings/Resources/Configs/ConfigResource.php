@@ -49,8 +49,10 @@ class ConfigResource extends Resource
                 Textarea::make('value')
                     // A sensitive value never reaches the browser: its field
                     // starts empty and an empty field keeps what is stored.
-                    ->formatStateUsing(fn (?string $state, ?Config $record): ?string => static::holdsSensitiveValue($record) ? null : $state)
-                    ->dehydrated(fn (?string $state, ?Config $record): bool => ! (static::holdsSensitiveValue($record) && blank($state)))
+                    ->formatStateUsing(fn (mixed $state, ?Config $record): mixed => static::holdsSensitiveValue($record) ? null : $state)
+                    ->dehydrated(fn (mixed $state, ?Config $record): bool => ! (static::holdsSensitiveValue($record) && blank($state)))
+                    ->nullable()
+                    ->string()
                     ->placeholder(fn (?Config $record): ?string => static::holdsSensitiveValue($record) ? 'The stored value is not shown. Leave empty to keep it.' : null)
                     // By the stored key of an edited setting: its key field is
                     // disabled, but its state can still be set by a crafted request.

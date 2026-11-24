@@ -123,6 +123,10 @@ test('what is saved is computed again from the SMILES, whatever the browser send
             'molecular_weight' => 999.99,
             'logp' => 12.5,
             'inchikey' => 'AAAAAAAAAAAAAA-AAAAAAAAAA-A',
+            'inchi' => 'InChI=1S/CH4/h1H4',
+            'charge' => 5,
+            'ph_start' => 1,
+            'ph_end' => 2,
         ])
         ->callAction(structurePagesSubmit())
         ->assertHasNoFormErrors()
@@ -132,7 +136,11 @@ test('what is saved is computed again from the SMILES, whatever the browser send
         ->canonical_smiles->toBe('CCO')
         ->molecular_weight->toBe(46.07)
         ->logp->toBe(-0.31)
-        ->inchikey->toBe('LFQSCWFLJHTTHZ-UHFFFAOYSA-N');
+        ->inchikey->toBe('LFQSCWFLJHTTHZ-UHFFFAOYSA-N')
+        ->inchi->toBe('InChI=1S/C2H6O/c1-2-3/h3H,2H2,1H3')
+        ->charge->toBeNull()
+        ->ph_start->toBeNull()
+        ->ph_end->toBeNull();
 });
 
 test('a SMILES changed after its validation is checked again before it is saved', function () {

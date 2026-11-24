@@ -113,7 +113,7 @@ class ExportPredictionCosmo extends Command
         $limit = $this->option('limit') !== null ? (int) $this->option('limit') : null;
 
         $this->step = 'connecting to the backup server';
-        $shell = RemoteShell::forFilesystem($exportFilesystem);
+        $shell = $this->connectToServer($exportFilesystem);
 
         if (! $shell->isSameServer($resultsFilesystem)) {
             throw new RuntimeException('The COSMO export must be on the same server as the prediction results storage.');
@@ -484,6 +484,14 @@ class ExportPredictionCosmo extends Command
             'logK' => is_numeric($solute['logK'] ?? null) ? (float) $solute['logK'] : null,
             'logPerm' => is_numeric($solute['logPerm'] ?? null) ? (float) $solute['logPerm'] : null,
         ];
+    }
+
+    /**
+     * Shell on the server behind the filesystem; a separate method so tests can run the export without SSH.
+     */
+    protected function connectToServer(Filesystem $filesystem): RemoteShell
+    {
+        return RemoteShell::forFilesystem($filesystem);
     }
 
     private function filesystem(int $type): Filesystem

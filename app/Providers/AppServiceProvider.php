@@ -14,12 +14,14 @@ use App\Policies\PredictionMethodPolicy;
 use App\Policies\PredictionPolicy;
 use App\Policies\PredictionStatPolicy;
 use App\Policies\PredictionStructurePolicy;
+use App\Support\BingoPostgresConnection;
 use Dedoc\Scramble\Scramble;
 use Exception;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Database\Connection;
 use Illuminate\Http\Middleware\HandleCors;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
@@ -50,6 +52,8 @@ class AppServiceProvider extends ServiceProvider
         // default /docs/api(.json) routes, and register() across all
         // providers always completes before any provider's boot() runs.
         Scramble::ignoreDefaultRoutes();
+
+        Connection::resolverFor('pgsql', fn ($connection, string $database, string $prefix, array $config): BingoPostgresConnection => new BingoPostgresConnection($connection, $database, $prefix, $config));
     }
 
     /**

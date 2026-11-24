@@ -8,6 +8,10 @@ class ProteinFilter extends ModelFilter
 {
     public function query($name)
     {
+        if (! is_string($name)) {
+            return $this;
+        }
+
         // Left join: a protein with no protein_identifiers rows must still
         // be matchable by its own uniprot_id (an inner join would silently
         // exclude it from every text search).
@@ -38,6 +42,10 @@ class ProteinFilter extends ModelFilter
 
     public function category($id)
     {
+        if (! FilterInput::isId($id)) {
+            return $this->whereRaw('1 = 0');
+        }
+
         return $this->whereHas('categories', fn ($q) => $q->where('categories.id', $id));
     }
 

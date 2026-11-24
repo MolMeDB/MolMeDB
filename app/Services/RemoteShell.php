@@ -28,7 +28,7 @@ class RemoteShell
             throw new RuntimeException("Filesystem [{$server->name}] has no SSH credential.");
         }
 
-        $connection = new SFTP($server->host, (int) ($server->port ?: 22));
+        $connection = app(SFTP::class, ['host' => $server->host, 'port' => (int) ($server->port ?: 22)]);
         $secret = $credential->type === SshCredential::AUTH_TYPE_KEY
             ? PublicKeyLoader::load($credential->private_key, $credential->passphrase ?: false)
             : $credential->password;
@@ -111,10 +111,12 @@ class RemoteShell
     {
         $this->connection->setTimeout($timeoutSeconds);
         $output = $this->connection->exec($command.' 2>&1');
+        // phpseclib returns false, not null, when there is no exit status (a timeout or a dropped connection).
+        $exitStatus = $this->connection->getExitStatus();
 
         return [
             'output' => is_string($output) ? $output : '',
-            'exit' => (int) ($this->connection->getExitStatus() ?? -1),
+            'exit' => is_int($exitStatus) ? $exitStatus : -1,
         ];
     }
 

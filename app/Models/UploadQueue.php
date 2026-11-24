@@ -316,7 +316,7 @@ class UploadQueue extends Model
      */
     public function deleteUploadedFileAndCancel(?User $user, ?string $guestToken = null): array
     {
-        if (! $this->canDeleteUploadedFile($user, $guestToken)) {
+        if (! $this->isAccessibleBy($user, $guestToken)) {
             throw new AuthorizationException('Only the upload owner can delete this upload.');
         }
 
@@ -393,10 +393,14 @@ class UploadQueue extends Model
             $this->config->detailedValidationPassed();
     }
 
-    public function approveAdminReview(?int $userId = null): void
+    /**
+     * Approves the data the administrator has seen: a record that has left
+     * the review since (taken back, reconfigured, imported) is not approved.
+     */
+    public function approveAdminReview(?int $userId = null): bool
     {
-        if (! $this->canBeReviewedByAdmin()) {
-            return;
+        if (! $this->shouldBeDecidedByAdmin()) {
+            return false;
         }
 
         $this->config = $this->config->markAdminReviewApproved(now()->toISOString());
@@ -410,12 +414,19 @@ class UploadQueue extends Model
             ['admin_review_approved' => true],
             $userId,
         );
+
+        return true;
     }
 
-    public function rejectAdminReview(string $reason, ?int $userId = null): void
+    /**
+     * Rejects the data waiting for the review. A record that has left the
+     * review since is not rejected: failing an imported upload would leave
+     * its interactions in the dataset with no way to revert them.
+     */
+    public function rejectAdminReview(string $reason, ?int $userId = null): bool
     {
-        if (! $this->canBeReviewedByAdmin()) {
-            return;
+        if ((int) $this->state !== self::STATE_REVIEW_REQUIRED) {
+            return false;
         }
 
         $this->config = $this->config->markAdminReviewRejected($reason, now()->toISOString());
@@ -429,6 +440,8 @@ class UploadQueue extends Model
             ['reason' => $reason],
             $userId,
         );
+
+        return true;
     }
 
     public function addLog(UploadQueueLog $log): void

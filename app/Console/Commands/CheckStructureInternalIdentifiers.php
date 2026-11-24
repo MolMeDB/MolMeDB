@@ -6,7 +6,6 @@ use App\Libraries\Identifiers;
 use App\Models\Config;
 use App\Models\Structure;
 use App\Services\Structures\LegacyStructureLinksPreprocessor;
-use Exception;
 use Illuminate\Console\Command;
 
 class CheckStructureInternalIdentifiers extends Command
@@ -140,6 +139,11 @@ class CheckStructureInternalIdentifiers extends Command
             }
 
             $this->info('--- OK');
+        }
+
+        // A finished pass points past the last structure, so the next run starts over.
+        if ($storeProgress && isset($structure)) {
+            Config::set('cron:daily:check_structure_identifier:start_id', $structure->id + 1);
         }
 
         $this->info('Done.');

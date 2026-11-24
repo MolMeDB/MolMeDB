@@ -6,9 +6,10 @@ use App\Models\Config;
 use App\Models\Filesystem;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Spatie\TemporaryDirectory\TemporaryDirectory;
-use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Process as SymfonyProcess;
 use Throwable;
 
 class BackupDbIdsm extends Command
@@ -120,12 +121,14 @@ class BackupDbIdsm extends Command
      * database: a dump of selected tables has no extensions, so the citext
      * extension of the identifier columns is created first; the Bingo index
      * (an access method of the private bingo schema) and foreign keys to
-     * tables left out of the dump are dropped, and so is a setting that
-     * servers older than the pg_dump that made the dump reject.
+     * tables left out of the dump are dropped, and so are the triggers (their
+     * functions are not part of a dump of tables; the only one guards the
+     * Bingo index) and a setting that servers older than the pg_dump that
+     * made the dump reject.
      *
      * pg_dump starts every object with a comment header such as
      * "-- Name: x; Type: FK CONSTRAINT; Schema: public; Owner: y", so whole
-     * objects are kept or dropped. Only indexes and foreign keys are held in
+     * objects are kept or dropped. Only indexes, foreign keys and triggers are held in
      * memory; table data streams through.
      *
      * @param  iterable<int, string>  $lines  pg_dump output, line by line with line endings
@@ -141,7 +144,9 @@ class BackupDbIdsm extends Command
 
         foreach ($lines as $line) {
             if ($separator !== null) {
-                if (preg_match('/^-- (?:Data for )?Name: .*; Type: ([^;]+);/', $line, $match) === 1) {
+                // Any comment header ends the held object, also the closing
+                // "PostgreSQL database dump complete" one with \unrestrict after it.
+                if (str_starts_with($line, '-- ')) {
                     if ($heldBlock !== null && self::keepsDumpObject((string) $heldType, $heldBlock)) {
                         yield $heldBlock;
                     }
@@ -149,7 +154,7 @@ class BackupDbIdsm extends Command
                     $heldBlock = null;
                     $heldType = null;
 
-                    if (in_array($match[1], ['INDEX', 'FK CONSTRAINT'], true)) {
+                    if (preg_match('/^-- (?:Data for )?Name: .*; Type: (INDEX|FK CONSTRAINT|TRIGGER);/', $line, $match) === 1) {
                         $heldType = $match[1];
                         $heldBlock = $separator.$line;
                         $separator = null;
@@ -199,6 +204,10 @@ class BackupDbIdsm extends Command
     {
         if ($type === 'INDEX') {
             return ! str_contains($block, 'USING bingo_idx');
+        }
+
+        if ($type === 'TRIGGER') {
+            return false;
         }
 
         if (preg_match('/REFERENCES\s+("?[\w]+"?)\.("?[\w]+"?)\s*\(/', $block, $match) !== 1) {
@@ -336,26 +345,30 @@ class BackupDbIdsm extends Command
         }
 
         $stderr = '';
-        $process = new Process($arguments, null, ['PGPASSWORD' => $password]);
 
         try {
-            $process->setTimeout(null);
-            $process->run(function (string $type, string $buffer) use ($stream, &$stderr): void {
-                if ($type === Process::OUT) {
-                    fwrite($stream, $buffer);
+            // Started and awaited (not run) so that the output handler also
+            // receives the output of a faked process; the password goes in the
+            // environment, never on the command line.
+            $result = Process::env(['PGPASSWORD' => $password])
+                ->forever()
+                ->start($arguments, function (string $type, string $buffer) use ($stream, &$stderr): void {
+                    if ($type === SymfonyProcess::OUT) {
+                        fwrite($stream, $buffer);
 
-                    return;
-                }
+                        return;
+                    }
 
-                $stderr .= $buffer;
-            });
+                    $stderr .= $buffer;
+                })
+                ->wait();
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
             }
         }
 
-        if (! $process->isSuccessful()) {
+        if (! $result->successful()) {
             throw new \RuntimeException(trim($stderr) ?: 'pg_dump failed.');
         }
     }

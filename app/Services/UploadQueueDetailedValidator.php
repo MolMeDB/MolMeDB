@@ -433,30 +433,64 @@ class UploadQueueDetailedValidator
     private function buildColumnMapping(UploadQueue $record, array $headers): array
     {
         $options = $this->validatorClasses($record);
-        $lookup = [];
+        // Exact names claim their attributes first, then normalized names
+        // take only the attributes still free; an attribute goes to one
+        // column only, as the same attribute twice would import the wrong
+        // value.
+        $exactLookup = [];
+        $normalizedLookup = [];
         foreach ($options as $className) {
             if (! property_exists($className, 'key')) {
                 continue;
             }
 
             $key = $className::$key;
-            $lookup[$this->normalizeKey($key)] = $key;
-            if (property_exists($className, 'label')) {
-                $lookup[$this->normalizeKey($className::$label)] = $key;
+            $names = property_exists($className, 'label') ? [$key, $className::$label] : [$key];
+            foreach ($names as $name) {
+                $exactLookup[mb_strtolower(trim($name))] ??= $key;
+                $normalizedLookup[$this->normalizeKey($name)] ??= $key;
             }
         }
 
-        return array_map(function ($header) use ($lookup) {
-            $normalized = $this->normalizeKey((string) $header);
+        $mapping = array_fill(0, count($headers), self::IGNORE_COLUMN);
+        $taken = [];
 
-            return $lookup[$normalized] ?? self::IGNORE_COLUMN;
-        }, $headers);
+        foreach (array_values($headers) as $index => $header) {
+            $key = $exactLookup[mb_strtolower(trim((string) $header))] ?? null;
+
+            if ($key !== null && ! in_array($key, $taken, true)) {
+                $mapping[$index] = $key;
+                $taken[] = $key;
+            }
+        }
+
+        foreach (array_values($headers) as $index => $header) {
+            if ($mapping[$index] !== self::IGNORE_COLUMN) {
+                continue;
+            }
+
+            $key = $normalizedLookup[$this->normalizeKey((string) $header)] ?? null;
+
+            if ($key !== null && ! in_array($key, $taken, true)) {
+                $mapping[$index] = $key;
+                $taken[] = $key;
+            }
+        }
+
+        return $mapping;
     }
 
+    /**
+     * Letters and digits only, with an accuracy marker ("+/-", "+-", "± ",
+     * "+ / −" ...) kept as "pm", so "+-Gpen" and "± Gpen" still differ from
+     * "Gpen".
+     */
     private function normalizeKey(string $value): string
     {
+        $value = preg_replace('/\+\s*\/?\s*[-−–]|±/u', 'pm', trim($value)) ?? '';
+
         return mb_strtolower(
-            preg_replace('/[^a-z0-9]+/i', '', trim($value)) ?? ''
+            preg_replace('/[^a-z0-9]+/i', '', $value) ?? ''
         );
     }
 

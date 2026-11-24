@@ -14,9 +14,11 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Fakes the chemistry services the upload pipeline calls. RDKit returns the
  * submitted SMILES prefixed with "canon:" as its canonical form, so tests can
- * tell which input a stored structure came from; SMILES listed in
- * $invalidSmiles are rejected. UniChem knows the identifiers in
+ * tell which input a stored structure came from ($canonicalPrefix changes
+ * the prefix; an empty one stores SMILES a real database can index); SMILES
+ * listed in $invalidSmiles are rejected. UniChem knows the identifiers in
  * $knownUnichemIds, and UniChem's reachability follows $unichemReachable.
+ * UniProt knows every accession it is asked for.
  *
  * @param  array<int, string>  $invalidSmiles
  * @param  array<int, string>  $knownUnichemIds
@@ -25,6 +27,7 @@ function fakeUploadChemistryServices(
     array $invalidSmiles = [],
     array $knownUnichemIds = [],
     bool $unichemReachable = true,
+    string $canonicalPrefix = 'canon:',
 ): void {
     // The fake reads its settings from config at request time, so calling this
     // again within a test changes them (another Http::fake() callback would
@@ -33,6 +36,7 @@ function fakeUploadChemistryServices(
         'invalid_smiles' => $invalidSmiles,
         'known_unichem_ids' => $knownUnichemIds,
         'unichem_reachable' => $unichemReachable,
+        'canonical_prefix' => $canonicalPrefix,
     ]);
 
     if (config('testing.upload_chemistry_faked')) {
@@ -53,6 +57,7 @@ function fakeUploadChemistryServices(
             'invalid_smiles' => $invalidSmiles,
             'known_unichem_ids' => $knownUnichemIds,
             'unichem_reachable' => $unichemReachable,
+            'canonical_prefix' => $canonicalPrefix,
         ] = config('testing.upload_chemistry');
         $url = $request->url();
 
@@ -61,7 +66,7 @@ function fakeUploadChemistryServices(
 
             return in_array($smiles, $invalidSmiles, true)
                 ? Http::response(['data' => null], 200)
-                : Http::response(['data' => 'canon:'.$smiles], 200);
+                : Http::response(['data' => $canonicalPrefix.$smiles], 200);
         }
 
         if (str_starts_with($url, 'https://unichem.test/api/sources')) {
@@ -74,6 +79,10 @@ function fakeUploadChemistryServices(
             return in_array($compound, $knownUnichemIds, true)
                 ? Http::response(['compounds' => [['inchi' => ['inchi' => 'InChI=1S/test'], 'standardInchiKey' => 'TESTKEY', 'sources' => []]]], 200)
                 : Http::response(['compounds' => []], 200);
+        }
+
+        if (str_starts_with($url, 'https://rest.uniprot.org/uniprotkb/')) {
+            return Http::response(['primaryAccession' => basename((string) parse_url($url, PHP_URL_PATH))], 200);
         }
 
         return Http::response([], 200);

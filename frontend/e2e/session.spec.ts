@@ -126,6 +126,52 @@ test.describe("session", () => {
     expect(await cookie(page, "molmedb_fe_session_user")).toBeTruthy();
   });
 
+  test("saving the notification preferences reports success", async ({
+    page,
+  }) => {
+    // A hydration mismatch is reported on the console, not as a page error.
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    await signIn(page);
+
+    await page.goto("/account/settings");
+    await expect(page.getByText("Sample label")).toBeVisible();
+    await expect(page.getByText("Requires browser permission.")).toBeVisible();
+
+    // The mock answers with every switch on; turn the email one off.
+    const emailSwitch = page
+      .locator("label", { hasText: "Email" })
+      .getByRole("switch");
+    await expect(emailSwitch).toBeChecked();
+    await emailSwitch.click({ force: true });
+    await expect(emailSwitch).not.toBeChecked();
+
+    await page.getByRole("button", { name: "Save preferences" }).click();
+
+    await expect(
+      page.getByText("Notification preferences updated."),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Could not save notification preferences."),
+    ).toHaveCount(0);
+
+    const sent = await page.request.get(
+      `${MOCK_BACKEND}/__e2e/last-body?route=${encodeURIComponent("PUT /api/notifications/preferences")}`,
+    );
+    expect(sent.status()).toBe(200);
+    expect(JSON.parse((await sent.json()).body)).toEqual({
+      preferences: [
+        { key: "Sample key", email_enabled: false, push_enabled: true },
+      ],
+    });
+    expect(errors).toEqual([]);
+  });
+
   test("opening the menu on a phone leaves the user signed in", async ({
     page,
   }) => {

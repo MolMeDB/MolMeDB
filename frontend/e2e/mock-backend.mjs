@@ -136,10 +136,21 @@ function send(res, status, body) {
   res.end(typeof body === "string" ? body : JSON.stringify(body));
 }
 
+/** The body of the last request to each "METHOD path", for the tests to read. */
+const lastBodies = new Map();
+
 const server = createServer((req, res) => {
-  req.on("data", () => {});
+  const chunks = [];
+  req.on("data", (chunk) => chunks.push(chunk));
   req.on("end", () => {
-    const { pathname } = new URL(req.url, "http://mock-backend");
+    const { pathname, searchParams } = new URL(req.url, "http://mock-backend");
+
+    if (!pathname.startsWith("/__e2e/")) {
+      lastBodies.set(
+        `${req.method} ${pathname}`,
+        Buffer.concat(chunks).toString("utf8"),
+      );
+    }
 
     // Playwright's webServer readiness check does a GET on this URL and
     // expects a non-error status before starting tests.
@@ -189,6 +200,14 @@ const server = createServer((req, res) => {
     if (req.method === "GET" && pathname.startsWith("/__e2e/sessions/")) {
       const session = sessions.get(pathname.split("/").pop());
       send(res, session ? 200 : 404, session ?? { message: "No such session." });
+
+      return;
+    }
+
+    // For the tests only: what the frontend last sent, by "METHOD path".
+    if (req.method === "GET" && pathname === "/__e2e/last-body") {
+      const body = lastBodies.get(searchParams.get("route") ?? "");
+      send(res, body === undefined ? 404 : 200, { body: body ?? null });
 
       return;
     }

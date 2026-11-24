@@ -78,7 +78,8 @@ test('validating a SMILES canonizes it and fills the computed properties before 
         ->user_id->toBe($this->editor->id)
         ->identifier->not->toBeNull();
 
-    Http::assertSentCount(3);
+    // The connection check, then canonization and description: once to validate, once again to save.
+    Http::assertSentCount(5);
 });
 
 test('a SMILES RDKit cannot canonize is refused with a warning', function () {
@@ -110,6 +111,89 @@ test('a structure cannot be validated while RDKit is unreachable', function () {
         ->assertNotified('Rdkit disconnected')
         ->assertSet('isValidated', false);
 });
+
+test('what is saved is computed again from the SMILES, whatever the browser sends', function () {
+    FakeRdkitService::$canonical = ['OCC' => 'CCO'];
+    FakeRdkitService::$info = ['CCO' => structurePagesInfo('CCO')];
+
+    Livewire::test(CreateStructure::class)
+        ->set('isValidated', true)
+        ->fillForm([
+            'canonical_smiles' => 'OCC',
+            'molecular_weight' => 999.99,
+            'logp' => 12.5,
+            'inchikey' => 'AAAAAAAAAAAAAA-AAAAAAAAAA-A',
+        ])
+        ->callAction(structurePagesSubmit())
+        ->assertHasNoFormErrors()
+        ->assertRedirect();
+
+    expect(Structure::query()->sole())
+        ->canonical_smiles->toBe('CCO')
+        ->molecular_weight->toBe(46.07)
+        ->logp->toBe(-0.31)
+        ->inchikey->toBe('LFQSCWFLJHTTHZ-UHFFFAOYSA-N');
+});
+
+test('a SMILES changed after its validation is checked again before it is saved', function () {
+    FakeRdkitService::$info = ['CCO' => structurePagesInfo('CCO')];
+    FakeRdkitService::$canonical = ['C1CC' => null];
+
+    Livewire::test(CreateStructure::class)
+        ->fillForm(['canonical_smiles' => 'CCO'])
+        ->callAction(structurePagesSubmit())
+        ->assertSet('isValidated', true)
+        ->fillForm(['canonical_smiles' => 'C1CC'])
+        ->callAction(structurePagesSubmit())
+        ->assertNotified('Invalid SMILES')
+        ->assertSet('isValidated', false)
+        ->assertNoRedirect();
+
+    expect(Structure::query()->count())->toBe(0);
+});
+
+test('a structure is not saved while RDKit is unreachable', function () {
+    FakeRdkitService::$info = ['CCO' => structurePagesInfo('CCO')];
+
+    $page = Livewire::test(CreateStructure::class)
+        ->fillForm(['canonical_smiles' => 'CCO'])
+        ->callAction(structurePagesSubmit())
+        ->assertSet('isValidated', true);
+
+    FakeRdkitService::$reachable = false;
+    resetApiRouteRdkitState();
+
+    $page->callAction(structurePagesSubmit())
+        ->assertNotified('Rdkit disconnected')
+        ->assertSet('isValidated', false);
+
+    expect(Structure::query()->count())->toBe(0);
+});
+
+test('a structure that is already stored is not created again', function (bool $trashed) {
+    FakeRdkitService::$canonical = ['OCC' => 'CCO'];
+    FakeRdkitService::$info = ['CCO' => structurePagesInfo('CCO')];
+    $existing = createApiStructure(['canonical_smiles' => 'CCO', 'identifier' => 'MM00042']);
+
+    if ($trashed) {
+        $existing->delete();
+    }
+
+    Livewire::test(CreateStructure::class)
+        ->fillForm(['canonical_smiles' => 'OCC'])
+        ->callAction(structurePagesSubmit())
+        ->assertNotified('The structure already exists.')
+        ->assertSet('isValidated', false);
+
+    Livewire::test(CreateStructure::class)
+        ->set('isValidated', true)
+        ->fillForm(['canonical_smiles' => 'OCC'])
+        ->callAction(structurePagesSubmit())
+        ->assertNotified('The structure already exists.')
+        ->assertNoRedirect();
+
+    expect(Structure::withTrashed()->count())->toBe(1);
+})->with(['stored' => [false], 'in the trash' => [true]]);
 
 test('a structure cannot be validated without a SMILES', function () {
     Livewire::test(CreateStructure::class)

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Structures\Pages;
 
 use App\Filament\Resources\Structures\StructureResource;
 use App\Libraries\Identifiers;
+use App\Models\Structure;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -85,13 +86,31 @@ class CreateStructure extends CreateRecord
         ];
     }
 
-    public function validateSmiles()
+    public function validateSmiles(): void
     {
         $states = $this->form->getState();
-        $state = $states['canonical_smiles'] ?? null;
+        $computed = $this->computedProperties($states['canonical_smiles'] ?? null);
 
-        if (! $state) {
+        if ($computed === null) {
             return;
+        }
+
+        $this->form->fill([...$states, ...$computed]);
+
+        $this->isValidated = true;
+    }
+
+    /**
+     * What RDKit says about a SMILES, or null (with a notification) when it
+     * cannot be stored: RDKit is out of reach or refuses it, or the structure
+     * is already in the database.
+     *
+     * @return array{canonical_smiles: string, molecular_weight: float, logp: float, inchikey: string|null}|null
+     */
+    private function computedProperties(mixed $smiles): ?array
+    {
+        if (! is_string($smiles) || trim($smiles) === '') {
+            return null;
         }
 
         // Connect RdKit
@@ -103,11 +122,11 @@ class CreateStructure extends CreateRecord
                 ->body('Cannot establish connection to RdKit server. Please, try again.')
                 ->send();
 
-            return;
+            return null;
         }
 
         // Validate SMILES
-        $canonized = $rdkit->canonize_smiles($state);
+        $canonized = $rdkit->canonize_smiles($smiles);
         if (! $canonized) {
             Notification::make()
                 ->danger()
@@ -115,7 +134,7 @@ class CreateStructure extends CreateRecord
                 ->body('SMILES cannot be canonized. Please, check your input and try again.')
                 ->send();
 
-            return;
+            return null;
         }
 
         // Get general info
@@ -127,21 +146,28 @@ class CreateStructure extends CreateRecord
                 ->body('Invalid response from the remote server. Please, try again.')
                 ->send();
 
-            return;
+            return null;
         }
 
-        // Set values
-        $this->form->fill([
-            ...$states,
+        $existing = Structure::withTrashed()->where('canonical_smiles', $canonized)->first();
+        if ($existing) {
+            Notification::make()
+                ->danger()
+                ->title('The structure already exists.')
+                ->body('It is stored as '.($existing->identifier ?? 'structure #'.$existing->id).($existing->trashed() ? ' and is in the trash: restore it instead.' : '.'))
+                ->send();
+
+            return null;
+        }
+
+        return [
             'canonical_smiles' => $canonized,
             // Adding zero turns a negative zero into zero, which survives the
             // round trip through the Livewire payload.
             'molecular_weight' => round($info->mw, 2) + 0.0,
             'logp' => round($info->logp, 2) + 0.0,
             'inchikey' => $info->inchikey,
-        ]);
-
-        $this->isValidated = true;
+        ];
     }
 
     /**
@@ -157,6 +183,18 @@ class CreateStructure extends CreateRecord
             $this->callHook('beforeValidate');
 
             $data = $this->form->getState();
+
+            // The form comes from the browser, together with the mark that
+            // its SMILES was validated: what is stored is computed again.
+            $computed = $this->computedProperties($data['canonical_smiles'] ?? null);
+
+            if ($computed === null) {
+                $this->isValidated = false;
+
+                throw (new Halt)->rollBackDatabaseTransaction();
+            }
+
+            $data = [...$data, ...$computed];
 
             $this->callHook('afterValidate');
 

@@ -303,6 +303,27 @@ test('a result file read from the storage is imported when nothing parsed is sto
         ->and((float) InteractionPassive::query()->sole()->logperm)->toBe(-3.21);
 });
 
+test('a result stored as the archive of the calculation is unpacked and imported', function () {
+    Storage::fake('predictions');
+    $prediction = createFinishedPrediction();
+    $prediction->predictionResult->update(['data' => null]);
+
+    $path = tempnam(sys_get_temp_dir(), 'import-archive-test-');
+    $archive = new ZipArchive;
+    $archive->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $archive->addFromString('calculation/cosmo.xml', <<<'XML'
+        <micoutput><joblist><job><temperature>310.15</temperature><layerposition>0.0</layerposition><solutelist><solute>
+        <meanposition>1.5</meanposition><logP_micelle_water>2.75</logP_micelle_water><logPerm_membrane_cm_s>-2.34</logPerm_membrane_cm_s><distribution>0.5</distribution>
+        </solute></solutelist></job></joblist></micoutput>
+        XML);
+    $archive->close();
+    Storage::disk('predictions')->put($prediction->predictionResult->file->path, file_get_contents($path));
+    unlink($path);
+
+    expect(importPrediction($prediction->refresh()))->toBe('imported')
+        ->and((float) InteractionPassive::query()->sole()->logperm)->toBe(-2.34);
+});
+
 test('a prediction without a structure to import is given up after a few attempts', function () {
     $prediction = createFinishedPrediction(smiles: ' ');
 

@@ -265,6 +265,110 @@ test('category managers move a category under another in the tree', function () 
     expect($second->refresh()->parent_id)->toBe($first->id);
 });
 
+test('category managers reorder the categories of a tree', function () {
+    $first = categoryOfType(Category::TYPE_METHOD, 'First');
+    $second = categoryOfType(Category::TYPE_METHOD, 'Second');
+    $child = categoryOfType(Category::TYPE_METHOD, 'Child', $first);
+
+    $this->actingAs(categoryPanelUser([PermissionEnums::CATEGORIES_VIEW, PermissionEnums::CATEGORIES_MANAGE]));
+
+    Livewire::test(MethodCategoryTree::class)
+        ->call('updateTree', [
+            ['id' => $second->id, 'children' => [['id' => $child->id]]],
+            ['id' => (string) $first->id],
+        ])
+        ->assertOk()
+        ->assertNotified();
+
+    expect($child->refresh()->parent_id)->toBe($second->id)
+        ->and($second->refresh()->order)->toBe(1)
+        ->and($first->refresh()->order)->toBe(2);
+});
+
+test('an arrangement the tree page could not have sent is refused', function (Closure $arrangement) {
+    $this->first = categoryOfType(Category::TYPE_METHOD, 'First');
+    $this->second = categoryOfType(Category::TYPE_METHOD, 'Second');
+    $this->third = categoryOfType(Category::TYPE_METHOD, 'Third');
+    $this->membrane = categoryOfType(Category::TYPE_MEMBRANE, 'Of another tree');
+
+    $before = Category::query()->orderBy('id')->get(['id', 'parent_id', 'order'])->toArray();
+
+    $this->actingAs(categoryPanelUser([PermissionEnums::CATEGORIES_VIEW, PermissionEnums::CATEGORIES_MANAGE]));
+
+    Livewire::test(MethodCategoryTree::class)
+        ->call('updateTree', $arrangement->call($this))
+        ->assertStatus(422);
+
+    expect(Category::query()->orderBy('id')->get(['id', 'parent_id', 'order'])->toArray())->toBe($before);
+})->with([
+    'under a category of another type' => [fn (): array => [['id' => $this->membrane->id, 'children' => [['id' => $this->first->id]]]]],
+    'a category of another type moved' => [fn (): array => [['id' => $this->first->id, 'children' => [['id' => $this->membrane->id]]]]],
+    'under a category that does not exist' => [fn (): array => [['id' => 999_999, 'children' => [['id' => $this->first->id]]]]],
+    'a category named twice' => [fn (): array => [['id' => $this->first->id, 'children' => [['id' => $this->second->id]]], ['id' => $this->second->id]]],
+    'under itself' => [fn (): array => [['id' => $this->first->id, 'children' => [['id' => $this->first->id]]]]],
+    'deeper than the tree allows' => [fn (): array => [['id' => $this->first->id, 'children' => [['id' => $this->second->id, 'children' => [['id' => $this->third->id]]]]]]],
+    'without an identifier' => [fn (): array => [['children' => [['id' => $this->first->id]]]]],
+    'an identifier that is no number or text' => [fn (): array => [['id' => ['x'], 'children' => []]]],
+    'children that are no list' => [fn (): array => [['id' => $this->first->id, 'children' => 'x']]],
+]);
+
+test('a category left out of the arrangement cannot end deeper than the tree allows', function () {
+    $first = categoryOfType(Category::TYPE_METHOD, 'First');
+    $second = categoryOfType(Category::TYPE_METHOD, 'Second');
+    $child = categoryOfType(Category::TYPE_METHOD, 'Child of second', $second);
+
+    $this->actingAs(categoryPanelUser([PermissionEnums::CATEGORIES_VIEW, PermissionEnums::CATEGORIES_MANAGE]));
+
+    Livewire::test(MethodCategoryTree::class)
+        ->call('updateTree', [['id' => $first->id, 'children' => [['id' => $second->id]]]])
+        ->assertStatus(422);
+
+    expect($second->refresh()->parent_id)->not->toBe($first->id)
+        ->and($child->refresh()->parent_id)->toBe($second->id);
+});
+
+test('active interaction categories stay on one level', function () {
+    $first = categoryOfType(Category::TYPE_ACTIVE_INTERACTION, 'First');
+    $second = categoryOfType(Category::TYPE_ACTIVE_INTERACTION, 'Second');
+
+    $this->actingAs(categoryPanelUser([PermissionEnums::CATEGORIES_VIEW, PermissionEnums::CATEGORIES_MANAGE]));
+
+    Livewire::test(InteractionActiveCategoryTree::class)
+        ->call('updateTree', [['id' => $first->id, 'children' => [['id' => $second->id]]]])
+        ->assertStatus(422);
+
+    Livewire::test(InteractionActiveCategoryTree::class)
+        ->call('updateTree', [['id' => $second->id], ['id' => $first->id]])
+        ->assertOk();
+
+    expect($second->refresh()->parent_id)->not->toBe($first->id)
+        ->and($second->order)->toBe(1);
+});
+
+test('a tree that is already deeper than its page allows can be reordered but not deepened', function () {
+    $top = categoryOfType(Category::TYPE_METHOD, 'Top');
+    $middle = categoryOfType(Category::TYPE_METHOD, 'Middle', $top);
+    $bottom = categoryOfType(Category::TYPE_METHOD, 'Bottom', $middle);
+    $other = categoryOfType(Category::TYPE_METHOD, 'Other');
+
+    $this->actingAs(categoryPanelUser([PermissionEnums::CATEGORIES_VIEW, PermissionEnums::CATEGORIES_MANAGE]));
+
+    Livewire::test(MethodCategoryTree::class)
+        ->call('updateTree', [
+            ['id' => $other->id],
+            ['id' => $top->id, 'children' => [['id' => $middle->id, 'children' => [['id' => $bottom->id]]]]],
+        ])
+        ->assertOk();
+
+    Livewire::test(MethodCategoryTree::class)
+        ->call('updateTree', [
+            ['id' => $other->id, 'children' => [['id' => $top->id, 'children' => [['id' => $middle->id, 'children' => [['id' => $bottom->id]]]]]]],
+        ])
+        ->assertStatus(422);
+
+    expect($top->refresh()->parent_id)->not->toBe($other->id);
+});
+
 test('category viewers cannot rearrange the category tree', function (string $treePage, int $type) {
     $first = categoryOfType($type, 'First');
     $second = categoryOfType($type, 'Second');

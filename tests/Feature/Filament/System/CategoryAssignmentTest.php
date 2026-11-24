@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/../../Api/api_test_helpers.php';
+
 use App\Enums\PermissionEnums;
 use App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\Pages\EditInteractionActiveCategory;
 use App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\Pages\InteractionActiveCategoryTree;
@@ -146,6 +148,43 @@ test('a category with assigned records or child categories is not deleted from i
         ->assertNotified('The record cannot be deleted!');
 
     expect(Category::query()->whereKey([$withMethod->id, $parent->id])->count())->toBe(2);
+});
+
+test('a category whose only assigned record is in the trash is not deleted', function (int $type, string $relation, string $model, string $editPage) {
+    $category = categoryOfType($type);
+    $record = $model === Method::class ? categoryMethod() : $model::factory()->create();
+    $category->{$relation}()->attach($record->id, ['model_type' => $model]);
+    $record->delete();
+
+    $this->actingAs(categoryPanelUser([PermissionEnums::CATEGORIES_VIEW, PermissionEnums::CATEGORIES_MANAGE]));
+
+    Livewire::test($editPage, ['record' => $category->getKey()])
+        ->callAction(DeleteAction::class)
+        ->assertNotified('The record cannot be deleted!');
+
+    expect($category->fresh())->not->toBeNull()
+        ->and($category->isDeletable())->toBeFalse();
+
+    $record->restore();
+
+    expect($category->{$relation}()->pluck($record->getTable().'.id')->all())->toBe([$record->id]);
+})->with([
+    'method' => [Category::TYPE_METHOD, 'methods', Method::class, EditMethodCategory::class],
+    'membrane' => [Category::TYPE_MEMBRANE, 'membranes', Membrane::class, EditMembraneCategory::class],
+    'protein' => [Category::TYPE_PROTEIN, 'proteins', Protein::class, EditProteinCategory::class],
+]);
+
+test('an active interaction category with an interaction in the trash is not deleted', function () {
+    $category = categoryOfType(Category::TYPE_ACTIVE_INTERACTION);
+    createApiActiveInteraction(['category' => $category])->delete();
+
+    $this->actingAs(categoryPanelUser([PermissionEnums::CATEGORIES_VIEW, PermissionEnums::CATEGORIES_MANAGE]));
+
+    Livewire::test(EditInteractionActiveCategory::class, ['record' => $category->getKey()])
+        ->callAction(DeleteAction::class)
+        ->assertNotified('The record cannot be deleted!');
+
+    expect($category->fresh())->not->toBeNull();
 });
 
 test('an unused category is deleted from its page', function (string $editPage, int $type) {

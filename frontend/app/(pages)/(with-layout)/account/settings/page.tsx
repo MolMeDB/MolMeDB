@@ -13,7 +13,8 @@ export default async function AccountSettingsPage() {
     (await Cookie.getUserData()) as UserSession;
 
   if (!user?.id) {
-    redirect("/login");
+    // Back here after signing in, not to the default page of the login.
+    redirect(`/login?redirect=${encodeURIComponent("/account/settings")}`);
   }
 
   return (

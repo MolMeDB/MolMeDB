@@ -1,6 +1,7 @@
 "use client";
 
 import { getJson } from "@/lib/api/admin";
+import { useHandle401 } from "@/lib/api/admin/redirections";
 import saveNotificationPreferences from "../(actions)/saveNotificationPreferences";
 import {
   getExistingPushSubscription,
@@ -38,6 +39,7 @@ export default function NotificationPreferencesForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+  const handle401 = useHandle401();
   // Known only in the browser: the server render says "not supported" and
   // the browser reads the real answer after hydration.
   const pushSupported = useSyncExternalStore(
@@ -52,11 +54,18 @@ export default function NotificationPreferencesForm() {
 
       if (response && response.code === 200) {
         setPreferences((response.data?.data as Preference[]) ?? []);
+      } else if (response?.code === 401) {
+        // The backend session ended while the frontend still holds the user.
+        handle401();
+
+        return;
       }
 
       const subscription = await getExistingPushSubscription();
       setPushEnabled(Boolean(subscription));
     })();
+    // Loads once: handle401 is a new function on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const grouped = useMemo(() => {

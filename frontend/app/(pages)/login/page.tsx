@@ -89,7 +89,7 @@ function Main(props: { user?: UserSession; defaultEmail?: string; redirectTo?: s
             </Link>
           </div>
           {props.user?.id ? (
-            <LoginInformTable user={props.user} />
+            <LoginInformTable user={props.user} redirectTo={props.redirectTo} />
           ) : (
             <>
               <Image

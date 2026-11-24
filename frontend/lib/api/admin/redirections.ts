@@ -9,7 +9,9 @@ export function useHandle401() {
 
   return () => {
     const currentUrl =
-      pathname + (searchParams.toString() ? `?${searchParams}` : "");
+      pathname +
+      (searchParams.toString() ? `?${searchParams}` : "") +
+      window.location.hash;
 
     router.push(`/login?redirect=${encodeURIComponent(currentUrl)}&expired=1`);
   };

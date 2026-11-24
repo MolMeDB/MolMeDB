@@ -4,12 +4,16 @@ import { AvatarIcon, Button } from "@heroui/react";
 import Link from "next/link";
 import { IoMdLogOut } from "react-icons/io";
 
-export default function LoginInformTable(props: { user?: UserSession }) {
+export default function LoginInformTable(props: {
+  user?: UserSession;
+  /** Where the visitor was going, already checked by safeRedirectPath. */
+  redirectTo?: string;
+}) {
   return (
     <div className="flex flex-col gap-4">
       <Button
         as={Link}
-        href="/"
+        href={props.redirectTo ?? "/"}
         variant="bordered"
         startContent={<AvatarIcon />}
         size="lg"

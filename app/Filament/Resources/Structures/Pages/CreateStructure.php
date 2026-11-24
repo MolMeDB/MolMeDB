@@ -18,6 +18,7 @@ use function Filament\Support\is_app_url;
 class CreateStructure extends CreateRecord
 {
     protected static string $resource = StructureResource::class;
+
     public $isValidated = false;
 
     /**
@@ -28,9 +29,8 @@ class CreateStructure extends CreateRecord
         $data = $formData;
         $data['user_id'] = Auth::user()->id;
 
-        // Remove identifiers
+        // The entered SMILES is not a column; the canonical one is stored.
         unset($data['smiles']);
-        unset($data['inchikey']);
 
         return $data;
     }
@@ -43,7 +43,7 @@ class CreateStructure extends CreateRecord
         $substance = $this->getRecord();
         // Add MMDB identifier
         $substance->update([
-            'identifier' => Identifiers::generate($substance)
+            'identifier' => Identifiers::generate($substance),
         ]);
 
         // Save other provided identifiers
@@ -65,7 +65,6 @@ class CreateStructure extends CreateRecord
         // ]);
     }
 
-
     protected function getFormActions(): array
     {
         return [
@@ -74,62 +73,72 @@ class CreateStructure extends CreateRecord
                 ->formId('form')
                 ->label(fn () => $this->isValidated ? 'Save' : 'Validate')
                 ->color(fn () => $this->isValidated ? 'success' : 'warning')
-                ->action(function() {
-                    if($this->isValidated)
+                ->action(function () {
+                    if ($this->isValidated) {
                         $this->create();
+
+                        return;
+                    }
+
                     $this->validateSmiles();
-                } )
+                }),
         ];
     }
 
-    public function validateSmiles() {
+    public function validateSmiles()
+    {
         $states = $this->form->getState();
-        $state = $states['smiles'];
+        $state = $states['canonical_smiles'] ?? null;
 
-        if(!$state) return;
+        if (! $state) {
+            return;
+        }
 
         // Connect RdKit
-        $rdkit = new Rdkit();
-        if(!$rdkit::is_connected())
-        {
+        $rdkit = new Rdkit;
+        if (! $rdkit::is_connected()) {
             Notification::make()
                 ->danger()
                 ->title('Rdkit disconnected')
                 ->body('Cannot establish connection to RdKit server. Please, try again.')
                 ->send();
-            return; 
+
+            return;
         }
-        
+
         // Validate SMILES
         $canonized = $rdkit->canonize_smiles($state);
-        if(!$canonized)
-        {
+        if (! $canonized) {
             Notification::make()
                 ->danger()
                 ->title('Invalid SMILES')
                 ->body('SMILES cannot be canonized. Please, check your input and try again.')
                 ->send();
-            return; 
+
+            return;
         }
 
         // Get general info
         $info = $rdkit->get_general_info($canonized);
-        if(!$info)
-        {
+        if (! $info) {
             Notification::make()
                 ->danger()
                 ->title('Unable to obtain molecule info.')
                 ->body('Invalid response from the remote server. Please, try again.')
                 ->send();
-            return; 
+
+            return;
         }
 
         // Set values
         $this->form->fill([
             ...$states,
-            'molecular_weight' => round($info->mw, 2),
-            'logp' => round($info->logp, 2),
-            'inchikey' => $info->inchi
+            'canonical_smiles' => $canonized,
+            // Adding zero turns a negative zero into zero, which survives the
+            // round trip through the Livewire payload.
+            'molecular_weight' => round($info->mw, 2) + 0.0,
+            'logp' => round($info->logp, 2) + 0.0,
+            'inchikey' => $info->inchikey,
         ]);
 
         $this->isValidated = true;

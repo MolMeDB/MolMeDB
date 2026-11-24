@@ -2,22 +2,25 @@
 
 namespace App\Filament\Clusters\Categories\Resources\MethodCategories\Pages;
 
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Hidden;
-use Illuminate\Database\Eloquent\Model;
-use Filament\Actions\CreateAction;
-use SolutionForest\FilamentTree\Actions\EditAction;
-use SolutionForest\FilamentTree\Actions\ViewAction;
 use App\Enums\IconEnums;
+use App\Filament\Clusters\Categories\Concerns\RearrangesCategoryTreeWhenAllowed;
 use App\Filament\Clusters\Categories\Resources\MethodCategories\MethodCategoryResource;
 use App\Models\Category;
+use Filament\Actions\CreateAction;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use SolutionForest\FilamentTree\Actions;
 use SolutionForest\FilamentTree\Actions\DeleteAction;
+use SolutionForest\FilamentTree\Actions\EditAction;
+use SolutionForest\FilamentTree\Actions\ViewAction;
 use SolutionForest\FilamentTree\Resources\Pages\TreePage as BasePage;
 
 class MethodCategoryTree extends BasePage
 {
+    use RearrangesCategoryTreeWhenAllowed;
+
     protected static string $resource = MethodCategoryResource::class;
     // protected static ?string $cluster = Categories::class;
 
@@ -59,13 +62,14 @@ class MethodCategoryTree extends BasePage
         $title = $record->title;
         $parent = $record->parent?->title;
         $total_methods = $record->methods()->count();
-        return ($parent ? "{$parent} >> " : '') . "{$title}" . ($parent || $total_methods ? " (# Methods: {$total_methods})"  : '');
+
+        return ($parent ? "{$parent} >> " : '')."{$title}".($parent || $total_methods ? " (# Methods: {$total_methods})" : '');
     }
 
     /**
      * Change default query to filter just membrane type
      */
-    public function getTreeQuery() : Builder
+    public function getTreeQuery(): Builder
     {
         return Category::query()->where('type', Category::TYPE_METHOD);
     }

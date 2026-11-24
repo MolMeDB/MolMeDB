@@ -68,7 +68,7 @@ class InteractionsActiveRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        static $isParentTrashed = method_exists($this->ownerRecord, 'trashed') && $this->ownerRecord->trashed();
+        $isParentTrashed = method_exists($this->ownerRecord, 'trashed') && $this->ownerRecord->trashed();
 
         return InteractionActiveResource::table($table)
             ->description($this->getTableDescriptions())

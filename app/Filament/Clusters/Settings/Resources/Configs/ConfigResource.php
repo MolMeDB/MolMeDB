@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ConfigResource extends Resource
 {
@@ -44,10 +45,11 @@ class ConfigResource extends Resource
                     ->unique(ignoreRecord: true)
                     ->maxLength(255)
                     ->disabledOn('edit')
-                    ->dehydrated()
                     ->columnSpanFull(),
                 Textarea::make('value')
-                    ->rules(fn (Get $get): array => $get('key') === Config::KEY_REMOTE_PREDICTION_URL
+                    // By the stored key of an edited setting: its key field is
+                    // disabled, but its state can still be set by a crafted request.
+                    ->rules(fn (Get $get, ?Config $record): array => ($record?->key ?? $get('key')) === Config::KEY_REMOTE_PREDICTION_URL
                         ? ['url', 'starts_with:https://']
                         : [])
                     ->maxLength(512)
@@ -68,7 +70,7 @@ class ConfigResource extends Resource
                     ->formatStateUsing(fn (?string $state, Config $record): ?string => Config::isSensitiveKey($record->key)
                         ? '••••••••••••'
                         : $state)
-                    ->searchable()
+                    ->searchable(query: fn (Builder $query, string $search): Builder => static::searchValues($query, $search))
                     ->limit(80)
                     ->wrap()
                     ->placeholder('No value'),
@@ -88,6 +90,22 @@ class ConfigResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Searches the values except the sensitive ones, so a search cannot
+     * reveal a masked value piece by piece.
+     */
+    public static function searchValues(Builder $query, string $search): Builder
+    {
+        $sensitiveKeys = Config::query()
+            ->pluck('key')
+            ->filter(fn (string $key): bool => Config::isSensitiveKey($key))
+            ->all();
+
+        return $query
+            ->whereLike('value', '%'.$search.'%')
+            ->whereNotIn('key', $sensitiveKeys);
     }
 
     public static function getPages(): array

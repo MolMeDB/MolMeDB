@@ -2,30 +2,37 @@
 
 namespace App\Filament\Clusters\Categories\Resources\InteractionActiveCategories;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Hidden;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\BulkActionGroup;
-use App\Filament\Resources\SharedRelationManagers\InteractionsActiveRelationManager;
-use App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\Pages\ListInteractionActiveCategories;
+use App\Enums\IconEnums;
+use App\Filament\Clusters\Categories\CategoriesCluster;
+use App\Filament\Clusters\Categories\Concerns\RefusesToDeleteCategoriesInUse;
 use App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\Pages\CreateInteractionActiveCategory;
 use App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\Pages\EditInteractionActiveCategory;
 use App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\Pages\InteractionActiveCategoryTree;
-use App\Enums\IconEnums;
-use App\Filament\Clusters\Categories\CategoriesCluster;
+use App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\Pages\ListInteractionActiveCategories;
+use App\Filament\Resources\SharedRelationManagers\InteractionsActiveRelationManager;
 use App\Models\Category;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Builder;
 
 class InteractionActiveCategoryResource extends Resource
 {
+    use RefusesToDeleteCategoriesInUse;
+
     protected static ?string $model = Category::class;
-    protected static ?string $navigationLabel = "Active interactions";
+
+    protected static ?string $navigationLabel = 'Active interactions';
+
     protected static string|Htmlable|null $navigationBadgeTooltip = 'Manage categories';
-    protected static string | \BackedEnum | null $navigationIcon = IconEnums::INTERACTIONS->value;
+
+    protected static string|\BackedEnum|null $navigationIcon = IconEnums::INTERACTIONS->value;
+
     protected static ?string $cluster = CategoriesCluster::class;
 
     public static function getEloquentQuery(): Builder
@@ -54,37 +61,9 @@ class InteractionActiveCategoryResource extends Resource
                     ->maxLength(255),
                 Hidden::make('type')
                     ->default(Category::TYPE_ACTIVE_INTERACTION),
-                
+
             ]);
     }
-
-    /**
-     * Checks, if membrane category can be deleted
-     */
-    // public static function checkIfDeletable(
-    //     DeleteAction | DeleteAction | \SolutionForest\FilamentTree\Actions\DeleteAction $action 
-    //     , Category $record) : void
-    // {
-    //     if (!$record->isDeletable()) {
-    //         Notification::make()
-    //             ->danger()
-    //             ->title('The record cannot be deleted!')
-    //             ->body('The category probably has assigned some active interactions.')
-    //             ->send();
-
-    //             $action->cancel();
-    //     }
-    //     else if($record->hasChildren())
-    //     {
-    //         Notification::make()
-    //             ->danger()
-    //             ->title('The record cannot be deleted!')
-    //             ->body('The category probably has assigned children.')
-    //             ->send();
-
-    //             $action->cancel();
-    //     }
-    // }
 
     public static function table(Table $table): Table
     {
@@ -107,8 +86,8 @@ class InteractionActiveCategoryResource extends Resource
                     ->badge()
                     ->alignCenter()
                     ->colors([
-                        'danger' => fn ($state) => $state === 0, 
-                        'success' => fn ($state) => $state > 0,  
+                        'danger' => fn ($state) => $state === 0,
+                        'success' => fn ($state) => $state > 0,
                     ])
                     ->sortable(),
                 // Tables\Columns\TextColumn::make('children_count')
@@ -133,7 +112,7 @@ class InteractionActiveCategoryResource extends Resource
     public static function getRelations(): array
     {
         return [
-            InteractionsActiveRelationManager::class
+            InteractionsActiveRelationManager::class,
         ];
     }
 

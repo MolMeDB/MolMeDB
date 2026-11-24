@@ -2,35 +2,39 @@
 
 namespace App\Filament\Clusters\Categories\Resources\MethodCategories;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Hidden;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\BulkActionGroup;
-use App\Filament\Clusters\Categories\Resources\MethodCategories\RelationManagers\MethodsRelationManager;
-use App\Filament\Clusters\Categories\Resources\MethodCategories\Pages\ListMethodCategories;
-use App\Filament\Clusters\Categories\Resources\MethodCategories\Pages\CreateMethodCategory;
-use App\Filament\Clusters\Categories\Resources\MethodCategories\Pages\EditMethodCategory;
-use App\Filament\Clusters\Categories\Resources\MethodCategories\Pages\MethodCategoryTree;
 use App\Enums\IconEnums;
 use App\Filament\Clusters\Categories\CategoriesCluster;
+use App\Filament\Clusters\Categories\Concerns\RefusesToDeleteCategoriesInUse;
+use App\Filament\Clusters\Categories\Resources\MethodCategories\Pages\CreateMethodCategory;
+use App\Filament\Clusters\Categories\Resources\MethodCategories\Pages\EditMethodCategory;
+use App\Filament\Clusters\Categories\Resources\MethodCategories\Pages\ListMethodCategories;
+use App\Filament\Clusters\Categories\Resources\MethodCategories\Pages\MethodCategoryTree;
+use App\Filament\Clusters\Categories\Resources\MethodCategories\RelationManagers\MethodsRelationManager;
 use App\Models\Category;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 
 class MethodCategoryResource extends Resource
 {
+    use RefusesToDeleteCategoriesInUse;
+
     protected static ?string $model = Category::class;
-    protected static ?string $navigationLabel = "Method";
+
+    protected static ?string $navigationLabel = 'Method';
+
     protected static string|Htmlable|null $navigationBadgeTooltip = 'Manage method categories';
 
-    protected static string | \BackedEnum | null $navigationIcon = IconEnums::METHOD->value;
+    protected static string|\BackedEnum|null $navigationIcon = IconEnums::METHOD->value;
 
     protected static ?string $cluster = CategoriesCluster::class;
 
-  
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->where('type', Category::TYPE_METHOD);
@@ -57,37 +61,9 @@ class MethodCategoryResource extends Resource
                     ->maxLength(255),
                 Hidden::make('type')
                     ->default(Category::TYPE_METHOD),
-            
-        ]);
+
+            ]);
     }
-
-    /**
-     * Checks, if membrane category can be deleted
-     */
-    // public static function checkIfDeletable(
-    //     DeleteAction | DeleteAction | \SolutionForest\FilamentTree\Actions\DeleteAction $action 
-    //     , Category $record) : void
-    // {
-    //     if (!$record->isDeletable()) {
-    //         Notification::make()
-    //             ->danger()
-    //             ->title('The record cannot be deleted!')
-    //             ->body('The category probably has assigned some methods.')
-    //             ->send();
-
-    //             $action->cancel();
-    //     }
-    //     else if($record->hasChildren())
-    //     {
-    //         Notification::make()
-    //             ->danger()
-    //             ->title('The record cannot be deleted!')
-    //             ->body('The category probably has assigned children.')
-    //             ->send();
-
-    //             $action->cancel();
-    //     }
-    // }
 
     public static function table(Table $table): Table
     {
@@ -110,8 +86,8 @@ class MethodCategoryResource extends Resource
                     ->badge()
                     ->alignCenter()
                     ->colors([
-                        'danger' => fn ($state) => $state === 0, 
-                        'success' => fn ($state) => $state > 0,  
+                        'danger' => fn ($state) => $state === 0,
+                        'success' => fn ($state) => $state > 0,
                     ])
                     ->sortable(),
                 TextColumn::make('children_count')
@@ -122,12 +98,12 @@ class MethodCategoryResource extends Resource
                     ->color('primary')
                     ->sortable(),
             ])
-            
+
             ->filters([
                 //
             ])
             ->recordActions([
-              
+
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -138,7 +114,7 @@ class MethodCategoryResource extends Resource
     public static function getRelations(): array
     {
         return [
-            MethodsRelationManager::class
+            MethodsRelationManager::class,
         ];
     }
 

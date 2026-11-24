@@ -2,24 +2,24 @@
 
 namespace App\Filament\Clusters\Categories\Resources\MembraneCategories\Pages;
 
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Hidden;
 use App\Enums\IconEnums;
+use App\Filament\Clusters\Categories\Concerns\RearrangesCategoryTreeWhenAllowed;
 use App\Filament\Clusters\Categories\Resources\MembraneCategories\MembraneCategoryResource;
 use App\Models\Category;
-use Filament\Pages\Actions\CreateAction;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use SolutionForest\FilamentTree\Actions;
 use SolutionForest\FilamentTree\Actions\DeleteAction;
 use SolutionForest\FilamentTree\Actions\EditAction;
 use SolutionForest\FilamentTree\Actions\ViewAction;
-use SolutionForest\FilamentTree\Concern;
 use SolutionForest\FilamentTree\Resources\Pages\TreePage as BasePage;
-use SolutionForest\FilamentTree\Support\Utils;
 
 class MembraneCategoryTree extends BasePage
 {
+    use RearrangesCategoryTreeWhenAllowed;
+
     protected static string $resource = MembraneCategoryResource::class;
 
     protected static int $maxDepth = 2;
@@ -60,13 +60,14 @@ class MembraneCategoryTree extends BasePage
         $title = $record->title;
         $parent = $record->parent?->title;
         $total_membranes = $record->membranes()->count();
-        return ($parent ? "{$parent} >> " : '') . "{$title}" . ($parent || $total_membranes ? " (# Membranes: {$total_membranes})"  : '');
+
+        return ($parent ? "{$parent} >> " : '')."{$title}".($parent || $total_membranes ? " (# Membranes: {$total_membranes})" : '');
     }
 
     /**
      * Change default query to filter just membrane type
      */
-    public function getTreeQuery() : Builder
+    public function getTreeQuery(): Builder
     {
         return Category::query()->where('type', Category::TYPE_MEMBRANE);
     }

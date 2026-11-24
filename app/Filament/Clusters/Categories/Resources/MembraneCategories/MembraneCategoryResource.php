@@ -2,31 +2,36 @@
 
 namespace App\Filament\Clusters\Categories\Resources\MembraneCategories;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Hidden;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\BulkActionGroup;
-use App\Filament\Clusters\Categories\Resources\MembraneCategories\RelationManagers\MembranesRelationManager;
-use App\Filament\Clusters\Categories\Resources\MembraneCategories\Pages\ListMembraneCategories;
-use App\Filament\Clusters\Categories\Resources\MembraneCategories\Pages\CreateMembraneCategory;
-use App\Filament\Clusters\Categories\Resources\MembraneCategories\Pages\EditMembraneCategory;
 use App\Enums\IconEnums;
 use App\Filament\Clusters\Categories\CategoriesCluster;
+use App\Filament\Clusters\Categories\Concerns\RefusesToDeleteCategoriesInUse;
+use App\Filament\Clusters\Categories\Resources\MembraneCategories\Pages\CreateMembraneCategory;
+use App\Filament\Clusters\Categories\Resources\MembraneCategories\Pages\EditMembraneCategory;
+use App\Filament\Clusters\Categories\Resources\MembraneCategories\Pages\ListMembraneCategories;
 use App\Filament\Clusters\Categories\Resources\MembraneCategories\Pages\MembraneCategoryTree;
+use App\Filament\Clusters\Categories\Resources\MembraneCategories\RelationManagers\MembranesRelationManager;
 use App\Models\Category;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 
 class MembraneCategoryResource extends Resource
 {
+    use RefusesToDeleteCategoriesInUse;
+
     protected static ?string $model = Category::class;
-    protected static ?string $navigationLabel = "Membrane";
+
+    protected static ?string $navigationLabel = 'Membrane';
+
     protected static string|Htmlable|null $navigationBadgeTooltip = 'Manage membrane categories';
 
-    protected static string | \BackedEnum | null $navigationIcon = IconEnums::MEMBRANE->value;
+    protected static string|\BackedEnum|null $navigationIcon = IconEnums::MEMBRANE->value;
 
     protected static ?string $cluster = CategoriesCluster::class;
 
@@ -56,37 +61,9 @@ class MembraneCategoryResource extends Resource
                     ->maxLength(255),
                 Hidden::make('type')
                     ->default(Category::TYPE_MEMBRANE),
-                
+
             ]);
     }
-
-    /**
-     * Checks, if membrane category can be deleted
-     */
-    // public static function checkIfDeletable(
-    //     DeleteAction | DeleteAction | \SolutionForest\FilamentTree\Actions\DeleteAction $action 
-    //     , Category $record) : void
-    // {
-    //     if (!$record->isDeletable()) {
-    //         Notification::make()
-    //             ->danger()
-    //             ->title('The record cannot be deleted!')
-    //             ->body('The category probably has assigned some membranes.')
-    //             ->send();
-
-    //             $action->cancel();
-    //     }
-    //     else if($record->hasChildren())
-    //     {
-    //         Notification::make()
-    //             ->danger()
-    //             ->title('The record cannot be deleted!')
-    //             ->body('The category probably has assigned children.')
-    //             ->send();
-
-    //             $action->cancel();
-    //     }
-    // }
 
     public static function table(Table $table): Table
     {
@@ -109,8 +86,8 @@ class MembraneCategoryResource extends Resource
                     ->badge()
                     ->alignCenter()
                     ->colors([
-                        'danger' => fn ($state) => $state === 0, 
-                        'success' => fn ($state) => $state > 0,  
+                        'danger' => fn ($state) => $state === 0,
+                        'success' => fn ($state) => $state > 0,
                     ])
                     ->sortable(),
                 TextColumn::make('children_count')
@@ -145,7 +122,7 @@ class MembraneCategoryResource extends Resource
     public static function getRelations(): array
     {
         return [
-            MembranesRelationManager::class
+            MembranesRelationManager::class,
         ];
     }
 

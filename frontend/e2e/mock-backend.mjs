@@ -8,6 +8,7 @@
 // hold the shape of every endpoint's response. A backend change that alters
 // a response therefore reaches these tests with the re-recorded fixture.
 // SAMPLE_VALUES below gives the few fields a page needs a real value for.
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -120,6 +121,13 @@ const routes = readdirSync(contractsDir)
   })
   .sort((a, b) => a.parameters - b.parameters);
 
+/** Sessions started by a login, by the value of their cookie. */
+const sessions = new Map();
+
+function sessionOf(req) {
+  return /(?:^|;\s*)molmedb_session=([^;]+)/.exec(req.headers.cookie ?? "")?.[1];
+}
+
 function send(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(typeof body === "string" ? body : JSON.stringify(body));
@@ -139,11 +147,45 @@ const server = createServer((req, res) => {
       return;
     }
 
+    // Like the real backend, a login starts a session and hands out its
+    // cookies; the frontend keeps them and sends them back with every call.
     if (req.method === "POST" && pathname === "/login") {
-      send(res, 200, {
-        data: { id: 1, name: "E2E Test User", email: "e2e@example.test" },
-        meta: {},
+      const session = randomUUID();
+      sessions.set(session, { signedOut: false });
+      res.writeHead(200, {
+        "Content-Type": "application/json",
+        "Set-Cookie": [
+          `XSRF-TOKEN=${randomUUID()}; Max-Age=7200; Path=/; SameSite=Lax`,
+          `molmedb_session=${session}; Max-Age=7200; Path=/; HttpOnly; SameSite=Lax`,
+        ],
       });
+      res.end(
+        JSON.stringify({
+          data: { id: 1, name: "E2E Test User", email: "e2e@example.test" },
+          meta: {},
+        }),
+      );
+
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/logout") {
+      const session = sessions.get(sessionOf(req));
+
+      if (session) {
+        session.signedOut = true;
+      }
+
+      res.writeHead(204);
+      res.end();
+
+      return;
+    }
+
+    // For the tests only: whether the backend was asked to end a session.
+    if (req.method === "GET" && pathname.startsWith("/__e2e/sessions/")) {
+      const session = sessions.get(pathname.split("/").pop());
+      send(res, session ? 200 : 404, session ?? { message: "No such session." });
 
       return;
     }

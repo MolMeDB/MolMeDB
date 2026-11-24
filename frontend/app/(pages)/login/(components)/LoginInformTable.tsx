@@ -1,8 +1,8 @@
 "use client";
 import { UserSession } from "@/lib/api/admin/interfaces/User";
-import { Avatar, AvatarIcon, Button } from "@heroui/react";
+import { AvatarIcon, Button } from "@heroui/react";
 import Link from "next/link";
-import { IoMdHome, IoMdLogOut } from "react-icons/io";
+import { IoMdLogOut } from "react-icons/io";
 
 export default function LoginInformTable(props: { user?: UserSession }) {
   return (
@@ -21,7 +21,9 @@ export default function LoginInformTable(props: { user?: UserSession }) {
         </label>
       </Button>
       <Button
-        as={Link}
+        // A plain anchor: the router would request the target of a
+        // next/link in advance, and with it sign the user out.
+        as="a"
         className="w-full"
         href="/api/logout"
         color="danger"

@@ -8,6 +8,10 @@ const XSRF_KEY = process.env.COOKIES_BACKEND_XSRF_KEY as string;
 const FRONTEND_URL = process.env.FRONTEND_URL as string;
 
 export async function GET(request: Request) {
+  // A browser loading this address in advance is answered in proxy.ts and
+  // never gets here. Link to this address with a plain anchor only: the
+  // router requests the target of a next/link ahead of the click, which
+  // signed the user out as soon as such a link was on the screen.
   await post("/logout");
 
   const res = NextResponse.redirect(new URL("/login", FRONTEND_URL || request.url));

@@ -69,7 +69,8 @@ class GenerateSitemap extends Command
         $index->add($this->write($pages, 'sitemap-pages.xml'));
 
         $counts = [
-            'structures' => $this->writeEntitySitemaps($index, 'structures', Structure::query()->whereNotNull('identifier'), fn (Structure $structure) => "/mol/{$structure->identifier}", ['id', 'identifier', 'updated_at'], 0.8),
+            // Without the identifiers every Structure eager loads ($with): millions of rows nobody reads here.
+            'structures' => $this->writeEntitySitemaps($index, 'structures', Structure::query()->without('identifiers')->whereNotNull('identifier'), fn (Structure $structure) => "/mol/{$structure->identifier}", ['id', 'identifier', 'updated_at'], 0.8),
             'membranes' => $this->writeEntitySitemaps($index, 'membranes', Membrane::query(), fn (Membrane $membrane) => "/membrane/{$membrane->id}", ['id', 'updated_at'], 0.6),
             'methods' => $this->writeEntitySitemaps($index, 'methods', Method::query(), fn (Method $method) => "/method/{$method->id}", ['id', 'updated_at'], 0.6),
             'proteins' => $this->writeEntitySitemaps($index, 'proteins', Protein::query(), fn (Protein $protein) => "/protein/{$protein->id}", ['id', 'updated_at'], 0.6),

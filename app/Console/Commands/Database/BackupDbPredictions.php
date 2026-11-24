@@ -4,9 +4,10 @@ namespace App\Console\Commands\Database;
 
 use App\Models\Filesystem;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Spatie\TemporaryDirectory\TemporaryDirectory;
-use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Process as SymfonyProcess;
 use Throwable;
 
 class BackupDbPredictions extends Command
@@ -146,26 +147,30 @@ class BackupDbPredictions extends Command
         }
 
         $stderr = '';
-        $process = new Process($arguments, null, ['PGPASSWORD' => $password]);
 
         try {
-            $process->setTimeout(null);
-            $process->run(function (string $type, string $buffer) use ($stream, &$stderr): void {
-                if ($type === Process::OUT) {
-                    fwrite($stream, $buffer);
+            // Started and awaited (not run) so that the output handler also
+            // receives the output of a faked process; the password goes in the
+            // environment, never on the command line.
+            $result = Process::env(['PGPASSWORD' => $password])
+                ->forever()
+                ->start($arguments, function (string $type, string $buffer) use ($stream, &$stderr): void {
+                    if ($type === SymfonyProcess::OUT) {
+                        fwrite($stream, $buffer);
 
-                    return;
-                }
+                        return;
+                    }
 
-                $stderr .= $buffer;
-            });
+                    $stderr .= $buffer;
+                })
+                ->wait();
         } finally {
             if (is_resource($stream)) {
                 fclose($stream);
             }
         }
 
-        if (! $process->isSuccessful()) {
+        if (! $result->successful()) {
             throw new \RuntimeException(trim($stderr) ?: 'pg_dump failed.');
         }
     }

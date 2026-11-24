@@ -75,7 +75,7 @@ class IdentifiersRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        static $isParentTrashed = $this->ownerRecord->trashed();
+        $isParentTrashed = $this->ownerRecord->trashed();
 
         return $table
             ->recordTitleAttribute('value')

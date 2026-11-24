@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\PredictionMethods;
 
 use App\Enums\IconEnums;
+use App\Filament\Resources\Methods\MethodResource;
 use App\Filament\Resources\PredictionMethods\Pages\CreatePredictionMethod;
 use App\Filament\Resources\PredictionMethods\Pages\EditPredictionMethod;
 use App\Filament\Resources\PredictionMethods\Pages\ListPredictionMethods;
-use App\Filament\Resources\Methods\MethodResource;
 use App\Filament\Resources\Publications\PublicationResource;
 use App\Models\Method;
 use App\Models\Publication;
@@ -23,6 +23,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Modules\PredictionWorkers\Models\PredictionMethod;
 
 class PredictionMethodResource extends Resource
@@ -59,6 +60,7 @@ class PredictionMethodResource extends Resource
                         ->visible(fn (Get $get) => filled($get('remote_id')))
                         ->openUrlInNewTab())
                     ->helperText('The real Method this maps to. Determines which Method new interaction/dataset rows get tagged with when finished predictions are imported.')
+                    ->unique(ignoreRecord: true)
                     ->required(),
                 TextInput::make('label')
                     ->required()
@@ -67,6 +69,7 @@ class PredictionMethodResource extends Resource
                     ->label('Remote key')
                     ->required()
                     ->maxLength(255)
+                    ->unique(ignoreRecord: true)
                     ->helperText('Must match the method identifier configured on the remote prediction server.'),
                 TextInput::make('short_key')
                     ->label('Short key')
@@ -115,12 +118,18 @@ class PredictionMethodResource extends Resource
                 TextColumn::make('label')
                     ->sortable()
                     ->searchable(),
+                // Methods live in the default database, so neither a join nor a
+                // subquery can reach them from the predictions connection.
                 TextColumn::make('method.name')
                     ->label('Method')
                     ->placeholder('Not mapped')
                     ->color(fn (PredictionMethod $record) => $record->remote_id ? null : 'danger')
-                    ->sortable()
-                    ->searchable(),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query->whereIn(
+                        'remote_id',
+                        Method::withTrashed()
+                            ->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($search).'%'])
+                            ->pluck('id'),
+                    )),
                 TextColumn::make('remote_key')
                     ->label('Remote key')
                     ->sortable()

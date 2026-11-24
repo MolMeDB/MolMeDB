@@ -2,31 +2,36 @@
 
 namespace App\Filament\Clusters\Categories\Resources\ProteinCategories;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Hidden;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Actions\BulkActionGroup;
-use App\Filament\Clusters\Categories\Resources\ProteinCategories\RelationManagers\ProteinsRelationManager;
-use App\Filament\Clusters\Categories\Resources\ProteinCategories\Pages\ListProteinCategories;
-use App\Filament\Clusters\Categories\Resources\ProteinCategories\Pages\CreateProteinCategory;
-use App\Filament\Clusters\Categories\Resources\ProteinCategories\Pages\EditProteinCategory;
-use App\Filament\Clusters\Categories\Resources\ProteinCategories\Pages\ProteinCategoryTree;
 use App\Enums\IconEnums;
 use App\Filament\Clusters\Categories\CategoriesCluster;
+use App\Filament\Clusters\Categories\Concerns\RefusesToDeleteCategoriesInUse;
+use App\Filament\Clusters\Categories\Resources\ProteinCategories\Pages\CreateProteinCategory;
+use App\Filament\Clusters\Categories\Resources\ProteinCategories\Pages\EditProteinCategory;
+use App\Filament\Clusters\Categories\Resources\ProteinCategories\Pages\ListProteinCategories;
+use App\Filament\Clusters\Categories\Resources\ProteinCategories\Pages\ProteinCategoryTree;
+use App\Filament\Clusters\Categories\Resources\ProteinCategories\RelationManagers\ProteinsRelationManager;
 use App\Models\Category;
+use Filament\Actions\BulkActionGroup;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 
 class ProteinCategoryResource extends Resource
 {
-    protected static ?string $model = Category::class;
-    protected static ?string $navigationLabel = "Protein";
-    protected static string|Htmlable|null $navigationBadgeTooltip = "Manage protein categories";
+    use RefusesToDeleteCategoriesInUse;
 
-    protected static string | \BackedEnum | null $navigationIcon = IconEnums::PROTEIN->value;
+    protected static ?string $model = Category::class;
+
+    protected static ?string $navigationLabel = 'Protein';
+
+    protected static string|Htmlable|null $navigationBadgeTooltip = 'Manage protein categories';
+
+    protected static string|\BackedEnum|null $navigationIcon = IconEnums::PROTEIN->value;
 
     protected static ?string $cluster = CategoriesCluster::class;
 
@@ -56,37 +61,9 @@ class ProteinCategoryResource extends Resource
                     ->maxLength(255),
                 Hidden::make('type')
                     ->default(Category::TYPE_PROTEIN),
-            
-        ]);
+
+            ]);
     }
-
-    /**
-     * Checks, if protein category can be deleted
-     */
-    // public static function checkIfDeletable(
-    //     DeleteAction | DeleteAction | \SolutionForest\FilamentTree\Actions\DeleteAction $action 
-    //     , Category $record) : void
-    // {
-    //     if (!$record->isDeletable()) {
-    //         Notification::make()
-    //             ->danger()
-    //             ->title('The record cannot be deleted!')
-    //             ->body('The category probably has assigned some proteins.')
-    //             ->send();
-
-    //             $action->cancel();
-    //     }
-    //     else if($record->hasChildren())
-    //     {
-    //         Notification::make()
-    //             ->danger()
-    //             ->title('The record cannot be deleted!')
-    //             ->body('The category probably has assigned children.')
-    //             ->send();
-
-    //             $action->cancel();
-    //     }
-    // }
 
     public static function table(Table $table): Table
     {
@@ -109,8 +86,8 @@ class ProteinCategoryResource extends Resource
                     ->badge()
                     ->alignCenter()
                     ->colors([
-                        'danger' => fn ($state) => $state === 0, 
-                        'success' => fn ($state) => $state > 0,  
+                        'danger' => fn ($state) => $state === 0,
+                        'success' => fn ($state) => $state > 0,
                     ])
                     ->sortable(),
                 TextColumn::make('children_count')
@@ -121,12 +98,12 @@ class ProteinCategoryResource extends Resource
                     ->color('primary')
                     ->sortable(),
             ])
-            
+
             ->filters([
                 //
             ])
             ->recordActions([
-              
+
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -137,7 +114,7 @@ class ProteinCategoryResource extends Resource
     public static function getRelations(): array
     {
         return [
-            ProteinsRelationManager::class
+            ProteinsRelationManager::class,
         ];
     }
 

@@ -5,10 +5,14 @@ namespace App\Services;
 use App\Models\Dataset;
 use App\Models\InteractionPassive;
 use App\Models\Structure;
-use JsonSerializable;
+use Exception;
+use Illuminate\Support\Str;
+use Modules\PredictionWorkers\Exceptions\InvalidCosmoResultException;
+use Modules\PredictionWorkers\Exceptions\UnreadableCosmoResultException;
 use Modules\PredictionWorkers\Models\Prediction;
 use Modules\PredictionWorkers\Models\PredictionMethod;
 use Modules\PredictionWorkers\Models\PredictionStructure;
+use Modules\PredictionWorkers\Services\CosmoXmlParser;
 use RuntimeException;
 
 /**
@@ -23,6 +27,8 @@ class PredictionResultImporter
      * before the prediction is marked as failed.
      */
     public const MAX_UNUSABLE_RESULT_ATTEMPTS = 5;
+
+    public function __construct(private CosmoXmlParser $cosmoXmlParser) {}
 
     /**
      * @return 'imported'|'duplicate'|'error'
@@ -47,10 +53,24 @@ class PredictionResultImporter
             return $this->fail($prediction, "Prediction membrane [{$prediction->membrane_id}] has no real Membrane mapped (remote_id is empty).");
         }
 
-        $resultData = $this->resultData($prediction);
+        try {
+            $resultData = $this->resultData($prediction);
+        } catch (InvalidCosmoResultException $exception) {
+            // The file was read and is not a result: it never will be.
+            return $this->failUnusableResult($prediction, 'The result file is not a valid COSMO result: '.$this->reason($exception));
+        } catch (UnreadableCosmoResultException $exception) {
+            // The file is read from a storage that can be out of reach:
+            // tried again for as long as it takes.
+            return $this->fail($prediction, 'The result file could not be read: '.$this->reason($exception));
+        } catch (Exception $exception) {
+            // The same for an error of the storage itself, whose message
+            // (hosts, connections) stays out of the log the owner of the
+            // dataset reads.
+            report($exception);
 
-        // The result could not be loaded (its file is read from a storage
-        // that can be out of reach): tried again for as long as it takes.
+            return $this->fail($prediction, 'The result file could not be read: the storage reported an error.');
+        }
+
         if ($resultData === null) {
             return $this->fail($prediction, 'The parsed result data could not be loaded.');
         }
@@ -131,6 +151,14 @@ class PredictionResultImporter
         return 'imported';
     }
 
+    /**
+     * Why a result file was refused, short enough for the log of a prediction.
+     */
+    private function reason(Exception $exception): string
+    {
+        return Str::limit(Str::squish($exception->getMessage()), 200);
+    }
+
     private function fail(Prediction $prediction, string $message): string
     {
         $prediction->forceFill([
@@ -180,11 +208,14 @@ class PredictionResultImporter
      * structure, so the first job's first solute is taken as the value.
      *
      * Older results predate `data` always being populated at parse time - fall
-     * back to lazily parsing the stored XML file via loadParsedResults(), which
-     * returns the same shape as a PredictionResultJson DTO (jsonSerialize()
-     * normalizes it back to the plain array shape the `data` column would hold).
+     * back to parsing the stored XML file, whose PredictionResultJson DTO
+     * serializes to the plain array shape the `data` column would hold.
      *
-     * @return array<int|string, mixed>|null null when there is no result or it could not be loaded
+     * @return array<int|string, mixed>|null null when there is no result or no file of it
+     *
+     * @throws InvalidCosmoResultException when the file does not hold a COSMO result
+     * @throws UnreadableCosmoResultException when the file could not be read as a whole
+     * @throws Exception when the storage fails
      */
     private function resultData(Prediction $prediction): ?array
     {
@@ -197,8 +228,11 @@ class PredictionResultImporter
         $data = $result->data;
 
         if (! is_array($data)) {
-            $parsed = $result->loadParsedResults();
-            $data = $parsed instanceof JsonSerializable ? $parsed->jsonSerialize() : null;
+            if (! $result->file) {
+                return null;
+            }
+
+            $data = $this->cosmoXmlParser->parse($result->file)->jsonSerialize();
         }
 
         return is_array($data) ? $data : null;

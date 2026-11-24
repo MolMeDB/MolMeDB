@@ -69,6 +69,7 @@ class FilesystemResource extends Resource
                     ->modal()
                     ->icon(IconEnums::ADD->value)
                     ->tooltip('Create a new SSH Credential')
+                    ->authorize(fn (): bool => SshCredentialResource::canCreate())
                     ->form(SshCredentialResource::getFormSchema())
                     ->action(function (array $data, $set): void {
                         $credential = SshCredential::create($data);

@@ -2,9 +2,9 @@
 
 namespace App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\Pages;
 
-use Filament\Actions\DeleteAction;
 use App\Filament\Clusters\Categories\Resources\InteractionActiveCategories\InteractionActiveCategoryResource;
-use Filament\Actions;
+use App\Models\Category;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditInteractionActiveCategory extends EditRecord
@@ -14,7 +14,8 @@ class EditInteractionActiveCategory extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->before(fn (DeleteAction $action, Category $record) => InteractionActiveCategoryResource::checkIfDeletable($action, $record)),
         ];
     }
 }

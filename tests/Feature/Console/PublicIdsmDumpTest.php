@@ -98,7 +98,7 @@ test('the public dump restores into an empty database without errors', function 
     || (new ExecutableFinder)->find('pg_dump') === null
     || (new ExecutableFinder)->find('psql') === null, 'needs PostgreSQL and its client tools');
 
-test('the restorable dump drops the Bingo index and foreign keys to private tables only', function () {
+test('the restorable dump drops the Bingo index, its trigger and foreign keys to private tables only', function () {
     $dump = <<<'SQL'
         SET client_encoding = 'UTF8';
         SET transaction_timeout = 0;
@@ -123,6 +123,12 @@ test('the restorable dump drops the Bingo index and foreign keys to private tabl
         --
 
         CREATE INDEX structures_canonical_smiles_bingo_index ON public.structures USING bingo_idx (canonical_smiles bingo.molecule);
+
+        --
+        -- Name: structures structures_bingo_write_lock; Type: TRIGGER; Schema: public; Owner: postgres
+        --
+
+        CREATE TRIGGER structures_bingo_write_lock BEFORE INSERT OR UPDATE ON public.structures FOR EACH STATEMENT EXECUTE FUNCTION public.structures_bingo_write_lock();
 
         --
         -- Name: datasets datasets_created_by_foreign; Type: FK CONSTRAINT; Schema: public; Owner: postgres
@@ -153,6 +159,7 @@ test('the restorable dump drops the Bingo index and foreign keys to private tabl
         ->and($result)->toContain("SET client_encoding = 'UTF8';")
         ->and($result)->not->toContain('transaction_timeout')
         ->and($result)->not->toContain('bingo_idx')
+        ->and($result)->not->toContain('structures_bingo_write_lock')
         ->and($result)->not->toContain('REFERENCES public.users');
 });
 

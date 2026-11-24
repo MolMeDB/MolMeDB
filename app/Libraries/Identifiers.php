@@ -35,7 +35,7 @@ class Identifiers
                 return $structure->identifier;
             }
 
-            $maxSuffix = Structure::whereRaw("split_part(identifier, '.', 1) = ?", [$structure->parent->identifier])
+            $maxSuffix = Structure::withTrashed()->whereRaw("split_part(identifier, '.', 1) = ?", [$structure->parent->identifier])
                 ->selectRaw("
 					MAX(
 						CASE
@@ -70,7 +70,7 @@ class Identifiers
             }
         }
 
-        $max = Structure::where('identifier', 'like', self::PREFIX.'%')
+        $max = Structure::withTrashed()->where('identifier', 'like', self::PREFIX.'%')
             ->selectRaw("MAX( (substring(split_part(identifier, '.', 1) from '[0-9]+$') )::int ) as max_number")
             ->value('max_number');
 
@@ -134,7 +134,7 @@ class Identifiers
 
     protected static function existsInMolmedbIdentifiers(string $identifier, ?int $exceptStructureId = null): bool
     {
-        $existsInStructures = Structure::query()
+        $existsInStructures = Structure::withTrashed()
             ->where('identifier', $identifier)
             ->when(
                 $exceptStructureId,

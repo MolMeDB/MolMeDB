@@ -46,7 +46,10 @@ export default function Compound2D3DStructure(props: { compound: IStructure }) {
         }
       >
         {!is3Ddisplayed || !props.compound.structure_3d_url ? (
-          <div className="flex flex-row justify-center items-center pt-8 px-8 relative h-[305px] dark:bg-background/70 rounded-2xl">
+          <div
+            data-testid="structure-2d"
+            className="flex flex-row justify-center items-center pt-8 px-8 relative h-[305px] dark:bg-background/70 rounded-2xl overflow-hidden"
+          >
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray/30 dark:bg-background-dark z-10">
                 <Spinner variant="wave" label="Loading..." />
@@ -55,7 +58,11 @@ export default function Compound2D3DStructure(props: { compound: IStructure }) {
             <Image
               onClick={onOpen2D}
               onLoad={() => setIsLoading(false)}
-              className={`object-cover transition-opacity duration-500 cursor-pointer ${
+              radius="none"
+              classNames={{
+                wrapper: "h-full w-full flex justify-center items-center",
+              }}
+              className={`max-h-full max-w-full object-contain transition-opacity duration-500 cursor-pointer ${
                 isLoading ? "opacity-0" : "opacity-100"
               }`}
               src={props.compound?.structure_2d_url}
@@ -74,6 +81,7 @@ export default function Compound2D3DStructure(props: { compound: IStructure }) {
                   <Image
                     alt="2D Structure"
                     fetchPriority="low"
+                    className="max-h-[75vh] max-w-full object-contain"
                     src={props.compound.structure_2d_url_big}
                   />
                 )}
@@ -90,7 +98,7 @@ export default function Compound2D3DStructure(props: { compound: IStructure }) {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col justify-center items-center pt-8 px-8 relative h-[305px] w-full">
+          <div className="relative h-[305px] w-full overflow-hidden">
             <MolStar
               sdfPath={props.compound.structure_3d_url}
               onError={() => setStructure3DError(true)}

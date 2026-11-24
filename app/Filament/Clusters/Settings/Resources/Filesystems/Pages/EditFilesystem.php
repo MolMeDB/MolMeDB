@@ -43,8 +43,25 @@ class EditFilesystem extends EditRecord
                 ->url(fn ($record) => FilesystemResource::getUrl('activities', ['record' => $record]))
                 ->color('warning')
                 ->icon(IconEnums::ACTIVITY->value),
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->hidden(fn (Filesystem $record): bool => $record->isBuiltIn()),
         ];
+    }
+
+    /**
+     * The built-in public and private disks are read-only. Disabling their
+     * form does not stop the fields from being saved, so saving is refused.
+     */
+    protected function beforeValidate(): void
+    {
+        if ($this->getRecord()->isBuiltIn()) {
+            Notification::make()
+                ->danger()
+                ->title('The built-in disks cannot be reconfigured')
+                ->send();
+
+            $this->halt();
+        }
     }
 
     protected function mutateFormDataBeforeSave(array $data): array

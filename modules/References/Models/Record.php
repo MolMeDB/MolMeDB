@@ -3,6 +3,7 @@
 namespace Modules\References\Models;
 
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 use Modules\References\EuropePMC\Enums\Sources;
 use Throwable;
 
@@ -185,16 +186,30 @@ class Record
         );
     }
 
+    /**
+     * The day of publication, when the source gives one. Europe PMC writes
+     * the date of a journal issue as "2020", "2020 Feb" or "2020 Feb 25"
+     * and CrossRef gives it in parts, joined here without leading zeros:
+     * a year alone is no date (it is kept as the year), a month stands for
+     * its first day.
+     */
     public function publicationDate(): ?string
     {
-        if (! is_string($this->journal?->dateOfPublication) || trim($this->journal->dateOfPublication) === '') {
-            return null;
+        $date = is_string($this->journal?->dateOfPublication) ? Str::squish($this->journal->dateOfPublication) : '';
+
+        foreach (['!Y-m-d', '!Y-n-j', '!Y M d', '!Y M j', '!Y F d', '!Y-m', '!Y M', '!Y F'] as $format) {
+            try {
+                $parsed = Carbon::createFromFormat($format, $date);
+
+                // Only a text the format reads as a whole: "2020 Feb 31" is no date.
+                if ($parsed instanceof Carbon && $parsed->format(ltrim($format, '!')) === $date) {
+                    return $parsed->toDateString();
+                }
+            } catch (Throwable) {
+                continue;
+            }
         }
 
-        try {
-            return Carbon::parse($this->journal->dateOfPublication)->toDateString();
-        } catch (Throwable) {
-            return null;
-        }
+        return null;
     }
 }

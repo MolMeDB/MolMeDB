@@ -162,13 +162,18 @@ class UploadQueueConfigure extends Component
         if ($this->record->config) {
             $this->skipFirstRow = $this->record->config->skipFirstRow($this->skipFirstRow);
             $this->separator = in_array($this->record->config->separator(), $this->validSeparators) ? $this->record->config->separator() : $this->separator;
-            $this->columnMapping = $this->record->config->attributes() ? array_filter(
-                $this->record->config->attributes(),
-                fn ($val) => array_key_exists($val, $this->validColumnTypes)
+            // Columns keep their positions, a type the upload type does not know becomes unmapped.
+            $this->columnMapping = $this->record->config->attributes() ? array_map(
+                fn ($val) => is_string($val) && array_key_exists($val, $this->validColumnTypes) ? $val : null,
+                array_values($this->record->config->attributes())
             ) : $this->columnMapping;
         }
 
         $this->reloadTableContent();
+
+        // The form lists the column types of every mapped column, also when the
+        // file could not be read and the preview stays empty.
+        $this->updateColumnTypeOptions();
 
         return $this;
     }
@@ -257,6 +262,7 @@ class UploadQueueConfigure extends Component
     public function validateColumns()
     {
         $this->errorMessages = [];
+        $this->warningMessages = [];
 
         $columnMapping = $this->columnMapping;
 
@@ -317,10 +323,17 @@ class UploadQueueConfigure extends Component
                     continue;
                 }
 
-                $row = array_combine(
-                    $this->columnMapping,
-                    app(UploadQueueCsvParser::class)->parseLine($line, $this->separator)
-                );
+                $values = app(UploadQueueCsvParser::class)->parseLine($line, $this->separator);
+
+                if (count($values) !== count($this->columnMapping)) {
+                    fclose($stream);
+                    $this->errorMessages[] = "Line $i: number of values does not match configured column count.";
+                    $this->isValidated = false;
+
+                    return;
+                }
+
+                $row = array_combine($this->columnMapping, $values);
 
                 $validator = $this->defineValidator($row);
 
@@ -345,8 +358,10 @@ class UploadQueueConfigure extends Component
                         continue;
                     }
 
-                    if (method_exists($validatorClass, 'isOutOfLimits') &&
-                        (new $validatorClass)->isOutOfLimits($row[$validatorClass::$key], $this->record->dataset->method)) {
+                    $method = $this->record->dataset?->method;
+
+                    if ($method && method_exists($validatorClass, 'isOutOfLimits') &&
+                        (new $validatorClass)->isOutOfLimits($row[$validatorClass::$key], $method)) {
                         $this->warningMessages[$validatorClass::$key] = 'Some values for column '.$validatorClass::$label.' are out of method\'s limits.';
                     }
                 }

@@ -58,3 +58,31 @@ test('record citation uses author fallback string built from authors', function 
     expect($record->getAuthorString())->toBe('Doe J., Smith J.')
         ->and($record->citation())->toBe('Doe J., Smith J.: Example title. Journal of Testing, Volume 12 (4), 10-15, 2025');
 });
+
+test('the day of publication is read from the forms Europe PMC and CrossRef write it in', function (?string $written, ?string $day) {
+    $record = (new ReflectionClass(Record::class))->newInstanceWithoutConstructor();
+    $record->journal = new Journal(
+        title: 'Journal of Testing',
+        issue: null,
+        volume: null,
+        dateOfPublication: $written,
+        monthOfPublication: null,
+        yearOfPublication: '2020',
+        issn: null,
+        essn: null,
+    );
+
+    expect($record->publicationDate())->toBe($day);
+})->with([
+    'a full date' => ['2020-02-25', '2020-02-25'],
+    'a day with the name of the month' => ['2020 Feb 25', '2020-02-25'],
+    'a date joined from the parts CrossRef gives' => ['2024-4-11', '2024-04-11'],
+    'a day without a leading zero' => ['2020 Feb 5', '2020-02-05'],
+    'a month' => ['2020 Feb', '2020-02-01'],
+    'a month in digits' => ['2020-02', '2020-02-01'],
+    'a year alone is no date' => ['2020', null],
+    'a day that does not exist' => ['2020 Feb 31', null],
+    'a season' => ['2020 Spring', null],
+    'nothing' => [null, null],
+    'an empty text' => ['  ', null],
+]);

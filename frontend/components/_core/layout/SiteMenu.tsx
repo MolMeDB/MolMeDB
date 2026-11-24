@@ -323,6 +323,7 @@ export function SiteMenu(props: {
             <NavbarMenuItem onClick={() => setIsMenuOpen(false)}>
               <MenuItem
                 href="/api/logout"
+                plainAnchor
                 title="Log out"
                 icon={<IoMdLogOut size={22} />}
                 color="danger"
@@ -354,15 +355,23 @@ const MenuItem = ({
   demoMark = false,
   icon,
   color,
+  plainAnchor = false,
 }: {
   href?: string;
   title?: string;
   demoMark?: boolean;
   icon?: ReactNode;
   color?: "primary" | "danger";
+  /**
+   * For an address that does something when requested (the logout): the
+   * router would request the target of a next/link in advance.
+   */
+  plainAnchor?: boolean;
 }) => {
+  const Anchor = plainAnchor ? "a" : Link;
+
   return (
-    <Link
+    <Anchor
       className={`relative inline-flex items-center gap-3 tap-highlight-transparent font-semibold
         outline-none data-[focus-visible=true]:z-10 data-[focus-visible=true]:outline-2 
         data-[focus-visible=true]:outline-focus data-[focus-visible=true]:outline-offset-2 
@@ -384,7 +393,7 @@ const MenuItem = ({
       )}
       {icon ? <span className="shrink-0">{icon}</span> : null}
       {title}
-    </Link>
+    </Anchor>
   );
 };
 

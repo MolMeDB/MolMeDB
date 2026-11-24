@@ -29,6 +29,7 @@ class CreatePublication extends CreateRecord
                 $data['issue'] = $record->journal?->issue;
                 $data['page'] = $record->pageInfo;
                 $data['year'] = $record->journal?->yearOfPublication;
+                $data['published_at'] = $record->publicationDate();
                 $data['validated_at'] = now();
             } else {
                 Notification::make()
@@ -48,6 +49,7 @@ class CreatePublication extends CreateRecord
                 $data['issue'] = $record->journal?->issue;
                 $data['page'] = $record->pageInfo;
                 $data['year'] = $record->journal?->yearOfPublication;
+                $data['published_at'] = $record->publicationDate();
                 $data['validated_at'] = now();
             } else {
                 Notification::make()

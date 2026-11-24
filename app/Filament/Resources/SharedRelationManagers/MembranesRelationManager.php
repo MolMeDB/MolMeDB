@@ -2,21 +2,22 @@
 
 namespace App\Filament\Resources\SharedRelationManagers;
 
-use Filament\Schemas\Schema;
-use Filament\Tables\Filters\TrashedFilter;
-use Filament\Actions\ViewAction;
-use Filament\Actions\EditAction;
 use App\Enums\IconEnums;
 use App\Filament\Resources\Membranes\MembraneResource;
 use App\Models\Membrane;
 use App\Models\Publication;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
 class MembranesRelationManager extends RelationManager
 {
     protected static string $relationship = 'membranes';
-    protected static string | \BackedEnum | null $icon = IconEnums::MEMBRANE->value;
+
+    protected static string|\BackedEnum|null $icon = IconEnums::MEMBRANE->value;
 
     public function form(Schema $schema): Schema
     {
@@ -25,7 +26,7 @@ class MembranesRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        static $isParentTrashed = $this->ownerRecord->trashed();
+        $isParentTrashed = $this->ownerRecord->trashed();
 
         return MembraneResource::table($table)
             ->description($this->getTableDescriptions())
@@ -39,14 +40,13 @@ class MembranesRelationManager extends RelationManager
                 EditAction::make()
                     ->url(fn (Membrane $record) => MembraneResource::getUrl('edit', ['record' => $record]))
                     ->icon(IconEnums::NEWTAB->value)
-                    ->openUrlInNewTab()
+                    ->openUrlInNewTab(),
             ]);
     }
 
-    private function getTableDescriptions() : string 
+    private function getTableDescriptions(): string
     {
-        return match($this->ownerRecord::class)
-        {
+        return match ($this->ownerRecord::class) {
             Publication::class => 'Membranes originating from the publication.',
             default => 'Attached membranes.'
         };

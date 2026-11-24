@@ -402,7 +402,11 @@ class UploadQueueResource extends Resource
             ->modalHeading('Approve upload data?')
             ->modalDescription('The upload will be returned to the processing queue and the final import step will run.')
             ->action(function (UploadQueue $record) {
-                $record->approveAdminReview(Auth::id());
+                if (! $record->approveAdminReview(Auth::id())) {
+                    static::notifyReviewIsOver();
+
+                    return;
+                }
 
                 Notification::make()
                     ->title('Upload approved')
@@ -412,6 +416,19 @@ class UploadQueueResource extends Resource
             })
             ->successRedirectUrl(fn (UploadQueue $record): string => static::editUrl($record))
             ->hidden(fn (UploadQueue $record) => ! $record->canBeReviewedByAdmin());
+    }
+
+    /**
+     * Tells the administrator that the record they decided about has left
+     * the review meanwhile (taken back by its uploader, or decided already).
+     */
+    private static function notifyReviewIsOver(): void
+    {
+        Notification::make()
+            ->title('Upload is no longer waiting for review')
+            ->body('Its state has changed since this page was opened. Nothing was changed.')
+            ->warning()
+            ->send();
     }
 
     public static function rejectReviewAction(): Action
@@ -431,7 +448,11 @@ class UploadQueueResource extends Resource
             ->modalHeading('Reject upload data?')
             ->modalDescription('The reason will be stored in upload logs and visible to administrators.')
             ->action(function (UploadQueue $record, array $data) {
-                $record->rejectAdminReview((string) $data['reason'], Auth::id());
+                if (! $record->rejectAdminReview((string) $data['reason'], Auth::id())) {
+                    static::notifyReviewIsOver();
+
+                    return;
+                }
 
                 Notification::make()
                     ->title('Upload rejected')

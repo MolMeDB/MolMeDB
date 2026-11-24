@@ -48,7 +48,6 @@ class NotificationTemplateResource extends Resource
                                 $set('name', NotificationTemplate::keyOptions()[$state] ?? null);
                             })
                             ->disabledOn('edit')
-                            ->dehydrated()
                             ->helperText('Template keys are defined by the application and can be selected only once.'),
                         TextInput::make('name')
                             ->required()

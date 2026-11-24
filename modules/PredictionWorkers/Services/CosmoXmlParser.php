@@ -9,9 +9,15 @@ use Modules\PredictionWorkers\DTO\SoluteResult;
 use Modules\PredictionWorkers\Exceptions\InvalidCosmoResultException;
 use Modules\PredictionWorkers\Exceptions\UnreadableCosmoResultException;
 use Modules\PredictionWorkers\Models\PredictionFile;
+use ZipArchive;
 
 class CosmoXmlParser
 {
+    /**
+     * The largest XML file unpacked from a result archive.
+     */
+    public const MAX_ARCHIVED_XML_BYTES = 32 * 1024 * 1024;
+
     /**
      * @throws UnreadableCosmoResultException when the file could not be read as a whole
      * @throws InvalidCosmoResultException when the file was read and is not a COSMO result
@@ -44,7 +50,12 @@ class CosmoXmlParser
 
         // Results were also stored as the downloaded archive with the XML inside.
         if (str_starts_with($content, "PK\x03\x04")) {
-            throw new UnreadableCosmoResultException("The stored result is an archive, not a COSMO XML file, {$where}");
+            if (! class_exists(ZipArchive::class)) {
+                throw new UnreadableCosmoResultException("The stored result is an archive and PHP cannot open archives here, {$where}");
+            }
+
+            $content = $this->xmlFromArchive($content)
+                ?? throw new InvalidCosmoResultException('The stored archive holds no COSMO XML file.');
         }
 
         if (trim($content) === '') {
@@ -52,6 +63,62 @@ class CosmoXmlParser
         }
 
         return $this->parseString($content);
+    }
+
+    /**
+     * The COSMO XML packed in a result archive: the remote service zips the
+     * whole calculation directory. Null when the content is no archive that
+     * can be opened or none of its XML files is a COSMO result.
+     */
+    public function xmlFromArchive(string $contents): ?string
+    {
+        if (! str_starts_with($contents, 'PK') || ! class_exists(ZipArchive::class)) {
+            return null;
+        }
+
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'prediction-result-');
+
+        if ($temporaryPath === false || file_put_contents($temporaryPath, $contents) === false) {
+            return null;
+        }
+
+        $archive = new ZipArchive;
+        $isOpen = false;
+
+        try {
+            if ($archive->open($temporaryPath, ZipArchive::RDONLY) !== true) {
+                return null;
+            }
+
+            $isOpen = true;
+
+            for ($index = 0; $index < $archive->numFiles; $index++) {
+                $entry = $archive->statIndex($index);
+                $entryName = is_array($entry) ? (string) ($entry['name'] ?? '') : '';
+
+                // The size is the one the archive declares: a file that would
+                // unpack into more is not a result and is not unpacked.
+                if (! str_ends_with(strtolower($entryName), '.xml') || (int) ($entry['size'] ?? 0) > self::MAX_ARCHIVED_XML_BYTES) {
+                    continue;
+                }
+
+                $xml = $archive->getFromIndex($index, self::MAX_ARCHIVED_XML_BYTES);
+
+                if (is_string($xml) && str_contains($xml, '<micoutput')) {
+                    return $xml;
+                }
+            }
+
+            return null;
+        } finally {
+            if ($isOpen) {
+                $archive->close();
+            }
+
+            if (file_exists($temporaryPath)) {
+                unlink($temporaryPath);
+            }
+        }
     }
 
     /**

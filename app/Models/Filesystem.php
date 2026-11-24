@@ -50,6 +50,22 @@ class Filesystem extends BaseModel
 
     const TYPE_PREDICTIONS_COSMO_EXPORT = 11;
 
+    /**
+     * The built-in public and private disks cannot be removed, whoever asks.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(fn (Filesystem $filesystem): bool => ! $filesystem->isBuiltIn());
+    }
+
+    /**
+     * The public and private disks the application itself is configured with.
+     */
+    public function isBuiltIn(): bool
+    {
+        return (int) $this->type < 0;
+    }
+
     public static $types = [
         self::TYPE_PUBLIC => 'Public',
         self::TYPE_PRIVATE => 'Private',

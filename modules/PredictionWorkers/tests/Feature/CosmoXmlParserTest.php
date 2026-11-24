@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Storage;
 use Modules\PredictionWorkers\DTO\JobResult;
 use Modules\PredictionWorkers\DTO\PredictionResultJson;
 use Modules\PredictionWorkers\DTO\SoluteResult;
+use Modules\PredictionWorkers\Exceptions\InvalidCosmoResultException;
+use Modules\PredictionWorkers\Exceptions\UnreadableCosmoResultException;
 use Modules\PredictionWorkers\Models\PredictionFile;
 use Modules\PredictionWorkers\Services\CosmoXmlParser;
 
@@ -62,7 +64,74 @@ test('cosmo xml parser throws when xml file is missing', function () {
     ]);
 
     expect(fn () => app(CosmoXmlParser::class)->parse($file))
-        ->toThrow(RuntimeException::class, 'COSMO XML file not found');
+        ->toThrow(UnreadableCosmoResultException::class, 'COSMO XML file not found on disk [predictions-test] path [missing.xml]');
+});
+
+test('cosmo xml parser does not judge a file it read only in part or an archive', function (string $read, int $size, string $reason) {
+    $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
+    $disk->shouldReceive('exists')->andReturn(true);
+    $disk->shouldReceive('get')->andReturn($read);
+    $disk->shouldReceive('size')->andReturn($size);
+    Storage::shouldReceive('disk')->with('predictions-test')->andReturn($disk);
+
+    $file = new PredictionFile(['storage' => 'predictions-test', 'path' => 'results/cosmo.xml']);
+
+    expect(fn () => app(CosmoXmlParser::class)->parse($file))->toThrow(UnreadableCosmoResultException::class, $reason);
+})->with([
+    'nothing read of a file with content' => ['', 2048, 'read only in part (0 of 2048 bytes)'],
+    'a part read' => ['<micoutput><joblist>', 2048, 'read only in part (20 of 2048 bytes)'],
+    'an archive' => ["PK\x03\x04rest", 8, 'is an archive'],
+]);
+
+test('cosmo xml parser does not judge a file the storage could not read', function () {
+    $disk = Mockery::mock(Illuminate\Contracts\Filesystem\Filesystem::class);
+    $disk->shouldReceive('exists')->andReturn(true);
+    $disk->shouldReceive('get')->andReturn(null);
+    Storage::shouldReceive('disk')->with('predictions-test')->andReturn($disk);
+
+    $file = new PredictionFile(['storage' => 'predictions-test', 'path' => 'results/cosmo.xml']);
+
+    expect(fn () => app(CosmoXmlParser::class)->parse($file))
+        ->toThrow(UnreadableCosmoResultException::class, 'Unable to read COSMO XML file on disk [predictions-test] path [results/cosmo.xml]');
+});
+
+test('cosmo xml parser tells content that is not a result from a file it could not read', function (string $content, string $reason) {
+    Storage::fake('predictions-test');
+    Storage::disk('predictions-test')->put('results/cosmo.xml', $content);
+
+    $file = new PredictionFile(['storage' => 'predictions-test', 'path' => 'results/cosmo.xml']);
+
+    expect(fn () => app(CosmoXmlParser::class)->parse($file))->toThrow(InvalidCosmoResultException::class, $reason);
+})->with([
+    // What the remote service leaves behind when its calculation stops half way.
+    'cut short' => ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<micoutput>\n  <joblist>\n\n", 'not well-formed XML (line '],
+    'not XML' => ['Calculation failed.', 'not well-formed XML'],
+    'another document' => ['<html><body>Not found</body></html>', 'Expected <micoutput>'],
+    'without jobs' => ['<micoutput></micoutput>', 'Missing <joblist>'],
+    'empty' => ["  \n", 'The file is empty'],
+]);
+
+test('cosmo xml parser leaves the XML error reporting of the application as it was', function () {
+    libxml_use_internal_errors(false);
+
+    expect(fn () => app(CosmoXmlParser::class)->parseString('<micoutput><joblist>'))->toThrow(InvalidCosmoResultException::class)
+        ->and(libxml_use_internal_errors())->toBeFalse()
+        ->and(libxml_get_last_error())->toBeFalse();
+
+    // A caller that collects XML errors itself keeps doing so, with its own.
+    libxml_use_internal_errors(true);
+    simplexml_load_string('<mine>');
+    $own = count(libxml_get_errors());
+
+    try {
+        expect(fn () => app(CosmoXmlParser::class)->parseString('<micoutput><joblist>'))
+            ->toThrow(InvalidCosmoResultException::class, 'Premature end of data in tag joblist')
+            ->and(libxml_use_internal_errors())->toBeTrue()
+            ->and(count(libxml_get_errors()))->toBeGreaterThanOrEqual($own);
+    } finally {
+        libxml_clear_errors();
+        libxml_use_internal_errors(false);
+    }
 });
 
 test('prediction result dto serializes nested jobs and solutes', function () {

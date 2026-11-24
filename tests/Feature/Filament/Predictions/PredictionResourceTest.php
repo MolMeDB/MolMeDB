@@ -187,7 +187,8 @@ test('the prediction detail has no save button', function () {
 });
 
 test('the datasets tab lists the datasets the prediction is part of', function () {
-    actAsFilamentPredictionManager($this);
+    // The tab is shown to users who may see prediction datasets.
+    $this->actingAs(createFilamentPredictionUser([PermissionEnums::PREDICTIONS_MANAGE, PermissionEnums::PREDICTION_DATASET_MANAGE_ALL]));
     ['prediction' => $prediction, 'dataset' => $dataset] = createPredictionDataset(User::factory()->create());
     ['dataset' => $second] = createPredictionDataset(User::factory()->create());
     ['dataset' => $unrelated] = createPredictionDataset(User::factory()->create());

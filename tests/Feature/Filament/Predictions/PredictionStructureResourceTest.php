@@ -81,7 +81,7 @@ test('the predictions tab of a structure lists only its predictions', function (
 });
 
 test('the datasets tab of a structure lists the datasets of its predictions', function () {
-    $this->actingAs(createFilamentPredictionUser([PermissionEnums::PREDICTIONS_MANAGE]));
+    $this->actingAs(createFilamentPredictionUser([PermissionEnums::PREDICTIONS_MANAGE, PermissionEnums::PREDICTION_DATASET_MANAGE_ALL]));
     // A structure without predictions, so that structure and prediction ids differ.
     $withoutPredictions = PredictionStructure::query()->create(['canonical_smiles' => 'O']);
     ['structure' => $structure, 'dataset' => $dataset] = createPredictionDataset(User::factory()->create());

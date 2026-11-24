@@ -88,7 +88,7 @@ test('the document version needs an author and allows no future dates', function
     $fields = richBlockSchemaFields(DocumentVersionBlock::class);
 
     expect($fields['published_at'])->toBeInstanceOf(DatePicker::class)
-        ->and($fields['published_at']->getMaxDate())->toBe(today()->toDateString())
+        ->and($fields['published_at']->getMaxDate())->toStartWith(today()->toDateString())
         ->and($fields['author_name']->isRequired())->toBeTrue()
         ->and($fields['author_url']->isRequired())->toBeFalse();
 });

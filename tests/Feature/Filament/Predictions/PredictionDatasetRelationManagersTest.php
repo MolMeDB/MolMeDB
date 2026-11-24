@@ -1,5 +1,8 @@
 <?php
 
+use Filament\Notifications\Livewire\Notifications;
+use Filament\Notifications\NotificationMailbox;
+
 require_once __DIR__.'/filament_prediction_helpers.php';
 
 use App\Enums\PermissionEnums;
@@ -69,7 +72,13 @@ function addPredictionToFilamentDataset(array $dataset, array $attributes = []):
  */
 function lastFilamentNotificationTitle(): ?string
 {
-    return collect(session()->get('filament.notifications', []))->last()['title'] ?? null;
+    app(NotificationMailbox::class)->flush();
+
+    $notifications = new Notifications;
+    $notifications->mount();
+    $notifications->pullNotifications();
+
+    return $notifications->notifications->last()?->getTitle();
 }
 
 /**

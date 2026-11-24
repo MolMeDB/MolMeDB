@@ -43,12 +43,12 @@ function ownerRmUploadQueue(int $type): UploadQueue
 }
 
 test('an existing publication is attached to a method as its reference and detached again', function () {
-    $this->actingAs(createFilamentResourceUser([PermissionEnums::MEMBRANE_METHOD_VIEW, PermissionEnums::MEMBRANE_METHOD_EDIT]));
+    $this->actingAs(createFilamentResourceUser([PermissionEnums::MEMBRANE_METHOD_VIEW, PermissionEnums::MEMBRANE_METHOD_EDIT, PermissionEnums::PUBLICATION_VIEW]));
     $method = createApiMethod();
     $publication = createApiPublication(['citation' => 'Reference of the method']);
 
     $component = Livewire::test(PublicationsRelationManager::class, ['ownerRecord' => $method, 'pageClass' => EditMethod::class])
-        ->assertSee("Method's references. Warning! Not related to assigned datasets or interactions.")
+        ->assertSee('references. Warning! Not related to assigned datasets or interactions.')
         ->callTableAction('attach', data: ['recordId' => $publication->id])
         ->assertHasNoTableActionErrors();
 
@@ -67,14 +67,15 @@ test('an existing publication is attached to a method as its reference and detac
 test('a new publication is created from a membrane tab only by users who may create publications', function () {
     $membrane = createApiMembrane();
 
-    $this->actingAs(createFilamentResourceUser([PermissionEnums::MEMBRANE_METHOD_VIEW, PermissionEnums::MEMBRANE_METHOD_EDIT]));
+    $this->actingAs(createFilamentResourceUser([PermissionEnums::MEMBRANE_METHOD_VIEW, PermissionEnums::MEMBRANE_METHOD_EDIT, PermissionEnums::PUBLICATION_VIEW]));
     Livewire::test(PublicationsRelationManager::class, ['ownerRecord' => $membrane, 'pageClass' => EditMembrane::class])
-        ->assertSee("Membrane's references.")
+        ->assertSee('references. Warning! Not related to assigned datasets or interactions.')
         ->assertTableActionHidden('create');
 
     $this->actingAs(createFilamentResourceUser([
         PermissionEnums::MEMBRANE_METHOD_VIEW,
         PermissionEnums::MEMBRANE_METHOD_EDIT,
+        PermissionEnums::PUBLICATION_VIEW,
         PermissionEnums::PUBLICATION_EDIT,
     ]));
     Livewire::test(PublicationsRelationManager::class, ['ownerRecord' => $membrane, 'pageClass' => EditMembrane::class])

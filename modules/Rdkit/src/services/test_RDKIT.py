@@ -3,6 +3,7 @@ import unittest
 
 from rdkit import Chem
 
+from lib.exceptions.InvalidParameter import InvalidParameterError
 from services.RDKIT import RDKIT, canonical_smiles
 
 
@@ -97,6 +98,14 @@ class CanonicalSmilesTest(unittest.TestCase):
             {"canonical_smiles": ["C1=CC=CC=C1", None, None]},
             rdkit.canonizeSmilesBatch({"smiles": ["c1ccccc1", "not a smiles", ""]}).data,
         )
+
+
+    def test_batch_refuses_too_many_too_long_or_non_string_smiles(self):
+        rdkit = RDKIT()
+
+        for smiles in (["C"] * 1001, ["C" * 4001], [123], "CCO"):
+            with self.assertRaises(InvalidParameterError):
+                rdkit.canonizeSmilesBatch({"smiles": smiles})
 
 
 if __name__ == "__main__":

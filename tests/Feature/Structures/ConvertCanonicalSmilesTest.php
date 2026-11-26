@@ -139,6 +139,33 @@ test('a removed record is converted even when it shares the form of one that sta
         ->and(Structure::query()->storedAs('C1=CC=CC=C1')->first()->id)->toBe($kept->id);
 });
 
+test('unreadable or blank records do not collide, and the join hint keeps a record that is not removed', function () {
+    createApiStructure(['canonical_smiles' => 'not a molecule']);
+    createApiStructure(['canonical_smiles' => 'not a molecule']);
+    createApiStructure(['canonical_smiles' => '']);
+    createApiStructure(['canonical_smiles' => '']);
+    $removed = createApiStructure(['canonical_smiles' => 'c1ccccc1']);
+    $removed->delete();
+    $first = createApiStructure(['canonical_smiles' => 'C1=CC=CC=C1']);
+    $second = createApiStructure(['canonical_smiles' => 'c1ccccc1']);
+
+    $this->artisan('structures:convert-canonical-smiles', ['--only' => 'structures', '--dry-run' => true])
+        ->expectsTable(['', 'records'], [
+            ['already in the canonical form', 1],
+            ['to convert', 0],
+            ['unreadable by RDKit (left as they are)', 4],
+            ['colliding (left as they are)', '3 in 1 groups'],
+        ])
+        ->expectsOutputToContain("php artisan structures:join-records {$first->id} {$second->id}")
+        ->doesntExpectOutputToContain("structures:join-records {$removed->id}");
+});
+
+test('the index can be rebuilt on its own', function () {
+    $this->artisan('structures:convert-canonical-smiles', ['--reindex-only' => true])
+        ->expectsOutputToContain('There is no Bingo index to rebuild on this database.')
+        ->assertSuccessful();
+})->skip(fn (): bool => DB::getDriverName() === 'pgsql', 'On PostgreSQL the Bingo test below rebuilds the index.');
+
 test('the prediction structures are converted the same way', function () {
     $benzene = PredictionStructure::query()->create(['canonical_smiles' => 'c1ccccc1']);
     $alcohol = PredictionStructure::query()->create(['canonical_smiles' => 'OCc1ccccc1']);

@@ -46,6 +46,8 @@ class RDKIT:
     PREDICTION_ALLOWED_ATOMIC_NUMBERS = {1, 6, 7, 8, 9, 15, 16, 17, 35, 53}
     PREDICTION_ALLOWED_ELEMENTS = ["C", "H", "O", "N", "P", "S", "F", "Cl", "Br", "I"]
     CANONIZE_BATCH_MAX = 1000
+    # The length of the canonical_smiles columns
+    SMILES_MAX_LENGTH = 4000
 
     # Fragment molecule
     # def mmpaFragment(self, params = {}, parent = None):
@@ -159,7 +161,11 @@ class RDKIT:
     def canonizeSmilesBatch(self, params = {}):
         smiles = params["smiles"]
 
-        if not isinstance(smiles, list) or len(smiles) > self.CANONIZE_BATCH_MAX or not all(isinstance(s, str) for s in smiles):
+        if (
+            not isinstance(smiles, list)
+            or len(smiles) > self.CANONIZE_BATCH_MAX
+            or not all(isinstance(s, str) and len(s) <= self.SMILES_MAX_LENGTH for s in smiles)
+        ):
             raise InvalidParameterError("smiles")
 
         result = []

@@ -5,13 +5,14 @@ from typing import Any, Optional, Dict
 from urllib.parse import urlparse, unquote
 from lib.router import Router, ApiResponse, ResponseType
 from lib.exceptions.InvalidParameter import InvalidParameterError
+from lib.exceptions.InvalidRoute import InvalidPathError
 
 class HttpRequest():
     def __init__(self, request: BaseHTTPRequestHandler) -> None:
         self.request = request
         self.authToken: Optional[str] = self._parse_auth()
-        self.query: Dict[str, Any] = {**self._parse_query(), **self._parse_body()}
         self.uri: str = self._parse_uri()
+        self.query: Dict[str, Any] = {**self._parse_query(), **self._parse_body()}
         self.response: Optional[ApiResponse] = None
         # Define router and register routes
         self.router = Router()
@@ -31,12 +32,17 @@ class HttpRequest():
             params = {}
         return {k: unquote(v) for k, v in params.items()}
         
-    # A POST request carries its parameters as a JSON object.
+    # A POST request carries its parameters as a JSON object; only the batch
+    # endpoints take one, the others read strings from the query.
     MAX_BODY_BYTES = 10 * 1024 * 1024
+    POST_PATHS = {'structure/canonize/batch'}
 
     def _parse_body(self) -> Dict[str, Any]:
         if self.request.command != "POST":
             return {}
+
+        if self.uri not in self.POST_PATHS:
+            raise InvalidPathError(self.uri)
 
         try:
             length = int(self.request.headers.get('Content-Length') or 0)

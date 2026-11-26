@@ -23,7 +23,8 @@ class ConvertCanonicalSmiles extends Command
         {--chunk=1000 : Records per RDKit batch and per update}
         {--report= : Write the records left as they are (collisions, unreadable) to this CSV file}
         {--skip-bingo-check : Do not count the records Bingo rejects before and after}
-        {--skip-reindex : Do not rebuild the Bingo index of structures}';
+        {--skip-reindex : Do not rebuild the Bingo index of structures}
+        {--reindex-only : Only rebuild the Bingo index of structures (after a run with --skip-reindex)}';
 
     protected $description = 'Converts stored canonical SMILES to the current form of the RDKit service (Kekulé, readable by Bingo) and reports the records that would collide.';
 
@@ -40,6 +41,10 @@ class ConvertCanonicalSmiles extends Command
             $this->error('--only takes "structures" or "predictions".');
 
             return self::INVALID;
+        }
+
+        if ($this->option('reindex-only')) {
+            return $this->rebuildIndex(app(CanonicalSmilesConversion::class)) ? self::SUCCESS : self::FAILURE;
         }
 
         $dryRun = (bool) $this->option('dry-run');
@@ -146,11 +151,13 @@ class ConvertCanonicalSmiles extends Command
                 array_map(fn (array $row): array => [$row['id'], $row['identifier'] ?? '', $row['stored'], $row['deleted'] ? 'yes' : ''], $group['records']),
             );
 
-            if ($plan->target === CanonicalSmilesConversion::TARGET_STRUCTURES) {
-                $ids = array_column($group['records'], 'id');
-                $keep = array_shift($ids);
+            // join-records joins records that are not removed only.
+            $joinable = array_column(array_filter($group['records'], fn (array $row): bool => ! $row['deleted']), 'id');
 
-                foreach ($ids as $other) {
+            if ($plan->target === CanonicalSmilesConversion::TARGET_STRUCTURES && count($joinable) > 1) {
+                $keep = array_shift($joinable);
+
+                foreach ($joinable as $other) {
                     $this->line("    e.g. php artisan structures:join-records {$keep} {$other}");
                 }
             }
@@ -179,16 +186,27 @@ class ConvertCanonicalSmiles extends Command
         }
     }
 
-    private function rebuildIndex(CanonicalSmilesConversion $conversion): void
+    private function rebuildIndex(CanonicalSmilesConversion $conversion): bool
     {
-        $this->line('Rebuilding the Bingo index of structures (structure queries wait until it is done)...');
+        $this->line('Rebuilding the Bingo index of structures (every query on structures waits until it is done)...');
         $started = microtime(true);
 
-        if ($conversion->rebuildIndex()) {
+        try {
+            $rebuilt = $conversion->rebuildIndex();
+        } catch (Throwable $e) {
+            $this->error('The index was not rebuilt: '.$e->getMessage());
+            $this->line('It keeps working; rebuild it at a quiet hour with --reindex-only.');
+
+            return false;
+        }
+
+        if ($rebuilt) {
             $this->info(sprintf('Index %s rebuilt in %d s.', CanonicalSmilesConversion::BINGO_INDEX, microtime(true) - $started));
         } else {
             $this->line('There is no Bingo index to rebuild on this database.');
         }
+
+        return true;
     }
 
     /**

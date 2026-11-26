@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use Modules\Rdkit\Rdkit;
@@ -34,6 +35,9 @@ class CanonicalSmilesConversion
     public const BINGO_INDEX = 'structures_canonical_smiles_bingo_index';
 
     private const WORK_TABLE = 'canonical_smiles_conversion';
+
+    /** The lock PredictionsController stores a prediction dataset under */
+    public const PREDICTIONS_STORE_LOCK = 'predictions:dataset-store';
 
     /** How many records a report lists at most */
     private const LISTED = 200;
@@ -110,6 +114,7 @@ class CanonicalSmilesConversion
     {
         $this->assertScanned();
 
+        $chunk = max(1, min($chunk, Rdkit::CANONIZE_BATCH_MAX));
         $converted = 0;
         $changedMeanwhile = 0;
         $collidedMeanwhile = 0;
@@ -121,7 +126,7 @@ class CanonicalSmilesConversion
             $ids = $this->convertible()
                 ->where('id', '>', $lastId)
                 ->orderBy('id')
-                ->limit(max(1, $chunk))
+                ->limit($chunk)
                 ->pluck('id')
                 ->map(fn ($id): int => (int) $id)
                 ->all();
@@ -132,46 +137,48 @@ class CanonicalSmilesConversion
 
             $lastId = end($ids);
 
-            $this->db->transaction(function () use ($ids, &$converted, &$changedMeanwhile, &$collidedMeanwhile): void {
-                $this->lockStructuresIndex();
+            $this->whileWritersWait(function () use ($ids, &$converted, &$changedMeanwhile, &$collidedMeanwhile): void {
+                $this->db->transaction(function () use ($ids, &$converted, &$changedMeanwhile, &$collidedMeanwhile): void {
+                    $this->lockStructuresIndex();
 
-                // A record written since the scan may hold the form already
-                // (removed records collide with nothing, as in the scan).
-                $taken = $this->db->table(self::WORK_TABLE.' as c')
-                    ->join($this->table().' as s', function ($join): void {
-                        $join->on('s.canonical_smiles', '=', 'c.new_smiles')->whereColumn('s.id', '<>', 'c.id');
-                    })
-                    ->when($this->target === self::TARGET_STRUCTURES, fn ($query) => $query
-                        ->join($this->table().' as own', 'own.id', '=', 'c.id')
-                        ->whereNull('own.deleted_at')
-                        ->whereNull('s.deleted_at'))
-                    ->whereIn('c.id', $ids)
-                    ->distinct()
-                    ->pluck('c.id')
-                    ->map(fn ($id): int => (int) $id)
-                    ->all();
+                    // A record written since the scan may hold the form already
+                    // (removed records collide with nothing, as in the scan).
+                    $taken = $this->db->table(self::WORK_TABLE.' as c')
+                        ->join($this->table().' as s', function ($join): void {
+                            $join->on('s.canonical_smiles', '=', 'c.new_smiles')->whereColumn('s.id', '<>', 'c.id');
+                        })
+                        ->when($this->target === self::TARGET_STRUCTURES, fn ($query) => $query
+                            ->join($this->table().' as own', 'own.id', '=', 'c.id')
+                            ->whereNull('own.deleted_at')
+                            ->whereNull('s.deleted_at'))
+                        ->whereIn('c.id', $ids)
+                        ->distinct()
+                        ->pluck('c.id')
+                        ->map(fn ($id): int => (int) $id)
+                        ->all();
 
-                if ($taken !== []) {
-                    $this->db->table(self::WORK_TABLE)->whereIn('id', $taken)->update(['collision' => true]);
-                    $collidedMeanwhile += count($taken);
-                }
+                    if ($taken !== []) {
+                        $this->db->table(self::WORK_TABLE)->whereIn('id', $taken)->update(['collision' => true]);
+                        $collidedMeanwhile += count($taken);
+                    }
 
-                $free = array_values(array_diff($ids, $taken));
+                    $free = array_values(array_diff($ids, $taken));
 
-                if ($free === []) {
-                    return;
-                }
+                    if ($free === []) {
+                        return;
+                    }
 
-                $placeholders = implode(',', array_fill(0, count($free), '?'));
-                $updated = $this->db->update(
-                    'UPDATE '.$this->table().' AS s SET canonical_smiles = c.new_smiles'
-                    .' FROM '.self::WORK_TABLE.' AS c'
-                    .' WHERE c.id = s.id AND s.canonical_smiles = c.old_smiles AND c.id IN ('.$placeholders.')',
-                    $free,
-                );
+                    $placeholders = implode(',', array_fill(0, count($free), '?'));
+                    $updated = $this->db->update(
+                        'UPDATE '.$this->table().' AS s SET canonical_smiles = c.new_smiles'
+                        .' FROM '.self::WORK_TABLE.' AS c'
+                        .' WHERE c.id = s.id AND s.canonical_smiles = c.old_smiles AND c.id IN ('.$placeholders.')',
+                        $free,
+                    );
 
-                $converted += $updated;
-                $changedMeanwhile += count($free) - $updated;
+                    $converted += $updated;
+                    $changedMeanwhile += count($free) - $updated;
+                });
             });
 
             $done += count($ids);
@@ -207,7 +214,14 @@ class CanonicalSmilesConversion
         );
 
         if ($exists) {
-            $db->statement('REINDEX INDEX '.self::BINGO_INDEX);
+            // While it waits for its lock, every new query on structures
+            // queues behind it; it gives up instead of hanging the site
+            // behind a long-running query. Once it runs, those queries wait
+            // until the index is rebuilt.
+            $db->transaction(function () use ($db): void {
+                $db->statement("SET LOCAL lock_timeout = '10s'");
+                $db->statement('REINDEX INDEX '.self::BINGO_INDEX);
+            });
         }
 
         return $exists;
@@ -300,9 +314,11 @@ class CanonicalSmilesConversion
         // A removed structure sharing the form of a record that stays is what
         // structures:join-records leaves behind; it collides with nothing. The
         // prediction structures are never removed by the application.
-        $active = $this->target === self::TARGET_STRUCTURES
-            ? 'CASE WHEN s.deleted_at IS NULL THEN 1 ELSE 0 END'
-            : '1';
+        // A record RDKit cannot read, or a blank one, keeps what it holds and
+        // stands for no molecule another record could duplicate.
+        $active = 'CASE WHEN TRIM(s.canonical_smiles) = \'\' OR (c.id IS NOT NULL AND c.new_smiles IS NULL) THEN 0'
+            .($this->target === self::TARGET_STRUCTURES ? ' WHEN s.deleted_at IS NOT NULL THEN 0' : '')
+            .' ELSE 1 END';
 
         return 'WITH target AS ('
             .' SELECT s.id, CASE'
@@ -374,6 +390,23 @@ class CanonicalSmilesConversion
      * 2026_11_22_124947), so that no structure is written between the check
      * of a chunk and its update.
      */
+    /**
+     * Runs a chunk while no prediction dataset is stored: the submission
+     * takes this lock around its firstOrCreate of prediction structures
+     * (PredictionsController), so none is written between the check of a
+     * chunk and its update. Structures are guarded by lockStructuresIndex().
+     */
+    private function whileWritersWait(Closure $chunk): void
+    {
+        if ($this->target === self::TARGET_PREDICTIONS) {
+            Cache::lock(self::PREDICTIONS_STORE_LOCK, 120)->block(60, $chunk);
+
+            return;
+        }
+
+        $chunk();
+    }
+
     private function lockStructuresIndex(): void
     {
         if ($this->target === self::TARGET_STRUCTURES && $this->db->getDriverName() === 'pgsql') {

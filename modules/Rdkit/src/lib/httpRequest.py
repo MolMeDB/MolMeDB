@@ -1,14 +1,16 @@
 from http.server import BaseHTTPRequestHandler
 import base64
-from typing import Optional, Dict
+import json
+from typing import Any, Optional, Dict
 from urllib.parse import urlparse, unquote
 from lib.router import Router, ApiResponse, ResponseType
+from lib.exceptions.InvalidParameter import InvalidParameterError
 
 class HttpRequest():
     def __init__(self, request: BaseHTTPRequestHandler) -> None:
         self.request = request
         self.authToken: Optional[str] = self._parse_auth()
-        self.query: Dict[str, str] = self._parse_query()
+        self.query: Dict[str, Any] = {**self._parse_query(), **self._parse_body()}
         self.uri: str = self._parse_uri()
         self.response: Optional[ApiResponse] = None
         # Define router and register routes
@@ -29,6 +31,34 @@ class HttpRequest():
             params = {}
         return {k: unquote(v) for k, v in params.items()}
         
+    # A POST request carries its parameters as a JSON object.
+    MAX_BODY_BYTES = 10 * 1024 * 1024
+
+    def _parse_body(self) -> Dict[str, Any]:
+        if self.request.command != "POST":
+            return {}
+
+        try:
+            length = int(self.request.headers.get('Content-Length') or 0)
+        except ValueError:
+            raise InvalidParameterError("body")
+
+        if length <= 0:
+            return {}
+
+        if length > self.MAX_BODY_BYTES:
+            raise InvalidParameterError("body")
+
+        try:
+            body = json.loads(self.request.rfile.read(length).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise InvalidParameterError("body")
+
+        if not isinstance(body, dict):
+            raise InvalidParameterError("body")
+
+        return body
+
     def _parse_uri(self) -> str:
         path = self.request.path
         path = path.strip("?") + "?"

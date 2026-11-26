@@ -24,10 +24,15 @@ if not router.runTests():
 class SERVICE_HANDLER(BaseHTTPRequestHandler):
     # Proccess GET request
     def do_GET(self):
-        
-        request = HttpRequest(self)
-        
+        self.handleRequest()
+
+    # Proccess POST request (a JSON object body, for batch endpoints)
+    def do_POST(self):
+        self.handleRequest()
+
+    def handleRequest(self):
         try:
+            request = HttpRequest(self)
             request.resolve()
             request.answer()
         except MissingParameterError as e:

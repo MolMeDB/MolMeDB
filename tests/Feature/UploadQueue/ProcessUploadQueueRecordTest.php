@@ -86,6 +86,28 @@ test('an approved passive upload imports every row into its dataset', function (
         ->and((float) $ethanol->temperature)->toBe(25.0);
 });
 
+test('the same molecule in another atom order is stored once and joins its converted record', function () {
+    // RDKit writes one form for every atom order of benzyl alcohol, and the
+    // stored record was converted to that form from its old aromatic one.
+    fakeUploadChemistryServices(canonicalForms: [
+        'OCc1ccccc1' => 'OCC1=CC=CC=C1',
+        'c1ccc(CO)cc1' => 'OCC1=CC=CC=C1',
+    ]);
+    $stored = createApiStructure(['canonical_smiles' => 'OCC1=CC=CC=C1', 'identifier' => 'MM00099']);
+    $record = createConfiguredUpload(
+        "SMILES,Gpen,+/- Gpen,LogK,Temperature\nOCc1ccccc1,-1.1,0.2,1.5,25\nc1ccc(CO)cc1,-2.2,0.2,1.5,30\n",
+        PASSIVE_UPLOAD_COLUMNS,
+        config: approvedUploadConfig(),
+    );
+
+    ProcessUploadQueueRecord::dispatchSync($record->id);
+
+    expect($record->refresh()->state)->toBe(UploadQueue::STATE_DONE)
+        ->and(Structure::withTrashed()->count())->toBe(1)
+        ->and(InteractionPassive::query()->where('dataset_id', $record->dataset_id)->pluck('structure_id')->unique()->all())
+        ->toBe([$stored->id]);
+});
+
 test('an approved active upload imports IC50 values with their accuracy', function () {
     $protein = createApiProtein(['uniprot_id' => 'P08183']);
     $record = createConfiguredUpload(

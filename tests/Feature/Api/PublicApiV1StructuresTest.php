@@ -352,6 +352,18 @@ test('similar structures are listed with their similarity, most similar first', 
         ->and($response->json('meta'))->not->toHaveKey('total');
 })->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'Similarity search needs PostgreSQL with Bingo.');
 
+test('a structure whose stored SMILES Bingo cannot read has no similar structures', function (?string $smiles) {
+    createApiStructure(['identifier' => 'MM00041', 'canonical_smiles' => $smiles]);
+    createApiStructure(['identifier' => 'MM00042', 'canonical_smiles' => 'CCO']);
+
+    $this->getJson('/api/v1/structures/MM00041/similar')
+        ->assertOk()
+        ->assertJsonPath('data', []);
+})->with([
+    'unreadable' => ['CCO>CC'],
+    'missing' => [null],
+])->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'Similarity search needs PostgreSQL with Bingo.');
+
 test('the similarity threshold is between 0.7 and 1', function (string $threshold, int $status) {
     createApiStructure(['identifier' => 'MM00040', 'canonical_smiles' => 'CCO']);
 

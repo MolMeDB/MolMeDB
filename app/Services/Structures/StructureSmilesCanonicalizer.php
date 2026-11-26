@@ -7,10 +7,10 @@ use Modules\Rdkit\Rdkit;
 
 /**
  * Writes a searched SMILES the way the canonical_smiles of structures are
- * stored: in the canonical form of RDKit. Bingo perceives aromaticity by its
- * own model, so the Kekulé form of a ring that RDKit stored as aromatic
- * (caffeine, uracil) does not match it; the RDKit form of the same molecule
- * does.
+ * stored: in the canonical form of the RDKit service (RDKit canonical SMILES
+ * in the Kekulé form). Bingo perceives aromaticity by its own model, so a
+ * query in another notation of a ring (caffeine, uracil) may not match the
+ * stored form; the same form of the same molecule does.
  */
 class StructureSmilesCanonicalizer
 {
@@ -31,10 +31,11 @@ class StructureSmilesCanonicalizer
      * The RDKit canonical form of a substructure query, or the query as given
      * when RDKit is not available or cannot read it.
      *
-     * RDKit writes the hydrogen of an aromatic nitrogen ([nH]) to keep the
-     * SMILES valid, but in a Bingo query it requires that hydrogen: uracil
-     * would no longer match N-methyluracil, while a plain N of the Kekulé form
-     * leaves it free. The hydrogen is therefore left out of the query.
+     * A bracketed hydrogen of an aromatic nitrogen ([nH]) is required by a
+     * Bingo query: uracil would no longer match N-methyluracil, while a plain
+     * N of the Kekulé form leaves it free. The canonical form is Kekulé, but
+     * the service falls back to the aromatic form of a molecule it cannot
+     * kekulize, so the hydrogen is still left out of the query.
      */
     public function substructureQueryOrOriginal(string $smiles): string
     {
@@ -50,7 +51,7 @@ class StructureSmilesCanonicalizer
             return null;
         }
 
-        $key = 'structure-search:canonical-smiles:'.hash('sha256', $smiles);
+        $key = 'structure-search:canonical-smiles:'.Rdkit::CANONICAL_SMILES_FORM.':'.hash('sha256', $smiles);
         $cached = Cache::get($key);
 
         if (is_string($cached) && $cached !== '') {

@@ -10,11 +10,15 @@ use Illuminate\Support\Facades\Http;
 
 /**
  * Answers of the fake RDKit service. A SMILES missing from a map is answered
- * unchanged; a SMILES mapped to null makes that endpoint fail.
+ * unchanged; a SMILES mapped to null makes that endpoint fail (the batch
+ * endpoint answers null for it).
  */
 final class FakeRdkitService
 {
     public static bool $reachable = true;
+
+    /** Whether the batch endpoint answers (an older service has none) */
+    public static bool $batchAvailable = true;
 
     /** @var array<string, string|null> */
     public static array $canonical = [];
@@ -35,6 +39,7 @@ final class FakeRdkitService
 function fakeRdkitService(): void
 {
     FakeRdkitService::$reachable = true;
+    FakeRdkitService::$batchAvailable = true;
     FakeRdkitService::$canonical = [];
     FakeRdkitService::$representants = [];
     FakeRdkitService::$info = [];
@@ -53,6 +58,10 @@ function fakeRdkitService(): void
         $data = match ($path) {
             '/test' => FakeRdkitService::$reachable ? [] : null,
             '/structure/canonize' => $answer(FakeRdkitService::$canonical),
+            '/structure/canonize/batch' => ! FakeRdkitService::$batchAvailable ? null : ['canonical_smiles' => array_map(
+                fn (string $smiles) => array_key_exists($smiles, FakeRdkitService::$canonical) ? FakeRdkitService::$canonical[$smiles] : $smiles,
+                $request->data()['smiles'] ?? [],
+            )],
             '/structure/representant' => $answer(FakeRdkitService::$representants),
             '/structure/info' => FakeRdkitService::$info[$smiles] ?? null,
             default => null,

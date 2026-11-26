@@ -40,8 +40,25 @@ jobs:
           file: ./docker/common/php-fpm/Dockerfile
           target: production
           push: false
+          load: true
+          tags: molmedb-backend:ci
           cache-from: type=gha,scope=backend-image
           cache-to: type=gha,mode=max,scope=backend-image
+
+      # Tests run on the runner's PHP, which has every extension; only the
+      # image tells whether production has them. bcmath: without it (or GMP)
+      # web push logs a notice on every notification.
+      - name: PHP extensions the application needs
+        run: |
+          modules=$(docker run --rm --entrypoint php molmedb-backend:ci -m)
+          missing=0
+          for extension in bcmath pdo_pgsql pgsql intl gd zip mbstring pcntl openssl curl; do
+            if ! grep -qix "$extension" <<< "$modules"; then
+              echo "::error::The production image lacks the PHP extension $extension."
+              missing=1
+            fi
+          done
+          exit $missing
 
   nginx-image:
     name: Nginx

@@ -5,6 +5,8 @@ position: 1
 @php($pages = $docs->pageLimits())
 A structure is one molecule or one form of it. It is identified by its MolMeDB identifier (for example `MM00040`) and described by its canonical SMILES, InChI and InChIKey, molecular weight, LogP and links to other databases (PubChem, ChEMBL, ChEBI, DrugBank, PDB ligands). Structures still being curated have no identifier yet and are not public.
 
+The `canonical_smiles` of a structure is the canonical SMILES of RDKit written in the Kekulé form (`CN1C=NC2=C1C(=O)N(C)C(=O)N2C` rather than `Cn1c(=O)c2c(ncn2C)n(C)c1=O` for caffeine), so that every toolkit, Bingo included, reads it. Since November 2026 all structures use this form; values copied earlier in the aromatic form still find their structure through the `smiles` search.
+
 ## Example: from a SMILES to the structure record
 
 **1. Find the structure.** Search by its SMILES; any valid notation of the same molecule matches. In a URL, characters such as `=` and `#` must be encoded (`%3D`, `%23`); **Try it!** and the copied `curl` command do it for you:

@@ -60,7 +60,12 @@ class StructureController extends Controller
     {
         $structure = $this->findStructure($identifier);
 
-        $similar = Structure::similarTo($structure->canonical_smiles, $request->threshold())
+        // A structure whose SMILES Bingo cannot read has no similar ones.
+        $query = $structure->isSearchableBySimilarity()
+            ? Structure::similarTo($structure->canonical_smiles, $request->threshold())
+            : Structure::query()->whereRaw('1 = 0');
+
+        $similar = $query
             ->whereNotNull('structures.identifier')
             ->whereKeyNot($structure->id)
             ->simplePaginate($request->perPage())

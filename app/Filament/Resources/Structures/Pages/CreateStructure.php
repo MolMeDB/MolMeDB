@@ -151,7 +151,7 @@ class CreateStructure extends CreateRecord
             return null;
         }
 
-        $existing = Structure::withTrashed()->where('canonical_smiles', $canonized)->first();
+        $existing = Structure::query()->storedAs($canonized)->first();
         if ($existing) {
             Notification::make()
                 ->danger()

@@ -48,10 +48,15 @@ class FindSimilarStructuresTool extends Tool
             return Response::error('Similarity search rate limit exceeded. Try again later.');
         }
 
-        $paginator = Structure::similarTo(
-            $structure->canonical_smiles,
-            (float) ($validated['threshold'] ?? SimilarStructuresRequest::DEFAULT_THRESHOLD),
-        )
+        // A structure whose SMILES Bingo cannot read has no similar ones.
+        $query = $structure->isSearchableBySimilarity()
+            ? Structure::similarTo(
+                $structure->canonical_smiles,
+                (float) ($validated['threshold'] ?? SimilarStructuresRequest::DEFAULT_THRESHOLD),
+            )
+            : Structure::query()->whereRaw('1 = 0');
+
+        $paginator = $query
             ->whereNotNull('structures.identifier')
             ->whereKeyNot($structure->id)
             ->simplePaginate(

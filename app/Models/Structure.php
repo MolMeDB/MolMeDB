@@ -79,6 +79,21 @@ class Structure extends BaseModel
             ->orderBy($query->getModel()->qualifyColumn('id'));
     }
 
+    /**
+     * Whether Bingo can read this structure's canonical SMILES as the query
+     * of a similarity search. A stored value it cannot parse (a reaction
+     * arrow ">" for one) would make the whole search fail; the candidates
+     * are filtered the same way by scopeSimilarTo.
+     */
+    public function isSearchableBySimilarity(): bool
+    {
+        if (DB::getDriverName() !== 'pgsql' || blank($this->canonical_smiles)) {
+            return false;
+        }
+
+        return DB::scalar('SELECT bingo.checkMolecule(?)', [trim($this->canonical_smiles)]) === null;
+    }
+
     protected static function boot()
     {
         parent::boot();

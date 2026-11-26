@@ -192,6 +192,15 @@ test('structure similarities endpoint returns related structures payload', funct
         ]);
 });
 
+test('structure similarities endpoint answers without similar structures when Bingo cannot read the stored SMILES', function () {
+    createApiStructure(['identifier' => 'MM00041', 'canonical_smiles' => 'CCO>CC']);
+    createApiStructure(['identifier' => 'MM00042', 'canonical_smiles' => 'CCO']);
+
+    $this->getJson(apiRoutePath('api/structure/MM00041/similarities'))
+        ->assertOk()
+        ->assertJsonPath('similar_structures', []);
+})->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'Similarity search needs PostgreSQL with Bingo.');
+
 test('structure similarities endpoint lists the most similar structures apart from related ones', function () {
     $caffeine = createApiStructure(['identifier' => 'MM00040', 'canonical_smiles' => 'Cn1c(=O)c2c(ncn2C)n(C)c1=O']);
     createApiStructure(['identifier' => 'MM00040.1', 'parent_id' => $caffeine->id, 'canonical_smiles' => 'Cn1c(=O)c2c(ncn2C)n(C)c1=O']);

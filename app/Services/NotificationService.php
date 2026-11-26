@@ -80,6 +80,8 @@ class NotificationService
             $willEmail = $emailAllowed && $payload['email_subject'] && $payload['email_message'];
 
             if ($willEmail || $pushAllowed) {
+                $notification->userNotificationId = $record->id;
+
                 try {
                     $user->notify($notification);
 

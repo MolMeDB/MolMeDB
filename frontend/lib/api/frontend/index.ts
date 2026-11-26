@@ -13,6 +13,13 @@ export async function getApiRequestHeaders(path: string): Promise<RequestInit> {
   const cookiesStore = await cookies();
   const SESSION = cookiesStore.get(FE_SESSION_KEY)?.value as string;
   const XSRF_TOKEN = cookiesStore.get(XSRF_KEY)?.value as string;
+  // With "remember me" the backend signs the user in again from these once
+  // its session has ended.
+  const remember = cookiesStore
+    .getAll()
+    .filter((cookie) => cookie.name.startsWith("remember_"))
+    .map((cookie) => `; ${cookie.name}=${cookie.value}`)
+    .join("");
 
   return {
     credentials: "include",
@@ -20,7 +27,7 @@ export async function getApiRequestHeaders(path: string): Promise<RequestInit> {
       "Content-Type": "application/json",
       Accept: "application/json",
       Referer: process.env.FRONTEND_URL as string,
-      Cookie: `${XSRF_KEY}=${XSRF_TOKEN}; ${FE_SESSION_KEY}=${SESSION}`,
+      Cookie: `${XSRF_KEY}=${XSRF_TOKEN}; ${FE_SESSION_KEY}=${SESSION}${remember}`,
       "Forward-To": path,
     },
   };
@@ -58,7 +65,7 @@ export async function getViewData(
       logger.warn(`getViewData → 401 unauthenticated`, { path });
       redirectTo = returnTo
         ? `/login?redirect=${encodeURIComponent(returnTo)}&expired=1`
-        : "/login";
+        : "/login?expired=1";
     } else if (response.status == 200) {
       const d = await response.json();
       return {

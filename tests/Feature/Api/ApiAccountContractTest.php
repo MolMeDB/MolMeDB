@@ -324,6 +324,8 @@ test('notification endpoint keeps its contract', function (string $route, Closur
     'notifications' => ['GET api/notifications', fn ($test) => $test->getJson('/api/notifications')],
     'mark as read' => ['POST api/notifications/read', fn ($test) => $test->postJson('/api/notifications/read')],
     'clear' => ['DELETE api/notifications/clear', fn ($test) => $test->deleteJson('/api/notifications/clear')],
+    'notification' => ['GET api/notifications/{notification}', fn ($test) => $test->getJson('/api/notifications/'.UserNotification::query()->latest('id')->value('id'))],
+    'mark notification as read' => ['POST api/notifications/{notification}/read', fn ($test) => $test->postJson('/api/notifications/'.UserNotification::query()->latest('id')->value('id').'/read')],
     'preferences' => ['GET api/notifications/preferences', fn ($test) => $test->getJson('/api/notifications/preferences')],
     'update preferences' => ['PUT api/notifications/preferences', fn ($test) => $test->putJson('/api/notifications/preferences', [
         'preferences' => [

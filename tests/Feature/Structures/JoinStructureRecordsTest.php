@@ -33,6 +33,19 @@ test('two records of the same molecule are joined into the first one', function 
         ->toBe(Identifier::STATE_OBSOLETE);
 });
 
+test('the joined record gets the current canonical form when it still holds an older one', function () {
+    $survivor = createStructureWithData(['identifier' => 'MM00001', 'canonical_smiles' => 'Cc1ccccc1']);
+    $merged = createStructureWithData(['identifier' => 'MM00002', 'canonical_smiles' => 'CC1=CC=CC=C1']);
+    FakeRdkitService::$canonical = ['Cc1ccccc1' => 'CC1=CC=CC=C1'];
+
+    $this->artisan('structures:join-records', ['id1' => $survivor->id, 'id2' => $merged->id])
+        ->expectsOutputToContain('Done.')
+        ->assertSuccessful();
+
+    expect($survivor->refresh()->canonical_smiles)->toBe('CC1=CC=CC=C1')
+        ->and(Structure::withTrashed()->find($merged->id)->trashed())->toBeTrue();
+});
+
 test('records are not joined when', function (Closure $arrange, string $error) {
     $first = createStructureWithData(['identifier' => 'MM00001', 'canonical_smiles' => 'CCO']);
     $second = createStructureWithData(['identifier' => 'MM00002', 'canonical_smiles' => 'CCN']);

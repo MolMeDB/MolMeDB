@@ -42,7 +42,9 @@ RUN apt-get clean && apt-get update && apt-get install -y \
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install extensions
-RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl opcache
+# bcmath: minishlink/web-push encrypts push payloads with it (without GMP or
+# BCMath it falls back to slow pure-PHP maths and logs a notice per push).
+RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl opcache bcmath
 RUN docker-php-ext-configure gd --with-jpeg --with-freetype --with-webp --with-xpm
 RUN docker-php-ext-install gd
 RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql

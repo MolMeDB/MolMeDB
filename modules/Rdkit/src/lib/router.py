@@ -33,12 +33,26 @@ class Router:
         # - tests
         self.tests['structure/canonize'] = [
             {
-                'input': {'smi': 'CCCOC1=CC=CC=C1'},
-                'expected': 'CCCOc1ccccc1'
+                'input': {'smi': 'CCCOc1ccccc1'},
+                'expected': 'CCCOC1=CC=CC=C1'
             },
             {
                 'input': {'smi': 'C1=CC=CC=C1C'},
-                'expected': 'Cc1ccccc1'
+                'expected': 'CC1=CC=CC=C1'
+            },
+            # Bingo cannot read RDKit's aromatic form of this one
+            {
+                'input': {'smi': 'CN1CCN(C2=c3cc(CO)sc3=Nc3ccccc3N2)CC1'},
+                'expected': 'CN1CCN(C2=C3C=C(CO)SC3=NC3=CC=CC=C3N2)CC1'
+            },
+        ]
+        ##### Canonize many SMILES at once (POST, JSON body)
+        self.add(path='structure/canonize/batch', handler=R.RDKIT().canonizeSmilesBatch, required=['smiles'])
+        # - tests
+        self.tests['structure/canonize/batch'] = [
+            {
+                'input': {'smiles': ['c1ccccc1', 'not a smiles']},
+                'expected': 'object'
             },
         ]
         ##### Validate SMILES for predictions
@@ -61,7 +75,7 @@ class Router:
         self.tests['structure/neutralize'] = [
             {
                 'input': {'smi': 'CC(C)Cc1ccc([C@H](C)C(=O)[O-])cc1'},
-                'expected': 'CC(C)Cc1ccc([C@H](C)C(=O)O)cc1'
+                'expected': 'CC(C)CC1=CC=C([C@H](C)C(=O)O)C=C1'
             },
         ]
         ##############################
@@ -71,7 +85,7 @@ class Router:
         self.tests['structure/representant'] = [
             {
                 'input': {'smi': 'CC(C)Cc1ccc([C@H](C)C(=O)[O-])cc1'},
-                'expected': 'CC(C)Cc1ccc(C(C)C(=O)O)cc1'
+                'expected': 'CC(C)CC1=CC=C(C(C)C(=O)O)C=C1'
             },
         ]
         ##############################

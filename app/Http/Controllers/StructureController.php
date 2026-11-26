@@ -12,7 +12,6 @@ use App\Services\Structures\Structure3dMolfile;
 use App\Services\Structures\StructureIdentifierStatus;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Modules\Rdkit\Rdkit;
 
 class StructureController extends Controller
@@ -118,22 +117,25 @@ class StructureController extends Controller
      */
     private function similarStructures(Structure $structure, array $excluded): Collection
     {
-        // Bingo is a PostgreSQL extension.
-        if (DB::getDriverName() !== 'pgsql' || ! $structure->canonical_smiles) {
-            return collect();
-        }
-
+        // Checked inside the cache: a cached page then costs no Bingo call,
+        // and a structure Bingo cannot read is remembered as having none.
         $similarities = Cache::remember(
             "structure-similarities:{$structure->id}:".implode(',', $excluded),
             now()->addDay(),
-            fn (): array => Structure::similarTo($structure->canonical_smiles, self::SIMILARITY_THRESHOLD)
-                ->whereNotNull('structures.identifier')
-                ->whereKeyNot([$structure->id, ...$excluded])
-                ->limit(self::SIMILAR_STRUCTURES)
-                ->get()
-                ->mapWithKeys(fn (Structure $similar): array => [$similar->id => (float) $similar->similarity])
-                ->all(),
+            fn (): array => ! $structure->isSearchableBySimilarity()
+                ? []
+                : Structure::similarTo($structure->canonical_smiles, self::SIMILARITY_THRESHOLD)
+                    ->whereNotNull('structures.identifier')
+                    ->whereKeyNot([$structure->id, ...$excluded])
+                    ->limit(self::SIMILAR_STRUCTURES)
+                    ->get()
+                    ->mapWithKeys(fn (Structure $similar): array => [$similar->id => (float) $similar->similarity])
+                    ->all(),
         );
+
+        if ($similarities === []) {
+            return collect();
+        }
 
         return Structure::query()
             ->whereKey(array_keys($similarities))

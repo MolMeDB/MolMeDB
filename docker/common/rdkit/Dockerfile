@@ -3,7 +3,14 @@ FROM continuumio/miniconda3:23.9.0-0
 WORKDIR /usr/src/app
 
 RUN pip3 install --no-cache-dir requests
-RUN pip3 install rdkit
+# The canonical SMILES stored in structures.canonical_smiles (the key that
+# tells whether a molecule is already in the database) depend on the RDKit
+# version. Upgrading it may change the form of some molecules: run
+# `php artisan structures:convert-canonical-smiles --dry-run` with the new
+# image and convert the records before new ones are written, and bump
+# Modules\Rdkit\Rdkit::CANONICAL_SMILES_FORM so that no cached form of the old
+# version is reused.
+RUN pip3 install --no-cache-dir rdkit==2026.9.2
 RUN pip3 install --no-cache-dir dimorphite-dl
 # RUN pip3 install gssapi
 # RUN pip3 install awscli --ignore-installed six

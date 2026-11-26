@@ -168,9 +168,7 @@ class UploadQueueInteractionPayloadBuilder
         }
 
         if ($smiles !== '') {
-            $structure = Structure::withTrashed()
-                ->where('canonical_smiles', $smiles)
-                ->first();
+            $structure = Structure::query()->storedAs($smiles)->first();
             $matchedBySmiles = $structure !== null;
         }
 

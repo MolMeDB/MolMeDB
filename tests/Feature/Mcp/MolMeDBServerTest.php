@@ -10,6 +10,7 @@ use App\Mcp\Tools\GetInteractionTool;
 use App\Mcp\Tools\GetMembraneTool;
 use App\Mcp\Tools\GetStructureTool;
 use App\Mcp\Tools\SearchInteractionsTool;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\Fluent\AssertableJson;
 use Tests\Support\ApiContract;
 
@@ -114,6 +115,18 @@ test('find-similar-structures rejects a threshold below 0.7', function () {
 
     MolMeDBServer::tool(FindSimilarStructuresTool::class, ['identifier' => 'MM00040', 'threshold' => 0.5])->assertHasErrors();
 });
+
+test('find-similar-structures finds nothing for a structure whose stored SMILES Bingo cannot read', function (?string $smiles) {
+    createApiStructure(['identifier' => 'MM00041', 'canonical_smiles' => $smiles]);
+    createApiStructure(['identifier' => 'MM00042', 'canonical_smiles' => 'CCO']);
+
+    MolMeDBServer::tool(FindSimilarStructuresTool::class, ['identifier' => 'MM00041'])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('data', 0)->etc());
+})->with([
+    'unreadable' => ['CCO>CC'],
+    'missing' => [null],
+])->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'Similarity search needs PostgreSQL with Bingo.');
 
 test('get-interaction does not find interactions of a deleted dataset', function () {
     $world = seedApiContractWorld();

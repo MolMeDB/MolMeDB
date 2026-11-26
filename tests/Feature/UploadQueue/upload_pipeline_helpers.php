@@ -18,16 +18,19 @@ use Illuminate\Support\Facades\Storage;
  * the prefix; an empty one stores SMILES a real database can index); SMILES
  * listed in $invalidSmiles are rejected. UniChem knows the identifiers in
  * $knownUnichemIds, and UniChem's reachability follows $unichemReachable.
- * UniProt knows every accession it is asked for.
+ * UniProt knows every accession it is asked for. A SMILES in $canonicalForms
+ * gets the form given there instead (two notations of one molecule, say).
  *
  * @param  array<int, string>  $invalidSmiles
  * @param  array<int, string>  $knownUnichemIds
+ * @param  array<string, string>  $canonicalForms
  */
 function fakeUploadChemistryServices(
     array $invalidSmiles = [],
     array $knownUnichemIds = [],
     bool $unichemReachable = true,
     string $canonicalPrefix = 'canon:',
+    array $canonicalForms = [],
 ): void {
     // The fake reads its settings from config at request time, so calling this
     // again within a test changes them (another Http::fake() callback would
@@ -37,6 +40,7 @@ function fakeUploadChemistryServices(
         'known_unichem_ids' => $knownUnichemIds,
         'unichem_reachable' => $unichemReachable,
         'canonical_prefix' => $canonicalPrefix,
+        'canonical_forms' => $canonicalForms,
     ]);
 
     if (config('testing.upload_chemistry_faked')) {
@@ -58,6 +62,7 @@ function fakeUploadChemistryServices(
             'known_unichem_ids' => $knownUnichemIds,
             'unichem_reachable' => $unichemReachable,
             'canonical_prefix' => $canonicalPrefix,
+            'canonical_forms' => $canonicalForms,
         ] = config('testing.upload_chemistry');
         $url = $request->url();
 
@@ -66,7 +71,7 @@ function fakeUploadChemistryServices(
 
             return in_array($smiles, $invalidSmiles, true)
                 ? Http::response(['data' => null], 200)
-                : Http::response(['data' => $canonicalPrefix.$smiles], 200);
+                : Http::response(['data' => $canonicalForms[$smiles] ?? $canonicalPrefix.$smiles], 200);
         }
 
         if (str_starts_with($url, 'https://unichem.test/api/sources')) {

@@ -26,9 +26,10 @@ class UploadQueueExternalLookupCache
         }
 
         // SMILES are case-sensitive (c1ccccc1 is benzene, C1CCCCC1 cyclohexane),
-        // so their key keeps the case. "v2" drops entries cached under the old
-        // case-insensitive key, which could hold another molecule's form.
-        $value = $this->remember('rdkit:canonical-smiles:v2', $smiles, function () use ($smiles): ?string {
+        // so their key keeps the case. "v2" dropped entries cached under the old
+        // case-insensitive key, which could hold another molecule's form; the
+        // form of the RDKit service in the key drops those of an older form.
+        $value = $this->remember('rdkit:canonical-smiles:v2:'.Rdkit::CANONICAL_SMILES_FORM, $smiles, function () use ($smiles): ?string {
             $canonicalSmiles = (new Rdkit)->canonize_smiles($smiles);
 
             return is_string($canonicalSmiles) && trim($canonicalSmiles) !== '' ? $canonicalSmiles : null;

@@ -7,6 +7,7 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Modules\Rdkit\Rdkit;
 use RuntimeException;
 
 class PredictionSmilesCanonicalizer
@@ -143,6 +144,8 @@ class PredictionSmilesCanonicalizer
     {
         $constraints = (array) config('prediction-workers.structure_validation', []);
 
-        return 'prediction:validated-smiles:v1:'.hash('sha256', json_encode($constraints).'|'.$smiles);
+        // The form of the canonical SMILES drops validations cached with an
+        // older one, whose canonical_smiles would no longer match the stored.
+        return 'prediction:validated-smiles:v1:'.Rdkit::CANONICAL_SMILES_FORM.':'.hash('sha256', json_encode($constraints).'|'.$smiles);
     }
 }

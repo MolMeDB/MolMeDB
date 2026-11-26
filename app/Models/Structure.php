@@ -23,6 +23,21 @@ class Structure extends BaseModel
 
     protected $with = ['identifiers'];
 
+    /**
+     * The records, removed ones too, that hold the canonical SMILES (written
+     * by the RDKit service): the record of the molecule when there is one.
+     * One that is not removed comes first, since structures:join-records
+     * leaves the removed record of a joined pair with the same SMILES.
+     */
+    public function scopeStoredAs(Builder $query, string $canonicalSmiles): Builder
+    {
+        return $query
+            ->withTrashed()
+            ->where($query->getModel()->qualifyColumn('canonical_smiles'), trim($canonicalSmiles))
+            ->orderByRaw('CASE WHEN '.$query->getModel()->getQualifiedDeletedAtColumn().' IS NULL THEN 0 ELSE 1 END')
+            ->orderBy($query->getModel()->qualifyColumn('id'));
+    }
+
     public function scopeContainingSubstructure(Builder $query, string $smiles): Builder
     {
         $canonicalSmiles = $query->getModel()->qualifyColumn('canonical_smiles');

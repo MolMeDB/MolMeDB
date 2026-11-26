@@ -255,6 +255,8 @@ test('a structure Bingo rejected becomes searchable once converted, and the inde
     expect($rejected->canonical_smiles)->toBe(READABLE_BY_BINGO)
         ->and($rejected->isSearchableBySimilarity())->toBeTrue()
         ->and(Structure::query()->exactMolecule(READABLE_BY_BINGO)->pluck('id')->all())->toBe([$rejected->id])
-        ->and(Structure::query()->containingSubstructure('C1=CSC=C1')->pluck('id')->all())->toBe([$rejected->id])
+        // Its methylpiperazine; its thiophene ring is no aromatic thiophene
+        // for Indigo, with two exocyclic double bonds.
+        ->and(Structure::query()->containingSubstructure('CN1CCNCC1')->pluck('id')->all())->toBe([$rejected->id])
         ->and(Structure::query()->similarTo(READABLE_BY_BINGO, 0.9)->pluck('structures.id')->all())->toBe([$rejected->id]);
 })->skip(fn (): bool => DB::getDriverName() !== 'pgsql', 'The structure index needs PostgreSQL with Bingo.');

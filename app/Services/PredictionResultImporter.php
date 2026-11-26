@@ -277,7 +277,7 @@ class PredictionResultImporter
             throw new RuntimeException("RDKit could not canonicalize [{$smiles}]; the import will be retried.");
         }
 
-        $structure = Structure::withTrashed()->where('canonical_smiles', $canonical)->first()
+        $structure = Structure::query()->storedAs($canonical)->first()
             ?? Structure::create(['canonical_smiles' => $canonical]);
 
         // remote_id is unique, but two prediction structures whose SMILES

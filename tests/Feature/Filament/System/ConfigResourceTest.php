@@ -221,3 +221,58 @@ test('the https rule of the remote prediction URL cannot be avoided by a crafted
 
     expect(Config::get(Config::KEY_REMOTE_PREDICTION_URL))->toBe('https://predictions.example.org/api');
 });
+
+test('the edit page never sends the remote prediction token to the browser', function () {
+    Config::set(Config::KEY_REMOTE_PREDICTION_TOKEN, 'tok_secret_value_123');
+
+    $this->actingAs(configPanelUser([PermissionEnums::CONFIG_EDIT]));
+
+    $page = Livewire::test(EditConfig::class, ['record' => Config::KEY_REMOTE_PREDICTION_TOKEN])
+        ->assertOk()
+        ->assertFormSet(['key' => Config::KEY_REMOTE_PREDICTION_TOKEN, 'value' => null])
+        ->assertDontSee('tok_secret_value_123');
+
+    expect(json_encode($page->snapshot))->not->toContain('tok_secret_value_123');
+});
+
+test('saving the remote prediction token with an empty field keeps the stored one', function () {
+    Config::set(Config::KEY_REMOTE_PREDICTION_TOKEN, 'tok_secret_value_123');
+
+    $this->actingAs(configPanelUser([PermissionEnums::CONFIG_EDIT]));
+
+    Livewire::test(EditConfig::class, ['record' => Config::KEY_REMOTE_PREDICTION_TOKEN])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(Config::get(Config::KEY_REMOTE_PREDICTION_TOKEN))->toBe('tok_secret_value_123');
+});
+
+test('a new remote prediction token replaces the stored one and is not shown back', function () {
+    Config::set(Config::KEY_REMOTE_PREDICTION_TOKEN, 'tok_secret_value_123');
+
+    $this->actingAs(configPanelUser([PermissionEnums::CONFIG_EDIT]));
+
+    $page = Livewire::test(EditConfig::class, ['record' => Config::KEY_REMOTE_PREDICTION_TOKEN])
+        ->fillForm(['value' => 'tok_replacement_456'])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(Config::get(Config::KEY_REMOTE_PREDICTION_TOKEN))->toBe('tok_replacement_456');
+
+    Livewire::test(EditConfig::class, ['record' => Config::KEY_REMOTE_PREDICTION_TOKEN])
+        ->assertFormSet(['value' => null])
+        ->assertDontSee('tok_replacement_456');
+});
+
+test('a config value that is no text is refused', function () {
+    Config::set(Config::KEY_REMOTE_PREDICTION_TOKEN, 'tok_secret_value_123');
+
+    $this->actingAs(configPanelUser([PermissionEnums::CONFIG_EDIT]));
+
+    Livewire::test(EditConfig::class, ['record' => Config::KEY_REMOTE_PREDICTION_TOKEN])
+        ->set('data.value', ['x'])
+        ->call('save')
+        ->assertHasFormErrors(['value']);
+
+    expect(Config::get(Config::KEY_REMOTE_PREDICTION_TOKEN))->toBe('tok_secret_value_123');
+});

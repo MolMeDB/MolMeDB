@@ -4,6 +4,7 @@ namespace App\Notifications\Channels;
 
 use App\Models\PushSubscription;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
 use Minishlink\WebPush\WebPush;
 
@@ -34,13 +35,7 @@ class WebPushChannel
             return;
         }
 
-        $webPush = new WebPush([
-            'VAPID' => [
-                'subject' => config('webpush.vapid.subject'),
-                'publicKey' => config('webpush.vapid.public_key'),
-                'privateKey' => config('webpush.vapid.private_key'),
-            ],
-        ]);
+        $webPush = $this->webPush();
 
         $payload = json_encode($message->toArray());
 
@@ -61,5 +56,26 @@ class WebPushChannel
                 PushSubscription::query()->where('endpoint', $report->getEndpoint())->delete();
             }
         }
+    }
+
+    /**
+     * The library checks its requirements in the constructor. Without a
+     * logger it reports them with trigger_error(), which Laravel turns into
+     * an exception, so a merely recommended extension that is missing (GMP
+     * or BCMath) stopped every push. With the application's logger they are
+     * only logged.
+     */
+    public function webPush(): WebPush
+    {
+        return new WebPush(
+            auth: [
+                'VAPID' => [
+                    'subject' => config('webpush.vapid.subject'),
+                    'publicKey' => config('webpush.vapid.public_key'),
+                    'privateKey' => config('webpush.vapid.private_key'),
+                ],
+            ],
+            logger: Log::channel(),
+        );
     }
 }

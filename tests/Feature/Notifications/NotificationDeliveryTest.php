@@ -17,6 +17,9 @@ use App\Services\NotificationService;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Minishlink\WebPush\VAPID;
+use Minishlink\WebPush\WebPush;
+use Psr\Log\LoggerInterface;
 use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -345,4 +348,20 @@ test('batched items with an empty name fall back to the record number', function
     ]);
 
     expect(FlushQueuedNotifications::formatItemsList($items)->toHtml())->toContain('<li>#7</li>');
+});
+
+test('the push channel hands the library a logger, so a missing optional PHP extension does not stop the push', function () {
+    $keys = VAPID::createVapidKeys();
+    config([
+        'webpush.vapid.subject' => 'mailto:push@example.test',
+        'webpush.vapid.public_key' => $keys['publicKey'],
+        'webpush.vapid.private_key' => $keys['privateKey'],
+    ]);
+
+    $webPush = (new WebPushChannel)->webPush();
+
+    // Without one, the library reports a missing GMP/BCMath extension with
+    // trigger_error(), which Laravel turns into an exception.
+    expect((new ReflectionProperty(WebPush::class, 'logger'))->getValue($webPush))
+        ->toBeInstanceOf(LoggerInterface::class);
 });

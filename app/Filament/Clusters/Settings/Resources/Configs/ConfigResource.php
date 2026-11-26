@@ -47,6 +47,13 @@ class ConfigResource extends Resource
                     ->disabledOn('edit')
                     ->columnSpanFull(),
                 Textarea::make('value')
+                    // A sensitive value never reaches the browser: its field
+                    // starts empty and an empty field keeps what is stored.
+                    ->formatStateUsing(fn (mixed $state, ?Config $record): mixed => static::holdsSensitiveValue($record) ? null : $state)
+                    ->dehydrated(fn (mixed $state, ?Config $record): bool => ! (static::holdsSensitiveValue($record) && blank($state)))
+                    ->nullable()
+                    ->string()
+                    ->placeholder(fn (?Config $record): ?string => static::holdsSensitiveValue($record) ? 'The stored value is not shown. Leave empty to keep it.' : null)
                     // By the stored key of an edited setting: its key field is
                     // disabled, but its state can still be set by a crafted request.
                     ->rules(fn (Get $get, ?Config $record): array => ($record?->key ?? $get('key')) === Config::KEY_REMOTE_PREDICTION_URL
@@ -90,6 +97,11 @@ class ConfigResource extends Resource
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function holdsSensitiveValue(?Config $record): bool
+    {
+        return $record !== null && Config::isSensitiveKey($record->key);
     }
 
     /**

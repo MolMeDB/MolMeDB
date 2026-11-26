@@ -973,7 +973,7 @@ class Prediction extends PredictionBaseModel
         try {
             return $parser->parseString($download->contents)->jsonSerialize();
         } catch (Throwable $directParseException) {
-            $xmlFromArchive = $this->cosmoXmlFromArchive($download->contents);
+            $xmlFromArchive = $parser->xmlFromArchive($download->contents);
 
             if ($xmlFromArchive !== null) {
                 try {
@@ -990,55 +990,6 @@ class Prediction extends PredictionBaseModel
                 "Downloaded remote prediction result [{$diskName}:{$path}] could not be parsed: {$directParseException->getMessage()}",
                 previous: $directParseException,
             );
-        }
-    }
-
-    private function cosmoXmlFromArchive(string $contents): ?string
-    {
-        if (! str_starts_with($contents, 'PK') || ! class_exists(ZipArchive::class)) {
-            return null;
-        }
-
-        $temporaryPath = tempnam(sys_get_temp_dir(), 'remote-prediction-result-');
-
-        if ($temporaryPath === false || file_put_contents($temporaryPath, $contents) === false) {
-            return null;
-        }
-
-        $archive = new ZipArchive;
-        $isOpen = false;
-
-        try {
-            if ($archive->open($temporaryPath) !== true) {
-                return null;
-            }
-
-            $isOpen = true;
-
-            for ($index = 0; $index < $archive->numFiles; $index++) {
-                $entry = $archive->statIndex($index);
-                $entryName = is_array($entry) ? (string) ($entry['name'] ?? '') : '';
-
-                if (! str_ends_with(strtolower($entryName), '.xml')) {
-                    continue;
-                }
-
-                $xml = $archive->getFromIndex($index);
-
-                if (is_string($xml) && str_contains($xml, '<micoutput')) {
-                    return $xml;
-                }
-            }
-
-            return null;
-        } finally {
-            if ($isOpen) {
-                $archive->close();
-            }
-
-            if (file_exists($temporaryPath)) {
-                unlink($temporaryPath);
-            }
         }
     }
 

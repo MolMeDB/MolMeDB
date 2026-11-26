@@ -10,10 +10,44 @@ import services.mmpa.rfrag as rfrag
 from lib.exceptions.InvalidParameter import InvalidParameterError
 import services.gen_confomers as cnf
 
+
+def canonical_smiles(mol):
+    """
+    The one canonical SMILES of MolMeDB: RDKit's canonical SMILES written in
+    the Kekulé form, which Bingo (Indigo) can read even where it refuses
+    RDKit's aromatic notation (aromatic S or N with an exocyclic double bond,
+    rings with more than one way to dearomatize them).
+
+    The Kekulé form is written from the canonical aromatic SMILES parsed
+    again, not from the molecule as given: kekulizing the input directly
+    yields different strings for different atom orders of one molecule.
+    Parsing the result gives back the canonical aromatic SMILES, so no two
+    molecules share a form, and the function is idempotent.
+
+    The form depends on the RDKit version, which is therefore pinned in
+    docker/common/rdkit/Dockerfile.
+    """
+    aromatic = Chem.MolToSmiles(mol)
+    kekule = Chem.MolFromSmiles(aromatic)
+
+    if kekule is None:
+        return aromatic
+
+    try:
+        Chem.Kekulize(kekule, clearAromaticFlags=True)
+    except Exception:
+        return aromatic
+
+    return Chem.MolToSmiles(kekule, kekuleSmiles=True)
+
+
 class RDKIT:
     PREDICTION_MAX_ATOMS = 120
     PREDICTION_ALLOWED_ATOMIC_NUMBERS = {1, 6, 7, 8, 9, 15, 16, 17, 35, 53}
     PREDICTION_ALLOWED_ELEMENTS = ["C", "H", "O", "N", "P", "S", "F", "Cl", "Br", "I"]
+    CANONIZE_BATCH_MAX = 1000
+    # The length of the canonical_smiles columns
+    SMILES_MAX_LENGTH = 4000
 
     # Fragment molecule
     # def mmpaFragment(self, params = {}, parent = None):
@@ -120,7 +154,26 @@ class RDKIT:
         mol = Chem.MolFromSmiles(req_smiles)
         if mol is None:
             raise InvalidParameterError("smi")
-        return ApiResponse(200, Chem.MolToSmiles(mol))
+        return ApiResponse(200, canonical_smiles(mol))
+
+    # Canonize many SMILES at once, in their order; null where RDKit cannot
+    # read one. For bulk work such as converting stored records.
+    def canonizeSmilesBatch(self, params = {}):
+        smiles = params["smiles"]
+
+        if (
+            not isinstance(smiles, list)
+            or len(smiles) > self.CANONIZE_BATCH_MAX
+            or not all(isinstance(s, str) and len(s) <= self.SMILES_MAX_LENGTH for s in smiles)
+        ):
+            raise InvalidParameterError("smiles")
+
+        result = []
+        for s in smiles:
+            mol = Chem.MolFromSmiles(s) if s.strip() != "" else None
+            result.append(canonical_smiles(mol) if mol is not None else None)
+
+        return ApiResponse(200, {"canonical_smiles": result}, ResponseType.JSON)
 
     def validatePredictionSmiles(self, params = {}):
         req_smiles = params["smi"]
@@ -169,7 +222,7 @@ class RDKIT:
 
         return ApiResponse(422 if errors else 200, {
             "valid": not errors,
-            "canonical_smiles": Chem.MolToSmiles(mol),
+            "canonical_smiles": canonical_smiles(mol),
             "atom_count": atom_count,
             "element_counts": element_counts,
             "fragment_count": fragment_count,
@@ -193,7 +246,7 @@ class RDKIT:
         mol = Chem.MolFromSmiles(req_smiles)
         if mol is None:
             raise InvalidParameterError("smi")
-        return ApiResponse(200, Chem.MolToSmiles(self._neutralize_atoms(mol)))
+        return ApiResponse(200, canonical_smiles(self._neutralize_atoms(mol)))
     
     def _neutralize_atoms(self, mol):
         pattern = Chem.MolFromSmarts("[+1!h0!$([*]~[-1,-2,-3,-4]),-1!$([*]~[+1,+2,+3,+4])]")
@@ -216,7 +269,7 @@ class RDKIT:
         if mol is None:
             raise InvalidParameterError("smi")
         Chem.RemoveStereochemistry(mol)
-        return ApiResponse(200, Chem.MolToSmiles(self._neutralize_atoms(mol)))
+        return ApiResponse(200, canonical_smiles(self._neutralize_atoms(mol)))
 
     # # Makes 3D structure
     def make3Dstructure(self, params = {}):
@@ -259,7 +312,7 @@ class RDKIT:
         inchi = Chem.inchi.MolToInchi(mol)
 
         return ApiResponse(200, {
-            "canonized_smiles": Chem.MolToSmiles(mol),
+            "canonized_smiles": canonical_smiles(mol),
             "inchi": inchi,
             'inchikey': Chem.inchi.InchiToInchiKey(inchi),
             "MW": round(Descriptors.MolWt(mol), 2),

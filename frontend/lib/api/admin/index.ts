@@ -452,8 +452,16 @@ export async function deleteJson(
   }
 }
 
+/** The fields of a backend answer that tell its errors; the rest is data. */
+type BackendJson = {
+  error?: string;
+  errors?: HttpJsonResponse["errors"];
+  message?: string;
+  exception?: string;
+};
+
 function handleBackendException(
-  jsonContent: any,
+  jsonContent: BackendJson,
   response: Response,
 ): HttpJsonResponse {
   if (jsonContent.error && response.status !== 200) {

@@ -42,6 +42,10 @@ jobs:
             exit 1
           fi
 
+      # Every release is described in CHANGELOG.md before it is tagged.
+      - name: The changelog describes this version
+        run: .github/scripts/changelog-notes.sh "${GITHUB_REF_NAME#v}" > /dev/null
+
   backend-ci:
     name: Backend CI
     uses: ./.github/workflows/backend-ci.yml
@@ -151,10 +155,15 @@ jobs:
           cp docker-compose-production.yaml release-files/compose.yaml
           cp docker/production/deploy.sh docker/production/move-to-standalone.sh release-files/
 
+          # The changelog's section comes first, the generated list of pull
+          # requests after it.
+          .github/scripts/changelog-notes.sh "${GITHUB_REF_NAME#v}" > release-notes.md
+
           # A re-run of the workflow finds the release already there.
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" release-files/* --clobber
           else
             gh release create "$GITHUB_REF_NAME" release-files/* \
-              --verify-tag --title "$GITHUB_REF_NAME" --generate-notes
+              --verify-tag --title "$GITHUB_REF_NAME" \
+              --notes-file release-notes.md --generate-notes
           fi

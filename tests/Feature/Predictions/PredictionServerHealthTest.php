@@ -199,6 +199,11 @@ test('a server never heard from is a problem', function () {
 
 test('pods that cannot be created for the quota are a problem of their component', function () {
     fetchedServerStats(predictionServerPayload([
+        'components' => [
+            ['name' => 'turbomole-worker', 'kind' => 'Deployment', 'desired' => 1, 'ready' => 1, 'available' => 1, 'updated' => 1, 'rollout_stalled' => false],
+            // Two pods the quota keeps from being created: they count nowhere.
+            ['name' => 'cosmo-worker', 'kind' => 'Deployment', 'desired' => 8, 'ready' => 6, 'available' => 6, 'updated' => 6, 'replicas' => 6, 'rollout_stalled' => false],
+        ],
         'events' => [
             quotaEvent(),
             // Another pod of the same component waiting for a node.
@@ -217,7 +222,117 @@ test('pods that cannot be created for the quota are a problem of their component
     expect($assessment->problems)->toBe([
         'event:cosmo-worker:FailedCreate' => 'cosmo-worker: FailedCreate (12×) — exceeded quota: default-zgkql, requested: limits.memory=15Gi',
         'event:orca-worker:FailedScheduling' => 'orca-worker: FailedScheduling (3×) — 0/80 nodes are available.',
-    ])->and($assessment->warnings)->toBe(['db: FailedMount (2×) — timed out waiting for the volume']);
+    ])->and($assessment->warnings)->toBe([
+        'db: FailedMount (2×) — timed out waiting for the volume',
+        'cosmo-worker: 6 of 8 replicas ready.',
+    ]);
+});
+
+test('a rollout that waited for the quota a moment is no problem once its component runs', function () {
+    // The API rollout of 2026-11-27: eight attempts to create the new pod
+    // failed while the old one still held the quota, then it started.
+    fetchedServerStats(predictionServerPayload([
+        'components' => [
+            ['name' => 'api', 'kind' => 'Deployment', 'desired' => 1, 'ready' => 1, 'available' => 1, 'updated' => 1, 'rollout_stalled' => false],
+        ],
+        'events' => [quotaEvent('replicaset/api-768fccc8cd')],
+        'events_total' => 1,
+    ]));
+
+    $assessment = assessPredictionServer();
+
+    expect($assessment->problems)->toBe([])
+        ->and($assessment->status)->toBe(HealthCheckResult::STATUS_WARNING)
+        ->and($assessment->warnings)->toBe(['api: FailedCreate (12×) — exceeded quota: default-zgkql, requested: limits.memory=15Gi']);
+});
+
+test('pods a rollout replaces one by one are no problem while the rollout goes on', function () {
+    fetchedServerStats(predictionServerPayload([
+        'components' => [
+            // 104 old pods are still there: the rollout replaces them.
+            ['name' => 'orca-worker', 'kind' => 'Deployment', 'desired' => 144, 'ready' => 143, 'available' => 143, 'updated' => 40, 'replicas' => 144, 'rollout_stalled' => false],
+        ],
+        'events' => [quotaEvent('replicaset/orca-worker-5d8f7c9b6')],
+    ]));
+
+    expect(assessPredictionServer()->problems)->toBe([]);
+});
+
+test('pods the quota keeps from being created outside a going rollout are a problem', function (array $component) {
+    fetchedServerStats(predictionServerPayload([
+        'components' => [['name' => 'orca-worker', 'kind' => 'Deployment', 'desired' => 144, 'ready' => 140, 'rollout_stalled' => false, ...$component]],
+        'events' => [quotaEvent('replicaset/orca-worker-5d8f7c9b6')],
+    ]));
+
+    expect(assessPredictionServer()->problems)->toHaveKey('event:orca-worker:FailedCreate');
+})->with([
+    // Lost pods, or more replicas asked for: there are no old pods.
+    'pods lost, no rollout' => [['updated' => 140, 'replicas' => 140]],
+    'stalled rollout' => [['updated' => 40, 'replicas' => 140, 'rollout_stalled' => true]],
+    // An older server: a rollout cannot be told from lost pods.
+    'no count of all pods' => [['updated' => 40]],
+    // StatefulSets have no progress deadline to stop a rollout.
+    'a StatefulSet' => [['kind' => 'StatefulSet', 'updated' => 40, 'replicas' => 140]],
+]);
+
+test('the last pod of a rollout, created but not ready yet, is past the quota but not a pod still unplaced', function () {
+    // The old pods are gone and the last new one exists: the quota no
+    // longer keeps it from being created, but it may still wait for a node.
+    fetchedServerStats(predictionServerPayload([
+        'components' => [['name' => 'orca-worker', 'kind' => 'Deployment', 'desired' => 144, 'ready' => 143, 'updated' => 144, 'replicas' => 144, 'rollout_stalled' => false]],
+        'events' => [
+            quotaEvent('replicaset/orca-worker-5d8f7c9b6'),
+            ['reason' => 'FailedScheduling', 'object' => 'pod/orca-worker-5d8f7c9b6-24pcm', 'message' => '0/80 nodes are available.', 'count' => 2, 'last_seen' => now()->subMinute()->toIso8601String()],
+        ],
+    ]));
+
+    expect(array_keys(assessPredictionServer()->problems))->toBe(['event:orca-worker:FailedScheduling']);
+});
+
+test('a component that does not say how many replicas it has is past no event', function () {
+    fetchedServerStats(predictionServerPayload([
+        'components' => [['name' => 'cosmo-worker', 'kind' => 'Deployment']],
+        'events' => [quotaEvent()],
+    ]));
+
+    expect(assessPredictionServer()->problems)->toHaveKey('event:cosmo-worker:FailedCreate');
+});
+
+test('a StatefulSet that waited for the quota a moment is no problem once it runs', function () {
+    fetchedServerStats(predictionServerPayload([
+        'components' => [['name' => 'db', 'kind' => 'StatefulSet', 'desired' => 1, 'ready' => 1, 'updated' => 1, 'replicas' => 1, 'rollout_stalled' => false]],
+        'events' => [quotaEvent('statefulset/db')],
+    ]));
+
+    $assessment = assessPredictionServer();
+
+    expect($assessment->problems)->toBe([])
+        ->and($assessment->warnings)->toBe(['db: FailedCreate (12×) — exceeded quota: default-zgkql, requested: limits.memory=15Gi']);
+});
+
+test('an announced quota problem ends once the rollout has brought its component back', function () {
+    predictionServerMonitor();
+    $this->travelTo(now()->startOfMinute());
+    $short = fn (): array => predictionServerPayload([
+        'components' => [['name' => 'cosmo-worker', 'kind' => 'Deployment', 'desired' => 8, 'ready' => 6, 'updated' => 6, 'replicas' => 6, 'rollout_stalled' => false]],
+        'events' => [quotaEvent()],
+    ]);
+
+    fetchedServerStats($short());
+    $this->artisan(CheckPredictionServerHealth::class)->assertSuccessful();
+    $this->travel(CheckPredictionServerHealth::CONFIRM_MINUTES)->minutes();
+    fetchedServerStats($short());
+    $this->artisan(CheckPredictionServerHealth::class)->assertSuccessful();
+
+    // The quota is free again: the component runs, the event is still recent.
+    foreach ([1, 2] as $check) {
+        $this->travel(5)->minutes();
+        fetchedServerStats(predictionServerPayload(['events' => [quotaEvent()]]));
+        $this->artisan(CheckPredictionServerHealth::class)->assertSuccessful();
+    }
+
+    expect(UserNotification::query()->orderBy('id')->pluck('title')->all())
+        ->toBe(['Prediction server: 1 problem', 'Prediction server works again']);
 });
 
 test('a step that works or finished lately is not idle, whatever waits', function (array $activity) {

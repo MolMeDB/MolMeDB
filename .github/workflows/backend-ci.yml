@@ -20,6 +20,9 @@ on:
       - ".github/scripts/coverage-summary.php"
       # The deployment scripts are run by tests/Unit/Deployment.
       - "docker/production/*.sh"
+      # tests/Unit/Deployment also runs the release notes script and checks the changelog.
+      - ".github/scripts/changelog-notes.sh"
+      - "CHANGELOG.md"
   push:
     branches: [develop, main]
     paths: *backend_paths

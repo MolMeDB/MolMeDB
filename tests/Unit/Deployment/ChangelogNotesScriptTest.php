@@ -37,6 +37,9 @@ test('the notes of a version are its section without the heading', function () {
         ## [1.3.0] - 2026-11-26
 
         - Kekulé SMILES.
+
+        [1.4.0]: https://github.com/MolMeDB/MolMeDB/compare/v1.3.0...v1.4.0
+        [1.3.0]: https://github.com/MolMeDB/MolMeDB/compare/v1.2.0...v1.3.0
         MD);
 
     $process = changelogNotes('1.4.0', $changelog);

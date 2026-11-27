@@ -7,6 +7,14 @@ has no section, and puts the section at the top of the GitHub release.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A deployment no longer waits five minutes for the old RDKit container:
+  it runs with an init process, which passes SIGTERM on to the service, so
+  it stops at once instead of being killed after the stop timeout.
+
 ## [1.4.0] - 2026-11-27
 
 ### Added

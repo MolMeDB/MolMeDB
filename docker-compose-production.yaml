@@ -306,6 +306,11 @@ services:
   rdkit:
     image: ghcr.io/molmedb/molmedb-rdkit:${MOLMEDB_VERSION:?Set MOLMEDB_VERSION in .env (docker/production/deploy.sh does)}
     container_name: rdkit
+    # The service runs as PID 1 and installs no handler for SIGTERM, which
+    # the kernel then ignores: every deployment waited the whole stop timeout
+    # (300 s in deploy.sh) before the old container was killed. An init
+    # process passes SIGTERM on, and the service stops at once.
+    init: true
     ports:
       - "127.0.0.1:9696:80"
     restart: unless-stopped

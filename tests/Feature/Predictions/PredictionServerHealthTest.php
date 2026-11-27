@@ -201,7 +201,8 @@ test('pods that cannot be created for the quota are a problem of their component
     fetchedServerStats(predictionServerPayload([
         'components' => [
             ['name' => 'turbomole-worker', 'kind' => 'Deployment', 'desired' => 1, 'ready' => 1, 'available' => 1, 'updated' => 1, 'rollout_stalled' => false],
-            ['name' => 'cosmo-worker', 'kind' => 'Deployment', 'desired' => 8, 'ready' => 6, 'available' => 6, 'updated' => 8, 'rollout_stalled' => false],
+            // Two pods the quota keeps from being created: they count nowhere.
+            ['name' => 'cosmo-worker', 'kind' => 'Deployment', 'desired' => 8, 'ready' => 6, 'available' => 6, 'updated' => 6, 'replicas' => 6, 'rollout_stalled' => false],
         ],
         'events' => [
             quotaEvent(),
@@ -248,7 +249,8 @@ test('a rollout that waited for the quota a moment is no problem once its compon
 test('pods a rollout replaces one by one are no problem while the rollout goes on', function () {
     fetchedServerStats(predictionServerPayload([
         'components' => [
-            ['name' => 'orca-worker', 'kind' => 'Deployment', 'desired' => 144, 'ready' => 143, 'available' => 143, 'updated' => 40, 'rollout_stalled' => false],
+            // 104 old pods are still there: the rollout replaces them.
+            ['name' => 'orca-worker', 'kind' => 'Deployment', 'desired' => 144, 'ready' => 143, 'available' => 143, 'updated' => 40, 'replicas' => 144, 'rollout_stalled' => false],
         ],
         'events' => [quotaEvent('replicaset/orca-worker-5d8f7c9b6')],
     ]));
@@ -256,23 +258,40 @@ test('pods a rollout replaces one by one are no problem while the rollout goes o
     expect(assessPredictionServer()->problems)->toBe([]);
 });
 
-test('a stalled rollout, or a server that does not say what it updated, keeps the quota a problem', function (array $component) {
+test('pods the quota keeps from being created outside a going rollout are a problem', function (array $component) {
     fetchedServerStats(predictionServerPayload([
-        'components' => [['name' => 'orca-worker', 'kind' => 'Deployment', 'desired' => 144, 'ready' => 143, ...$component]],
+        'components' => [['name' => 'orca-worker', 'kind' => 'Deployment', 'desired' => 144, 'ready' => 140, 'rollout_stalled' => false, ...$component]],
         'events' => [quotaEvent('replicaset/orca-worker-5d8f7c9b6')],
     ]));
 
     expect(assessPredictionServer()->problems)->toHaveKey('event:orca-worker:FailedCreate');
 })->with([
-    'stalled rollout' => [['updated' => 40, 'rollout_stalled' => true]],
-    'no updated count' => [['rollout_stalled' => false]],
+    // Lost pods, or more replicas asked for: there are no old pods.
+    'pods lost, no rollout' => [['updated' => 140, 'replicas' => 140]],
+    'stalled rollout' => [['updated' => 40, 'replicas' => 140, 'rollout_stalled' => true]],
+    // An older server: a rollout cannot be told from lost pods.
+    'no count of all pods' => [['updated' => 40]],
+    // StatefulSets have no progress deadline to stop a rollout.
+    'a StatefulSet' => [['kind' => 'StatefulSet', 'updated' => 40, 'replicas' => 140]],
 ]);
+
+test('a StatefulSet that waited for the quota a moment is no problem once it runs', function () {
+    fetchedServerStats(predictionServerPayload([
+        'components' => [['name' => 'db', 'kind' => 'StatefulSet', 'desired' => 1, 'ready' => 1, 'updated' => 1, 'replicas' => 1, 'rollout_stalled' => false]],
+        'events' => [quotaEvent('statefulset/db')],
+    ]));
+
+    $assessment = assessPredictionServer();
+
+    expect($assessment->problems)->toBe([])
+        ->and($assessment->warnings)->toBe(['db: FailedCreate (12×) — exceeded quota: default-zgkql, requested: limits.memory=15Gi']);
+});
 
 test('an announced quota problem ends once the rollout has brought its component back', function () {
     predictionServerMonitor();
     $this->travelTo(now()->startOfMinute());
     $short = fn (): array => predictionServerPayload([
-        'components' => [['name' => 'cosmo-worker', 'kind' => 'Deployment', 'desired' => 8, 'ready' => 6, 'updated' => 8, 'rollout_stalled' => false]],
+        'components' => [['name' => 'cosmo-worker', 'kind' => 'Deployment', 'desired' => 8, 'ready' => 6, 'updated' => 6, 'replicas' => 6, 'rollout_stalled' => false]],
         'events' => [quotaEvent()],
     ]);
 

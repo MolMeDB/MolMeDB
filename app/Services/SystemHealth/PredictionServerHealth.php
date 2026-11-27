@@ -240,13 +240,21 @@ class PredictionServerHealth
 
     /**
      * Components whose pods the events no longer keep from running: all
-     * replicas are ready, or a rollout that has not stalled replaces them.
+     * replicas are ready, or a Deployment's rollout that has not stalled is
+     * replacing its pods.
      *
      * A rollout in a namespace at its quota creates each new pod only once
      * the old one is gone, so every pod it replaces leaves a FailedCreate
      * behind for a moment; the events then stay recent for EVENT_MINUTES
-     * after the component has recovered. A rollout that cannot go on stalls
-     * (its progress deadline passes) and counts again.
+     * after the component has recovered.
+     *
+     * A rollout is told by its old pods: the Deployment has more pods than
+     * updated ones (`replicas` > `updated`). A pod the quota keeps from being
+     * created counts in neither, so a lost or never created pod outside a
+     * rollout stays a problem. A server that does not report `replicas` is
+     * never taken to be rolling out, and a rollout that cannot go on counts
+     * again once its progress deadline passes. StatefulSets have no progress
+     * deadline, so only their ready replicas count.
      *
      * @param  array<string, mixed>  $cluster
      * @return array<string, true>
@@ -262,11 +270,13 @@ class PredictionServerHealth
 
             $desired = $this->number($component['desired'] ?? 0);
             $ready = $this->number($component['ready'] ?? 0);
-            // A server that does not report updated replicas is not taken to be rolling out.
-            $updated = array_key_exists('updated', $component) ? $this->number($component['updated']) : $desired;
-            $stalled = ($component['rollout_stalled'] ?? false) === true;
+            $rollingOut = $this->text($component['kind'] ?? null) === 'Deployment'
+                && array_key_exists('replicas', $component)
+                && array_key_exists('updated', $component)
+                && $this->number($component['replicas']) > $this->number($component['updated'])
+                && ($component['rollout_stalled'] ?? false) !== true;
 
-            if ($ready >= $desired || ($updated < $desired && ! $stalled)) {
+            if ($ready >= $desired || $rollingOut) {
                 $unaffected[$this->text($component['name'])] = true;
             }
         }
@@ -278,13 +288,18 @@ class PredictionServerHealth
      * The component an object of a rollout belongs to, so that its key stays
      * the same across new pods and rollouts:
      * replicaset/cosmo-worker-dcb4c95d6 and pod/cosmo-worker-dcb4c95d6-2c5pw
-     * are both cosmo-worker.
+     * are both cosmo-worker, statefulset/db and pod/db-0 are db.
      */
     private function owner(string $object): string
     {
         return preg_replace(
-            ['#^replicaset/(.+)-[a-z0-9]{6,10}$#', '#^pod/(.+)-[a-z0-9]{6,10}-[a-z0-9]{5}$#', '#^pod/(.+)-[0-9]+$#'],
-            ['$1', '$1', '$1'],
+            [
+                '#^replicaset/(.+)-[a-z0-9]{6,10}$#',
+                '#^pod/(.+)-[a-z0-9]{6,10}-[a-z0-9]{5}$#',
+                '#^pod/(.+)-[0-9]+$#',
+                '#^(?:deployment|statefulset)/(.+)$#',
+            ],
+            ['$1', '$1', '$1', '$1'],
             $object,
         ) ?? $object;
     }

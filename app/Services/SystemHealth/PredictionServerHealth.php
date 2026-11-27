@@ -206,6 +206,7 @@ class PredictionServerHealth
     private function eventProblems(array $cluster, CarbonImmutable $now, array &$warnings): array
     {
         $problems = [];
+        $unaffected = $this->eventsPastForComponents($cluster);
 
         foreach (Arr::wrap($cluster['events'] ?? []) as $event) {
             if (! is_array($event)) {
@@ -227,7 +228,7 @@ class PredictionServerHealth
                 Str::limit($this->text($event['message'] ?? null), 200),
             );
 
-            if (in_array($reason, self::BLOCKING_EVENT_REASONS, true)) {
+            if (in_array($reason, self::BLOCKING_EVENT_REASONS, true) && ! in_array($reason, $unaffected[$owner] ?? [], true)) {
                 $problems["event:{$owner}:{$reason}"] ??= $line;
             } elseif (! in_array($line, $warnings, true)) {
                 $warnings[] = $line;
@@ -238,16 +239,81 @@ class PredictionServerHealth
     }
 
     /**
+     * The blocking events each component is past: what they said no longer
+     * keeps its pods from running.
+     *
+     * - FailedCreate (pods not created, a quota) is past once all of the
+     *   component's pods exist (`replicas`, or ready replicas from a server
+     *   that does not report `replicas`); a pod that exists but does not
+     *   start is a pod problem.
+     * - FailedScheduling (pods not placed) is past once all replicas are ready.
+     * - Both are past while a Deployment's rollout that has not stalled
+     *   replaces its pods.
+     *
+     * A rollout in a namespace at its quota creates each new pod only once
+     * the old one is gone, so every pod it replaces leaves a FailedCreate
+     * behind for a moment; the events then stay recent for EVENT_MINUTES
+     * after the component has recovered. A rollout is told by its old pods:
+     * the Deployment has more pods than updated ones (`replicas` > `updated`).
+     * A pod the quota keeps from being created counts in neither, so a lost
+     * or never created pod outside a rollout stays a problem. A server that
+     * does not report `replicas` is never taken to be rolling out, a rollout
+     * that cannot go on counts again once its progress deadline passes, and
+     * StatefulSets, which have no progress deadline, never roll out here.
+     * A component that does not say how many replicas it has is past nothing.
+     *
+     * @param  array<string, mixed>  $cluster
+     * @return array<string, list<string>>
+     */
+    private function eventsPastForComponents(array $cluster): array
+    {
+        $past = [];
+
+        foreach (Arr::wrap($cluster['components'] ?? []) as $component) {
+            if (
+                ! is_array($component)
+                || $this->text($component['name'] ?? null) === ''
+                || ! array_key_exists('desired', $component)
+                || ! array_key_exists('ready', $component)
+            ) {
+                continue;
+            }
+
+            $desired = $this->number($component['desired']);
+            $ready = $this->number($component['ready']);
+            $hasPodCount = array_key_exists('replicas', $component);
+            $pods = $hasPodCount ? $this->number($component['replicas']) : $ready;
+            $rollingOut = $this->text($component['kind'] ?? null) === 'Deployment'
+                && $hasPodCount
+                && array_key_exists('updated', $component)
+                && $pods > $this->number($component['updated'])
+                && ($component['rollout_stalled'] ?? false) !== true;
+
+            $past[$this->text($component['name'])] = array_values(array_filter([
+                $rollingOut || $pods >= $desired ? 'FailedCreate' : null,
+                $rollingOut || $ready >= $desired ? 'FailedScheduling' : null,
+            ]));
+        }
+
+        return $past;
+    }
+
+    /**
      * The component an object of a rollout belongs to, so that its key stays
      * the same across new pods and rollouts:
      * replicaset/cosmo-worker-dcb4c95d6 and pod/cosmo-worker-dcb4c95d6-2c5pw
-     * are both cosmo-worker.
+     * are both cosmo-worker, statefulset/db and pod/db-0 are db.
      */
     private function owner(string $object): string
     {
         return preg_replace(
-            ['#^replicaset/(.+)-[a-z0-9]{6,10}$#', '#^pod/(.+)-[a-z0-9]{6,10}-[a-z0-9]{5}$#', '#^pod/(.+)-[0-9]+$#'],
-            ['$1', '$1', '$1'],
+            [
+                '#^replicaset/(.+)-[a-z0-9]{6,10}$#',
+                '#^pod/(.+)-[a-z0-9]{6,10}-[a-z0-9]{5}$#',
+                '#^pod/(.+)-[0-9]+$#',
+                '#^(?:deployment|statefulset)/(.+)$#',
+            ],
+            ['$1', '$1', '$1', '$1'],
             $object,
         ) ?? $object;
     }

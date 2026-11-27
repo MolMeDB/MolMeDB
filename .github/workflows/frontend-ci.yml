@@ -181,6 +181,10 @@ jobs:
       # Playwright's webServer config builds nothing itself — it just runs
       # the mock backend and `next start` against an already-built .next/.
       - run: npm run build
+        env:
+          # Makes the browser report push as supported, as in production, so
+          # the tests see the page render the way it does there.
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: e2e-placeholder-vapid-key
 
       - run: npx playwright test
 

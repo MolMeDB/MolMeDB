@@ -1,6 +1,8 @@
 "use client";
 
-import { getJson, post } from "@/lib/api/admin";
+import { getJson } from "@/lib/api/admin";
+import { useHandle401 } from "@/lib/api/admin/redirections";
+import saveNotificationPreferences from "../(actions)/saveNotificationPreferences";
 import {
   getExistingPushSubscription,
   isPushSupported,
@@ -17,7 +19,12 @@ import {
   Spinner,
   Switch,
 } from "@heroui/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+
+/** Push support does not change while the page is open. */
+function subscribeToNothing() {
+  return () => {};
+}
 
 type Preference = {
   key: string;
@@ -32,6 +39,14 @@ export default function NotificationPreferencesForm() {
   const [isSaving, setIsSaving] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+  const handle401 = useHandle401();
+  // Known only in the browser: the server render says "not supported" and
+  // the browser reads the real answer after hydration.
+  const pushSupported = useSyncExternalStore(
+    subscribeToNothing,
+    isPushSupported,
+    () => false,
+  );
 
   useEffect(() => {
     (async () => {
@@ -39,11 +54,18 @@ export default function NotificationPreferencesForm() {
 
       if (response && response.code === 200) {
         setPreferences((response.data?.data as Preference[]) ?? []);
+      } else if (response?.code === 401) {
+        // The backend session ended while the frontend still holds the user.
+        handle401();
+
+        return;
       }
 
       const subscription = await getExistingPushSubscription();
       setPushEnabled(Boolean(subscription));
     })();
+    // Loads once: handle401 is a new function on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const grouped = useMemo(() => {
@@ -74,21 +96,13 @@ export default function NotificationPreferencesForm() {
     setIsSaving(true);
 
     try {
-      const response = await post(
-        "/api/notifications/preferences",
-        { preferences },
-        "PUT",
-      );
+      const response = await saveNotificationPreferences(preferences ?? []);
 
-      if (response.ok) {
-        addToast({
-          title: "Saved",
-          description: "Notification preferences updated.",
-          color: "success",
-        });
-      } else {
-        throw new Error("Failed to save");
-      }
+      addToast({
+        title: response.title,
+        description: response.message,
+        color: response.status === 200 ? "success" : "danger",
+      });
     } catch {
       addToast({
         title: "Error",
@@ -143,14 +157,14 @@ export default function NotificationPreferencesForm() {
           <div>
             <p className="font-medium">Push notifications on this device</p>
             <p className="text-sm text-default-500">
-              {isPushSupported()
+              {pushSupported
                 ? "Requires browser permission."
                 : "Not supported in this browser."}
             </p>
           </div>
           <Switch
             isSelected={pushEnabled}
-            isDisabled={!isPushSupported() || pushBusy}
+            isDisabled={!pushSupported || pushBusy}
             onValueChange={handleTogglePush}
           />
         </div>

@@ -187,7 +187,34 @@ async function forwardedHeaders(): Promise<Record<string, string>> {
   }
 }
 
+/**
+ * A 401 means the backend no longer knows the session, so the user cookie
+ * goes too: it showed the user signed in (and the login offered to continue
+ * as them) after a logout in another tab or an expired session. Only server
+ * actions and route handlers may change cookies; a page being rendered
+ * cannot, and leads to the login, which forgets the user (see proxy.ts).
+ */
+async function forgetSignedInUserAfter401(res: Response): Promise<void> {
+  const userKey = process.env.COOKIES_FRONTEND_SESSION_USER_KEY;
+
+  if (res.status !== 401 || !userKey) {
+    return;
+  }
+
+  try {
+    const cookiesStore = await Cookies();
+
+    if (cookiesStore.has(userKey)) {
+      cookiesStore.delete(userKey);
+    }
+  } catch {
+    // Rendering a page: see above.
+  }
+}
+
 async function updateCookies(res: Response): Promise<BackendCookies | null> {
+  await forgetSignedInUserAfter401(res);
+
   const parsedCookies = setCookieHeaders(res)
     .map(parseSetCookie)
     .filter((cookie): cookie is ParsedSetCookie => cookie !== null);
@@ -425,8 +452,16 @@ export async function deleteJson(
   }
 }
 
+/** The fields of a backend answer that tell its errors; the rest is data. */
+type BackendJson = {
+  error?: string;
+  errors?: HttpJsonResponse["errors"];
+  message?: string;
+  exception?: string;
+};
+
 function handleBackendException(
-  jsonContent: any,
+  jsonContent: BackendJson,
   response: Response,
 ): HttpJsonResponse {
   if (jsonContent.error && response.status !== 200) {

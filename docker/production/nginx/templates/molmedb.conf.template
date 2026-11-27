@@ -3,6 +3,14 @@
 # environment (MOLMEDB_*_HOST, see docker-compose-production.yaml) and are
 # filled in by the nginx image on start. See README.md in this directory.
 
+# Laravel's remember cookie (remember_web_<hash>) signs a user in again once
+# their session has ended, so a request carrying it is a signed-in user's
+# even without the session cookie. See the API cache below.
+map $http_cookie $molmedb_remember_cookie {
+    default         0;
+    ~remember_web_  1;
+}
+
 # Website (Next.js frontend) with the public API under /api/v1. The rest of
 # /api belongs to the frontend's own route handlers.
 server {
@@ -51,8 +59,14 @@ server {
         # Skip cache for authenticated users (session cookie present).
         # Bots have no session cookie → served from cache.
         # Logged-in users → always get fresh response from PHP-FPM.
-        fastcgi_cache_bypass $cookie_molmedb_session;
-        fastcgi_no_cache     $cookie_molmedb_session;
+        # A remember cookie counts as signed in too: Laravel signs the user in
+        # from it and answers with their new session cookie.
+        fastcgi_cache_bypass $cookie_molmedb_session $molmedb_remember_cookie;
+        fastcgi_no_cache     $cookie_molmedb_session $molmedb_remember_cookie;
+        # Cookies of one visitor must never reach another: a cached answer
+        # was replayed with the Set-Cookie of whoever caused it, a session
+        # cookie among them.
+        fastcgi_hide_header  Set-Cookie;
 
         fastcgi_cache api_cache;
         fastcgi_cache_valid 200 1h;

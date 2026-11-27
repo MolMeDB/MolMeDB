@@ -136,10 +136,21 @@ function send(res, status, body) {
   res.end(typeof body === "string" ? body : JSON.stringify(body));
 }
 
+/** The body of the last request to each "METHOD path", for the tests to read. */
+const lastBodies = new Map();
+
 const server = createServer((req, res) => {
-  req.on("data", () => {});
+  const chunks = [];
+  req.on("data", (chunk) => chunks.push(chunk));
   req.on("end", () => {
-    const { pathname } = new URL(req.url, "http://mock-backend");
+    const { pathname, searchParams } = new URL(req.url, "http://mock-backend");
+
+    if (!pathname.startsWith("/__e2e/")) {
+      lastBodies.set(
+        `${req.method} ${pathname}`,
+        Buffer.concat(chunks).toString("utf8"),
+      );
+    }
 
     // Playwright's webServer readiness check does a GET on this URL and
     // expects a non-error status before starting tests.
@@ -152,20 +163,35 @@ const server = createServer((req, res) => {
 
     // Like the real backend, a login starts a session and hands out its
     // cookies; the frontend keeps them and sends them back with every call.
+    // The session lasts two hours after the last request, as SESSION_LIFETIME
+    // 120 does; "remember me" adds Laravel's remember cookie.
     if (req.method === "POST" && pathname === "/login") {
       const session = randomUUID();
       sessions.set(session, { signedOut: false });
+      let remember = false;
+      try {
+        remember = JSON.parse(Buffer.concat(chunks).toString("utf8")).remember === true;
+      } catch {
+        // No JSON body: not remembered.
+      }
       res.writeHead(200, {
         "Content-Type": "application/json",
         "Set-Cookie": [
           `XSRF-TOKEN=${randomUUID()}; Max-Age=7200; Path=/; SameSite=Lax`,
           `molmedb_session=${session}; Max-Age=7200; Path=/; HttpOnly; SameSite=Lax`,
+          ...(remember
+            ? [`remember_web_e2e=1|${randomUUID()}|hash; Max-Age=34560000; Path=/; HttpOnly; SameSite=Lax`]
+            : []),
         ],
       });
       res.end(
         JSON.stringify({
           data: { id: 1, name: "E2E Test User", email: "e2e@example.test" },
-          meta: {},
+          meta: {
+            remember,
+            session_lifetime_minutes: 120,
+            session_expires_at: new Date(Date.now() + 120 * 60 * 1000).toISOString(),
+          },
         }),
       );
 
@@ -193,9 +219,44 @@ const server = createServer((req, res) => {
       return;
     }
 
+    // For the tests only: what the frontend last sent, by "METHOD path".
+    if (req.method === "GET" && pathname === "/__e2e/last-body") {
+      const body = lastBodies.get(searchParams.get("route") ?? "");
+      send(res, body === undefined ? 404 : 200, { body: body ?? null });
+
+      return;
+    }
+
     // The smoke tests visit the pages as an anonymous visitor.
     if (req.method === "GET" && pathname === "/api/user") {
       send(res, 401, { message: "Unauthenticated." });
+
+      return;
+    }
+
+    // One notification in full: a message with a list (and markup that must
+    // not run), about a page of the administration. 404 is one that is gone.
+    const notification = /^\/api\/notifications\/(\d+)$/.exec(pathname);
+    if (req.method === "GET" && notification) {
+      if (notification[1] === "404") {
+        send(res, 404, { message: "No query results for model [App\\Models\\UserNotification]." });
+
+        return;
+      }
+
+      send(res, 200, {
+        data: {
+          id: Number(notification[1]),
+          state: "new",
+          title: "Background job failure",
+          body: "2 background job(s) failed recently.<ul><li>backup</li></ul>",
+          message:
+            '<p>2 background job(s) failed recently.</p><ul><li>backup: disk full</li><li>export: timeout</li></ul><img src="x" onerror="window.__e2eInjected = true"><script>window.__e2eInjected = true</script>',
+          url: "https://molmedb.test/admin/activity",
+          created_at: "2026-11-26T05:39:00.000000Z",
+          read_at: null,
+        },
+      });
 
       return;
     }

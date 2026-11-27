@@ -853,7 +853,9 @@ export default function UploadDatasetForm(props: {
         <MyUploadsList reloadKey={reloadKey} />
       ) : (
         <p className="text-sm text-foreground-500">
-          <Link className="text-primary" href={"/login"}>Sign in</Link>{" "}
+          <Link className="text-primary" href="/login?redirect=/lab/upload">
+            Sign in
+          </Link>{" "}
           to see the complete history of your uploaded datasets here.
         </p>
       )}

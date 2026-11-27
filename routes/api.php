@@ -149,6 +149,9 @@ Route::group([], function () {
             Route::get('/', 'index');
             Route::post('/read', 'markAsRead')->middleware('throttle:60,1');
             Route::delete('/clear', 'clearAll')->middleware('throttle:30,1');
+            // At most 18 digits: a longer number does not fit the integer parameter.
+            Route::get('/{notification}', 'show')->where('notification', '[0-9]{1,18}');
+            Route::post('/{notification}/read', 'markOneAsRead')->where('notification', '[0-9]{1,18}')->middleware('throttle:60,1');
         });
 
     Route::prefix('notifications/push-subscriptions')

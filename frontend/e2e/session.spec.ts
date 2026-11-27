@@ -126,6 +126,52 @@ test.describe("session", () => {
     expect(await cookie(page, "molmedb_fe_session_user")).toBeTruthy();
   });
 
+  test("saving the notification preferences reports success", async ({
+    page,
+  }) => {
+    // A hydration mismatch is reported on the console, not as a page error.
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    await signIn(page);
+
+    await page.goto("/account/settings");
+    await expect(page.getByText("Sample label")).toBeVisible();
+    await expect(page.getByText("Requires browser permission.")).toBeVisible();
+
+    // The mock answers with every switch on; turn the email one off.
+    const emailSwitch = page
+      .locator("label", { hasText: "Email" })
+      .getByRole("switch");
+    await expect(emailSwitch).toBeChecked();
+    await emailSwitch.click({ force: true });
+    await expect(emailSwitch).not.toBeChecked();
+
+    await page.getByRole("button", { name: "Save preferences" }).click();
+
+    await expect(
+      page.getByText("Notification preferences updated."),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Could not save notification preferences."),
+    ).toHaveCount(0);
+
+    const sent = await page.request.get(
+      `${MOCK_BACKEND}/__e2e/last-body?route=${encodeURIComponent("PUT /api/notifications/preferences")}`,
+    );
+    expect(sent.status()).toBe(200);
+    expect(JSON.parse((await sent.json()).body)).toEqual({
+      preferences: [
+        { key: "Sample key", email_enabled: false, push_enabled: true },
+      ],
+    });
+    expect(errors).toEqual([]);
+  });
+
   test("opening the menu on a phone leaves the user signed in", async ({
     page,
   }) => {
@@ -149,8 +195,96 @@ test.describe("session", () => {
   }) => {
     await page.goto("/account/settings");
 
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/login\?redirect=%2Faccount%2Fsettings$/);
     await expect(page.locator('input[name="email"]')).toBeVisible();
+  });
+
+  test("signing in from a link to the notification settings leads back to them", async ({
+    page,
+  }) => {
+    // Low enough that the section starts below the fold.
+    await page.setViewportSize({ width: 1280, height: 600 });
+
+    // The link in every notification e-mail.
+    await page.goto("/account/settings#notifications");
+    await expect(page).toHaveURL(
+      /\/login\?redirect=%2Faccount%2Fsettings#notifications$/,
+    );
+
+    await page.locator('input[name="email"]').fill("user@example.test");
+    await page.locator('input[name="password"]').fill("correct-password");
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Login", exact: true })
+      .click();
+
+    await expect(page).toHaveURL(/\/account\/settings#notifications$/);
+    await expect(
+      page.getByRole("heading", { name: "Notifications" }),
+    ).toBeInViewport();
+  });
+
+  // Browsers drop tabs and newlines from a URL and read a backslash as a
+  // slash, and dot segments are removed, so these would lead to example.com.
+  const offSiteTargets = [
+    "%2F%09%2Fexample.com%2Fphish",
+    "%2F%09%5Cexample.com",
+    "%2F.%2F%2Fexample.com%2Fphish",
+    "%2F..%2F%2Fexample.com",
+    "%2F%252e%2F%2Fexample.com",
+  ];
+
+  for (const target of offSiteTargets) {
+    test(`"Continue as" with the login target ${target} stays on the site`, async ({
+      page,
+    }) => {
+      await signIn(page);
+
+      await page.goto(`/login?redirect=${target}`);
+      const continueAs = page.locator("main a", { hasText: "Continue as" });
+      await expect(continueAs).toHaveAttribute("href", "/");
+    });
+  }
+
+  test(`"Continue as" leads to the login target`, async ({ page }) => {
+    await signIn(page);
+
+    await page.goto(`/login?redirect=${encodeURIComponent("/account/settings")}`);
+    await page.locator("main a", { hasText: "Continue as" }).click();
+
+    await expect(page).toHaveURL(/127\.0\.0\.1:\d+\/account\/settings$/);
+  });
+
+  for (const target of offSiteTargets) {
+    test(`the login target ${target} does not leave the site`, async ({
+      page,
+    }) => {
+      await page.goto(`/login?redirect=${target}`);
+      await page.locator('input[name="email"]').fill("user@example.test");
+      await page.locator('input[name="password"]').fill("correct-password");
+      await page
+        .getByRole("main")
+        .getByRole("button", { name: "Login", exact: true })
+        .click();
+
+      await expect(page).toHaveURL(/^http:\/\/127\.0\.0\.1:\d+\/lab$/);
+    });
+  }
+
+  test("a login target with characters a header cannot hold still signs in", async ({
+    page,
+  }) => {
+    await page.goto("/login?redirect=%2Fdocs%2F%E3%80%82example");
+    await page.locator('input[name="email"]').fill("user@example.test");
+    await page.locator('input[name="password"]').fill("correct-password");
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: "Login", exact: true })
+      .click();
+
+    await expect(page).toHaveURL(
+      /^http:\/\/127\.0\.0\.1:\d+\/docs\/%E3%80%82example$/,
+    );
   });
 
   test("a browser loading the logout address in advance does not sign out", async ({

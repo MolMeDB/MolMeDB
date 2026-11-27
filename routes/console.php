@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\Cron\CheckPredictionServerHealth;
 use App\Console\Commands\Cron\RunDailyCommands;
 use App\Console\Commands\Cron\RunPredictionsWorker;
 use App\Console\Commands\Cron\SendPredictionAdminStatsNotification;
@@ -61,6 +62,12 @@ Schedule::command('predictions:refresh-dataset-stats')
 
 Schedule::command(RunPredictionsWorker::class)
     ->everyMinute()
+    ->withoutOverlapping(10);
+
+// Reads the statistics the worker above fetches; announces a prediction
+// server that stopped computing (and its recovery) to the system monitors.
+Schedule::command(CheckPredictionServerHealth::class)
+    ->everyFiveMinutes()
     ->withoutOverlapping(10);
 
 // ShouldBeUnique on the job itself (not ->withoutOverlapping()) is what

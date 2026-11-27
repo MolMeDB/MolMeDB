@@ -5,6 +5,7 @@ namespace Modules\PredictionWorkers\DTO\RemotePrediction;
 use Carbon\CarbonImmutable;
 use Modules\PredictionWorkers\Enums\RemotePredictionStatus;
 use Modules\PredictionWorkers\Enums\RemotePredictionStep;
+use Throwable;
 
 final class RemotePredictionPayload
 {
@@ -23,7 +24,16 @@ final class RemotePredictionPayload
         }
 
         if ($key !== null && (str_ends_with($key, '_at') || $key === 'created_at')) {
-            return $value !== '' ? CarbonImmutable::parse($value) : null;
+            if ($value === '') {
+                return null;
+            }
+
+            // One unreadable time must not lose the whole answer.
+            try {
+                return CarbonImmutable::parse($value);
+            } catch (Throwable) {
+                return $value;
+            }
         }
 
         if ($key === 'status') {

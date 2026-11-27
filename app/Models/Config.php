@@ -18,6 +18,9 @@ class Config extends Model
 
     public const KEY_LAB_UPLOAD_ADMIN_DIGEST_LAST_SENT_AT = 'lab_upload:admin_digest_last_sent_at';
 
+    /** State of the prediction server alert (CheckPredictionServerHealth), JSON; kept here as cache:clear runs on every start. */
+    public const KEY_PREDICTION_SERVER_HEALTH_ALERT = 'prediction_server:health_alert';
+
     public const KEY_PREDICTION_ADMIN_EMAIL_FALLBACK = 'prediction_admin:email_fallback';
 
     public const KEY_REMOTE_PREDICTION_ENABLED = 'remote_prediction:enabled';

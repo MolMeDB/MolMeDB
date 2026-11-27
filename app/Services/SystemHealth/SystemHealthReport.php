@@ -23,6 +23,8 @@ use Throwable;
  */
 class SystemHealthReport
 {
+    public function __construct(private readonly PredictionServerHealth $predictionServerHealth) {}
+
     private const MAX_DETAILS = 10;
 
     /** Log files above this size are worth a look (bytes). */
@@ -51,6 +53,7 @@ class SystemHealthReport
             'Application errors' => fn (): HealthCheckResult => $this->applicationErrors($day),
             'Recorded failures' => fn (): HealthCheckResult => $this->recordedFailures($day),
             'Prediction import' => fn (): HealthCheckResult => $this->predictionImport($day),
+            PredictionServerHealth::LABEL => fn (): HealthCheckResult => $this->predictionServerHealth->assess()->toHealthCheckResult(),
             'Structure search index' => fn (): HealthCheckResult => $this->bingoIndex(),
             'Logs and disk space' => fn (): HealthCheckResult => $this->storage(),
         ];

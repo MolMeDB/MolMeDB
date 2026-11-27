@@ -18,7 +18,7 @@ class SendSystemHealthReport extends Command
 
     protected $signature = 'cron:system-health-report';
 
-    protected $description = 'Send the system monitors a report on the previous day: application errors, failed jobs, the prediction import, the structure search index, logs and disk space.';
+    protected $description = 'Send the system monitors a report on the previous day: application errors, failed jobs, the prediction import, the prediction server, the structure search index, logs and disk space.';
 
     public function handle(SystemHealthReport $report, NotificationService $notifications): int
     {

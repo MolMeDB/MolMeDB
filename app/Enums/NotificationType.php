@@ -36,6 +36,7 @@ enum NotificationType: string
     case PREDICTION_ADMIN_NEW_SUBMISSION = 'prediction.admin.new_submission';
     case PREDICTION_ADMIN_STATS_REPORT = 'prediction.admin.stats_report';
     case PREDICTION_ADMIN_REMOTE_SERVICE_DOWN = 'prediction.admin.remote_service_down';
+    case PREDICTION_ADMIN_SERVER_HEALTH = 'prediction.admin.server_health';
     case FEEDBACK_ADMIN_NEW_SUBMISSION = 'feedback.admin.new_submission';
     case SYSTEM_ADMIN_BACKUP_FAILED = 'system.admin.backup_failed';
     case SYSTEM_ADMIN_JOB_FAILED = 'system.admin.job_failed';
@@ -96,6 +97,7 @@ enum NotificationType: string
             self::PREDICTION_ADMIN_NEW_SUBMISSION,
             self::PREDICTION_ADMIN_STATS_REPORT,
             self::PREDICTION_ADMIN_REMOTE_SERVICE_DOWN,
+            self::PREDICTION_ADMIN_SERVER_HEALTH,
             self::FEEDBACK_ADMIN_NEW_SUBMISSION,
             self::SYSTEM_ADMIN_BACKUP_FAILED,
             self::SYSTEM_ADMIN_JOB_FAILED,
@@ -131,7 +133,8 @@ enum NotificationType: string
             self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED,
             self::SYSTEM_ADMIN_HEALTH_REPORT,
-            self::SYSTEM_ADMIN_ERROR_REPEATED => PermissionEnums::SYSTEM_MONITOR,
+            self::SYSTEM_ADMIN_ERROR_REPEATED,
+            self::PREDICTION_ADMIN_SERVER_HEALTH => PermissionEnums::SYSTEM_MONITOR,
 
             default => null,
         };
@@ -172,6 +175,8 @@ enum NotificationType: string
             self::SYSTEM_ADMIN_HEALTH_REPORT,
             self::SYSTEM_ADMIN_ERROR_REPEATED,
             self::PREDICTION_ADMIN_REMOTE_SERVICE_DOWN,
+            // Throttled by CheckPredictionServerHealth; an HTML list.
+            self::PREDICTION_ADMIN_SERVER_HEALTH,
             self::FEEDBACK_ADMIN_NEW_SUBMISSION,
             // Scheduled reports are summaries already; batching would merge
             // e.g. Monday's day and week reports into one and lose the first.
@@ -234,7 +239,8 @@ enum NotificationType: string
             self::SYSTEM_ADMIN_COSMO_EXPORT_FINISHED,
             self::SYSTEM_ADMIN_COSMO_EXPORT_FAILED,
             self::SYSTEM_ADMIN_HEALTH_REPORT,
-            self::SYSTEM_ADMIN_ERROR_REPEATED => 'Administration – system health',
+            self::SYSTEM_ADMIN_ERROR_REPEATED,
+            self::PREDICTION_ADMIN_SERVER_HEALTH => 'Administration – system health',
         };
     }
 

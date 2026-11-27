@@ -206,6 +206,7 @@ class PredictionServerHealth
     private function eventProblems(array $cluster, CarbonImmutable $now, array &$warnings): array
     {
         $problems = [];
+        $unaffected = $this->componentsUnaffectedByEvents($cluster);
 
         foreach (Arr::wrap($cluster['events'] ?? []) as $event) {
             if (! is_array($event)) {
@@ -227,7 +228,7 @@ class PredictionServerHealth
                 Str::limit($this->text($event['message'] ?? null), 200),
             );
 
-            if (in_array($reason, self::BLOCKING_EVENT_REASONS, true)) {
+            if (in_array($reason, self::BLOCKING_EVENT_REASONS, true) && ! isset($unaffected[$owner])) {
                 $problems["event:{$owner}:{$reason}"] ??= $line;
             } elseif (! in_array($line, $warnings, true)) {
                 $warnings[] = $line;
@@ -235,6 +236,42 @@ class PredictionServerHealth
         }
 
         return $problems;
+    }
+
+    /**
+     * Components whose pods the events no longer keep from running: all
+     * replicas are ready, or a rollout that has not stalled replaces them.
+     *
+     * A rollout in a namespace at its quota creates each new pod only once
+     * the old one is gone, so every pod it replaces leaves a FailedCreate
+     * behind for a moment; the events then stay recent for EVENT_MINUTES
+     * after the component has recovered. A rollout that cannot go on stalls
+     * (its progress deadline passes) and counts again.
+     *
+     * @param  array<string, mixed>  $cluster
+     * @return array<string, true>
+     */
+    private function componentsUnaffectedByEvents(array $cluster): array
+    {
+        $unaffected = [];
+
+        foreach (Arr::wrap($cluster['components'] ?? []) as $component) {
+            if (! is_array($component) || $this->text($component['name'] ?? null) === '') {
+                continue;
+            }
+
+            $desired = $this->number($component['desired'] ?? 0);
+            $ready = $this->number($component['ready'] ?? 0);
+            // A server that does not report updated replicas is not taken to be rolling out.
+            $updated = array_key_exists('updated', $component) ? $this->number($component['updated']) : $desired;
+            $stalled = ($component['rollout_stalled'] ?? false) === true;
+
+            if ($ready >= $desired || ($updated < $desired && ! $stalled)) {
+                $unaffected[$this->text($component['name'])] = true;
+            }
+        }
+
+        return $unaffected;
     }
 
     /**

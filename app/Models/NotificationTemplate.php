@@ -59,6 +59,8 @@ class NotificationTemplate extends Model
 
     public const KEY_PREDICTION_ADMIN_REMOTE_SERVICE_DOWN = 'prediction.admin.remote_service_down';
 
+    public const KEY_PREDICTION_ADMIN_SERVER_HEALTH = 'prediction.admin.server_health';
+
     protected $guarded = [];
 
     /**
@@ -93,6 +95,7 @@ class NotificationTemplate extends Model
             self::KEY_SYSTEM_ADMIN_HEALTH_REPORT => 'System admin: daily system health report',
             self::KEY_SYSTEM_ADMIN_ERROR_REPEATED => 'System admin: an application error keeps repeating',
             self::KEY_PREDICTION_ADMIN_REMOTE_SERVICE_DOWN => 'Prediction admin: remote service unavailable',
+            self::KEY_PREDICTION_ADMIN_SERVER_HEALTH => 'System admin: prediction server stopped working',
         ];
     }
 

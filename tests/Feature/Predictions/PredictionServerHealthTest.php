@@ -18,7 +18,6 @@ use App\Services\SystemHealth\PredictionServerAssessment;
 use App\Services\SystemHealth\PredictionServerHealth;
 use App\Services\SystemHealth\SystemHealthReport;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use Modules\PredictionWorkers\Models\PredictionStat;
@@ -33,7 +32,6 @@ use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function () {
     Notification::fake();
-    Cache::forget(CheckPredictionServerHealth::STATE_CACHE_KEY);
     $this->travelTo('2026-11-27 10:00:00');
     Config::set(Config::KEY_REMOTE_PREDICTION_ENABLED, '1');
     Config::set(Config::KEY_REMOTE_PREDICTION_URL, 'https://predictor.test');
@@ -135,6 +133,19 @@ function predictionServerMonitor(): User
     return $user->refresh();
 }
 
+function predictionServerAlertState(): ?string
+{
+    return Config::get(Config::KEY_PREDICTION_SERVER_HEALTH_ALERT);
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function quotaEvent(string $object = 'replicaset/cosmo-worker-dcb4c95d6'): array
+{
+    return ['reason' => 'FailedCreate', 'object' => $object, 'message' => 'exceeded quota: default-zgkql, requested: limits.memory=15Gi', 'count' => 12, 'last_seen' => now()->subMinutes(2)->toIso8601String()];
+}
+
 function assessPredictionServer(): PredictionServerAssessment
 {
     return app(PredictionServerHealth::class)->assess();
@@ -189,14 +200,24 @@ test('a server never heard from is a problem', function () {
 test('pods that cannot be created for the quota are a problem of their component', function () {
     fetchedServerStats(predictionServerPayload([
         'events' => [
-            ['reason' => 'FailedCreate', 'object' => 'replicaset/cosmo-worker-dcb4c95d6', 'message' => 'exceeded quota: default-zgkql, requested: limits.memory=15Gi', 'count' => 12, 'last_seen' => '2026-11-27T08:58:00Z'],
+            quotaEvent(),
+            // Another pod of the same component waiting for a node.
+            ['reason' => 'FailedScheduling', 'object' => 'pod/orca-worker-66c48d779d-24pcm', 'message' => '0/80 nodes are available.', 'count' => 3, 'last_seen' => now()->subMinute()->toIso8601String()],
+            ['reason' => 'FailedScheduling', 'object' => 'pod/orca-worker-66c48d779d-52q7j', 'message' => '0/80 nodes are available.', 'count' => 3, 'last_seen' => now()->subMinute()->toIso8601String()],
+            // Over and done with.
+            ['reason' => 'FailedCreate', 'object' => 'replicaset/api-76447c59f', 'message' => 'exceeded quota', 'count' => 1, 'last_seen' => now()->subMinutes(40)->toIso8601String()],
+            // Not about pods that are not created: only worth a look.
+            ['reason' => 'FailedMount', 'object' => 'pod/db-0', 'message' => 'timed out waiting for the volume', 'count' => 2, 'last_seen' => now()->subMinutes(3)->toIso8601String()],
         ],
-        'events_total' => 1,
+        'events_total' => 5,
     ]));
 
-    expect(assessPredictionServer()->problems)->toBe([
+    $assessment = assessPredictionServer();
+
+    expect($assessment->problems)->toBe([
         'event:cosmo-worker:FailedCreate' => 'cosmo-worker: FailedCreate (12×) — exceeded quota: default-zgkql, requested: limits.memory=15Gi',
-    ]);
+        'event:orca-worker:FailedScheduling' => 'orca-worker: FailedScheduling (3×) — 0/80 nodes are available.',
+    ])->and($assessment->warnings)->toBe(['db: FailedMount (2×) — timed out waiting for the volume']);
 });
 
 test('a step that works or finished lately is not idle, whatever waits', function (array $activity) {
@@ -211,6 +232,20 @@ test('a step that works or finished lately is not idle, whatever waits', functio
 
 test('running work whose worker stopped reporting is a problem', function () {
     fetchedServerStats(predictionServerPayload(payload: [
+        'activity' => [
+            'optimization-orca' => ['queued' => 0, 'running' => 140, 'stale_running' => 2, 'last_completed_at' => now()->toIso8601String()],
+            'cosmo' => ['queued' => 3, 'running' => 8, 'stale_running' => 0, 'last_completed_at' => now()->toIso8601String()],
+        ],
+    ]));
+
+    expect(assessPredictionServer()->problems)->toBe([
+        'stuck:optimization-orca' => 'Step optimization-orca: 2 running items without a sign of life from the worker.',
+    ]);
+});
+
+test('an older server is judged by the age of the heartbeats it lists', function () {
+    fetchedServerStats(predictionServerPayload(payload: [
+        'activity' => [],
         'running' => [
             'molecule_steps' => [],
             'conformer_steps' => [
@@ -223,8 +258,8 @@ test('running work whose worker stopped reporting is a problem', function () {
     ]));
 
     expect(assessPredictionServer()->problems)->toBe([
-        'stuck:optimization-orca' => 'Step optimization-orca: 2 running items without a sign of life from the worker for over 15 minutes.',
-        'stuck:cosmo' => 'Step cosmo: 1 running item without a sign of life from the worker for over 15 minutes.',
+        'stuck:optimization-orca' => 'Step optimization-orca: 2 running items without a sign of life from the worker.',
+        'stuck:cosmo' => 'Step cosmo: 1 running item without a sign of life from the worker.',
     ]);
 });
 
@@ -311,13 +346,18 @@ test('a problem that passes within five minutes is never announced', function ()
     fetchedServerStats(predictionServerPayload());
     $this->artisan(CheckPredictionServerHealth::class)->assertSuccessful();
 
-    expect(UserNotification::query()->count())->toBe(0)
-        ->and(Cache::get(CheckPredictionServerHealth::STATE_CACHE_KEY))->toBeNull();
+    expect(UserNotification::query()->count())->toBe(0);
+
+    // Forgotten after a quarter of an hour without it.
+    $this->travel(15)->minutes();
+    fetchedServerStats(predictionServerPayload());
+    $this->artisan(CheckPredictionServerHealth::class)->assertSuccessful();
+
+    expect(predictionServerAlertState())->toBeNull();
 });
 
 test('a new kind of problem is announced, a lasting one again after a day, and the end of it too', function () {
     predictionServerMonitor();
-    $events = ['events' => [['reason' => 'FailedCreate', 'object' => 'replicaset/orca-worker-66c48d779d', 'message' => 'exceeded quota', 'count' => 3, 'last_seen' => '2026-11-27T09:00:00Z']]];
 
     fetchedServerStats(imagePullOutagePayload());
     $this->artisan(CheckPredictionServerHealth::class);
@@ -327,26 +367,35 @@ test('a new kind of problem is announced, a lasting one again after a day, and t
     expect(UserNotification::query()->count())->toBe(1);
 
     // The quota joins the outage: announced once it lasted five minutes.
-    $withQuota = imagePullOutagePayload();
-    $withQuota['cluster'] = [...$withQuota['cluster'], ...$events];
+    $withQuota = function (): array {
+        $payload = imagePullOutagePayload();
+        $payload['cluster']['events'] = [quotaEvent('replicaset/orca-worker-66c48d779d')];
+
+        return $payload;
+    };
     $this->travel(5)->minutes();
-    fetchedServerStats($withQuota);
+    fetchedServerStats($withQuota());
     $this->artisan(CheckPredictionServerHealth::class);
     expect(UserNotification::query()->count())->toBe(1);
 
     $this->travel(5)->minutes();
-    fetchedServerStats($withQuota);
+    fetchedServerStats($withQuota());
     $this->artisan(CheckPredictionServerHealth::class);
     expect(UserNotification::query()->count())->toBe(2)
         ->and(UserNotification::query()->latest('id')->first()->title)->toBe('Prediction server still: 5 problems');
 
     // A day later it still lasts.
     $this->travel(1)->days();
-    fetchedServerStats($withQuota);
+    fetchedServerStats($withQuota());
     $this->artisan(CheckPredictionServerHealth::class);
     expect(UserNotification::query()->count())->toBe(3);
 
-    // Fixed.
+    // Fixed: announced once a second check finds it fine too.
+    $this->travel(5)->minutes();
+    fetchedServerStats(predictionServerPayload());
+    $this->artisan(CheckPredictionServerHealth::class);
+    expect(UserNotification::query()->count())->toBe(3);
+
     $this->travel(5)->minutes();
     fetchedServerStats(predictionServerPayload());
     $this->artisan(CheckPredictionServerHealth::class);
@@ -355,7 +404,7 @@ test('a new kind of problem is announced, a lasting one again after a day, and t
     expect(UserNotification::query()->count())->toBe(4)
         ->and($resolved->title)->toBe('Prediction server works again')
         ->and($resolved->body)->toBe('The problems announced at 2026-11-27 10:05 are gone.')
-        ->and(Cache::get(CheckPredictionServerHealth::STATE_CACHE_KEY))->toBeNull();
+        ->and(predictionServerAlertState())->toBeNull();
 });
 
 test('the notification is an immediate one for the system monitors, with its template', function () {
@@ -401,9 +450,126 @@ test('the dashboard shows what is wrong with the prediction server', function ()
         ->assertSee('cosmo-worker: 2 of 8 replicas ready.');
 });
 
-test('the dashboard widget is hidden from users who do not see the prediction statistics', function () {
+test('the dashboard widget is shown to the system monitors its notifications send there, and to nobody else', function () {
     seedFilamentPredictionPermissions();
-    $this->actingAs(createFilamentPredictionUser([PermissionEnums::SYSTEM_MONITOR]));
 
+    $this->actingAs(createFilamentPredictionUser([PermissionEnums::SYSTEM_MONITOR]));
+    expect(PredictionServerHealthWidget::canView())->toBeTrue();
+
+    $this->actingAs(createFilamentPredictionUser([PermissionEnums::ADMIN_PANEL]));
     expect(PredictionServerHealthWidget::canView())->toBeFalse();
+});
+
+test('a problem that comes and goes is announced once, and its end only when it stays away', function () {
+    predictionServerMonitor();
+
+    // Crashing, running for a moment, crashing again.
+    foreach ([true, false, true, false, true, false, false] as $broken) {
+        fetchedServerStats($broken ? imagePullOutagePayload() : predictionServerPayload());
+        $this->artisan(CheckPredictionServerHealth::class)->assertSuccessful();
+        $this->travel(5)->minutes();
+    }
+
+    expect(UserNotification::query()->orderBy('id')->pluck('title')->all())->toBe([
+        'Prediction server: 4 problems',
+        'Prediction server works again',
+    ]);
+});
+
+test('the alert survives the cache being cleared on a restart', function () {
+    predictionServerMonitor();
+    fetchedServerStats(imagePullOutagePayload());
+    $this->artisan(CheckPredictionServerHealth::class);
+    $this->travel(5)->minutes();
+    fetchedServerStats(imagePullOutagePayload());
+    $this->artisan(CheckPredictionServerHealth::class);
+
+    $this->artisan('cache:clear');
+    $this->travel(5)->minutes();
+    fetchedServerStats(imagePullOutagePayload());
+    $this->artisan(CheckPredictionServerHealth::class);
+
+    expect(UserNotification::query()->count())->toBe(1);
+});
+
+test('switching remote predictions off during an announced outage says the problems are no longer watched', function () {
+    predictionServerMonitor();
+    fetchedServerStats(imagePullOutagePayload());
+    $this->artisan(CheckPredictionServerHealth::class);
+    $this->travel(5)->minutes();
+    fetchedServerStats(imagePullOutagePayload());
+    $this->artisan(CheckPredictionServerHealth::class);
+
+    Config::set(Config::KEY_REMOTE_PREDICTION_ENABLED, '0');
+    $this->artisan(CheckPredictionServerHealth::class);
+
+    expect(UserNotification::query()->latest('id')->first()->title)->toBe('Prediction server no longer watched')
+        ->and(predictionServerAlertState())->toBeNull();
+});
+
+test('a malformed answer from the server does not break the check', function () {
+    fetchedServerStats(predictionServerPayload(
+        [
+            'components' => [['name' => ['x' => 1], 'desired' => 'many'], ['name' => 'api', 'kind' => ['Deployment'], 'desired' => 1, 'ready' => 1]],
+            'problems' => [['pod' => ['a'], 'component' => null, 'reason' => ['ImagePullBackOff'], 'message' => ['x'], 'since' => ['2026']], 'nonsense'],
+            'problems_total' => ['many'],
+            'events' => [['reason' => ['FailedCreate'], 'object' => 7, 'message' => null, 'count' => 'x', 'last_seen' => 'not a time'], 'nonsense'],
+        ],
+        ['activity' => ['cosmo' => ['queued' => ['x'], 'running' => null, 'stale_running' => 'x', 'last_completed_at' => 'yesterday-ish']], 'running' => 'nonsense'],
+    ));
+
+    $assessment = assessPredictionServer();
+
+    expect($assessment->components)->toBe([['name' => 'api', 'kind' => '', 'desired' => 1, 'ready' => 1, 'rollout_stalled' => false]])
+        ->and($assessment->problems)->toBe([])
+        ->and($assessment->warnings)->toBe(['unknown: 1 pod unknown']);
+
+    $this->artisan(CheckPredictionServerHealth::class)->assertSuccessful();
+});
+
+test('markup from the server reaches the notification and the dashboard as text', function () {
+    predictionServerMonitor();
+    seedFilamentPredictionPermissions();
+    $payload = imagePullOutagePayload();
+    $payload['cluster']['problems'][2]['message'] = '<script>alert(1)</script><img src=x onerror=alert(2)>';
+
+    fetchedServerStats($payload);
+    $this->artisan(CheckPredictionServerHealth::class);
+    $this->travel(5)->minutes();
+    fetchedServerStats($payload);
+    $this->artisan(CheckPredictionServerHealth::class);
+
+    $message = UserNotification::query()->sole()->email_message;
+    expect($message)->not->toContain('<script>')
+        ->and($message)->toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+
+    $this->actingAs(createFilamentPredictionUser([PermissionEnums::PREDICTIONS_MANAGE]));
+    Livewire::test(PredictionServerHealthWidget::class)
+        ->assertDontSeeHtml('<script>alert(1)</script>')
+        ->assertSeeHtml('&lt;script&gt;alert(1)&lt;/script&gt;');
+});
+
+test('times are shown in the application time zone', function () {
+    config()->set('app.timezone', 'Europe/Prague');
+    date_default_timezone_set('Europe/Prague');
+
+    try {
+        fetchedServerStats(imagePullOutagePayload());
+
+        expect(assessPredictionServer()->problems['step:optimization-turbomole'])
+            ->toContain('last finished 2026-11-16 14:59');
+    } finally {
+        config()->set('app.timezone', 'UTC');
+        date_default_timezone_set('UTC');
+    }
+});
+
+test('the public statistics leave the cluster and the queues per step out', function () {
+    fetchedServerStats(imagePullOutagePayload());
+
+    $this->getJson('/api/predictions/server-stats')
+        ->assertOk()
+        ->assertJsonMissingPath('data.remote.payload.cluster')
+        ->assertJsonMissingPath('data.remote.payload.activity')
+        ->assertJsonPath('data.remote.payload.queue.cosmo', 3);
 });

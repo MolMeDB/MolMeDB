@@ -205,6 +205,9 @@ function seedApiAccountPredictions(User $owner): array
         ],
         'queue' => ['cosmo' => 3],
         'paused' => ['molecules' => 0, 'cosmo_calculations' => 1],
+        // Administration only: never in the public answer (the contract).
+        'activity' => ['cosmo' => ['queued' => 3, 'running' => 1, 'stale_running' => 0, 'last_completed_at' => '2026-10-01T09:00:00Z']],
+        'cluster' => ['in_cluster' => true, 'available' => true, 'namespace' => 'molmedb-ns', 'problems' => [['pod' => 'cosmo-worker-a', 'reason' => 'ImagePullBackOff', 'message' => 'cerit.io/x: 401 Unauthorized']]],
     ]);
 
     return compact('world', 'membrane', 'structure', 'dataset', 'finished', 'paused');

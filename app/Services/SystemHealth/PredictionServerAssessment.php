@@ -16,6 +16,9 @@ final class PredictionServerAssessment
 {
     public const STATUS_DISABLED = 'disabled';
 
+    /** Lines in the daily report, as for its other checks. */
+    private const MAX_DETAILS = 10;
+
     /**
      * @param  array<string, string>  $problems  key => description
      * @param  list<string>  $warnings
@@ -65,6 +68,11 @@ final class PredictionServerAssessment
     public function toHealthCheckResult(): HealthCheckResult
     {
         $details = [...array_values($this->problems), ...$this->warnings];
+
+        if (count($details) > self::MAX_DETAILS) {
+            $left = count($details) - self::MAX_DETAILS + 1;
+            $details = [...array_slice($details, 0, self::MAX_DETAILS - 1), "… and {$left} more, see the administration's dashboard."];
+        }
 
         if ($this->note !== null && $this->status !== self::STATUS_DISABLED) {
             $details[] = $this->note;

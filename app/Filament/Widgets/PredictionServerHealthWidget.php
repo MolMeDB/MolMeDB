@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\PermissionEnums;
 use App\Services\SystemHealth\PredictionServerAssessment;
 use App\Services\SystemHealth\PredictionServerHealth;
 use Filament\Widgets\Widget;
@@ -15,11 +16,13 @@ use Modules\PredictionWorkers\Models\PredictionStat;
 class PredictionServerHealthWidget extends Widget
 {
     /**
-     * Shown to the users who see the prediction server statistics.
+     * Shown to the users who see the prediction server statistics and to
+     * the system monitors, whom its notifications send here.
      */
     public static function canView(): bool
     {
-        return Gate::allows('viewAny', PredictionStat::class);
+        return Gate::allows('viewAny', PredictionStat::class)
+            || (bool) auth()->user()?->checkPermissionTo(PermissionEnums::SYSTEM_MONITOR->value);
     }
 
     protected static ?int $sort = 2;

@@ -34,6 +34,15 @@ class PredictionServerHealth
     /** A running item whose worker has not reported for this long is stuck. */
     public const STUCK_HEARTBEAT_SECONDS = 900;
 
+    /** Warning events older than this are history, not the present state. */
+    public const EVENT_MINUTES = 15;
+
+    /** Events that say pods are not created or placed; other events are warnings. */
+    private const BLOCKING_EVENT_REASONS = ['FailedCreate', 'FailedScheduling'];
+
+    /** Reasons that are one problem to a reader: a pod alternates between them. */
+    private const SAME_PROBLEM = ['ErrImagePull' => 'ImagePullBackOff'];
+
     /** Waiting reasons of pods that cannot start; anything else the server reports is a warning. */
     private const BLOCKING_POD_REASONS = [
         'ImagePullBackOff',
@@ -83,17 +92,17 @@ class PredictionServerHealth
         } elseif (($cluster['in_cluster'] ?? false) !== true) {
             $note = 'The prediction server does not run in Kubernetes; there is no cluster to watch.';
         } elseif (($cluster['available'] ?? false) !== true) {
-            $warnings[] = 'The state of the cluster could not be read: '.Str::limit((string) ($cluster['error'] ?? 'no reason given'), 200);
+            $warnings[] = 'The state of the cluster could not be read: '.Str::limit($this->text($cluster['error'] ?? null, 'no reason given'), 200);
         } else {
             $components = $this->components($cluster);
             $problems += $this->podProblems($cluster, $now, $warnings);
 
-            $unlisted = (int) ($cluster['problems_total'] ?? 0) - count(Arr::wrap($cluster['problems'] ?? []));
+            $unlisted = $this->number($cluster['problems_total'] ?? 0) - count(Arr::wrap($cluster['problems'] ?? []));
             if ($unlisted > 0) {
                 $warnings[] = "{$unlisted} more pod ".Str::plural('problem', $unlisted).' not listed by the server.';
             }
 
-            $problems += $this->eventProblems($cluster);
+            $problems += $this->eventProblems($cluster, $now, $warnings);
             $problems += $this->componentProblems($components, $warnings);
         }
 
@@ -130,12 +139,12 @@ class PredictionServerHealth
     private function components(array $cluster): array
     {
         return collect(Arr::wrap($cluster['components'] ?? []))
-            ->filter(fn (mixed $component): bool => is_array($component) && filled($component['name'] ?? null))
+            ->filter(fn (mixed $component): bool => is_array($component) && $this->text($component['name'] ?? null) !== '')
             ->map(fn (array $component): array => [
-                'name' => (string) $component['name'],
-                'kind' => (string) ($component['kind'] ?? ''),
-                'desired' => (int) ($component['desired'] ?? 0),
-                'ready' => (int) ($component['ready'] ?? 0),
+                'name' => $this->text($component['name']),
+                'kind' => $this->text($component['kind'] ?? null),
+                'desired' => $this->number($component['desired'] ?? 0),
+                'ready' => $this->number($component['ready'] ?? 0),
                 'rollout_stalled' => ($component['rollout_stalled'] ?? false) === true,
             ])
             ->sortBy('name')
@@ -156,12 +165,16 @@ class PredictionServerHealth
 
         collect(Arr::wrap($cluster['problems'] ?? []))
             ->filter(fn (mixed $problem): bool => is_array($problem))
-            ->groupBy(fn (array $problem): string => ($problem['component'] ?? $problem['pod'] ?? '?').'|'.($problem['reason'] ?? '?'))
+            ->groupBy(fn (array $problem): string => $this->podComponent($problem).'|'.$this->reason($problem['reason'] ?? null))
             ->each(function ($group) use (&$problems, &$warnings, $now): void {
                 $first = $group->first();
-                $component = (string) ($first['component'] ?? $first['pod'] ?? 'unknown');
-                $reason = (string) ($first['reason'] ?? 'unknown');
-                $since = $this->time($group->pluck('since')->filter()->sort()->first());
+                $component = $this->podComponent($first);
+                $reason = $this->reason($first['reason'] ?? null);
+                $since = $group
+                    ->map(fn (array $problem): ?CarbonImmutable => $this->time($problem['since'] ?? null))
+                    ->filter()
+                    ->sort()
+                    ->first();
                 $line = sprintf(
                     '%s: %d %s %s%s%s',
                     $component,
@@ -169,7 +182,7 @@ class PredictionServerHealth
                     Str::plural('pod', $group->count()),
                     $reason,
                     $since ? ' since '.$since->format('Y-m-d H:i').' ('.$this->ago($since, $now).')' : '',
-                    filled($first['message'] ?? null) ? ' — '.Str::limit((string) $first['message'], 200) : '',
+                    $this->text($first['message'] ?? null) !== '' ? ' — '.Str::limit($this->text($first['message']), 200) : '',
                 );
 
                 if (in_array($reason, self::BLOCKING_POD_REASONS, true)) {
@@ -183,12 +196,14 @@ class PredictionServerHealth
     }
 
     /**
-     * Pods that are not created at all (a quota) or not placed on a node.
+     * Pods that are not created at all (a quota) or not placed on a node,
+     * as long as the events say so lately.
      *
      * @param  array<string, mixed>  $cluster
+     * @param  list<string>  $warnings
      * @return array<string, string>
      */
-    private function eventProblems(array $cluster): array
+    private function eventProblems(array $cluster, CarbonImmutable $now, array &$warnings): array
     {
         $problems = [];
 
@@ -197,22 +212,67 @@ class PredictionServerHealth
                 continue;
             }
 
-            $reason = (string) ($event['reason'] ?? 'Warning');
-            // replicaset/cosmo-worker-dcb4c95d6 -> cosmo-worker: the same
-            // component keeps its key across rollouts.
-            $object = (string) ($event['object'] ?? '');
-            $owner = preg_replace('#^replicaset/(.+)-[a-z0-9]{6,10}$#', '$1', $object) ?? $object;
+            $lastSeen = $this->time($event['last_seen'] ?? null);
+            if ($lastSeen === null || $lastSeen->lt($now->subMinutes(self::EVENT_MINUTES))) {
+                continue;
+            }
 
-            $problems["event:{$owner}:{$reason}"] ??= sprintf(
+            $reason = $this->text($event['reason'] ?? null, 'Warning');
+            $owner = $this->owner($this->text($event['object'] ?? null));
+            $line = sprintf(
                 '%s: %s (%d×) — %s',
                 $owner,
                 $reason,
-                (int) ($event['count'] ?? 1),
-                Str::limit((string) ($event['message'] ?? ''), 200),
+                $this->number($event['count'] ?? 1),
+                Str::limit($this->text($event['message'] ?? null), 200),
             );
+
+            if (in_array($reason, self::BLOCKING_EVENT_REASONS, true)) {
+                $problems["event:{$owner}:{$reason}"] ??= $line;
+            } elseif (! in_array($line, $warnings, true)) {
+                $warnings[] = $line;
+            }
         }
 
         return $problems;
+    }
+
+    /**
+     * The component an object of a rollout belongs to, so that its key stays
+     * the same across new pods and rollouts:
+     * replicaset/cosmo-worker-dcb4c95d6 and pod/cosmo-worker-dcb4c95d6-2c5pw
+     * are both cosmo-worker.
+     */
+    private function owner(string $object): string
+    {
+        return preg_replace(
+            ['#^replicaset/(.+)-[a-z0-9]{6,10}$#', '#^pod/(.+)-[a-z0-9]{6,10}-[a-z0-9]{5}$#', '#^pod/(.+)-[0-9]+$#'],
+            ['$1', '$1', '$1'],
+            $object,
+        ) ?? $object;
+    }
+
+    /**
+     * @param  array<string, mixed>  $problem
+     */
+    private function podComponent(array $problem): string
+    {
+        $component = $this->text($problem['component'] ?? null);
+        if ($component !== '') {
+            return $component;
+        }
+
+        $pod = $this->text($problem['pod'] ?? null, 'unknown');
+        $owner = $this->owner("pod/{$pod}");
+
+        return str_starts_with($owner, 'pod/') ? $pod : $owner;
+    }
+
+    private function reason(mixed $reason): string
+    {
+        $reason = $this->text($reason, 'unknown');
+
+        return self::SAME_PROBLEM[$reason] ?? $reason;
     }
 
     /**
@@ -258,12 +318,12 @@ class PredictionServerHealth
                 continue;
             }
 
-            $queued = (int) ($activity['queued'] ?? 0);
+            $queued = $this->number($activity['queued'] ?? 0);
             $lastCompletedAt = $this->time($activity['last_completed_at'] ?? null);
 
             if (
                 $queued === 0
-                || (int) ($activity['running'] ?? 0) > 0
+                || $this->number($activity['running'] ?? 0) > 0
                 || ($lastCompletedAt !== null && $lastCompletedAt->gte($now->subMinutes(self::IDLE_STEP_MINUTES)))
             ) {
                 continue;
@@ -283,7 +343,9 @@ class PredictionServerHealth
     }
 
     /**
-     * Running items whose worker stopped reporting (its heartbeat).
+     * Running items whose worker stopped reporting (its heartbeat). The
+     * server counts them per step (activity.*.stale_running); an older one
+     * only lists the running items with the age of their heartbeat.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, string>
@@ -291,15 +353,25 @@ class PredictionServerHealth
     private function stuckWork(array $payload): array
     {
         $stuck = [];
+        $activity = Arr::wrap($payload['activity'] ?? []);
+        $counted = $activity !== [] && collect($activity)->contains(fn (mixed $step): bool => is_array($step) && array_key_exists('stale_running', $step));
 
-        foreach (['molecule_steps', 'conformer_steps', 'cosmo'] as $group) {
-            foreach (Arr::wrap(Arr::get($payload, "running.{$group}", [])) as $item) {
-                if (! is_array($item) || (int) ($item['heartbeat_age_seconds'] ?? 0) <= self::STUCK_HEARTBEAT_SECONDS) {
-                    continue;
+        if ($counted) {
+            foreach ($activity as $step => $values) {
+                if (is_array($values) && $this->number($values['stale_running'] ?? 0) > 0) {
+                    $stuck[(string) $step] = $this->number($values['stale_running']);
                 }
+            }
+        } else {
+            foreach (['molecule_steps', 'conformer_steps', 'cosmo'] as $group) {
+                foreach (Arr::wrap(Arr::get($payload, "running.{$group}", [])) as $item) {
+                    if (! is_array($item) || $this->number($item['heartbeat_age_seconds'] ?? 0) <= self::STUCK_HEARTBEAT_SECONDS) {
+                        continue;
+                    }
 
-                $step = (string) ($item['step'] ?? $group);
-                $stuck[$step] = ($stuck[$step] ?? 0) + 1;
+                    $step = $this->text($item['step'] ?? null, $group);
+                    $stuck[$step] = ($stuck[$step] ?? 0) + 1;
+                }
             }
         }
 
@@ -307,15 +379,28 @@ class PredictionServerHealth
 
         foreach ($stuck as $step => $count) {
             $problems["stuck:{$step}"] = sprintf(
-                'Step %s: %d running %s without a sign of life from the worker for over %d minutes.',
+                'Step %s: %d running %s without a sign of life from the worker.',
                 $step,
                 $count,
                 Str::plural('item', $count),
-                intdiv(self::STUCK_HEARTBEAT_SECONDS, 60),
             );
         }
 
         return $problems;
+    }
+
+    /**
+     * A string from the remote payload; anything else (a list, an object) is
+     * the default, so a malformed answer cannot break the check.
+     */
+    private function text(mixed $value, string $default = ''): string
+    {
+        return is_scalar($value) ? (string) $value : $default;
+    }
+
+    private function number(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : 0;
     }
 
     private function ago(CarbonInterface $time, CarbonInterface $now): string

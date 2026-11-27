@@ -275,6 +275,29 @@ test('pods the quota keeps from being created outside a going rollout are a prob
     'a StatefulSet' => [['kind' => 'StatefulSet', 'updated' => 40, 'replicas' => 140]],
 ]);
 
+test('the last pod of a rollout, created but not ready yet, is past the quota but not a pod still unplaced', function () {
+    // The old pods are gone and the last new one exists: the quota no
+    // longer keeps it from being created, but it may still wait for a node.
+    fetchedServerStats(predictionServerPayload([
+        'components' => [['name' => 'orca-worker', 'kind' => 'Deployment', 'desired' => 144, 'ready' => 143, 'updated' => 144, 'replicas' => 144, 'rollout_stalled' => false]],
+        'events' => [
+            quotaEvent('replicaset/orca-worker-5d8f7c9b6'),
+            ['reason' => 'FailedScheduling', 'object' => 'pod/orca-worker-5d8f7c9b6-24pcm', 'message' => '0/80 nodes are available.', 'count' => 2, 'last_seen' => now()->subMinute()->toIso8601String()],
+        ],
+    ]));
+
+    expect(array_keys(assessPredictionServer()->problems))->toBe(['event:orca-worker:FailedScheduling']);
+});
+
+test('a component that does not say how many replicas it has is past no event', function () {
+    fetchedServerStats(predictionServerPayload([
+        'components' => [['name' => 'cosmo-worker', 'kind' => 'Deployment']],
+        'events' => [quotaEvent()],
+    ]));
+
+    expect(assessPredictionServer()->problems)->toHaveKey('event:cosmo-worker:FailedCreate');
+});
+
 test('a StatefulSet that waited for the quota a moment is no problem once it runs', function () {
     fetchedServerStats(predictionServerPayload([
         'components' => [['name' => 'db', 'kind' => 'StatefulSet', 'desired' => 1, 'ready' => 1, 'updated' => 1, 'replicas' => 1, 'rollout_stalled' => false]],

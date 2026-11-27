@@ -206,7 +206,7 @@ class PredictionServerHealth
     private function eventProblems(array $cluster, CarbonImmutable $now, array &$warnings): array
     {
         $problems = [];
-        $unaffected = $this->componentsUnaffectedByEvents($cluster);
+        $unaffected = $this->eventsPastForComponents($cluster);
 
         foreach (Arr::wrap($cluster['events'] ?? []) as $event) {
             if (! is_array($event)) {
@@ -228,7 +228,7 @@ class PredictionServerHealth
                 Str::limit($this->text($event['message'] ?? null), 200),
             );
 
-            if (in_array($reason, self::BLOCKING_EVENT_REASONS, true) && ! isset($unaffected[$owner])) {
+            if (in_array($reason, self::BLOCKING_EVENT_REASONS, true) && ! in_array($reason, $unaffected[$owner] ?? [], true)) {
                 $problems["event:{$owner}:{$reason}"] ??= $line;
             } elseif (! in_array($line, $warnings, true)) {
                 $warnings[] = $line;
@@ -239,49 +239,63 @@ class PredictionServerHealth
     }
 
     /**
-     * Components whose pods the events no longer keep from running: all
-     * replicas are ready, or a Deployment's rollout that has not stalled is
-     * replacing its pods.
+     * The blocking events each component is past: what they said no longer
+     * keeps its pods from running.
+     *
+     * - FailedCreate (pods not created, a quota) is past once all of the
+     *   component's pods exist (`replicas`, or ready replicas from a server
+     *   that does not report `replicas`); a pod that exists but does not
+     *   start is a pod problem.
+     * - FailedScheduling (pods not placed) is past once all replicas are ready.
+     * - Both are past while a Deployment's rollout that has not stalled
+     *   replaces its pods.
      *
      * A rollout in a namespace at its quota creates each new pod only once
      * the old one is gone, so every pod it replaces leaves a FailedCreate
      * behind for a moment; the events then stay recent for EVENT_MINUTES
-     * after the component has recovered.
-     *
-     * A rollout is told by its old pods: the Deployment has more pods than
-     * updated ones (`replicas` > `updated`). A pod the quota keeps from being
-     * created counts in neither, so a lost or never created pod outside a
-     * rollout stays a problem. A server that does not report `replicas` is
-     * never taken to be rolling out, and a rollout that cannot go on counts
-     * again once its progress deadline passes. StatefulSets have no progress
-     * deadline, so only their ready replicas count.
+     * after the component has recovered. A rollout is told by its old pods:
+     * the Deployment has more pods than updated ones (`replicas` > `updated`).
+     * A pod the quota keeps from being created counts in neither, so a lost
+     * or never created pod outside a rollout stays a problem. A server that
+     * does not report `replicas` is never taken to be rolling out, a rollout
+     * that cannot go on counts again once its progress deadline passes, and
+     * StatefulSets, which have no progress deadline, never roll out here.
+     * A component that does not say how many replicas it has is past nothing.
      *
      * @param  array<string, mixed>  $cluster
-     * @return array<string, true>
+     * @return array<string, list<string>>
      */
-    private function componentsUnaffectedByEvents(array $cluster): array
+    private function eventsPastForComponents(array $cluster): array
     {
-        $unaffected = [];
+        $past = [];
 
         foreach (Arr::wrap($cluster['components'] ?? []) as $component) {
-            if (! is_array($component) || $this->text($component['name'] ?? null) === '') {
+            if (
+                ! is_array($component)
+                || $this->text($component['name'] ?? null) === ''
+                || ! array_key_exists('desired', $component)
+                || ! array_key_exists('ready', $component)
+            ) {
                 continue;
             }
 
-            $desired = $this->number($component['desired'] ?? 0);
-            $ready = $this->number($component['ready'] ?? 0);
+            $desired = $this->number($component['desired']);
+            $ready = $this->number($component['ready']);
+            $hasPodCount = array_key_exists('replicas', $component);
+            $pods = $hasPodCount ? $this->number($component['replicas']) : $ready;
             $rollingOut = $this->text($component['kind'] ?? null) === 'Deployment'
-                && array_key_exists('replicas', $component)
+                && $hasPodCount
                 && array_key_exists('updated', $component)
-                && $this->number($component['replicas']) > $this->number($component['updated'])
+                && $pods > $this->number($component['updated'])
                 && ($component['rollout_stalled'] ?? false) !== true;
 
-            if ($ready >= $desired || $rollingOut) {
-                $unaffected[$this->text($component['name'])] = true;
-            }
+            $past[$this->text($component['name'])] = array_values(array_filter([
+                $rollingOut || $pods >= $desired ? 'FailedCreate' : null,
+                $rollingOut || $ready >= $desired ? 'FailedScheduling' : null,
+            ]));
         }
 
-        return $unaffected;
+        return $past;
     }
 
     /**

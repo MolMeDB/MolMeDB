@@ -35,7 +35,9 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 - A rollout of the prediction server in a namespace at its quota is no
   longer announced as an outage: pods that wait for the quota count only
-  while their component is short of replicas and no rollout replaces them.
+  while their component is short of replicas and no rollout replaces its
+  pods. Telling a rollout apart needs the predictor from
+  MolMeDB/MolMem-predictor#2.
 
 ### Deployment
 

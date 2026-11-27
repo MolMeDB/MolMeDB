@@ -24,7 +24,13 @@ and versions follow [Semantic Versioning](https://semver.org/).
 - The daily system health report has a "Prediction server" check (#51).
 - The administration's dashboard shows the prediction server's state,
   problems and components (#51).
-- This changelog. The Release workflow takes the notes of a release from it.
+- Every notification has its own page with the whole message, as the
+  e-mail has it (`/account/notifications/{id}`); a push opens it, a
+  signed-out user comes back to it after signing in.
+  `/account/notifications` lists the latest 100, and the bell links each
+  one (#50).
+- This changelog. The Release workflow takes the notes of a release from it
+  (#53).
 
 ### Changed
 
@@ -33,11 +39,24 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Saving the notification preferences works again (#48).
+- After signing in, the user returns to the page they asked for, also from
+  the link in a notification e-mail (#48).
+- A page opened from an e-mail or a push no longer shows the user signed
+  out; the session is renewed while the user is active, "remember me" keeps
+  it for 400 days, and a 401 clears a user the backend has signed out (#50).
 - A rollout of the prediction server in a namespace at its quota is no
   longer announced as an outage: pods that wait for the quota count only
   while their component is short of replicas and no rollout replaces its
-  pods. Telling a rollout apart needs the predictor from
+  pods (#53). Telling a rollout apart needs the predictor from
   MolMeDB/MolMem-predictor#2.
+
+### Security
+
+- Login redirect targets can no longer lead off the site
+  (`/%09/example.com`, `/.//example.com`) (#48).
+- The nginx cache of `/api/structure` and `/api/mol` no longer stores and
+  replays `Set-Cookie`, and requests with a remember cookie bypass it (#50).
 
 ### Deployment
 

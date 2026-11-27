@@ -256,7 +256,7 @@ test('a check that cannot run is reported and the others still run', function ()
 
     $results = app(SystemHealthReport::class)->run(now()->subDay());
 
-    expect($results)->toHaveCount(5)
+    expect($results)->toHaveCount(6)
         ->and($results[0]->label)->toBe('Application errors')
         ->and($results[0]->status)->toBe(HealthCheckResult::STATUS_WARNING)
         ->and($results[0]->summary)->toStartWith('Could not be checked: ')

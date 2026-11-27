@@ -18,6 +18,12 @@ class AdminUrlGenerator
         );
     }
 
+    /** The administration's dashboard, which shows the state of the prediction server. */
+    public function dashboardUrl(): string
+    {
+        return $this->absoluteUrl('/');
+    }
+
     private function absoluteUrl(string $path): string
     {
         return rtrim((string) config('app.admin_url', config('app.url')), '/').'/'.ltrim($path, '/');

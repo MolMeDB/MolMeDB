@@ -20,6 +20,7 @@ use App\Services\PredictionSmilesCanonicalizer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +53,9 @@ class PredictionsController extends Controller
                     'failed' => Prediction::whereIn('state', Prediction::failedStates())->count(),
                 ],
                 'remote' => $latestStat ? [
-                    'payload' => $latestStat->payload,
+                    // The cluster's state (pod, image and quota names, error
+                    // texts) is for the administration only.
+                    'payload' => Arr::except($latestStat->payload ?? [], ['cluster', 'activity']),
                     'fetched_at' => $latestStat->fetched_at?->toISOString(),
                     'server_url' => $latestStat->server_url,
                 ] : null,

@@ -1,0 +1,17 @@
+{
+    "route": "GET api/notifications/{notification}",
+    "status": 200,
+    "content_type": "application/json",
+    "body": {
+        "data": {
+            "body": "string",
+            "created_at": "string",
+            "id": "number",
+            "message": "string",
+            "read_at": "null",
+            "state": "string",
+            "title": "string",
+            "url": "null"
+        }
+    }
+}

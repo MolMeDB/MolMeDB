@@ -1,33 +1,16 @@
-import { ResponseCookie } from "next/dist/compiled/@edge-runtime/cookies";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { UserSession } from "./admin/interfaces/User";
+import {
+  DEFAULT_COOKIE_MAX_AGE,
+  DEFAULT_COOKIES_CONFIG,
+  secretKey,
+  signUserSession,
+  userSessionKey,
+  UserSessionMeta,
+} from "./userSessionCookie";
 
-// Read lazily (not at module scope) so importing this file doesn't require
-// JWT_SECRET to be set — e.g. Next.js's production build statically
-// analyzes/imports route modules without runtime env vars present.
-function secretKey(): string {
-  const key = process.env.JWT_SECRET;
-  if (!key) {
-    throw new Error(
-      "JWT_SECRET environment variable must be set to sign/verify the user session cookie."
-    );
-  }
-  return key;
-}
-// Read when asked for, like the secret above.
-function userSessionKey(): string | undefined {
-  return process.env.COOKIES_FRONTEND_SESSION_USER_KEY || undefined;
-}
-const DEFAULT_COOKIE_MAX_AGE = 60 * 60 * 24;
-
-export const DEFAULT_COOKIES_CONFIG = {
-  httpOnly: true, // Not accesible from javascript if true
-  secure: process.env.NODE_ENV === "production", // Pouze přes HTTPS
-  sameSite: "strict",
-  path: "/",
-  maxAge: DEFAULT_COOKIE_MAX_AGE, // 1 den
-} as ResponseCookie;
+export { DEFAULT_COOKIES_CONFIG };
 
 type UserCookieOptions = {
   expiresAt?: string;
@@ -47,11 +30,17 @@ function maxAgeFromExpiresAt(expiresAt?: string): number | null {
   return Math.max(1, Math.floor((expiresAtTime - Date.now()) / 1000));
 }
 
-function userCookieMaxAge(options: UserCookieOptions = {}): number {
-  return (
-    maxAgeFromExpiresAt(options.expiresAt) ??
-    (options.remember ? 60 * 60 * 24 * 365 * 5 : DEFAULT_COOKIE_MAX_AGE)
-  );
+/**
+ * The backend tells when its session ends; that length is its lifetime,
+ * prolonged by each visit (see proxy.ts). "Remember me" keeps the user
+ * signed in for 400 days: when the backend session ends, the backend signs
+ * them in again from its own remember cookie.
+ */
+function sessionMeta(options: UserCookieOptions = {}): UserSessionMeta {
+  return {
+    remember: Boolean(options.remember),
+    lifetime: maxAgeFromExpiresAt(options.expiresAt) ?? DEFAULT_COOKIE_MAX_AGE,
+  };
 }
 
 function sign(data: object, maxAge = DEFAULT_COOKIE_MAX_AGE) {
@@ -106,9 +95,9 @@ async function setUserData(data: object, options: UserCookieOptions = {}) {
   }
 
   const cookiesStore = await cookies();
-  const maxAge = userCookieMaxAge(options);
+  const { token, maxAge } = signUserSession(user, sessionMeta(options));
 
-  cookiesStore.set(key, sign(user, maxAge), {
+  cookiesStore.set(key, token, {
     ...DEFAULT_COOKIES_CONFIG,
     maxAge,
   });

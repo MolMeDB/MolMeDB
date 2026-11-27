@@ -51,6 +51,7 @@ export default async function CalculationDetailPage({
     await getViewData(
       "/predictions/datasets/" + param.id,
       token ? { token } : {},
+      `/lab/running-predictions/${encodeURIComponent(param.id)}`,
     )
   )?.data?.data;
 

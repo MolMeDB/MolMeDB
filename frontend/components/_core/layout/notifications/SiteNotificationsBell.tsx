@@ -10,8 +10,10 @@ import {
   Spinner,
   Tooltip,
 } from "@heroui/react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { FiBell, FiTrash2 } from "react-icons/fi";
+import { htmlToText } from "@/utils/htmlToText";
 
 type UserNotification = {
   id: number;
@@ -128,7 +130,12 @@ export default function SiteNotificationsBell() {
         disabledKeys={["loading", "header"]}
         topContent={
           <div className="flex items-center justify-between px-3 py-2 border-b border-divider">
-            <span className="text-sm font-semibold text-foreground">Notifications</span>
+            <Link
+              href="/account/notifications"
+              className="text-sm font-semibold text-foreground hover:text-primary"
+            >
+              All notifications
+            </Link>
             <Tooltip content="Clear all">
               <Button
                 isIconOnly
@@ -156,14 +163,16 @@ export default function SiteNotificationsBell() {
             <DropdownItem
               key={notification.id}
               textValue={notification.title}
+              href={`/account/notifications/${notification.id}`}
               className={notification.state === "new" ? "bg-primary-50 dark:bg-primary-900/20" : ""}
             >
               <div className="flex flex-col gap-1 whitespace-normal py-1">
                 <div className="text-sm font-semibold">
                   {notification.title}
                 </div>
-                <div className="text-xs text-foreground-600">
-                  {notification.body}
+                {/* The beginning only: the whole message is on its page. */}
+                <div className="text-xs text-foreground-600 line-clamp-3">
+                  {htmlToText(notification.body)}
                 </div>
                 {notification.created_at ? (
                   <div className="text-[11px] text-foreground-400">

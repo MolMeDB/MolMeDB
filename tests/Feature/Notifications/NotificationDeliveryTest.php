@@ -99,6 +99,56 @@ test('the user preferences decide between e-mail and push', function () {
     Notification::assertSentTo($user, TemplatedNotification::class, fn (TemplatedNotification $notification, array $channels): bool => $channels === [WebPushChannel::class]);
 });
 
+test('a push opens the page of the stored notification, which holds the whole message', function () {
+    config()->set('app.frontend_url', 'https://molmedb.test');
+    useNotificationTemplate(NotificationTemplate::KEY_ACCOUNT_ROLE_CHANGED);
+    $user = User::factory()->create();
+    NotificationPreference::query()->create([
+        'user_id' => $user->id,
+        'notification_key' => NotificationTemplate::KEY_ACCOUNT_ROLE_CHANGED,
+        'email_enabled' => false,
+        'push_enabled' => true,
+    ]);
+
+    $record = app(NotificationService::class)->send($user, NotificationTemplate::KEY_ACCOUNT_ROLE_CHANGED, [
+        'role' => 'Viewer',
+        'dataset_url' => 'https://molmedb.test/lab/datasets/7',
+    ]);
+
+    Notification::assertSentTo($user, TemplatedNotification::class, fn (TemplatedNotification $notification): bool => $notification->toWebPush($user)->url === "https://molmedb.test/account/notifications/{$record->id}");
+});
+
+test('without a stored copy a push opens the page the notification is about, if it is a web address', function (array $data, ?string $url) {
+    $notification = new TemplatedNotification(notificationTitle: 'Title', notificationBody: 'Body', data: $data);
+
+    expect($notification->toWebPush(User::factory()->make())->url)->toBe($url);
+})->with([
+    'dataset' => [['dataset_url' => 'https://molmedb.test/lab/datasets/7'], 'https://molmedb.test/lab/datasets/7'],
+    'manage before dataset' => [['dataset_url' => 'https://molmedb.test/a', 'manage_url' => 'https://molmedb.test/b'], 'https://molmedb.test/b'],
+    'not a web address' => [['admin_url' => 'javascript:alert(1)'], null],
+    'none' => [[], null],
+]);
+
+test('a user without the permission gets no admin notification, even with a channel turned on before', function () {
+    useNotificationTemplate(NotificationTemplate::KEY_SYSTEM_ADMIN_JOB_FAILED, [
+        'notification_title' => 'Background job failure',
+        'notification_body' => '{{ error }}',
+        'email_message' => '<p>{{ error }}</p>',
+    ]);
+    // E.g. a former administrator whose role was taken away.
+    $user = User::factory()->create();
+    NotificationPreference::query()->create([
+        'user_id' => $user->id,
+        'notification_key' => NotificationTemplate::KEY_SYSTEM_ADMIN_JOB_FAILED,
+        'email_enabled' => true,
+        'push_enabled' => true,
+    ]);
+
+    expect(app(NotificationService::class)->send($user, NotificationTemplate::KEY_SYSTEM_ADMIN_JOB_FAILED, ['error' => 'The cron failed.'], skipBatching: true))->toBeNull()
+        ->and(UserNotification::query()->whereBelongsTo($user)->exists())->toBeFalse();
+    Notification::assertNothingSent();
+});
+
 test('a user who turned off every channel gets only the in-app notification', function () {
     useNotificationTemplate(NotificationTemplate::KEY_ACCOUNT_ROLE_CHANGED);
     $user = User::factory()->create();

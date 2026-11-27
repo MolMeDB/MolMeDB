@@ -3,7 +3,7 @@
 import { Alert, Button, Input } from "@heroui/react";
 import submitLogin from "../(actions)/submitLogin";
 import resendVerification from "../(actions)/resendVerification";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -37,10 +37,38 @@ export default function LoginForm(props: { defaultEmail?: string; redirectTo?: s
     return () => clearInterval(timer);
   }, [resendCooldown]);
 
+  const redirectInput = useRef<HTMLInputElement>(null);
+
+  /**
+   * The anchor of the page the visitor came for (/account/settings#notifications)
+   * stays in the browser through the redirect to the login and never reaches
+   * the server, so it is added to the target as the form is sent. Without
+   * JavaScript the form still sends the target, only without the anchor.
+   */
+  function addAnchorToTarget() {
+    const hash = window.location.hash;
+
+    if (
+      redirectInput.current &&
+      props.redirectTo &&
+      !props.redirectTo.includes("#") &&
+      hash.length > 1
+    ) {
+      redirectInput.current.value = props.redirectTo + hash;
+    }
+  }
+
   return (
     <div className="w-full max-w-96 flex flex-col items-center">
-      <form className="w-full" action={action}>
-        <input type="hidden" name="redirectTo" value={props.redirectTo} />
+      <form className="w-full" action={action} onSubmit={addAnchorToTarget}>
+        <input
+          // A new target replaces the input, not only its default value.
+          key={props.redirectTo}
+          ref={redirectInput}
+          type="hidden"
+          name="redirectTo"
+          defaultValue={props.redirectTo}
+        />
         {actionState?.message && (
           <div>
             <Alert

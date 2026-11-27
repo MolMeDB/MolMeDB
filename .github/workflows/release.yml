@@ -31,7 +31,7 @@ jobs:
     name: Tag is on main
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -89,11 +89,11 @@ jobs:
             file: ./docker/production/frontend/Dockerfile
             target: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -102,7 +102,7 @@ jobs:
       # v1.2.3 -> 1.2.3 and 1.2; "latest" is deliberately not published, a
       # server always runs a named version.
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/molmedb/molmedb-${{ matrix.name }}
           flavor: latest=false
@@ -116,7 +116,7 @@ jobs:
       # JWT secret is not: the build only needs a placeholder, the real one
       # is read from frontend/.env on the server when the container runs.
       # The other images do not declare these arguments and ignore them.
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
@@ -145,7 +145,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Attach the compose file and the deployment scripts
         env:

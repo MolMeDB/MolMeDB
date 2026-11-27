@@ -30,11 +30,11 @@ jobs:
     name: Backend (php-fpm, production target)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: ./docker/common/php-fpm/Dockerfile
@@ -64,7 +64,7 @@ jobs:
     name: Nginx
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # NOTE: this only validates that the Dockerfile itself builds — it
       # copies public/ as-is without requiring built Vite assets to be
@@ -73,9 +73,9 @@ jobs:
       # (tailwind.config.js references a Filament v3-era preset path that
       # no longer exists in the installed Filament v5/Tailwind v4 setup),
       # unrelated to this workflow — see the follow-up task for that.
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: ./docker/production/nginx/Dockerfile
@@ -87,11 +87,11 @@ jobs:
     name: Frontend (Next.js)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: ./frontend
           file: ./docker/production/frontend/Dockerfile
@@ -105,11 +105,11 @@ jobs:
     name: RDKit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: ./modules/Rdkit/src
           file: ./docker/common/rdkit/Dockerfile

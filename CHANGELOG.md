@@ -16,6 +16,13 @@ and versions follow [Semantic Versioning](https://semver.org/).
   it stops at once instead of being killed after the stop timeout.
   The deployment that brings this still waits once: the container it
   replaces was created without the init process.
+- The recorded failures in the daily system health report show the last
+  failure of each kind as it was recorded, with its numbers, its time and
+  its error, instead of a text with every number replaced by `#`.
+- A notification template with a malformed variable, such as
+  `{{ total_all }` with a brace missing, can no longer be saved: such a
+  variable was sent to the recipients as it was, without its value.
+  Templates already stored are not checked; fix them in the administration.
 
 ## [1.4.0] - 2026-11-27
 

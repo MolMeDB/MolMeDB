@@ -58,10 +58,14 @@ class RunPredictionsWorker extends Command
     private int $reconciliationErrors = 0;
 
     /**
-     * The last error of the run, recorded with the run so that the health
-     * report can say what went wrong, not only how many times.
+     * The first error of the run, recorded with the run so that the health
+     * report can say what went wrong, not only how many times. A structure
+     * the service refuses gives way to a later error of the service itself,
+     * which tells more.
      */
-    private ?string $lastError = null;
+    private ?string $firstError = null;
+
+    private bool $firstErrorIsRejection = false;
 
     protected $signature = 'cron:predictions-worker
         {--max-results= : Maximum completed prediction results to download}
@@ -229,7 +233,7 @@ class RunPredictionsWorker extends Command
                     'reconciliation_errors' => $this->reconciliationErrors,
                     'rejected_structures' => $this->rejectedStructures,
                     'given_up_submissions' => $this->givenUpSubmissions,
-                    'last_error' => $this->lastError,
+                    'error' => $this->firstError,
                 ];
 
                 if ($errorCount > 0) {
@@ -464,7 +468,7 @@ class RunPredictionsWorker extends Command
 
             if (! $structureIsValid) {
                 $this->rejectedStructures++;
-                $this->warnError("Prediction {$prediction->getKey()} was not submitted: {$prediction->remote_error_message}");
+                $this->warnError("Prediction {$prediction->getKey()} was not submitted: {$prediction->remote_error_message}", isRejection: true);
 
                 continue;
             }
@@ -903,11 +907,16 @@ class RunPredictionsWorker extends Command
     }
 
     /**
-     * Writes the error to the output and keeps it as the last error of the run.
+     * Writes the error to the output and keeps it when it is the first error
+     * of the run (see $firstError).
      */
-    private function warnError(string $message): void
+    private function warnError(string $message, bool $isRejection = false): void
     {
-        $this->lastError = $message;
+        if ($this->firstError === null || ($this->firstErrorIsRejection && ! $isRejection)) {
+            $this->firstError = $message;
+            $this->firstErrorIsRejection = $isRejection;
+        }
+
         $this->warn($message);
     }
 }

@@ -111,12 +111,11 @@ test('a variable with a brace too few or too many cannot be saved', function () 
         ->fillForm([
             'notification_title' => 'Export {{ name } is ready',
             'notification_body' => 'Download it from { url }}.',
-            'email_subject' => 'Export {{ name }} is ready',
+            'email_subject' => 'Export {{{ name }}} is ready',
             'email_message' => '<p>Total</p><table><tr><td>{{ total_all }</td></tr></table>',
         ])
         ->call('save')
-        ->assertHasFormErrors(['notification_title', 'notification_body', 'email_message'])
-        ->assertHasNoFormErrors(['email_subject']);
+        ->assertHasFormErrors(['notification_title', 'notification_body', 'email_subject', 'email_message']);
 
     expect($template->refresh()->notification_title)->toBe('Your export is ready');
 

@@ -229,7 +229,9 @@ class SystemHealthReport
 
     /**
      * One kind of failure: how many times, the last one as it was recorded
-     * (its numbers included) with its time, and its error when it has one.
+     * (its numbers included) with its time, and the newest error recorded
+     * with them. Failures are logged throttled, so the last one recorded is
+     * not always the last one that happened.
      *
      * @param  Collection<int, Activity>  $group  newest first
      */
@@ -237,8 +239,9 @@ class SystemHealthReport
     {
         /** @var Activity $last */
         $last = $group->first();
-        $properties = $last->properties;
-        $error = $properties?->get('error') ?? $properties?->get('last_error');
+        $error = $group
+            ->map(fn (Activity $activity): mixed => $activity->properties?->get('error'))
+            ->first(fn (mixed $error): bool => is_string($error) && trim($error) !== '');
 
         return sprintf(
             '%d×%s at %s: %s%s',
@@ -246,7 +249,7 @@ class SystemHealthReport
             $group->count() > 1 ? ', last' : '',
             $last->created_at?->format('H:i T'),
             $last->description,
-            is_string($error) && trim($error) !== ''
+            is_string($error)
                 ? ' Error: '.Str::limit(Str::squish(preg_replace('/[\w.+-]+@[\w-]+(\.[\w-]+)+/', '[e-mail]', $error) ?? $error), self::FAILURE_ERROR_LENGTH)
                 : '',
         );

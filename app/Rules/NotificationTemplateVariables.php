@@ -32,8 +32,10 @@ class NotificationTemplateVariables implements ValidationRule
 
         $rest = preg_replace(NotificationService::TEMPLATE_VARIABLE_PATTERN, '', $value) ?? $value;
 
-        if (preg_match('/{{[^{}<]{0,40}|[^{}>]{0,40}}}/u', $rest, $matches) === 1) {
-            $fail('Variables are written as {{ name }}, check "'.Str::squish($matches[0]).'".');
+        // A brace too many around a variable ("{{{ name }}}") stays in the text.
+        if (preg_match('/{{{|}}}/', $value, $matches) === 1
+            || preg_match('/{{[^{}<]{0,40}|[^{}>]{0,40}}}/u', $rest, $matches) === 1) {
+            $fail('Variables are written as {{ name }}, with nothing else between the braces (no formatting, no special spaces); check "'.Str::squish($matches[0]).'".');
         }
     }
 }

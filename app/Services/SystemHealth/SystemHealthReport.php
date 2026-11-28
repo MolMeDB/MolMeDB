@@ -8,6 +8,7 @@ use App\Services\ApplicationErrorRecorder;
 use App\Services\SystemActivityLogger;
 use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
@@ -26,6 +27,9 @@ class SystemHealthReport
     public function __construct(private readonly PredictionServerHealth $predictionServerHealth) {}
 
     private const MAX_DETAILS = 10;
+
+    /** How much of a recorded failure's error the report shows. */
+    private const FAILURE_ERROR_LENGTH = 200;
 
     /** Log files above this size are worth a look (bytes). */
     private const LOGS_WARNING_BYTES = 1024 ** 3;
@@ -195,17 +199,20 @@ class SystemHealthReport
             ->where('properties->severity', SystemActivityLogger::SEVERITY_ERROR)
             // Already in the report, under the application errors.
             ->where('event', '!=', 'application_error_repeated')
-            ->get(['description'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get(['description', 'properties', 'created_at'])
             // "3 predictions failed" and "5 predictions failed" are one line.
-            ->countBy(fn (Activity $activity): string => preg_replace('/\d+/', '#', (string) $activity->description))
-            ->sortDesc();
+            ->groupBy(fn (Activity $activity): string => preg_replace('/\d+/', '#', (string) $activity->description))
+            ->sortByDesc(fn (Collection $group): int => $group->count());
 
         if ($events->isEmpty()) {
             return HealthCheckResult::ok($label, 'Nothing failed.');
         }
 
+        $total = $events->sum(fn (Collection $group): int => $group->count());
         $details = $events->take(self::MAX_DETAILS)
-            ->map(fn (int $count, string $description): string => $count.'× '.$description)
+            ->map(fn (Collection $group): string => $this->recordedFailureLine($group))
             ->values()
             ->all();
 
@@ -215,8 +222,33 @@ class SystemHealthReport
 
         return HealthCheckResult::problem(
             $label,
-            $events->sum().' '.Str::plural('failure', $events->sum()).' recorded.',
+            $total.' '.Str::plural('failure', $total).' recorded.',
             $details,
+        );
+    }
+
+    /**
+     * One kind of failure: how many times, the last one as it was recorded
+     * (its numbers included) with its time, and its error when it has one.
+     *
+     * @param  Collection<int, Activity>  $group  newest first
+     */
+    private function recordedFailureLine(Collection $group): string
+    {
+        /** @var Activity $last */
+        $last = $group->first();
+        $properties = $last->properties;
+        $error = $properties?->get('error') ?? $properties?->get('last_error');
+
+        return sprintf(
+            '%d×%s at %s: %s%s',
+            $group->count(),
+            $group->count() > 1 ? ', last' : '',
+            $last->created_at?->format('H:i T'),
+            $last->description,
+            is_string($error) && trim($error) !== ''
+                ? ' Error: '.Str::limit(Str::squish(preg_replace('/[\w.+-]+@[\w-]+(\.[\w-]+)+/', '[e-mail]', $error) ?? $error), self::FAILURE_ERROR_LENGTH)
+                : '',
         );
     }
 

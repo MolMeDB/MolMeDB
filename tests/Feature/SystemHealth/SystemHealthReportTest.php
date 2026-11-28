@@ -149,7 +149,10 @@ test('what the system recorded as failed that day is listed', function () {
     $logger->log('scheduled_task_failed', 'Scheduled task failed: cron:predictions-worker.', [], SystemActivityLogger::SEVERITY_ERROR);
     $logger->log('queue_job_failed', 'Queue job failed: ProcessUploadQueueRecord.', [], SystemActivityLogger::SEVERITY_ERROR);
     $logger->log('prediction_worker_completed_with_errors', '3 predictions failed.', [], SystemActivityLogger::SEVERITY_ERROR);
-    $logger->log('prediction_worker_completed_with_errors', '12 predictions failed.', [], SystemActivityLogger::SEVERITY_ERROR);
+    $this->travelTo('2026-11-22 13:28:00');
+    $logger->log('prediction_worker_completed_with_errors', '12 predictions failed.', ['last_error' => 'Prediction 7 submit failed: Connection refused'], SystemActivityLogger::SEVERITY_ERROR);
+    $logger->log('prediction_status_check_failed', 'Remote prediction status checks are failing.', ['error' => "cURL error 7:\n  Failed to connect to admin@example.org"], SystemActivityLogger::SEVERITY_ERROR);
+    $this->travelTo('2026-11-22 03:00:00');
     // Listed among the application errors already.
     $logger->log('application_error_repeated', 'Application error repeated 25× today: QueryException.', [], SystemActivityLogger::SEVERITY_ERROR);
     $logger->log('backup_finished', 'Backup finished.', [], SystemActivityLogger::SEVERITY_INFO);
@@ -160,11 +163,13 @@ test('what the system recorded as failed that day is listed', function () {
     $check = healthCheck('Recorded failures');
 
     expect($check->status)->toBe(HealthCheckResult::STATUS_PROBLEM)
-        ->and($check->summary)->toBe('5 failures recorded.')
+        ->and($check->summary)->toBe('6 failures recorded.')
         ->and($check->details)->toEqualCanonicalizing([
-            '2× Scheduled task failed: cron:predictions-worker.',
-            '2× # predictions failed.',
-            '1× Queue job failed: ProcessUploadQueueRecord.',
+            '2×, last at 03:00 UTC: Scheduled task failed: cron:predictions-worker.',
+            // The last of them as it was recorded, numbers and error included.
+            '2×, last at 13:28 UTC: 12 predictions failed. Error: Prediction 7 submit failed: Connection refused',
+            '1× at 13:28 UTC: Remote prediction status checks are failing. Error: cURL error 7: Failed to connect to [e-mail]',
+            '1× at 03:00 UTC: Queue job failed: ProcessUploadQueueRecord.',
         ]);
 });
 

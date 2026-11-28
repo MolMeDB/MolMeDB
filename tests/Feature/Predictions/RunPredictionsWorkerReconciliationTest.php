@@ -215,10 +215,13 @@ test('a failing status reconciliation pauses nothing and submits only into free 
 
     expect(runReconcilingWorker())->toBe(0);
 
+    $run = Activity::query()->where('event', 'prediction_worker_completed_with_errors')->sole()->properties;
     expect($running->refresh()->remote_paused_at)->toBeNull()
         ->and($urgent->refresh()->remote_calculation_id)->toBeNull()
         ->and(remoteRequestSent('https://predictor.test/jobs/pause'))->toBeFalse()
-        ->and(Activity::query()->where('event', 'prediction_worker_completed_with_errors')->sole()->properties['reconciliation_errors'])->toBe(1);
+        ->and($run['reconciliation_errors'])->toBe(1)
+        // The health report shows it.
+        ->and($run['last_error'])->toStartWith('Remote calculation status reconciliation failed: ');
 });
 
 test('a prediction that fails to resume stays paused with the error', function () {

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\NotificationTemplateResource\Pages;
 use App\Models\NotificationTemplate;
+use App\Rules\NotificationTemplateVariables;
 use BackedEnum;
 use Filament\Actions;
 use Filament\Forms\Components\RichEditor;
@@ -68,9 +69,11 @@ class NotificationTemplateResource extends Resource
                         TextInput::make('notification_title')
                             ->required()
                             ->maxLength(255)
+                            ->rule(new NotificationTemplateVariables)
                             ->helperText('Variables use {{ variable }} syntax.'),
                         Textarea::make('notification_body')
                             ->required()
+                            ->rule(new NotificationTemplateVariables)
                             ->rows(4)
                             ->columnSpanFull(),
                     ]),
@@ -80,9 +83,11 @@ class NotificationTemplateResource extends Resource
                     ->schema([
                         TextInput::make('email_subject')
                             ->maxLength(255)
+                            ->rule(new NotificationTemplateVariables)
                             ->nullable(),
                         RichEditor::make('email_message')
                             ->nullable()
+                            ->rule(new NotificationTemplateVariables)
                             ->helperText('HTML is allowed. Variables use {{ variable }} syntax.')
                             ->columnSpanFull(),
                     ]),

@@ -57,6 +57,16 @@ class RunPredictionsWorker extends Command
 
     private int $reconciliationErrors = 0;
 
+    /**
+     * The first error of the run, recorded with the run so that the health
+     * report can say what went wrong, not only how many times. A structure
+     * the service refuses gives way to a later error of the service itself,
+     * which tells more.
+     */
+    private ?string $firstError = null;
+
+    private bool $firstErrorIsRejection = false;
+
     protected $signature = 'cron:predictions-worker
         {--max-results= : Maximum completed prediction results to download}
         {--max-submit= : Maximum new or paused predictions to activate}
@@ -223,6 +233,7 @@ class RunPredictionsWorker extends Command
                     'reconciliation_errors' => $this->reconciliationErrors,
                     'rejected_structures' => $this->rejectedStructures,
                     'given_up_submissions' => $this->givenUpSubmissions,
+                    'error' => $this->firstError,
                 ];
 
                 if ($errorCount > 0) {
@@ -259,7 +270,7 @@ class RunPredictionsWorker extends Command
             throw $throwable;
         } catch (Throwable $throwable) {
             $this->statisticsErrors++;
-            $this->error('Remote statistics refresh failed: '.$throwable->getMessage());
+            $this->warnError('Remote statistics refresh failed: '.$throwable->getMessage());
 
             return null;
         }
@@ -348,7 +359,7 @@ class RunPredictionsWorker extends Command
                         'remote_error_message' => $throwable->getMessage(),
                     ])->save();
 
-                    $this->warn("Prediction {$prediction->getKey()} result download failed: {$throwable->getMessage()}");
+                    $this->warnError("Prediction {$prediction->getKey()} result download failed: {$throwable->getMessage()}");
                 }
             });
 
@@ -427,7 +438,7 @@ class RunPredictionsWorker extends Command
                         'remote_error_message' => $throwable->getMessage(),
                     ])->save();
 
-                    $this->warn("Prediction {$prediction->getKey()} resume failed: {$throwable->getMessage()}");
+                    $this->warnError("Prediction {$prediction->getKey()} resume failed: {$throwable->getMessage()}");
                 }
 
                 continue;
@@ -450,14 +461,14 @@ class RunPredictionsWorker extends Command
                 // downloads and status checks.
                 $validationFailures++;
                 $this->submissionErrors++;
-                $this->warn("Prediction {$prediction->getKey()} was not submitted, structure validation failed: {$throwable->getMessage()}");
+                $this->warnError("Prediction {$prediction->getKey()} was not submitted, structure validation failed: {$throwable->getMessage()}");
 
                 continue;
             }
 
             if (! $structureIsValid) {
                 $this->rejectedStructures++;
-                $this->warn("Prediction {$prediction->getKey()} was not submitted: {$prediction->remote_error_message}");
+                $this->warnError("Prediction {$prediction->getKey()} was not submitted: {$prediction->remote_error_message}", isRejection: true);
 
                 continue;
             }
@@ -481,7 +492,7 @@ class RunPredictionsWorker extends Command
                         : []),
                 ])->save();
 
-                $this->warn("Prediction {$prediction->getKey()} submit failed: {$throwable->getMessage()}");
+                $this->warnError("Prediction {$prediction->getKey()} submit failed: {$throwable->getMessage()}");
             }
         }
 
@@ -740,7 +751,7 @@ class RunPredictionsWorker extends Command
                     });
             } catch (Throwable $throwable) {
                 $this->reconciliationErrors++;
-                $this->warn('Remote calculation status reconciliation failed: '.$throwable->getMessage());
+                $this->warnError('Remote calculation status reconciliation failed: '.$throwable->getMessage());
 
                 return null;
             }
@@ -806,6 +817,7 @@ class RunPredictionsWorker extends Command
                             'remote_pause_reason' => null,
                         ]);
                     $this->reconciliationErrors += count($failedStructureIds);
+                    $this->warnError('The remote service did not pause '.count($failedStructureIds).' structure(s).');
                 }
 
                 $successfullyPaused = Prediction::query()
@@ -831,7 +843,7 @@ class RunPredictionsWorker extends Command
                         'remote_pause_reason' => null,
                     ]);
                 $this->reconciliationErrors += count($structureIds);
-                $this->warn('Remote prediction pause failed: '.$throwable->getMessage());
+                $this->warnError('Remote prediction pause failed: '.$throwable->getMessage());
             }
         }
 
@@ -892,5 +904,19 @@ class RunPredictionsWorker extends Command
         $value = $this->option($name);
 
         return max(0, $value === null ? $default : (int) $value);
+    }
+
+    /**
+     * Writes the error to the output and keeps it when it is the first error
+     * of the run (see $firstError).
+     */
+    private function warnError(string $message, bool $isRejection = false): void
+    {
+        if ($this->firstError === null || ($this->firstErrorIsRejection && ! $isRejection)) {
+            $this->firstError = $message;
+            $this->firstErrorIsRejection = $isRejection;
+        }
+
+        $this->warn($message);
     }
 }

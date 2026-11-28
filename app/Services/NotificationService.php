@@ -24,6 +24,9 @@ class NotificationService
 
     public const EVENT_EMAIL_FAILED = 'notification_email_failed';
 
+    /** A template variable: {{ name }}. */
+    public const TEMPLATE_VARIABLE_PATTERN = '/{{\s*([A-Za-z0-9_.-]+)\s*}}/';
+
     public function __construct(
         private readonly NotificationPreferenceResolver $preferences,
         private readonly NotificationBatcher $batcher,
@@ -312,7 +315,7 @@ class NotificationService
      */
     private function renderString(string $template, array $data): string
     {
-        $rendered = preg_replace_callback('/{{\s*([A-Za-z0-9_.-]+)\s*}}/', function (array $matches) use ($data): string {
+        $rendered = preg_replace_callback(self::TEMPLATE_VARIABLE_PATTERN, function (array $matches) use ($data): string {
             $key = $matches[1];
 
             if (! Arr::has($data, $key)) {

@@ -215,10 +215,13 @@ test('a failing status reconciliation pauses nothing and submits only into free 
 
     expect(runReconcilingWorker())->toBe(0);
 
+    $run = Activity::query()->where('event', 'prediction_worker_completed_with_errors')->sole()->properties;
     expect($running->refresh()->remote_paused_at)->toBeNull()
         ->and($urgent->refresh()->remote_calculation_id)->toBeNull()
         ->and(remoteRequestSent('https://predictor.test/jobs/pause'))->toBeFalse()
-        ->and(Activity::query()->where('event', 'prediction_worker_completed_with_errors')->sole()->properties['reconciliation_errors'])->toBe(1);
+        ->and($run['reconciliation_errors'])->toBe(1)
+        // The health report shows it.
+        ->and($run['error'])->toStartWith('Remote calculation status reconciliation failed: ');
 });
 
 test('a prediction that fails to resume stays paused with the error', function () {
@@ -457,4 +460,22 @@ test('a second worker does nothing while another one holds the lock', function (
 
     expect($prepared->refresh()->state)->toBe(Prediction::STATE_PREPARED);
     Http::assertNothingSent();
+});
+
+test('the run keeps an error of the service rather than a structure the service refused', function () {
+    createPredictionDataset(User::factory()->create(), [
+        'state' => Prediction::STATE_PREPARED,
+        'priority' => Prediction::PRIORITY_HIGH,
+    ]);
+    fakeReconciliationRemote([
+        'https://rdkit.test/structure/predictions/validate' => Http::response(['data' => ['valid' => false, 'canonical_smiles' => null, 'errors' => ['Unknown atom.']]]),
+        'https://predictor.test/stats' => Http::response(['detail' => 'Stats are being rebuilt.'], 500),
+    ]);
+
+    runReconcilingWorker(['--skip-stats' => false]);
+
+    $run = Activity::query()->where('event', 'prediction_worker_completed_with_errors')->sole()->properties;
+    expect($run['rejected_structures'])->toBe(1)
+        ->and($run['statistics_errors'])->toBe(1)
+        ->and($run['error'])->toStartWith('Remote statistics refresh failed: ');
 });

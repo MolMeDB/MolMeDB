@@ -102,6 +102,35 @@ test('a template needs a key defined by the application that no other template u
     expect(NotificationTemplate::query()->count())->toBe(1);
 });
 
+test('a variable with a brace too few or too many cannot be saved', function () {
+    $template = createNotificationTemplate();
+
+    $this->actingAs(notificationTemplatePanelUser([PermissionEnums::SETTINGS_EDIT]));
+
+    Livewire::test(EditNotificationTemplate::class, ['record' => $template->getKey()])
+        ->fillForm([
+            'notification_title' => 'Export {{ name } is ready',
+            'notification_body' => 'Download it from { url }}.',
+            'email_subject' => 'Export {{{ name }}} is ready',
+            'email_message' => '<p>Total</p><table><tr><td>{{ total_all }</td></tr></table>',
+        ])
+        ->call('save')
+        ->assertHasFormErrors(['notification_title', 'notification_body', 'email_subject', 'email_message']);
+
+    expect($template->refresh()->notification_title)->toBe('Your export is ready');
+
+    Livewire::test(EditNotificationTemplate::class, ['record' => $template->getKey()])
+        ->fillForm([
+            'notification_title' => 'Export {{name}} is ready',
+            'email_subject' => 'Export {{ name }} is ready',
+            'email_message' => '<p>Total: {{ total_all }}</p>',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($template->refresh()->email_message)->toContain('{{ total_all }}');
+});
+
 test('the key options leave out keys other templates already use', function () {
     $template = createNotificationTemplate();
 

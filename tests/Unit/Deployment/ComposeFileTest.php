@@ -33,3 +33,8 @@ test('the databases keep their data in named volumes', function (string $service
     ['db', 'molmedb-db'],
     ['db-predictions', 'molmedb-predictions-db'],
 ]);
+
+test('the RDKit service stops when it is told to, instead of being killed after the stop timeout', function () {
+    // It runs as PID 1 without a SIGTERM handler; the init process passes the signal on.
+    expect(productionCompose()['services']['rdkit']['init'] ?? false)->toBeTrue();
+});
